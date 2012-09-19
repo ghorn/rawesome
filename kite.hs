@@ -3,7 +3,7 @@
 import Prelude hiding (span)
 import Data.Packed
 import Data.Packed.ST
-import Numeric.Container hiding ( conj )
+import Numeric.Container
 --import Graphics.Gnuplot.Simple
 import Numeric.GSL.ODE
 import Text.Printf ( printf )
@@ -13,36 +13,12 @@ import Vis
 import Draw
 import Joy
 
-modelInteg :: Double -> Vector Double -> Vector Double -> (Vector Double, Vector Double)
-modelInteg r state u = (sys, fromList [c, cdot, cddot])
+
+forcesTorques :: Vector Double -> Vector Double -> (Double,Double,Double,Double,Double,Double)
+forcesTorques state u = (f1,f2,f3,t1,t2,t3)
   where
-    --  PARAMETERS OF THE KITE :
-    --  -----------------------------
-    m =  0.626      --  mass of the kite               --  [ kg    ]
-                 
-    --   PHYSICAL CONSTANTS :
-    --  -----------------------------
-    g =    9.81      --  gravitational constant         --  [ m /s^2]
     rho =    1.23      --  density of the air             --  [ kg/m^3]
-    
-    --  PARAMETERS OF THE CABLE :
-    --  -----------------------------
-     
-    --CAROUSEL ARM LENGTH
     rA = 1.085 --(dixit Kurt)
-    
-    zt = -0.01
-    
-    --INERTIA MATRIX (Kurt's direct measurements)
-    j1 = 0.0163
-    j31 = 0.0006
-    j2 = 0.0078
-    j3 = 0.0229
-    
-    --Carousel Friction & inertia
-    jCarousel = 1e2
-    cfric = 100
-    
     alpha0 = -0*pi/180 
     
     --TAIL LENGTH
@@ -92,7 +68,6 @@ modelInteg r state u = (sys, fromList [c, cdot, cddot])
     -----------------------     model integ ---------------------------------------
     x =   state @> 0
     y =   state @> 1
-    z =   state @> 2
     
     e11 = state @> 3
     e12 = state @> 4
@@ -114,33 +89,13 @@ modelInteg r state u = (sys, fromList [c, cdot, cddot])
     w2 =  state @> 16
     w3 =  state @> 17
 
-    {-
-    delta = state @> 18
-    -}
     ddelta = state @> 19
     
-    {- u = linint(P.tu,t) -}
-    tc = u @> 0 --Carousel motor torque
     u1 = u @> 1
     u2 = u @> 2
     
 
-    {-
-     r = P.r
-     dr = 0
-    -}
-    
     --------------- kinfile -------------
-    {-
-    p = fromList [ cos(delta)*(rA + x) - y*sin(delta)
-                 , sin(delta)*(rA + x) + y*cos(delta)
-                 , z
-                 ]
-    dp = fromList [ dx*cos(delta) - ddelta*(sin(delta)*(rA + x) + y*cos(delta)) - dy*sin(delta)
-                  , ddelta*(cos(delta)*(rA + x) - y*sin(delta)) + dy*cos(delta) + dx*sin(delta)
-                  , dz
-                  ]
-    -}
     dpE = fromList [ dx*e11 + dy*e12 + dz*e13 + ddelta*e12*rA + ddelta*e12*x - ddelta*e11*y
                    , dx*e21 + dy*e22 + dz*e23 + ddelta*e22*rA + ddelta*e22*x - ddelta*e21*y
                    , dx*e31 + dy*e32 + dz*e33 + ddelta*e32*rA + ddelta*e32*x - ddelta*e31*y
@@ -149,12 +104,8 @@ modelInteg r state u = (sys, fromList [c, cdot, cddot])
                                  , dy + ddelta*rA + ddelta*x
                                  , dz
                                  ]
-    -----------------------------------------
-    
-    
     
     ---------- more model_integ ----------------------
-    
     -- EFFECTIVE WIND IN THE KITE`S SYSTEM :
     -- ---------------------------------------------------------------
     
@@ -253,7 +204,70 @@ modelInteg r state u = (sys, fromList [c, cdot, cddot])
     t1 =  0.5*rho*vKite2*span*cR
     t2 =  0.5*rho*vKite2*chord*cP
     t3 =  0.5*rho*vKite2*span*cY
+
+    
+    
+modelInteg :: Double -> Vector Double -> Vector Double -> (Vector Double, Vector Double)
+modelInteg r state u = (sys, fromList [c, cdot, cddot])
+  where
+    --  PARAMETERS OF THE KITE :
+    --  -----------------------------
+    m =  0.626      --  mass of the kite               --  [ kg    ]
+                 
+    --   PHYSICAL CONSTANTS :
+    --  -----------------------------
+    g =    9.81      --  gravitational constant         --  [ m /s^2]
+    
+    --  PARAMETERS OF THE CABLE :
+    --  -----------------------------
      
+    --CAROUSEL ARM LENGTH
+    rA = 1.085 --(dixit Kurt)
+
+    zt = -0.01
+    
+    --INERTIA MATRIX (Kurt's direct measurements)
+    j1 = 0.0163
+    j31 = 0.0006
+    j2 = 0.0078
+    j3 = 0.0229
+    
+    --Carousel Friction & inertia
+    jCarousel = 1e2
+    cfric = 100
+
+    
+    -----------------------     model integ ---------------------------------------
+    x =   state @> 0
+    y =   state @> 1
+    z =   state @> 2
+    
+    e11 = state @> 3
+    e12 = state @> 4
+    e13 = state @> 5
+    
+    e21 = state @> 6
+    e22 = state @> 7
+    e23 = state @> 8
+    
+    e31 = state @> 9
+    e32 = state @> 10
+    e33 = state @> 11
+    
+    dx =  state @> 12
+    dy =  state @> 13
+    dz =  state @> 14
+    
+    w1 =  state @> 15
+    w2 =  state @> 16
+    w3 =  state @> 17
+
+    ddelta = state @> 19
+    
+    tc = u @> 0 --Carousel motor torque
+
+    (f1,f2,f3,t1,t2,t3) = forcesTorques state u
+
     -- ATTITUDE DYNAMICS
     -- -----------------------------------------------------------
     
@@ -335,7 +349,6 @@ modelInteg r state u = (sys, fromList [c, cdot, cddot])
       writeMatrix' (8,8) $ 0
       return mm'
 
-    conj = id
     rhs :: Vector Double
     rhs = fromList
           [ tc - cfric*ddelta - f1*y + f2*(rA + x) + dy*m*(dx - 2*ddelta*y) - dx*m*(dy + 2*ddelta*rA + 2*ddelta*x) 
@@ -345,7 +358,7 @@ modelInteg r state u = (sys, fromList [c, cdot, cddot])
           , t1 - w2*(j3*w3 + j31*w1) + j2*w2*w3 
           , t2 + w1*(j3*w3 + j31*w1) - w3*(j1*w1 + j31*w3) 
           , t3 + w2*(j1*w1 + j31*w3) - j2*w1*w2 
-          , (w1 - ddelta*e13)*(e21*(zt*dx - zt2*e21*(conj(w1) - ddelta*e13) + zt2*e11*(conj(w2) - ddelta*e23)) + e22*(zt*dy - zt2*e22*(conj(w1) - ddelta*e13) + zt2*e12*(conj(w2) - ddelta*e23)) + zt*e33*(z*conj(w1) + ddelta*e11*x + ddelta*e12*y + zt*e33*conj(w1) + zt*ddelta*e11*e31 + zt*ddelta*e12*e32) + zt*e23*(dz + zt*e13*conj(w2) - zt*e23*conj(w1)) + zt*e31*(conj(w1) - ddelta*e13)*(x + zt*e31) + zt*e32*(conj(w1) - ddelta*e13)*(y + zt*e32)) - dz*(dz + zt*e13*w2 - zt*e23*w1) - dx*(dx - zt*e21*(w1 - ddelta*e13) + zt*e11*(w2 - ddelta*e23)) - dy*(dy - zt*e22*(w1 - ddelta*e13) + zt*e12*(w2 - ddelta*e23)) - (zt*conj(w1)*(e11*x + e12*y + e13*z + zt*e11*e31 + zt*e12*e32 + zt*e13*e33) + zt*conj(w2)*(e21*x + e22*y + e23*z + zt*e21*e31 + zt*e22*e32 + zt*e23*e33))*(w3 - ddelta*e33) - (w2 - ddelta*e23)*(e11*(zt*dx - zt2*e21*(conj(w1) - ddelta*e13) + zt2*e11*(conj(w2) - ddelta*e23)) + e12*(zt*dy - zt2*e22*(conj(w1) - ddelta*e13) + zt2*e12*(conj(w2) - ddelta*e23)) - zt*e33*(z*conj(w2) + ddelta*e21*x + ddelta*e22*y + zt*e33*conj(w2) + zt*ddelta*e21*e31 + zt*ddelta*e22*e32) + zt*e13*(dz + zt*e13*conj(w2) - zt*e23*conj(w1)) - zt*e31*(conj(w2) - ddelta*e23)*(x + zt*e31) - zt*e32*(conj(w2) - ddelta*e23)*(y + zt*e32)) 
+          , (w1 - ddelta*e13)*(e21*(zt*dx - zt2*e21*(w1 - ddelta*e13) + zt2*e11*(w2 - ddelta*e23)) + e22*(zt*dy - zt2*e22*(w1 - ddelta*e13) + zt2*e12*(w2 - ddelta*e23)) + zt*e33*(z*w1 + ddelta*e11*x + ddelta*e12*y + zt*e33*w1 + zt*ddelta*e11*e31 + zt*ddelta*e12*e32) + zt*e23*(dz + zt*e13*w2 - zt*e23*w1) + zt*e31*(w1 - ddelta*e13)*(x + zt*e31) + zt*e32*(w1 - ddelta*e13)*(y + zt*e32)) - dz*(dz + zt*e13*w2 - zt*e23*w1) - dx*(dx - zt*e21*(w1 - ddelta*e13) + zt*e11*(w2 - ddelta*e23)) - dy*(dy - zt*e22*(w1 - ddelta*e13) + zt*e12*(w2 - ddelta*e23)) - (zt*w1*(e11*x + e12*y + e13*z + zt*e11*e31 + zt*e12*e32 + zt*e13*e33) + zt*w2*(e21*x + e22*y + e23*z + zt*e21*e31 + zt*e22*e32 + zt*e23*e33))*(w3 - ddelta*e33) - (w2 - ddelta*e23)*(e11*(zt*dx - zt2*e21*(w1 - ddelta*e13) + zt2*e11*(w2 - ddelta*e23)) + e12*(zt*dy - zt2*e22*(w1 - ddelta*e13) + zt2*e12*(w2 - ddelta*e23)) - zt*e33*(z*w2 + ddelta*e21*x + ddelta*e22*y + zt*e33*w2 + zt*ddelta*e21*e31 + zt*ddelta*e22*e32) + zt*e13*(dz + zt*e13*w2 - zt*e23*w1) - zt*e31*(w2 - ddelta*e23)*(x + zt*e31) - zt*e32*(w2 - ddelta*e23)*(y + zt*e32)) 
           ]
       where
         zt2 = zt*zt
@@ -402,7 +415,7 @@ modelInteg r state u = (sys, fromList [c, cdot, cddot])
         c' =(x + zt*e31)**2/2 + (y + zt*e32)**2/2 + (z + zt*e33)**2/2 - r**2/2
         
         cdot' =dx*(x + zt*e31) + dy*(y + zt*e32) + dz*(z + zt*e33) + zt*(w2 - ddelta*e23)*(e11*x + e12*y + e13*z + zt*e11*e31 + zt*e12*e32 + zt*e13*e33) - zt*(w1 - ddelta*e13)*(e21*x + e22*y + e23*z + zt*e21*e31 + zt*e22*e32 + zt*e23*e33)
-        cddot' =(zt*conj(w1)*(e11*x + e12*y + e13*z + zt*e11*e31 + zt*e12*e32 + zt*e13*e33) + zt*conj(w2)*(e21*x + e22*y + e23*z + zt*e21*e31 + zt*e22*e32 + zt*e23*e33))*(w3 - ddelta*e33) + dx*(dx + zt*e11*w2 - zt*e21*w1 - zt*ddelta*e11*e23 + zt*ddelta*e13*e21) + dy*(dy + zt*e12*w2 - zt*e22*w1 - zt*ddelta*e12*e23 + zt*ddelta*e13*e22) + dz*(dz + zt*e13*w2 - zt*e23*w1) + ddx*(x + zt*e31) + ddy*(y + zt*e32) + ddz*(z + zt*e33) - (w1 - ddelta*e13)*(e21*(zt*dx - zt**2*e21*(conj(w1) - ddelta*e13) + zt**2*e11*(conj(w2) - ddelta*e23)) + e22*(zt*dy - zt**2*e22*(conj(w1) - ddelta*e13) + zt**2*e12*(conj(w2) - ddelta*e23)) + zt*e33*(z*conj(w1) + ddelta*e11*x + ddelta*e12*y + zt*e33*conj(w1) + zt*ddelta*e11*e31 + zt*ddelta*e12*e32) + zt*e23*(dz + zt*e13*conj(w2) - zt*e23*conj(w1)) + zt*e31*(conj(w1) - ddelta*e13)*(x + zt*e31) + zt*e32*(conj(w1) - ddelta*e13)*(y + zt*e32)) + (w2 - ddelta*e23)*(e11*(zt*dx - zt**2*e21*(conj(w1) - ddelta*e13) + zt**2*e11*(conj(w2) - ddelta*e23)) + e12*(zt*dy - zt**2*e22*(conj(w1) - ddelta*e13) + zt**2*e12*(conj(w2) - ddelta*e23)) - zt*e33*(z*conj(w2) + ddelta*e21*x + ddelta*e22*y + zt*e33*conj(w2) + zt*ddelta*e21*e31 + zt*ddelta*e22*e32) + zt*e13*(dz + zt*e13*conj(w2) - zt*e23*conj(w1)) - zt*e31*(conj(w2) - ddelta*e23)*(x + zt*e31) - zt*e32*(conj(w2) - ddelta*e23)*(y + zt*e32)) + zt*(dw2 - dddelta*e23)*(e11*x + e12*y + e13*z + zt*e11*e31 + zt*e12*e32 + zt*e13*e33) - zt*(dw1 - dddelta*e13)*(e21*x + e22*y + e23*z + zt*e21*e31 + zt*e22*e32 + zt*e23*e33) - zt*dddelta*(e11*e23*x - e13*e21*x + e12*e23*y - e13*e22*y + zt*e11*e23*e31 - zt*e13*e21*e31 + zt*e12*e23*e32 - zt*e13*e22*e32)
+        cddot' =(zt*w1*(e11*x + e12*y + e13*z + zt*e11*e31 + zt*e12*e32 + zt*e13*e33) + zt*w2*(e21*x + e22*y + e23*z + zt*e21*e31 + zt*e22*e32 + zt*e23*e33))*(w3 - ddelta*e33) + dx*(dx + zt*e11*w2 - zt*e21*w1 - zt*ddelta*e11*e23 + zt*ddelta*e13*e21) + dy*(dy + zt*e12*w2 - zt*e22*w1 - zt*ddelta*e12*e23 + zt*ddelta*e13*e22) + dz*(dz + zt*e13*w2 - zt*e23*w1) + ddx*(x + zt*e31) + ddy*(y + zt*e32) + ddz*(z + zt*e33) - (w1 - ddelta*e13)*(e21*(zt*dx - zt**2*e21*(w1 - ddelta*e13) + zt**2*e11*(w2 - ddelta*e23)) + e22*(zt*dy - zt**2*e22*(w1 - ddelta*e13) + zt**2*e12*(w2 - ddelta*e23)) + zt*e33*(z*w1 + ddelta*e11*x + ddelta*e12*y + zt*e33*w1 + zt*ddelta*e11*e31 + zt*ddelta*e12*e32) + zt*e23*(dz + zt*e13*w2 - zt*e23*w1) + zt*e31*(w1 - ddelta*e13)*(x + zt*e31) + zt*e32*(w1 - ddelta*e13)*(y + zt*e32)) + (w2 - ddelta*e23)*(e11*(zt*dx - zt**2*e21*(w1 - ddelta*e13) + zt**2*e11*(w2 - ddelta*e23)) + e12*(zt*dy - zt**2*e22*(w1 - ddelta*e13) + zt**2*e12*(w2 - ddelta*e23)) - zt*e33*(z*w2 + ddelta*e21*x + ddelta*e22*y + zt*e33*w2 + zt*ddelta*e21*e31 + zt*ddelta*e22*e32) + zt*e13*(dz + zt*e13*w2 - zt*e23*w1) - zt*e31*(w2 - ddelta*e23)*(x + zt*e31) - zt*e32*(w2 - ddelta*e23)*(y + zt*e32)) + zt*(dw2 - dddelta*e23)*(e11*x + e12*y + e13*z + zt*e11*e31 + zt*e12*e32 + zt*e13*e33) - zt*(dw1 - dddelta*e13)*(e21*x + e22*y + e23*z + zt*e21*e31 + zt*e22*e32 + zt*e23*e33) - zt*dddelta*(e11*e23*x - e13*e21*x + e12*e23*y - e13*e22*y + zt*e11*e23*e31 - zt*e13*e21*e31 + zt*e12*e23*e32 - zt*e13*e22*e32)
 
 
 data State = State { sTrails :: [[Xyz Double]]
