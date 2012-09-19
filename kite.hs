@@ -1,5 +1,6 @@
 {-# OPTIONS_GHC -Wall #-}
 
+import Prelude hiding (span)
 import Data.Packed
 import Data.Packed.ST
 import Numeric.Container hiding ( conj )
@@ -39,54 +40,54 @@ modelInteg r state u = (sys, fromList [c, cdot, cddot])
     j3 = 0.0229
     
     --Carousel Friction & inertia
-    _I = 1e2
-    _Cfric = 100
+    jCarousel = 1e2
+    cfric = 100
     
     alpha0 = -0*pi/180 
     
     --TAIL LENGTH
-    _LT = 0.4
+    lT = 0.4
     
     --ROLL DAMPING
-    _RD = 1e-2 
-    _PD = 0*1e-3
-    _YD = 0*1e-3
+    rD = 1e-2 
+    pD = 0*1e-3
+    yD = 0*1e-3
     
     --WIND-TUNNEL PARAMETERS
     --Lift (report p. 67)
-    _CLA = 5.064
+    cLA = 5.064
     
-    _CLe = -1.924
+    cLe = -1.924
     
-    _CL0 = 0.239
+    cL0 = 0.239
     
     --Drag (report p. 70)
-    _CDA = -0.195
-    _CDA2 = 4.268
-    _CDB2 = 5
+    cDA = -0.195
+    cDA2 = 4.268
+    cDB2 = 5
     {-
-    _CDe = 0.044
-    _CDr = 0.111
+    cDe = 0.044
+    cDr = 0.111
     -}
-    _CD0 = 0.026
+    cD0 = 0.026
     
     --Roll (report p. 72)
-    _CRB = -0.062
-    _CRAB = -0.271 
-    _CRr = -5.637e-1
+    cRB = -0.062
+    cRAB = -0.271 
+    cRr = -5.637e-1
     
     --Pitch (report p. 74)
-    _CPA = 0.293
-    _CPe = -4.9766e-1
+    cPA = 0.293
+    cPe = -4.9766e-1
     
-    _CP0 = 0.03
+    cP0 = 0.03
     
     --Yaw (report p. 76)
-    _CYB = 0.05
-    _CYAB = 0.229
+    cYB = 0.05
+    cYAB = 0.229
     
-    _SPAN = 0.96
-    _CHORD = 0.1
+    span = 0.96
+    chord = 0.1
     
     -----------------------     model integ ---------------------------------------
     x =   state @> 0
@@ -119,9 +120,9 @@ modelInteg r state u = (sys, fromList [c, cdot, cddot])
     ddelta = state @> 19
     
     {- u = linint(P.tu,t) -}
-    _Tc = u @> 0 --Carousel motor torque
-    u1 =  u @> 1
-    u2 =  u @> 2
+    tc = u @> 0 --Carousel motor torque
+    u1 = u @> 1
+    u2 = u @> 2
     
 
     {-
@@ -162,8 +163,8 @@ modelInteg r state u = (sys, fromList [c, cdot, cddot])
     we2 = dp_carousel_frame @> 1
     we3 = dp_carousel_frame @> 2
     
-    _VKite2 = dp_carousel_frame <.> dp_carousel_frame --Airfoil speed^2 
-    _VKite = sqrt(_VKite2) --Airfoil speed
+    vKite2 = dp_carousel_frame <.> dp_carousel_frame --Airfoil speed^2 
+    vKite = sqrt(vKite2) --Airfoil speed
     
     -- CALCULATION OF THE FORCES :
     -- ---------------------------------------------------------------
@@ -196,75 +197,72 @@ modelInteg r state u = (sys, fromList [c, cdot, cddot])
     
     -- AERODYNAMIC COEEFICIENTS
     -- ----------------------------------
-    _VT1 =           wE1
-    _VT2 = -_LT*w3 + wE2
-    _VT3 =  _LT*w2 + wE3
+    vT1 =          wE1
+    vT2 = -lT*w3 + wE2
+    vT3 =  lT*w2 + wE3
     
     
     alpha = alpha0-wE3/wE1
     
     --NOTE: beta & alphaTail are compensated for the tail motion induced by
     --omega !!
-    betaTail = _VT2/sqrt(_VT1*_VT1 + _VT3*_VT3)
+    betaTail = vT2/sqrt(vT1*vT1 + vT3*vT3)
     beta = wE2/sqrt(wE1*wE1 + wE3*wE3)
-    alphaTail = alpha0-_VT3/_VT1
+    alphaTail = alpha0-vT3/vT1
     
-    -- _CL = _CLA*alpha + _CLe*u2   + _CL0
-    -- _CD = _CDA*alpha + _CDA2*alpha*alpha + _CDB2*beta*beta + _CDe*u2 + _CDr*u1 + _CD0
-    -- _CR = -_RD*w1 + _CRB*beta + _CRAB*alphaTail*beta + _CRr*u1
-    -- _CP = _CPA*alphaTail + _CPe*u2  + _CP0
-    -- _CY = _CYB*beta + _CYAB*alphaTail*beta
+    -- cL = cLA*alpha + cLe*u2   + cL0
+    -- cD = cDA*alpha + cDA2*alpha*alpha + cDB2*beta*beta + cDe*u2 + cDr*u1 + cD0
+    -- cR = -rD*w1 + cRB*beta + cRAB*alphaTail*beta + cRr*u1
+    -- cP = cPA*alphaTail + cPe*u2  + cP0
+    -- cY = cYB*beta + cYAB*alphaTail*beta
     
-    _CL' = _CLA*alpha + _CLe*u2 + _CL0
-    _CD' = _CDA*alpha + _CDA2*alpha*alpha + _CDB2*beta*beta + _CD0
-    _CR = -_RD*w1 + _CRB*betaTail + _CRr*u1 + _CRAB*alphaTail*betaTail
-    _CP = -_PD*w2 + _CPA*alphaTail + _CPe*u2 + _CP0
-    _CY = -_YD*w3 + _CYB*betaTail + _CYAB*alphaTail*betaTail
+    cL' = cLA*alpha + cLe*u2 + cL0
+    cD' = cDA*alpha + cDA2*alpha*alpha + cDB2*beta*beta + cD0
+    cR = -rD*w1 + cRB*betaTail + cRr*u1 + cRAB*alphaTail*betaTail
+    cP = -pD*w2 + cPA*alphaTail + cPe*u2 + cP0
+    cY = -yD*w3 + cYB*betaTail + cYAB*alphaTail*betaTail
     
     
     -- LIFT :
     -- ---------------------------------------------------------------
-    _CL = 0.2*_CL'
-    _CD = 0.5*_CD'
-    _FL1 =  rho*_CL*eLe1*_VKite/2.0
-    _FL2 =  rho*_CL*eLe2*_VKite/2.0
-    _FL3 =  rho*_CL*eLe3*_VKite/2.0
+    cL = 0.2*cL'
+    cD = 0.5*cD'
+    fL1 =  rho*cL*eLe1*vKite/2.0
+    fL2 =  rho*cL*eLe2*vKite/2.0
+    fL3 =  rho*cL*eLe3*vKite/2.0
     
     -- DRAG :
     -- -----------------------------------------------------------
-    _FD1 = -rho*_VKite*_CD*we1/2.0
-    _FD2 = -rho*_VKite*_CD*we2/2.0 
-    _FD3 = -rho*_VKite*_CD*we3/2.0 
+    fD1 = -rho*vKite*cD*we1/2.0
+    fD2 = -rho*vKite*cD*we2/2.0 
+    fD3 = -rho*vKite*cD*we3/2.0 
     
     
     
     -- FORCES (AERO)
     -- ---------------------------------------------------------------
+    f1 = fL1 + fD1
+    f2 = fL2 + fD2
+    f3 = fL3 + fD3
     
-    
-    _F1 = _FL1 + _FD1
-    _F2 = _FL2 + _FD2
-    _F3 = _FL3 + _FD3
-    
-    --_F = _F-_FT
+    --f = f-fT
        
     -- TORQUES (AERO)
     -- ---------------------------------------------------------------
      
-    _T1 =  0.5*rho*_VKite2*_SPAN*_CR
-    _T2 =  0.5*rho*_VKite2*_CHORD*_CP
-    _T3 =  0.5*rho*_VKite2*_SPAN*_CY
-     
+    t1 =  0.5*rho*vKite2*span*cR
+    t2 =  0.5*rho*vKite2*chord*cP
+    t3 =  0.5*rho*vKite2*span*cY
      
     -- ATTITUDE DYNAMICS
     -- -----------------------------------------------------------
     
     -- DynFile          -- Call DAE
-    _MM :: Matrix Double
-    _MM = runSTMatrix $ do
-      _MM' <- newMatrix 0 8 8
-      let writeMatrix' (row,col) = writeMatrix _MM' (row-1) (col-1)
-      writeMatrix' (1,1) $ _I + m*rA*rA + m*x*x + m*y*y + 2*m*rA*x 
+    mm :: Matrix Double
+    mm = runSTMatrix $ do
+      mm' <- newMatrix 0 8 8
+      let writeMatrix' (row,col) = writeMatrix mm' (row-1) (col-1)
+      writeMatrix' (1,1) $ jCarousel + m*rA*rA + m*x*x + m*y*y + 2*m*rA*x 
       writeMatrix' (1,2) $ -m*y 
       writeMatrix' (1,3) $ m*(rA + x) 
       writeMatrix' (1,4) $ 0 
@@ -335,20 +333,20 @@ modelInteg r state u = (sys, fromList [c, cdot, cddot])
       writeMatrix' (8,6) $ zt*(e11*x + e12*y + e13*z + zt*e11*e31 + zt*e12*e32 + zt*e13*e33) 
       writeMatrix' (8,7) $ 0 
       writeMatrix' (8,8) $ 0
-      return _MM'
+      return mm'
 
     conj = id
-    _RHS :: Vector Double
-    _RHS = fromList
-           [ _Tc - _Cfric*ddelta - _F1*y + _F2*(rA + x) + dy*m*(dx - 2*ddelta*y) - dx*m*(dy + 2*ddelta*rA + 2*ddelta*x) 
-           , _F1 + ddelta*m*(dy + ddelta*rA + ddelta*x) + ddelta*dy*m 
-           , _F2 - ddelta*m*(dx - ddelta*y) - ddelta*dx*m 
-           , _F3 - g*m 
-           , _T1 - w2*(j3*w3 + j31*w1) + j2*w2*w3 
-           , _T2 + w1*(j3*w3 + j31*w1) - w3*(j1*w1 + j31*w3) 
-           , _T3 + w2*(j1*w1 + j31*w3) - j2*w1*w2 
-           , (w1 - ddelta*e13)*(e21*(zt*dx - zt2*e21*(conj(w1) - ddelta*e13) + zt2*e11*(conj(w2) - ddelta*e23)) + e22*(zt*dy - zt2*e22*(conj(w1) - ddelta*e13) + zt2*e12*(conj(w2) - ddelta*e23)) + zt*e33*(z*conj(w1) + ddelta*e11*x + ddelta*e12*y + zt*e33*conj(w1) + zt*ddelta*e11*e31 + zt*ddelta*e12*e32) + zt*e23*(dz + zt*e13*conj(w2) - zt*e23*conj(w1)) + zt*e31*(conj(w1) - ddelta*e13)*(x + zt*e31) + zt*e32*(conj(w1) - ddelta*e13)*(y + zt*e32)) - dz*(dz + zt*e13*w2 - zt*e23*w1) - dx*(dx - zt*e21*(w1 - ddelta*e13) + zt*e11*(w2 - ddelta*e23)) - dy*(dy - zt*e22*(w1 - ddelta*e13) + zt*e12*(w2 - ddelta*e23)) - (zt*conj(w1)*(e11*x + e12*y + e13*z + zt*e11*e31 + zt*e12*e32 + zt*e13*e33) + zt*conj(w2)*(e21*x + e22*y + e23*z + zt*e21*e31 + zt*e22*e32 + zt*e23*e33))*(w3 - ddelta*e33) - (w2 - ddelta*e23)*(e11*(zt*dx - zt2*e21*(conj(w1) - ddelta*e13) + zt2*e11*(conj(w2) - ddelta*e23)) + e12*(zt*dy - zt2*e22*(conj(w1) - ddelta*e13) + zt2*e12*(conj(w2) - ddelta*e23)) - zt*e33*(z*conj(w2) + ddelta*e21*x + ddelta*e22*y + zt*e33*conj(w2) + zt*ddelta*e21*e31 + zt*ddelta*e22*e32) + zt*e13*(dz + zt*e13*conj(w2) - zt*e23*conj(w1)) - zt*e31*(conj(w2) - ddelta*e23)*(x + zt*e31) - zt*e32*(conj(w2) - ddelta*e23)*(y + zt*e32)) 
-           ]
+    rhs :: Vector Double
+    rhs = fromList
+          [ tc - cfric*ddelta - f1*y + f2*(rA + x) + dy*m*(dx - 2*ddelta*y) - dx*m*(dy + 2*ddelta*rA + 2*ddelta*x) 
+          , f1 + ddelta*m*(dy + ddelta*rA + ddelta*x) + ddelta*dy*m 
+          , f2 - ddelta*m*(dx - ddelta*y) - ddelta*dx*m 
+          , f3 - g*m 
+          , t1 - w2*(j3*w3 + j31*w1) + j2*w2*w3 
+          , t2 + w1*(j3*w3 + j31*w1) - w3*(j1*w1 + j31*w3) 
+          , t3 + w2*(j1*w1 + j31*w3) - j2*w1*w2 
+          , (w1 - ddelta*e13)*(e21*(zt*dx - zt2*e21*(conj(w1) - ddelta*e13) + zt2*e11*(conj(w2) - ddelta*e23)) + e22*(zt*dy - zt2*e22*(conj(w1) - ddelta*e13) + zt2*e12*(conj(w2) - ddelta*e23)) + zt*e33*(z*conj(w1) + ddelta*e11*x + ddelta*e12*y + zt*e33*conj(w1) + zt*ddelta*e11*e31 + zt*ddelta*e12*e32) + zt*e23*(dz + zt*e13*conj(w2) - zt*e23*conj(w1)) + zt*e31*(conj(w1) - ddelta*e13)*(x + zt*e31) + zt*e32*(conj(w1) - ddelta*e13)*(y + zt*e32)) - dz*(dz + zt*e13*w2 - zt*e23*w1) - dx*(dx - zt*e21*(w1 - ddelta*e13) + zt*e11*(w2 - ddelta*e23)) - dy*(dy - zt*e22*(w1 - ddelta*e13) + zt*e12*(w2 - ddelta*e23)) - (zt*conj(w1)*(e11*x + e12*y + e13*z + zt*e11*e31 + zt*e12*e32 + zt*e13*e33) + zt*conj(w2)*(e21*x + e22*y + e23*z + zt*e21*e31 + zt*e22*e32 + zt*e23*e33))*(w3 - ddelta*e33) - (w2 - ddelta*e23)*(e11*(zt*dx - zt2*e21*(conj(w1) - ddelta*e13) + zt2*e11*(conj(w2) - ddelta*e23)) + e12*(zt*dy - zt2*e22*(conj(w1) - ddelta*e13) + zt2*e12*(conj(w2) - ddelta*e23)) - zt*e33*(z*conj(w2) + ddelta*e21*x + ddelta*e22*y + zt*e33*conj(w2) + zt*ddelta*e21*e31 + zt*ddelta*e22*e32) + zt*e13*(dz + zt*e13*conj(w2) - zt*e23*conj(w1)) - zt*e31*(conj(w2) - ddelta*e23)*(x + zt*e31) - zt*e32*(conj(w2) - ddelta*e23)*(y + zt*e32)) 
+          ]
       where
         zt2 = zt*zt
     
@@ -369,7 +367,7 @@ modelInteg r state u = (sys, fromList [c, cdot, cddot])
                 ]
     
     ddq_nu :: Vector Double
-    ddq_nu = _MM <\> _RHS -- Backsolve DAE
+    ddq_nu = mm <\> rhs -- Backsolve DAE
     
     ----Extract dynamics
     --dddelta = ddq_nu(1)       -- Carousel acceleration
@@ -464,7 +462,7 @@ drawFun state = return $ VisObjects $ [axes, txt, ac, plane, trailLines, arm, li
 --        x' = realToFrac $ (x + 1)/0.4*k/5
 --    boxText = Vis3dText "I'm a plane" (Xyz 0 0 (x-0.2)) TimesRoman24 (makeColor 1 0 0 1)
     ddelta = (sX state) @> 19
-    [c,cdot,cddot] = toList $ snd $ modelInteg 1.2 (sX state) (fromList [tc,0,0])
+    [c,cdot,cddot] = toList $ snd $ modelInteg 1.2 (sX state) (fromList [tc0,0,0])
 
     (u0,u1) = sU state
     txt = VisObjects
@@ -482,8 +480,8 @@ drawFun state = return $ VisObjects $ [axes, txt, ac, plane, trailLines, arm, li
 
     trailLines = drawTrails (sTrails state)
 
-tc :: Double
-tc = 2*389.970797939731
+tc0 :: Double
+tc0 = 2*389.970797939731
 
 main :: IO ()
 main = do
@@ -515,7 +513,7 @@ main = do
   let ts :: Double
       ts = 0.02
 
-  let xdot _t x (u0,u1) = fst $ modelInteg r x (fromList [tc, u0, u1])
+  let xdot _t x (u0,u1) = fst $ modelInteg r x (fromList [tc0, u0, u1])
       h0 = 1e-7
       abstol = 1e-5
       reltol = 1e-3
