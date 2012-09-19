@@ -3,9 +3,14 @@
 import Data.Packed
 import Data.Packed.ST
 import Numeric.Container hiding ( conj )
-import Graphics.Gnuplot.Simple
-
+--import Graphics.Gnuplot.Simple
 import Numeric.GSL.ODE
+import Text.Printf ( printf )
+
+import SpatialMath
+import Vis
+import Draw
+import Joy
 
 modelInteg :: Double -> Vector Double -> Vector Double -> (Vector Double, Vector Double)
 modelInteg r state u = (sys, fromList [c, cdot, cddot])
@@ -25,13 +30,13 @@ modelInteg r state u = (sys, fromList [c, cdot, cddot])
     --CAROUSEL ARM LENGTH
     rA = 1.085 --(dixit Kurt)
     
-    _ZT = -0.01
+    zt = -0.01
     
     --INERTIA MATRIX (Kurt's direct measurements)
-    _J1 = 0.0163
-    _J31 = 0.0006
-    _J2 = 0.0078
-    _J3 = 0.0229
+    j1 = 0.0163
+    j31 = 0.0006
+    j2 = 0.0078
+    j3 = 0.0229
     
     --Carousel Friction & inertia
     _I = 1e2
@@ -275,7 +280,7 @@ modelInteg r state u = (sys, fromList [c, cdot, cddot])
       writeMatrix' (2,5) $ 0 
       writeMatrix' (2,6) $ 0 
       writeMatrix' (2,7) $ 0 
-      writeMatrix' (2,8) $ x + _ZT*e31
+      writeMatrix' (2,8) $ x + zt*e31
       
       writeMatrix' (3,1) $ m*(rA + x) 
       writeMatrix' (3,2) $ 0 
@@ -284,7 +289,7 @@ modelInteg r state u = (sys, fromList [c, cdot, cddot])
       writeMatrix' (3,5) $ 0 
       writeMatrix' (3,6) $ 0 
       writeMatrix' (3,7) $ 0 
-      writeMatrix' (3,8) $ y + _ZT*e32
+      writeMatrix' (3,8) $ y + zt*e32
       
       writeMatrix' (4,1) $ 0 
       writeMatrix' (4,2) $ 0 
@@ -293,45 +298,45 @@ modelInteg r state u = (sys, fromList [c, cdot, cddot])
       writeMatrix' (4,5) $ 0 
       writeMatrix' (4,6) $ 0 
       writeMatrix' (4,7) $ 0 
-      writeMatrix' (4,8) $ z + _ZT*e33
+      writeMatrix' (4,8) $ z + zt*e33
       
       writeMatrix' (5,1) $ 0 
       writeMatrix' (5,2) $ 0 
       writeMatrix' (5,3) $ 0 
       writeMatrix' (5,4) $ 0 
-      writeMatrix' (5,5) $ _J1 
+      writeMatrix' (5,5) $ j1 
       writeMatrix' (5,6) $ 0 
-      writeMatrix' (5,7) $ _J31 
-      writeMatrix' (5,8) $ -_ZT*(e21*x + e22*y + e23*z + _ZT*e21*e31 + _ZT*e22*e32 + _ZT*e23*e33)
+      writeMatrix' (5,7) $ j31 
+      writeMatrix' (5,8) $ -zt*(e21*x + e22*y + e23*z + zt*e21*e31 + zt*e22*e32 + zt*e23*e33)
       
       writeMatrix' (6,1) $ 0 
       writeMatrix' (6,2) $ 0 
       writeMatrix' (6,3) $ 0 
       writeMatrix' (6,4) $ 0 
       writeMatrix' (6,5) $ 0 
-      writeMatrix' (6,6) $ _J2 
+      writeMatrix' (6,6) $ j2 
       writeMatrix' (6,7) $ 0 
-      writeMatrix' (6,8) $ _ZT*(e11*x + e12*y + e13*z + _ZT*e11*e31 + _ZT*e12*e32 + _ZT*e13*e33)
+      writeMatrix' (6,8) $ zt*(e11*x + e12*y + e13*z + zt*e11*e31 + zt*e12*e32 + zt*e13*e33)
       
       writeMatrix' (7,1) $ 0 
       writeMatrix' (7,2) $ 0 
       writeMatrix' (7,3) $ 0 
       writeMatrix' (7,4) $ 0 
-      writeMatrix' (7,5) $ _J31 
+      writeMatrix' (7,5) $ j31 
       writeMatrix' (7,6) $ 0 
-      writeMatrix' (7,7) $ _J3 
+      writeMatrix' (7,7) $ j3 
       writeMatrix' (7,8) $ 0
       
-      writeMatrix' (8,1) $ -_ZT*(e11*e23*x - e13*e21*x + e12*e23*y - e13*e22*y + _ZT*e11*e23*e31 - _ZT*e13*e21*e31 + _ZT*e12*e23*e32 - _ZT*e13*e22*e32) 
-      writeMatrix' (8,2) $ x + _ZT*e31 
-      writeMatrix' (8,3) $ y + _ZT*e32 
-      writeMatrix' (8,4) $ z + _ZT*e33 
-      writeMatrix' (8,5) $ -_ZT*(e21*x + e22*y + e23*z + _ZT*e21*e31 + _ZT*e22*e32 + _ZT*e23*e33) 
-      writeMatrix' (8,6) $ _ZT*(e11*x + e12*y + e13*z + _ZT*e11*e31 + _ZT*e12*e32 + _ZT*e13*e33) 
+      writeMatrix' (8,1) $ -zt*(e11*e23*x - e13*e21*x + e12*e23*y - e13*e22*y + zt*e11*e23*e31 - zt*e13*e21*e31 + zt*e12*e23*e32 - zt*e13*e22*e32) 
+      writeMatrix' (8,2) $ x + zt*e31 
+      writeMatrix' (8,3) $ y + zt*e32 
+      writeMatrix' (8,4) $ z + zt*e33 
+      writeMatrix' (8,5) $ -zt*(e21*x + e22*y + e23*z + zt*e21*e31 + zt*e22*e32 + zt*e23*e33) 
+      writeMatrix' (8,6) $ zt*(e11*x + e12*y + e13*z + zt*e11*e31 + zt*e12*e32 + zt*e13*e33) 
       writeMatrix' (8,7) $ 0 
       writeMatrix' (8,8) $ 0
       return _MM'
-    
+
     conj = id
     _RHS :: Vector Double
     _RHS = fromList
@@ -339,14 +344,13 @@ modelInteg r state u = (sys, fromList [c, cdot, cddot])
            , _F1 + ddelta*m*(dy + ddelta*rA + ddelta*x) + ddelta*dy*m 
            , _F2 - ddelta*m*(dx - ddelta*y) - ddelta*dx*m 
            , _F3 - g*m 
-           , _T1 - w2*(_J3*w3 + _J31*w1) + _J2*w2*w3 
-           , _T2 + w1*(_J3*w3 + _J31*w1) - w3*(_J1*w1 + _J31*w3) 
-           , _T3 + w2*(_J1*w1 + _J31*w3) - _J2*w1*w2 
-           , (w1 - ddelta*e13)*(e21*(_ZT*dx - _ZT2*e21*(conj(w1) - ddelta*e13) + _ZT2*e11*(conj(w2) - ddelta*e23)) + e22*(_ZT*dy - _ZT2*e22*(conj(w1) - ddelta*e13) + _ZT2*e12*(conj(w2) - ddelta*e23)) + _ZT*e33*(z*conj(w1) + ddelta*e11*x + ddelta*e12*y + _ZT*e33*conj(w1) + _ZT*ddelta*e11*e31 + _ZT*ddelta*e12*e32) + _ZT*e23*(dz + _ZT*e13*conj(w2) - _ZT*e23*conj(w1)) + _ZT*e31*(conj(w1) - ddelta*e13)*(x + _ZT*e31) + _ZT*e32*(conj(w1) - ddelta*e13)*(y + _ZT*e32)) - dz*(dz + _ZT*e13*w2 - _ZT*e23*w1) - dx*(dx - _ZT*e21*(w1 - ddelta*e13) + _ZT*e11*(w2 - ddelta*e23)) - dy*(dy - _ZT*e22*(w1 - ddelta*e13) + _ZT*e12*(w2 - ddelta*e23)) - (_ZT*conj(w1)*(e11*x + e12*y + e13*z + _ZT*e11*e31 + _ZT*e12*e32 + _ZT*e13*e33) + _ZT*conj(w2)*(e21*x + e22*y + e23*z + _ZT*e21*e31 + _ZT*e22*e32 + _ZT*e23*e33))*(w3 - ddelta*e33) - (w2 - ddelta*e23)*(e11*(_ZT*dx - _ZT2*e21*(conj(w1) - ddelta*e13) + _ZT2*e11*(conj(w2) - ddelta*e23)) + e12*(_ZT*dy - _ZT2*e22*(conj(w1) - ddelta*e13) + _ZT2*e12*(conj(w2) - ddelta*e23)) - _ZT*e33*(z*conj(w2) + ddelta*e21*x + ddelta*e22*y + _ZT*e33*conj(w2) + _ZT*ddelta*e21*e31 + _ZT*ddelta*e22*e32) + _ZT*e13*(dz + _ZT*e13*conj(w2) - _ZT*e23*conj(w1)) - _ZT*e31*(conj(w2) - ddelta*e23)*(x + _ZT*e31) - _ZT*e32*(conj(w2) - ddelta*e23)*(y + _ZT*e32)) 
+           , _T1 - w2*(j3*w3 + j31*w1) + j2*w2*w3 
+           , _T2 + w1*(j3*w3 + j31*w1) - w3*(j1*w1 + j31*w3) 
+           , _T3 + w2*(j1*w1 + j31*w3) - j2*w1*w2 
+           , (w1 - ddelta*e13)*(e21*(zt*dx - zt2*e21*(conj(w1) - ddelta*e13) + zt2*e11*(conj(w2) - ddelta*e23)) + e22*(zt*dy - zt2*e22*(conj(w1) - ddelta*e13) + zt2*e12*(conj(w2) - ddelta*e23)) + zt*e33*(z*conj(w1) + ddelta*e11*x + ddelta*e12*y + zt*e33*conj(w1) + zt*ddelta*e11*e31 + zt*ddelta*e12*e32) + zt*e23*(dz + zt*e13*conj(w2) - zt*e23*conj(w1)) + zt*e31*(conj(w1) - ddelta*e13)*(x + zt*e31) + zt*e32*(conj(w1) - ddelta*e13)*(y + zt*e32)) - dz*(dz + zt*e13*w2 - zt*e23*w1) - dx*(dx - zt*e21*(w1 - ddelta*e13) + zt*e11*(w2 - ddelta*e23)) - dy*(dy - zt*e22*(w1 - ddelta*e13) + zt*e12*(w2 - ddelta*e23)) - (zt*conj(w1)*(e11*x + e12*y + e13*z + zt*e11*e31 + zt*e12*e32 + zt*e13*e33) + zt*conj(w2)*(e21*x + e22*y + e23*z + zt*e21*e31 + zt*e22*e32 + zt*e23*e33))*(w3 - ddelta*e33) - (w2 - ddelta*e23)*(e11*(zt*dx - zt2*e21*(conj(w1) - ddelta*e13) + zt2*e11*(conj(w2) - ddelta*e23)) + e12*(zt*dy - zt2*e22*(conj(w1) - ddelta*e13) + zt2*e12*(conj(w2) - ddelta*e23)) - zt*e33*(z*conj(w2) + ddelta*e21*x + ddelta*e22*y + zt*e33*conj(w2) + zt*ddelta*e21*e31 + zt*ddelta*e22*e32) + zt*e13*(dz + zt*e13*conj(w2) - zt*e23*conj(w1)) - zt*e31*(conj(w2) - ddelta*e23)*(x + zt*e31) - zt*e32*(conj(w2) - ddelta*e23)*(y + zt*e32)) 
            ]
       where
-        _ZT2 = _ZT*_ZT
-    
+        zt2 = zt*zt
     
     dRexp :: Matrix Double
     dRexp =
@@ -397,11 +401,89 @@ modelInteg r state u = (sys, fromList [c, cdot, cddot])
         ddz = ddX @> 2
         dddelta = dddelta' @> 0
         
-        c' =(x + _ZT*e31)**2/2 + (y + _ZT*e32)**2/2 + (z + _ZT*e33)**2/2 - r**2/2
+        c' =(x + zt*e31)**2/2 + (y + zt*e32)**2/2 + (z + zt*e33)**2/2 - r**2/2
         
-        cdot' =dx*(x + _ZT*e31) + dy*(y + _ZT*e32) + dz*(z + _ZT*e33) + _ZT*(w2 - ddelta*e23)*(e11*x + e12*y + e13*z + _ZT*e11*e31 + _ZT*e12*e32 + _ZT*e13*e33) - _ZT*(w1 - ddelta*e13)*(e21*x + e22*y + e23*z + _ZT*e21*e31 + _ZT*e22*e32 + _ZT*e23*e33)
-        cddot' =(_ZT*conj(w1)*(e11*x + e12*y + e13*z + _ZT*e11*e31 + _ZT*e12*e32 + _ZT*e13*e33) + _ZT*conj(w2)*(e21*x + e22*y + e23*z + _ZT*e21*e31 + _ZT*e22*e32 + _ZT*e23*e33))*(w3 - ddelta*e33) + dx*(dx + _ZT*e11*w2 - _ZT*e21*w1 - _ZT*ddelta*e11*e23 + _ZT*ddelta*e13*e21) + dy*(dy + _ZT*e12*w2 - _ZT*e22*w1 - _ZT*ddelta*e12*e23 + _ZT*ddelta*e13*e22) + dz*(dz + _ZT*e13*w2 - _ZT*e23*w1) + ddx*(x + _ZT*e31) + ddy*(y + _ZT*e32) + ddz*(z + _ZT*e33) - (w1 - ddelta*e13)*(e21*(_ZT*dx - _ZT**2*e21*(conj(w1) - ddelta*e13) + _ZT**2*e11*(conj(w2) - ddelta*e23)) + e22*(_ZT*dy - _ZT**2*e22*(conj(w1) - ddelta*e13) + _ZT**2*e12*(conj(w2) - ddelta*e23)) + _ZT*e33*(z*conj(w1) + ddelta*e11*x + ddelta*e12*y + _ZT*e33*conj(w1) + _ZT*ddelta*e11*e31 + _ZT*ddelta*e12*e32) + _ZT*e23*(dz + _ZT*e13*conj(w2) - _ZT*e23*conj(w1)) + _ZT*e31*(conj(w1) - ddelta*e13)*(x + _ZT*e31) + _ZT*e32*(conj(w1) - ddelta*e13)*(y + _ZT*e32)) + (w2 - ddelta*e23)*(e11*(_ZT*dx - _ZT**2*e21*(conj(w1) - ddelta*e13) + _ZT**2*e11*(conj(w2) - ddelta*e23)) + e12*(_ZT*dy - _ZT**2*e22*(conj(w1) - ddelta*e13) + _ZT**2*e12*(conj(w2) - ddelta*e23)) - _ZT*e33*(z*conj(w2) + ddelta*e21*x + ddelta*e22*y + _ZT*e33*conj(w2) + _ZT*ddelta*e21*e31 + _ZT*ddelta*e22*e32) + _ZT*e13*(dz + _ZT*e13*conj(w2) - _ZT*e23*conj(w1)) - _ZT*e31*(conj(w2) - ddelta*e23)*(x + _ZT*e31) - _ZT*e32*(conj(w2) - ddelta*e23)*(y + _ZT*e32)) + _ZT*(dw2 - dddelta*e23)*(e11*x + e12*y + e13*z + _ZT*e11*e31 + _ZT*e12*e32 + _ZT*e13*e33) - _ZT*(dw1 - dddelta*e13)*(e21*x + e22*y + e23*z + _ZT*e21*e31 + _ZT*e22*e32 + _ZT*e23*e33) - _ZT*dddelta*(e11*e23*x - e13*e21*x + e12*e23*y - e13*e22*y + _ZT*e11*e23*e31 - _ZT*e13*e21*e31 + _ZT*e12*e23*e32 - _ZT*e13*e22*e32)
+        cdot' =dx*(x + zt*e31) + dy*(y + zt*e32) + dz*(z + zt*e33) + zt*(w2 - ddelta*e23)*(e11*x + e12*y + e13*z + zt*e11*e31 + zt*e12*e32 + zt*e13*e33) - zt*(w1 - ddelta*e13)*(e21*x + e22*y + e23*z + zt*e21*e31 + zt*e22*e32 + zt*e23*e33)
+        cddot' =(zt*conj(w1)*(e11*x + e12*y + e13*z + zt*e11*e31 + zt*e12*e32 + zt*e13*e33) + zt*conj(w2)*(e21*x + e22*y + e23*z + zt*e21*e31 + zt*e22*e32 + zt*e23*e33))*(w3 - ddelta*e33) + dx*(dx + zt*e11*w2 - zt*e21*w1 - zt*ddelta*e11*e23 + zt*ddelta*e13*e21) + dy*(dy + zt*e12*w2 - zt*e22*w1 - zt*ddelta*e12*e23 + zt*ddelta*e13*e22) + dz*(dz + zt*e13*w2 - zt*e23*w1) + ddx*(x + zt*e31) + ddy*(y + zt*e32) + ddz*(z + zt*e33) - (w1 - ddelta*e13)*(e21*(zt*dx - zt**2*e21*(conj(w1) - ddelta*e13) + zt**2*e11*(conj(w2) - ddelta*e23)) + e22*(zt*dy - zt**2*e22*(conj(w1) - ddelta*e13) + zt**2*e12*(conj(w2) - ddelta*e23)) + zt*e33*(z*conj(w1) + ddelta*e11*x + ddelta*e12*y + zt*e33*conj(w1) + zt*ddelta*e11*e31 + zt*ddelta*e12*e32) + zt*e23*(dz + zt*e13*conj(w2) - zt*e23*conj(w1)) + zt*e31*(conj(w1) - ddelta*e13)*(x + zt*e31) + zt*e32*(conj(w1) - ddelta*e13)*(y + zt*e32)) + (w2 - ddelta*e23)*(e11*(zt*dx - zt**2*e21*(conj(w1) - ddelta*e13) + zt**2*e11*(conj(w2) - ddelta*e23)) + e12*(zt*dy - zt**2*e22*(conj(w1) - ddelta*e13) + zt**2*e12*(conj(w2) - ddelta*e23)) - zt*e33*(z*conj(w2) + ddelta*e21*x + ddelta*e22*y + zt*e33*conj(w2) + zt*ddelta*e21*e31 + zt*ddelta*e22*e32) + zt*e13*(dz + zt*e13*conj(w2) - zt*e23*conj(w1)) - zt*e31*(conj(w2) - ddelta*e23)*(x + zt*e31) - zt*e32*(conj(w2) - ddelta*e23)*(y + zt*e32)) + zt*(dw2 - dddelta*e23)*(e11*x + e12*y + e13*z + zt*e11*e31 + zt*e12*e32 + zt*e13*e33) - zt*(dw1 - dddelta*e13)*(e21*x + e22*y + e23*z + zt*e21*e31 + zt*e22*e32 + zt*e23*e33) - zt*dddelta*(e11*e23*x - e13*e21*x + e12*e23*y - e13*e22*y + zt*e11*e23*e31 - zt*e13*e21*e31 + zt*e12*e23*e32 - zt*e13*e22*e32)
 
+
+data State = State { sTrails :: [[Xyz Double]]
+                   , sX :: Vector Double
+                   , sU :: (Double, Double)
+                   }
+
+toNice :: Vector Double -> (Xyz Double, Quat Double, Xyz Double, Xyz Double)
+toNice state = (xyz, q'n'b, r'n0'a0, r'n0't0)
+  where
+    e11 = state @> 3
+    e12 = state @> 4
+    e13 = state @> 5
+
+    e21 = state @> 6
+    e22 = state @> 7
+    e23 = state @> 8
+
+    e31 = state @> 9
+    e32 = state @> 10
+    e33 = state @> 11
+
+    delta = state @> 18
+
+    q'nwu'ned = Quat 0 1 0 0
+
+    q'n'a = Quat (cos(0.5*delta)) 0 0 (sin(-0.5*delta))
+
+    q'aNWU'bNWU = quatOfDcmB2A $ fromLists [ [e11, e21, e31]
+                                           , [e12, e22, e32]
+                                           , [e13, e23, e33]
+                                           ]
+    q'a'b = q'nwu'ned * q'aNWU'bNWU * q'nwu'ned
+    q'n'b = q'n'a * q'a'b
+    q'n'aNWU = q'n'a * q'nwu'ned
+
+    rArm = Xyz 1.085 0 0
+    xyzArm = rArm + Xyz (state @> 0) (state @> 1) (state @> 2)
+    xyz = rotVecByQuatB2A q'n'aNWU xyzArm
+
+    zt = -0.01
+    r'n0'a0 = rotVecByQuatB2A q'n'a rArm
+    r'n0't0 = xyz + (rotVecByQuatB2A q'n'b $ Xyz 0 0 (-zt))
+
+drawFun :: State -> IO (VisObject Double)
+--drawFun state = VisObjects $ [axes] ++ (map text [-5..5]) ++ [boxText, ac, plane,trailLines]
+drawFun state = return $ VisObjects $ [axes, txt, ac, plane, trailLines, arm, line]
+  where
+    (pos@(Xyz px py pz), quat, r'n0'a0, r'n0't0) = toNice (sX state)
+    
+    axes = VisAxes (0.5, 15) (Xyz 0 0 0) (Quat 1 0 0 0)
+    arm  = VisLine [Xyz 0 0 0, r'n0'a0] $ makeColor 1 1 0 1
+    line = VisLine [r'n0'a0, r'n0't0]   $ makeColor 0 1 1 1
+    plane = VisPlane (Xyz 0 0 1) 1 (makeColor 1 1 1 1) (makeColor 0.2 0.3 0.32 1)
+--    text k = Vis2dText "KITEVIS 4EVER" (100,500 - k*100*x) TimesRoman24 (makeColor 0 (0.5 + x'/2) (0.5 - x'/2) 1)
+--      where
+--        x' = realToFrac $ (x + 1)/0.4*k/5
+--    boxText = Vis3dText "I'm a plane" (Xyz 0 0 (x-0.2)) TimesRoman24 (makeColor 1 0 0 1)
+    ddelta = (sX state) @> 19
+    [c,cdot,cddot] = toList $ snd $ modelInteg 1.2 (sX state) (fromList [tc,0,0])
+
+    (u0,u1) = sU state
+    txt = VisObjects
+          [ Vis2dText (printf "x: %.3f" px) (30,90) TimesRoman24 (makeColor 1 1 1 1)
+          , Vis2dText (printf "y: %.3f" py) (30,60) TimesRoman24 (makeColor 1 1 1 1)
+          , Vis2dText (printf "z: %.3f" pz) (30,30) TimesRoman24 (makeColor 1 1 1 1)
+          , Vis2dText (printf "RPM: %.3f" (ddelta*60/(2*pi))) (30,120) TimesRoman24 (makeColor 1 1 1 1)
+          , Vis2dText (printf "c:   %.3g" c    ) (30,150) TimesRoman24 (makeColor 1 1 1 1)
+          , Vis2dText (printf "c':  %.3g" cdot ) (30,180) TimesRoman24 (makeColor 1 1 1 1)
+          , Vis2dText (printf "c'': %.3g" cddot) (30,210) TimesRoman24 (makeColor 1 1 1 1)
+          , Vis2dText (printf "u0: %.3g \t(*180/pi = %.3f)" u0 (u0*180/pi)) (30,260) TimesRoman24 (makeColor 1 1 1 1)
+          , Vis2dText (printf "u1: %.3g \t(*180/pi = %.3f)" u1 (u1*180/pi)) (30,240) TimesRoman24 (makeColor 1 1 1 1)
+          ]
+    (ac,_) = drawAc pos quat
+
+    trailLines = drawTrails (sTrails state)
+
+tc :: Double
+tc = 2*389.970797939731
 
 main :: IO ()
 main = do
@@ -427,17 +509,49 @@ main = do
                     , 0.000000000000
                     , 3.874600000000
                     ]
-      u = fromList [0,0,0]
+
       r = 1.2
 
-  let xdot _t x = fst $ modelInteg r x u
-      h0 = 1e-12
-      abstol = 1e-6
-      reltol = 1e-4
-      tf = 20
-      ts = linspace 300 (0,tf)
-      sol = odeSolveV RKf45 h0 abstol reltol xdot x0 ts
-      constraints = map (snd . flip (modelInteg r) u) (toRows sol)
+  let ts :: Double
+      ts = 0.02
 
-  plotPaths [] $ map (zip (toList ts)) (map toList (toColumns sol))
-  plotPaths [] $ map (zip (toList ts)) (map toList (toColumns (fromRows constraints)))
+  let xdot _t x (u0,u1) = fst $ modelInteg r x (fromList [tc, u0, u1])
+      h0 = 1e-7
+      abstol = 1e-5
+      reltol = 1e-3
+--      solTimes = fromList [0,ts]
+      solTimes = linspace 10 (0,ts)
+      solve x u = last $ toRows $ odeSolveV RKf45 h0 abstol reltol (\t' x' -> xdot t' x' u) x solTimes
+--      constraints = map (snd . flip (modelInteg r) u) (toRows sol)
+
+  let updateTrail :: [Xyz a] -> Xyz a -> [Xyz a]
+      updateTrail trail0 trail
+        | length trail0 < 65 = trail:trail0
+        | otherwise = take 65 (trail:trail0)
+
+  js <- setupJoy
+  let simFun :: Float -> State -> IO State
+      simFun _ (State {sTrails = trails0, sX = x'}) = do
+        j <- getJoy js
+        let (u0':u1':_) = jsAxes j
+            u0 = -u0'*0.02
+            u1 = u1'*0.05
+        let x = solve x' (u0,u1)
+            (_,trails) = drawAc pos q
+            (pos,q,_,_) = toNice x
+        return $
+          State { sTrails = zipWith updateTrail trails0 trails
+                , sX = x
+                , sU = (u0,u1)
+                }
+
+  let state0 = State { sX = x0
+                     , sTrails = [[],[],[]]
+                     , sU = (0,0)
+                     }
+  simulateIO ts state0 drawFun simFun
+
+--  print sol
+--  plotPaths [] $ map (zip (toList ts)) (map toList (toColumns sol))
+--  plotPaths [] $ map (zip (toList ts)) (map toList (toColumns (fromRows constraints)))
+
