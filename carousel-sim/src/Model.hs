@@ -200,7 +200,6 @@ forcesTorques state u = (f1,f2,f3,t1,t2,t3)
     t3 =  0.5*rho*vKite2*span*cY
 
     
-    
 modelInteg :: Double -> Vector Double -> Vector Double -> (Vector Double, Vector Double)
 modelInteg r state u = (sys, fromList [c, cdot, cddot])
   where
