@@ -171,4 +171,3 @@ main = do
 --  print sol
 --  plotPaths [] $ map (zip (toList ts)) (map toList (toColumns sol))
 --  plotPaths [] $ map (zip (toList ts)) (map toList (toColumns (fromRows constraints)))
-

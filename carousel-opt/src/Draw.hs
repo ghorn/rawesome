@@ -80,7 +80,7 @@ drawAc pos quat = (VisObjects $ wing ++ [htail,vtail,body,axes], vtip:wingtips)
            blue
 
 drawTrails :: [[Xyz a]] -> VisObject a
-drawTrails xyzs = VisObjects $ zipWith drawTrail xyzs $ cycle [makeColor 0 0 1, makeColor 0 1 0, makeColor 1 0 0]
+drawTrails xyzs = VisObjects $ zipWith drawTrail xyzs $ cycle [makeColor 0 0 1, makeColor 1 0 0, makeColor 0 1 0]
 
 drawTrail :: [Xyz a] -> (Float -> Color) -> VisObject a
 drawTrail trail mkCol = VisLine' $ zip trail (map mkCol (linspace 1 0 (length trail)))
