@@ -1,5 +1,6 @@
 import zmq
 import time
+import os
 
 import casadi as C
 
@@ -66,9 +67,20 @@ if __name__=='__main__':
     print "creating model"
     (dae, others) = model.model()
     dae.init()
+
+    # compile model code
+    print "generating model code"
+    t0 = time.time()
+    dae.generateCode("dae.c")
+    print "took "+str(time.time()-t0)+" seconds to generate code"
+    t0 = time.time()
+    os.system("gcc -fPIC -O2 -shared dae.c -o dae.so")
+    print "took "+str(time.time()-t0)+" seconds to compile code"
+    dae_ext = C.ExternalFunction("./dae.so")
+    dae_ext.init()
     
     print "creating integrator"
-    f = C.IdasIntegrator(dae)
+    f = C.IdasIntegrator(dae_ext)
     f.setOption("reltol",1e-6)
     f.setOption("abstol",1e-8)
     f.setOption("t0",0)
