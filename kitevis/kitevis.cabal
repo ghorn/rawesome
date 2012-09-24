@@ -10,6 +10,7 @@ executable kitevis
   main-is:           Main.hs
   other-modules:     Draw
   build-depends:     base ==4.6.*,
+                     random,
                      not-gloss,
                      spatial-math,
                      hmatrix,

@@ -3,6 +3,7 @@
 
 module Main where
 
+import System.Random ( randomRs, mkStdGen)
 import qualified System.ZMQ as ZMQ
 import Control.Concurrent ( MVar, forkIO, modifyMVar_, newMVar, readMVar)
 import Control.Monad ( forever )
@@ -21,6 +22,7 @@ import Draw
 
 data State = State { sTrails :: [[Xyz Double]]
                    , sCS :: Maybe CS.CarouselState
+                   , sParticles :: [Xyz Double]
                    }
 
 toNice :: CS.CarouselState -> (Xyz Double, Quat Double, Xyz Double, Xyz Double)
@@ -67,9 +69,11 @@ toNice cs = (xyz, q'n'b, r'n0'a0, r'n0't0)
 drawFun :: State -> VisObject Double
 ----drawFun state = VisObjects $ [axes] ++ (map text [-5..5]) ++ [boxText, ac, plane,trailLines]
 drawFun (State {sCS=Nothing}) = VisObjects []
-drawFun state@(State {sCS=Just cs}) = VisObjects $ [axes, txt, ac, plane, trailLines, arm, line]
+drawFun state@(State {sCS=Just cs}) = VisObjects $ [axes, txt, ac, plane, trailLines, arm, line, points]
   where
     (pos@(Xyz px py pz), quat, r'n0'a0, r'n0't0) = toNice cs
+
+    points = VisPoints (sParticles state) (Just 2) $ makeColor 1 1 1 0.5
     
     axes = VisAxes (0.5, 15) (Xyz 0 0 0) (Quat 1 0 0 0)
     arm  = VisLine [Xyz 0 0 0, r'n0'a0] $ makeColor 1 1 0 1
@@ -100,23 +104,45 @@ drawFun state@(State {sCS=Just cs}) = VisObjects $ [axes, txt, ac, plane, trailL
 
     trailLines = drawTrails (sTrails state)
 
+
+particleBox :: Double
+particleBox = 4
+
 state0 :: State
-state0 = State { sCS = Nothing, sTrails = [[],[],[]] }
+state0 = State { sCS = Nothing
+               , sTrails = [[],[],[]]
+               , sParticles = take 100 $ randomRs (Xyz (-particleBox) (-particleBox) (-particleBox),
+                                                   Xyz particleBox particleBox particleBox)
+                              (mkStdGen 0)
+               }
 
 updateTrail :: [Xyz a] -> Xyz a -> [Xyz a]
-updateTrail trail0 trail
-  | length trail0 < 65 = trail:trail0
-  | otherwise = take 65 (trail:trail0)
+updateTrail trail0 xyz
+  | length trail0 < 65 = xyz:trail0
+  | otherwise = take 65 (xyz:trail0)
+
+boundParticle :: Xyz Double -> Xyz Double
+boundParticle xyz@(Xyz x y z)
+  | x >  particleBox = boundParticle (Xyz (x-2*particleBox) y z)
+  | x < -particleBox = boundParticle (Xyz (x+2*particleBox) y z)
+  | y >  particleBox = boundParticle (Xyz x (y-2*particleBox) z)
+  | y < -particleBox = boundParticle (Xyz x (y+2*particleBox) z)
+  | z >  particleBox = boundParticle (Xyz x y (z-2*particleBox))
+  | z < -particleBox = boundParticle (Xyz x y (z+2*particleBox))
+  | otherwise = xyz
 
 updateState :: CS.CarouselState -> State -> IO State
 updateState cs x0 =
   return $ State { sCS = Just cs
                  , sTrails = zipWith updateTrail trails0 trails
+                 , sParticles = map (boundParticle . ((Xyz (ts*wind_x) 0 0) +)) (sParticles x0)
                  }
   where
+    wind_x = CS.wind_x cs
     trails0 = sTrails x0
     (pos,q,_,_) = toNice cs
     (_,trails) = drawAc pos q
+    
 sub :: MVar State -> IO ()
 sub m = ZMQ.withContext 1 $ \context -> do
   ZMQ.withSocket context ZMQ.Sub $ \subscriber -> do
