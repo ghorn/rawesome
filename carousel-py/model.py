@@ -76,10 +76,9 @@ def forcesTorques(state, u):
 
     ddelta = state[19]
     
-    u1 = u[1]
-    u2 = u[2]
+    u1 = u['u1']
+    u2 = u['u2']
     
-
     ####### kinfile ######
     dpE = C.veccat( [ dx*e11 + dy*e12 + dz*e13 + ddelta*e12*rA + ddelta*e12*x - ddelta*e11*y
                     , dx*e21 + dy*e22 + dz*e23 + ddelta*e22*rA + ddelta*e22*x - ddelta*e21*y
@@ -88,7 +87,7 @@ def forcesTorques(state, u):
     dp_carousel_frame = C.veccat( [ dx - ddelta*y
                                   , dy + ddelta*rA + ddelta*x
                                   , dz
-                                  ])
+                                  ]) - C.veccat([u['wind_x'],0,0])
     
     ##### more model_integ ###########
     # EFFECTIVE WIND IN THE KITE`S SYSTEM :
@@ -246,7 +245,7 @@ def modelInteg(r, state, u):
 
     ddelta = state[19]
     
-    tc = u[0] #Carousel motor torque
+    tc = u['tc'] #Carousel motor torque
 
     (f1, f2, f3, t1, t2, t3) = forcesTorques(state, u)
 
@@ -408,10 +407,14 @@ def model():
                  ]
     
     uNames = [ "tc"
-             , "u0"
              , "u1"
+             , "u2"
+             , "wind_x"
              ]
-    u = C.veccat( [C.ssym(name) for name in uNames] )
+    uSyms = [C.ssym(name) for name in uNames]
+    uDict = dict(zip(uNames,uSyms))
+
+    u = C.veccat( uSyms )
     states = C.veccat( [C.ssym(name) for name in stateNames] )
     algebraicStates = C.veccat( [C.ssym(name) for name in algebraicStateNames] )
     stateDotDummy = C.veccat( [C.ssym(name+"DotDummy") for name in stateNames] )
@@ -425,9 +428,8 @@ def model():
     dz = states[14]
     ddelta = states[19]
 
-    (massMatrix, rhs, dRexp, c, cdot) = modelInteg(1.2, states, u)
+    (massMatrix, rhs, dRexp, c, cdot) = modelInteg(1.2, states, uDict)
 
-    #odeRes = [dx;dy;dz;reshape(dRexp,9,1);ddX;dw;ddelta;dddelta];
     ode = C.veccat( [ C.veccat([dx,dy,dz])
                     , dRexp.trans().reshape([9,1])
                     , ddX

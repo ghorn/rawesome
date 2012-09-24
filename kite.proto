@@ -25,7 +25,8 @@ message CarouselState {
   required Dcm kiteDcm = 2;
   required double delta = 3;
   required double ddelta = 4;
-  required double u0 = 5;
-  required double u1 = 6;
+  required double u1 = 5;
+  required double u2 = 6;
   required double tc = 7;
+  required double wind_x = 8;
 }

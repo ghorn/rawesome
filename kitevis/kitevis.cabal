@@ -16,4 +16,4 @@ executable kitevis
                      protocol-buffers,
                      bytestring,
                      zeromq-haskell
-  ghc-options:       -O2 -fllvm -threaded
+  ghc-options:       -O2 -threaded

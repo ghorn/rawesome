@@ -82,7 +82,7 @@ drawFun state@(State {sCS=Just cs}) = VisObjects $ [axes, txt, ac, plane, trailL
     ddelta = CS.ddelta cs
 --    [c,cdot,cddot] = toList $ snd $ modelInteg 1.2 (sX state) (fromList [tc0,0,0])
 
-    (u0,u1,tc) = (CS.u0 cs, CS.u1 cs, CS.tc cs)
+    (u1,u2,tc,wind_x) = (CS.u1 cs, CS.u2 cs, CS.tc cs, CS.wind_x cs)
     txt = VisObjects
           [ Vis2dText (printf "x: %.3f" px) (30,90) TimesRoman24 (makeColor 1 1 1 1)
           , Vis2dText (printf "y: %.3f" py) (30,60) TimesRoman24 (makeColor 1 1 1 1)
@@ -91,9 +91,10 @@ drawFun state@(State {sCS=Just cs}) = VisObjects $ [axes, txt, ac, plane, trailL
 --          , Vis2dText (printf "c:   %.3g" c    ) (30,150) TimesRoman24 (makeColor 1 1 1 1)
 --          , Vis2dText (printf "c':  %.3g" cdot ) (30,180) TimesRoman24 (makeColor 1 1 1 1)
 --          , Vis2dText (printf "c'': %.3g" cddot) (30,210) TimesRoman24 (makeColor 1 1 1 1)
-          , Vis2dText (printf "u0: %.3g \t(*180/pi = %.3f)" u0 (u0*180/pi)) (30,300) TimesRoman24 (makeColor 1 1 1 1)
-          , Vis2dText (printf "u1: %.3g \t(*180/pi = %.3f)" u1 (u1*180/pi)) (30,270) TimesRoman24 (makeColor 1 1 1 1)
+          , Vis2dText (printf "u1: %.3g \t(*180/pi = %.3f)" u1 (u1*180/pi)) (30,300) TimesRoman24 (makeColor 1 1 1 1)
+          , Vis2dText (printf "u2: %.3g \t(*180/pi = %.3f)" u2 (u2*180/pi)) (30,270) TimesRoman24 (makeColor 1 1 1 1)
           , Vis2dText (printf "tc: %.3g" tc)                                (30,240) TimesRoman24 (makeColor 1 1 1 1)
+          , Vis2dText (printf "wind_x: %.3g" wind_x)                        (30,210) TimesRoman24 (makeColor 1 1 1 1)
           ]
     (ac,_) = drawAc pos quat
 

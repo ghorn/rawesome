@@ -59,8 +59,9 @@ def toProto(x,u):
     cs.ddelta = x.at(19)
     
     cs.tc = u.at(0)
-    cs.u0 = u.at(1)
-    cs.u1 = u.at(2)
+    cs.u1 = u.at(1)
+    cs.u2 = u.at(2)
+    cs.wind_x = u.at(3)
     return cs
 
 if __name__=='__main__':
@@ -95,11 +96,12 @@ if __name__=='__main__':
 
     def advanceState(x):
         axes = js.getAxes()
-        u0 = -axes[0]*0.02
-        u1 =  axes[1]*0.05
+        u1 = -axes[0]*0.02
+        u2 =  axes[1]*0.05
         tc = 600*(1 - axes[6])
+        wind_x = 5*(1-axes[7])
 
-        u = C.DMatrix([tc,u0,u1])
+        u = C.DMatrix([tc,u1,u2,wind_x])
         f.setInput(x,C.INTEGRATOR_X0)
         f.setInput(u,C.INTEGRATOR_P)
         f.evaluate()
