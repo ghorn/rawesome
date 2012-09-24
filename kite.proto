@@ -1,0 +1,31 @@
+package kite;
+
+message Xyz {
+  required double x = 1;
+  required double y = 2;
+  required double z = 3;
+}
+
+message Dcm {
+  required double r11 = 1;
+  required double r12 = 2;
+  required double r13 = 3;
+
+  required double r21 = 4;
+  required double r22 = 5;
+  required double r23 = 6;
+
+  required double r31 = 7;
+  required double r32 = 8;
+  required double r33 = 9;
+}
+
+message CarouselState {
+  required Xyz kiteXyz = 1;
+  required Dcm kiteDcm = 2;
+  required double delta = 3;
+  required double ddelta = 4;
+  required double u0 = 5;
+  required double u1 = 6;
+  required double tc = 7;
+}
