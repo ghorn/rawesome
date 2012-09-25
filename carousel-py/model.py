@@ -375,15 +375,15 @@ def modelInteg(r, state, u):
     return (mm, rhs, dRexp, c, cdot)
         
 def model():
-    algebraicStateNames =[ "dddelta"
-                         , "ddx"
-                         , "ddy"
-                         , "ddz"
-                         , "dw1"
-                         , "dw2"
-                         , "dw3"
-                         , "nu"
-                         ]
+    zNames =[ "dddelta"
+            , "ddx"
+            , "ddy"
+            , "ddz"
+            , "dw1"
+            , "dw2"
+            , "dw3"
+            , "nu"
+            ]
     stateNames = [ "x"   # state 0
                  , "y"   # state 1
                  , "z"   # state 2
@@ -413,22 +413,28 @@ def model():
              ]
     uSyms = [C.ssym(name) for name in uNames]
     uDict = dict(zip(uNames,uSyms))
+    uVec = C.veccat( uSyms )
 
-    u = C.veccat( uSyms )
-    states = C.veccat( [C.ssym(name) for name in stateNames] )
-    algebraicStates = C.veccat( [C.ssym(name) for name in algebraicStateNames] )
+    stateSyms = [C.ssym(name) for name in stateNames]
+    stateDict = dict(zip(stateNames,stateSyms))
+    stateVec = C.veccat( stateSyms )
+
+    zSyms = [C.ssym(name) for name in zNames]
+    zDict = dict(zip(zNames, zSyms))
+    zVec = C.veccat( zSyms )
+
     stateDotDummy = C.veccat( [C.ssym(name+"DotDummy") for name in stateNames] )
 
-    dddelta = algebraicStates[0]
-    ddX = algebraicStates[1:4]
-    dw = algebraicStates[4:7]
+    dddelta = zVec[0]
+    ddX = zVec[1:4]
+    dw = zVec[4:7]
 
-    dx = states[12]
-    dy = states[13]
-    dz = states[14]
-    ddelta = states[19]
+    dx = stateVec[12]
+    dy = stateVec[13]
+    dz = stateVec[14]
+    ddelta = stateVec[19]
 
-    (massMatrix, rhs, dRexp, c, cdot) = modelInteg(1.2, states, uDict)
+    (massMatrix, rhs, dRexp, c, cdot) = modelInteg(1.2, stateVec, uDict)
 
     ode = C.veccat( [ C.veccat([dx,dy,dz])
                     , dRexp.trans().reshape([9,1])
@@ -438,11 +444,11 @@ def model():
                     ] )
     odeRes = ode - stateDotDummy
 
-    algebraicRes = C.mul(massMatrix, algebraicStates) - rhs
+    algebraicRes = C.mul(massMatrix, zVec) - rhs
 
-    dae = C.SXFunction( C.daeIn( x=states, z=algebraicStates, p=u, xdot=stateDotDummy ),
+    dae = C.SXFunction( C.daeIn( x=stateVec, z=zVec, p=uVec, xdot=stateDotDummy ),
                         C.daeOut( alg=algebraicRes, ode=odeRes))
-    return (dae, {'state':states,'u':u,'z':algebraicStates,'c':c,'cdot':cdot})
+    return (dae, {'stateVec':stateVec,'uVec':uVec,'zVec':zVec,'c':c,'cdot':cdot})
 
 if __name__=='__main__':
     (f,others) = model()
