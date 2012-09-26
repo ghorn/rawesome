@@ -1,7 +1,7 @@
 from IPython.core.debugger import Tracer; debug_here = Tracer()
 import casadi as C
 
-def forcesTorques(state, u):
+def forcesTorques(state, u, p):
     rho =    1.23      #  density of the air             #  [ kg/m^3]
     rA = 1.085 #(dixit Kurt)
     alpha0 = -0*C.pi/180 
@@ -74,6 +74,7 @@ def forcesTorques(state, u):
     w2 =  state[16]
     w3 =  state[17]
 
+    delta = state[18]
     ddelta = state[19]
     
     u1 = u['u1']
@@ -87,7 +88,7 @@ def forcesTorques(state, u):
     dp_carousel_frame = C.veccat( [ dx - ddelta*y
                                   , dy + ddelta*rA + ddelta*x
                                   , dz
-                                  ]) - C.veccat([u['wind_x'],0,0])
+                                  ]) - C.veccat([C.cos(delta)*p['wind_x'],C.sin(delta)*p['wind_x'],0])
     
     ##### more model_integ ###########
     # EFFECTIVE WIND IN THE KITE`S SYSTEM :
@@ -191,7 +192,7 @@ def forcesTorques(state, u):
     return (f1, f2, f3, t1, t2, t3)
     
 
-def modelInteg(r, state, u):
+def modelInteg(r, state, u, p):
     #  PARAMETERS OF THE KITE :
     #  ##############
     m =  0.626      #  mass of the kite               #  [ kg    ]
@@ -247,7 +248,7 @@ def modelInteg(r, state, u):
     
     tc = u['tc'] #Carousel motor torque
 
-    (f1, f2, f3, t1, t2, t3) = forcesTorques(state, u)
+    (f1, f2, f3, t1, t2, t3) = forcesTorques(state, u, p)
 
     # ATTITUDE DYNAMICS
     # #############################
@@ -374,7 +375,7 @@ def modelInteg(r, state, u):
 
     return (mm, rhs, dRexp, c, cdot)
         
-def model():
+def model(endTimeSteps):
     zNames =[ "dddelta"
             , "ddx"
             , "ddy"
@@ -409,11 +410,18 @@ def model():
     uNames = [ "tc"
              , "u1"
              , "u2"
-             , "wind_x"
              ]
+
+    pNames = [ "wind_x"
+             ]
+    
     uSyms = [C.ssym(name) for name in uNames]
     uDict = dict(zip(uNames,uSyms))
     uVec = C.veccat( uSyms )
+
+    pSyms = [C.ssym(name) for name in pNames]
+    pDict = dict(zip(pNames,pSyms))
+    pVec = C.veccat( pSyms )
 
     stateSyms = [C.ssym(name) for name in stateNames]
     stateDict = dict(zip(stateNames,stateSyms))
@@ -434,7 +442,7 @@ def model():
     dz = stateVec[14]
     ddelta = stateVec[19]
 
-    (massMatrix, rhs, dRexp, c, cdot) = modelInteg(1.2, stateVec, uDict)
+    (massMatrix, rhs, dRexp, c, cdot) = modelInteg(1.2, stateVec, uDict, pDict)
 
     ode = C.veccat( [ C.veccat([dx,dy,dz])
                     , dRexp.trans().reshape([9,1])
@@ -442,13 +450,25 @@ def model():
                     , dw
                     , C.veccat([ddelta, dddelta])
                     ] )
-    odeRes = ode - stateDotDummy
 
+    scaledStateDotDummy = stateDotDummy
+    
+    if endTimeSteps!=None:
+        endTime,nSteps = endTimeSteps
+        pNames.append("endTime")
+        pDict["endTime"] = endTime
+        pVec = C.veccat([pVec,endTime])
+        scaledStateDotDummy = stateDotDummy/(endTime/(nSteps-1))
+
+    odeRes = ode - scaledStateDotDummy
     algebraicRes = C.mul(massMatrix, zVec) - rhs
 
-    dae = C.SXFunction( C.daeIn( x=stateVec, z=zVec, p=uVec, xdot=stateDotDummy ),
+    dae = C.SXFunction( C.daeIn( x=stateVec, z=zVec, p=C.veccat([uVec,pVec]), xdot=stateDotDummy ),
                         C.daeOut( alg=algebraicRes, ode=odeRes))
-    return (dae, {'stateVec':stateVec,'uVec':uVec,'zVec':zVec,'c':c,'cdot':cdot})
+    return (dae, {'xVec':stateVec,'xDict':stateDict,'xNames':stateNames,
+                  'uVec':uVec,'uNames':uNames,
+                  'pVec':pVec,'pNames':pNames,
+                  'zVec':zVec,'c':c,'cdot':cdot})
 
 if __name__=='__main__':
     (f,others) = model()

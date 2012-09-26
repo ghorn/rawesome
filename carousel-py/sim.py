@@ -79,9 +79,10 @@ if __name__=='__main__':
     print "took "+str(time.time()-t0)+" seconds to compile code"
     dae_ext = C.ExternalFunction("./dae.so")
     dae_ext.init()
+    dae = dae_ext
     
     print "creating integrator"
-    f = C.IdasIntegrator(dae_ext)
+    f = C.IdasIntegrator(dae)
     f.setOption("reltol",1e-6)
     f.setOption("abstol",1e-8)
     f.setOption("t0",0)
