@@ -1,10 +1,10 @@
-#import time
-#import os
+import zmq
 
 import numpy
 from numpy import pi
 import copy
 
+import kite_pb2
 import casadi as C
 
 import ocp 
@@ -18,18 +18,6 @@ def main():
     (dae, others) = pendulum_model.pendulum_model((endTime,nSteps))
     dae.init()
 
-#    # compile model code
-#    print "generating model code"
-#    t0 = time.time()
-#    dae.generateCode("dae.c")
-#    print "took "+str(time.time()-t0)+" seconds to generate code"
-#    t0 = time.time()
-#    os.system("gcc -fPIC -O2 -shared dae.c -o dae.so")
-#    print "took "+str(time.time()-t0)+" seconds to compile code"
-#    dae_ext = C.ExternalFunction("./dae.so")
-#    dae_ext.init()
-#    dae = dae_ext
-
     nStates = others['xVec'].size()
     nActions = others['uVec'].size()
     nParams = others['pVec'].size()
@@ -40,8 +28,8 @@ def main():
     # make the integrator
     print "creating integrator"
     integrator = C.IdasIntegrator(dae)
-    integrator.setOption("reltol",1e-6)
-    integrator.setOption("abstol",1e-8)
+    integrator.setOption("reltol",1e-8)
+    integrator.setOption("abstol",1e-10)
     integrator.setOption("t0",0)
     integrator.setOption("tf",1)
     integrator.setOption('name','integrator')
@@ -75,17 +63,15 @@ def main():
     bounds.setBound('z',(-0.5,0.5))
     bounds.setBound('dx',(-5,5))
     bounds.setBound('dz',(-5,5))
-    bounds.setBound('torque',(-15,15))
+    bounds.setBound('torque',(-50,50))
     bounds.setBound('m',(0.3,0.5))
-    bounds.setBound('endTime',(0.2,2.0))
+    bounds.setBound('endTime',(0.01,5.0))
 
     # boundary conditions
     bounds.setBound('x',(r,r),timestep=0)
     bounds.setBound('z',(0,0),timestep=0)
-    bounds.setBound('x',(-0.01,0.01),timestep=nSteps-1)
-    bounds.setBound('z',(-r*1.01,-r*0.99),timestep=nSteps-1)
-#    bounds.setBound('x',(0,0),timestep=nSteps-1)
-#    bounds.setBound('z',(-r,-r),timestep=nSteps-1)
+    bounds.setBound('x',(0,0),timestep=nSteps-1)
+    bounds.setBound('z',(-r*1.5,-r/2),timestep=nSteps-1)
     bounds.setBound('dx',(0,0),timestep=0)
     bounds.setBound('dz',(0,0),timestep=0)
     bounds.setBound('dx',(0,0),timestep=nSteps-1)
@@ -93,31 +79,34 @@ def main():
 
     # make the solver
     designVars = C.veccat( [C.flatten(states), C.flatten(actions), C.flatten(params)] )
+    dvs = ocp.DesignVars((others['xNames'],states), (others['uNames'],actions), (others['pNames'],params), nSteps)
     
     # objective function
-    obj = C.sumAll(actions*actions)
+    obj = dvs.lookup('endTime')
     f = C.MXFunction([designVars], [obj])
 
     # constraint function
     g = C.MXFunction([designVars], [constraints.getG()])
 
+    context   = zmq.Context(1)
+    publisher = context.socket(zmq.PUB)
+    publisher.bind("tcp://*:5563")
+
     # callback function
     class MyCallback:
       def __init__(self):
         self.iter = 0 
-#      def __call__(self,f,*args):
-#        print "====Hey, I'm an iteration===="
-#        print "X_OPT = ", f.input(C.NLP_X_OPT)
-#        print f.getStats()
-#        self.iter = self.iter + 1
-#        if self.iter > 5:
-#          print "5 Iterations, that is quite enough!"
-#          f.output(0).set(1) # With this statement you can halt the iterations
       def __call__(self,f,*args):
-        x = f.input(C.NLP_X_OPT)
-        self.iter = self.iter + 1
-        x = bounds.devectorize(x)
-        x['x']
+          xOpt = f.input(C.NLP_X_OPT)
+          self.iter = self.iter + 1
+          xup = bounds.devectorize(xOpt)
+          po = kite_pb2.PendulumOpt()
+          po.x.extend(list(xup['x']))
+          po.z.extend(list(xup['z']))
+          po.endTime = xup['endTime']
+          po.iters = self.iter
+          publisher.send_multipart(["pendulum-opt", po.SerializeToString()])
+        
         
     def makeCallback():
         nd = designVars.size()
@@ -149,18 +138,9 @@ def main():
     
     guess.setGuess('endTime',0.5)
     
-    solver.setInput(guess.get(), C.NLP_X_INIT)
+    solver.setInput(guess.vectorize(), C.NLP_X_INIT)
 
     solver.solve()
-    xopt = solver.output(C.NLP_X_OPT)
-
-    f.setInput(xopt,0)
-    f.evaluate()
-    print f.output(0)
-
-    g.setInput(xopt,0)
-    g.evaluate()
-    print g.output(0)
 
 if __name__=='__main__':
     main()

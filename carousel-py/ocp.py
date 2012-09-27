@@ -144,7 +144,7 @@ class DesignVarMap():
             ret[name]=xup[n*self.nSteps:(n+1)*self.nSteps]
             n = n+1
         for k,name in enumerate(self.pNames):
-            ret[name]=xup[n*self.nSteps+k]
+            ret[name]=xup[n*self.nSteps+k].at(0)
         return ret
 
     def _concatValues(self):
@@ -179,7 +179,26 @@ class DesignVarMap():
                     errs.append(self.descriptor+" missing for: parameter \""+name+"\"")
         if len(errs)>0:
             raise ValueError("\n"+"\n".join(errs))
-                
+
+
+    def lookup(self,name,timestep=None):
+        # get state or action
+        if name in self.xuNames():
+            # set state or action for all timesteps
+            if timestep==None:
+                return [self.dvmap[name][ts] for ts in range(0,self.nSteps)]
+            return self.dvmap[name][timestep]
+
+        # get param
+        elif name in self.pNames:
+            if timestep!=None:
+                raise ValueError('Can\'t lookup a parameter at a specific timestep')
+            return self.dvmap[name]
+
+        # error if name not in x/u/p
+        else:
+            raise ValueError("unrecognized variable name \""+name+"\"")
+
 
 class Bounds(DesignVarMap):
     descriptor = "bound"
@@ -202,3 +221,13 @@ class InitialGuess(DesignVarMap):
         assert(isinstance(name,str))
         assert(isinstance(val,numbers.Real))
         self.dvmapSet(name,val,**kwargs)
+
+class DesignVars(DesignVarMap):
+    descriptor = "design variables"
+    def __init__(self, (xNames,states), (uNames,actions), (pNames,params), nSteps):
+        DesignVarMap.__init__(self,xNames,uNames,pNames,nSteps)
+        for k in range(0,self.nSteps):
+            self.setXVec(states[:,k],timestep=k)
+            self.setUVec(actions[:,k],timestep=k)
+        for k,pname in enumerate(pNames):
+            self.dvmapSet(pname,params[k])

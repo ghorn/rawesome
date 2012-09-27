@@ -30,3 +30,10 @@ message CarouselState {
   required double tc = 7;
   required double wind_x = 8;
 }
+
+message PendulumOpt {
+  repeated double x = 1;
+  repeated double z = 2;
+  required double endTime = 3;
+  required int32 iters = 4;
+}

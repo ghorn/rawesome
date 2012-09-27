@@ -18,3 +18,15 @@ executable kitevis
                      bytestring,
                      zeromq-haskell
   ghc-options:       -O2 -threaded
+
+executable pendvis
+  hs-source-dirs:    src
+  main-is:           PendulumOptVis.hs
+  other-modules:     Draw
+  build-depends:     base ==4.6.*,
+                     not-gloss,
+                     spatial-math,
+                     protocol-buffers,
+                     bytestring,
+                     zeromq-haskell
+  ghc-options:       -O2 -threaded

@@ -2,6 +2,7 @@
 
 module Draw ( drawAc
             , drawTrails
+            , drawTrail
             ) where
 
 import SpatialMath
