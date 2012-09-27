@@ -36,8 +36,6 @@ x0 = C.DMatrix( [ 1.154244772411
 
 r = 1.2
 
-ts = 0.02
-
 def toProto(x,u):
     cs = kite_pb2.CarouselState()
 
@@ -130,7 +128,7 @@ def main():
     
     f = invariantErrs()
     [c0,cdot0,dcmError0] = f.call([states[:,0],actions[:,0],params])
-    constraints.add(c0,'==',r)
+    constraints.add(c0,'==',0)
     constraints.add(cdot0,'==',0)
     constraints.add(dcmError0,'==',0)
 
@@ -151,12 +149,12 @@ def main():
         bounds.setBound(e,(-1.1,1.1))
 
     for d in ['dx','dy','dz']:
-        bounds.setBound(d,(-5,5))
+        bounds.setBound(d,(-50,50))
 
     for w in ['w1','w2','w3']:
         bounds.setBound(w,(-4*pi,4*pi))
 
-    bounds.setBound('delta',(0,2*pi))
+    bounds.setBound('delta',(-0.01,1.01*2*pi))
     bounds.setBound('ddelta',(-pi/4,8*pi))
     bounds.setBound('tc',(-200,600))
 
@@ -164,9 +162,9 @@ def main():
     
     bounds.setBound('wind_x',(0,0))
 
-    # periodic constraints
-#    bounds.setBound('delta',(0,0),0)
-#    bounds.setBound('delta',(2*pi,2*pi),nSteps-1)
+    # boundary conditions
+    bounds.setBound('delta',(0,0),0)
+    bounds.setBound('delta',(2*pi,2*pi),nSteps-1)
 
     # make the solver
     designVars = C.veccat( [C.flatten(states), C.flatten(actions), C.flatten(params)] )
@@ -198,7 +196,7 @@ def main():
 
     guess.setGuess('u1',0)
     guess.setGuess('u2',0)
-    guess.setGuess('tc',300)
+    guess.setGuess('tc',389.970797939731)
     guess.setGuess('endTime',1.6336935276077966)
     
     guess.setGuess('wind_x',0)

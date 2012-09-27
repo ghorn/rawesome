@@ -1,5 +1,6 @@
 import numpy
 from collections import Counter
+import numbers
 
 import casadi as C
 
@@ -22,6 +23,7 @@ class Constraints():
         self._gub = []
         
     def add(self,lhs,comparison,rhs):
+        #print "\n\nadding constraint\nlhs: "+str(lhs)+"\ncomparison: "+comparison+"\nrhs: "+str(rhs)
         if comparison=="==":
             g = lhs - rhs
             self._g.append(g)
@@ -30,12 +32,12 @@ class Constraints():
         elif comparison=="<=":
             g = lhs - rhs
             self._g.append(g)
-            self._glb.append(-numpy.inf*numpy.ones(h.size()))
+            self._glb.append(-numpy.inf*numpy.ones(g.size()))
             self._gub.append(numpy.zeros(g.size()))
-        elif comparison==">=":                                         
+        elif comparison==">=":
             g = rhs - lhs
             self._g.append(g)
-            self._glb.append(-numpy.inf*numpy.ones(h.size()))
+            self._glb.append(-numpy.inf*numpy.ones(g.size()))
             self._gub.append(numpy.zeros(g.size()))
         else:
             raise ValueError('Did not recognize comparison \"'+str(comparison)+'\"')
@@ -51,7 +53,6 @@ class Constraints():
                 u = C.veccat([u,params])
             xk   = states[:,k]
             xkp1 = states[:,k+1]
-            integrator.call([xk,u])
             self.add(integrator.call([xk,u])[C.INTEGRATOR_XF],'==',xkp1)
 
     def getG(self):
@@ -84,7 +85,13 @@ class DesignVarMap():
         return self.xNames+self.uNames
 
     def _dvmapSetVec(self,val,names,**kwargs):
-        assert(len(names)==val.size())
+        if isinstance(val,list):
+            length = len(val)
+        elif hasattr(val,'size'):
+            length = val.size()
+        else:
+            raise ValueError("can't figure out how long "+str(val)+" is")
+        assert(len(names)==length)
         for k,name in enumerate(names):
             self.dvmapSet(name,val[k],**kwargs)
         
@@ -123,12 +130,22 @@ class DesignVarMap():
         else:
             raise ValueError("unrecognized variable name \""+name+"\"")
 
-    def get(self):
+    def vectorize(self):
         # make sure all bounds are set
         self._assertAllValuesSet()
         
         # concatenate then unzip bounds
         return self._concatValues()
+
+    def devectorize(self,xup):
+        ret = {}
+        n = 0
+        for name in self.xuNames():
+            ret[name]=xup[n*self.nSteps:(n+1)*self.nSteps]
+            n = n+1
+        for k,name in enumerate(self.pNames):
+            ret[name]=xup[n*self.nSteps+k]
+        return ret
 
     def _concatValues(self):
         xuVals = [self.dvmap[name] for name in self.xuNames()]
@@ -157,9 +174,9 @@ class DesignVarMap():
         for name in self.xuNames()+self.pNames:
             if name in missing:
                 if isinstance(missing[name],list):
-                    errs.append("missing bound for: state/action \""+name+"\" at timesteps "+str(missing[name]))
+                    errs.append(self.descriptor+" missing for: state/action \""+name+"\" at timesteps "+str(missing[name]))
                 else:
-                    errs.append("missing bound for: parameter \""+name+"\"")
+                    errs.append(self.descriptor+" missing for: parameter \""+name+"\"")
         if len(errs)>0:
             raise ValueError("\n"+"\n".join(errs))
                 
@@ -167,14 +184,21 @@ class DesignVarMap():
 class Bounds(DesignVarMap):
     descriptor = "bound"
         
-    def setBound(self,*args,**kwargs):
-        self.dvmapSet(*args,**kwargs)
+    def setBound(self,name,val,**kwargs):
+        assert(isinstance(name,str))
+        assert(isinstance(val,tuple))
+        assert(len(val)==2)
+        assert(isinstance(val[0],numbers.Real))
+        assert(isinstance(val[1],numbers.Real))
+        self.dvmapSet(name,val,**kwargs)
 
     def get(self):
-        return zip(*DesignVarMap.get(self))
+        return zip(*DesignVarMap.vectorize(self))
 
 class InitialGuess(DesignVarMap):
     descriptor = "initial guess"
 
-    def setGuess(self,*args,**kwargs):
-        self.dvmapSet(*args,**kwargs)
+    def setGuess(self,name,val,**kwargs):
+        assert(isinstance(name,str))
+        assert(isinstance(val,numbers.Real))
+        self.dvmapSet(name,val,**kwargs)
