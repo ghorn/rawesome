@@ -3,6 +3,17 @@ from collections import Counter
 
 import casadi as C
 
+def getRepeated(ns):
+    c = Counter()
+    for n in ns:
+        c[n] += 1
+
+    nonUnique = []
+    for n,k in c.items():
+        if k>1:
+            nonUnique.append(n)
+    return nonUnique
+
 
 class Constraints():
     def __init__(self):
@@ -50,58 +61,63 @@ class Constraints():
     def getUb(self):
         return C.veccat(self._gub)
 
-class Bounds():
-    def __init__(self, nSteps, xNames, uNames, pNames):
-        def getRepeated(ns):
-            c = Counter()
-            for n in ns:
-                c[n] += 1
-
-            nonUnique = []
-            for n,k in c.items():
-                if k>1:
-                    nonUnique.append(n)
-            return nonUnique
-
+class DesignVarMap():
+    descriptor = ""
+    def __init__(self, xNames, uNames, pNames, nSteps):
         r = getRepeated(xNames+uNames+pNames)
         if len(r)>0:
             raise ValueError("there are redundant names in the OCP: "+str(r))
 
         self.nSteps = nSteps
-        self.xuNames = xNames+uNames
+        self.xNames = xNames
+        self.uNames = uNames
         self.pNames = pNames
         
-        self.bounds = {}
+        self.dvmap = {}
         
-        for name in self.xuNames:
-            self.bounds[name] = [None for k in range(0,self.nSteps)]
+        for name in self.xuNames():
+            self.dvmap[name] = [None for k in range(0,self.nSteps)]
         for name in self.pNames:
-            self.bounds[name] = None
+            self.dvmap[name] = None
 
-    def bound(self,name,lbub,timestep=None):
+    def xuNames(self):
+        return self.xNames+self.uNames
+
+    def _dvmapSetVec(self,val,names,**kwargs):
+        assert(len(names)==val.size())
+        for k,name in enumerate(names):
+            self.dvmapSet(name,val[k],**kwargs)
+        
+    def setXVec(self,val,**kwargs):
+        self._dvmapSetVec(val,self.xNames,**kwargs)
+
+    def setUVec(self,val,**kwargs):
+        self._dvmapSetVec(val,self.uNames,**kwargs)
+
+    def dvmapSet(self,name,val,timestep=None,quiet=False):
         # set state or action
-        if name in self.xuNames:
+        if name in self.xuNames():
             # set state or action for all timesteps
             if timestep==None:
                 for timestep in range(0,self.nSteps):
-                    self.bound(name,lbub,timestep)
+                    self.dvmapSet(name,val,timestep)
                 return
             # set state or action for one timestep
-            bnd0 = self.bounds[name][timestep]
-            # warn if bound being overwritten
-            if bnd0 != None:
-                print "WARNING: bound for \""+name+"\" at timestep "+str(timestep)+" being changed from "+str(bnd0)+" to "+str(lbub)
-            self.bounds[name][timestep] = lbub
+            val0 = self.dvmap[name][timestep]
+            # warn if value being overwritten
+            if val0 != None and not quiet:
+                print "WARNING: "+self.descriptor+" value for \""+name+"\" at timestep "+str(timestep)+" being changed from "+str(val0)+" to "+str(val)
+            self.dvmap[name][timestep] = val
 
         # set param
         elif name in self.pNames:
             if timestep!=None:
-                raise ValueError('Can\'t bound a parameter at a specific timestep')
-            bnd0 = self.bounds[name]
-            # error if bound being overwritten
-            if bnd0 != None:
-                raise ValueError("bound for parameter \""+name+"\" being changed from "+str(bnd0)+" to "+str(lbub))
-            self.bounds[name] = lbub
+                raise ValueError('Can\'t set a parameter at a specific timestep')
+            val0 = self.dvmap[name]
+            # error if value being overwritten
+            if val0 != None:
+                raise ValueError(self.descriptor+" value for parameter \""+name+"\" being changed from "+str(val0)+" to "+str(val))
+            self.dvmap[name] = val
 
         # error if name not in x/u/p
         else:
@@ -109,23 +125,23 @@ class Bounds():
 
     def get(self):
         # make sure all bounds are set
-        self._checkBnds()
+        self._assertAllValuesSet()
         
         # concatenate then unzip bounds
-        return zip(*self._concatBnds())
+        return self._concatValues()
 
-    def _concatBnds(self):
-        xuBounds = [self.bounds[name] for name in self.xuNames]
+    def _concatValues(self):
+        xuVals = [self.dvmap[name] for name in self.xuNames()]
          
         import itertools
-        chain = itertools.chain(*xuBounds)
-        return list(chain)+[self.bounds[name] for name in self.pNames]
+        chain = itertools.chain(*xuVals)
+        return list(chain)+[self.dvmap[name] for name in self.pNames]
     
-    def _checkBnds(self): # make sure all bounds are set
+    def _assertAllValuesSet(self): # make sure all bounds are set
         # populate dictionary of missing values
         missing = {}
-        for name in self.xuNames:
-            for ts,val in enumerate(self.bounds[name]):
+        for name in self.xuNames():
+            for ts,val in enumerate(self.dvmap[name]):
                 if val==None:
                     if name in missing:
                         missing[name].append(ts)
@@ -133,12 +149,12 @@ class Bounds():
                         missing[name]=[ts]
                         
         for name in self.pNames:
-            if self.bounds[name]==None:
+            if self.dvmap[name]==None:
                 missing[name] = True
 
         # if dictionary is not empty, raise error
         errs = []
-        for name in self.xuNames+self.pNames:
+        for name in self.xuNames()+self.pNames:
             if name in missing:
                 if isinstance(missing[name],list):
                     errs.append("missing bound for: state/action \""+name+"\" at timesteps "+str(missing[name]))
@@ -148,4 +164,17 @@ class Bounds():
             raise ValueError("\n"+"\n".join(errs))
                 
 
-                
+class Bounds(DesignVarMap):
+    descriptor = "bound"
+        
+    def setBound(self,*args,**kwargs):
+        self.dvmapSet(*args,**kwargs)
+
+    def get(self):
+        return zip(*DesignVarMap.get(self))
+
+class InitialGuess(DesignVarMap):
+    descriptor = "initial guess"
+
+    def setGuess(self,*args,**kwargs):
+        self.dvmapSet(*args,**kwargs)

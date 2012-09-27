@@ -139,33 +139,34 @@ def main():
     constraints.add(actions[:,0],'==',actions[:,-1])
 
     # bounds
-    bounds = ocp.Bounds(nSteps, others['xNames'], others['uNames'], others['pNames'])
-    bounds.bound('u1',(-0.04,0.04))
-    bounds.bound('u2',(-0.1,0.1))
+    bounds = ocp.Bounds(others['xNames'], others['uNames'], others['pNames'], nSteps)
+    bounds.setBound('u1',(-0.04,0.04))
+    bounds.setBound('u2',(-0.1,0.1))
     
-    bounds.bound('x',(r-2,r+2))
-    bounds.bound('y',(-3,3))
-    bounds.bound('z',(-3,3))
+    bounds.setBound('x',(r-2,r+2))
+    bounds.setBound('y',(-3,3))
+    bounds.setBound('z',(-3,3))
 
     for e in ['e11','e21','e31','e12','e22','e32','e13','e23','e33']:
-        bounds.bound(e,(-1.1,1.1))
+        bounds.setBound(e,(-1.1,1.1))
 
     for d in ['dx','dy','dz']:
-        bounds.bound(d,(-5,5))
+        bounds.setBound(d,(-5,5))
 
     for w in ['w1','w2','w3']:
-        bounds.bound(w,(-4*pi,4*pi))
+        bounds.setBound(w,(-4*pi,4*pi))
 
-    bounds.bound('delta',(0,2*pi))
-    bounds.bound('ddelta',(-pi/4,8*pi))
-    bounds.bound('tc',(-200,600))
+    bounds.setBound('delta',(0,2*pi))
+    bounds.setBound('ddelta',(-pi/4,8*pi))
+    bounds.setBound('tc',(-200,600))
 
-    bounds.bound('endTime',(0.5,5))
-    bounds.bound('wind_x',(0,0))
+    bounds.setBound('endTime',(0.5,5))
+    
+    bounds.setBound('wind_x',(0,0))
 
     # periodic constraints
-#    bounds.bound('delta',(0,0),0)
-#    bounds.bound('delta',(2*pi,2*pi),nSteps-1)
+#    bounds.setBound('delta',(0,0),0)
+#    bounds.setBound('delta',(2*pi,2*pi),nSteps-1)
 
     # make the solver
     designVars = C.veccat( [C.flatten(states), C.flatten(actions), C.flatten(params)] )
@@ -189,7 +190,20 @@ def main():
     solver.setInput(ub, C.NLP_UBX)
 
     # initial conditions
-    solver.setInput(numpy.zeros(designVars.size()), C.NLP_X_INIT)
+    guess = ocp.InitialGuess(others['xNames'], others['uNames'], others['pNames'], nSteps)
+    guess.setXVec(x0)
+    for k in range(0,nSteps):
+        val = 2*pi*k/(nSteps-1)
+        guess.setGuess('delta',val,timestep=k,quiet=True)
+
+    guess.setGuess('u1',0)
+    guess.setGuess('u2',0)
+    guess.setGuess('tc',300)
+    guess.setGuess('endTime',1.6336935276077966)
+    
+    guess.setGuess('wind_x',0)
+    
+    solver.setInput(guess.get(), C.NLP_X_INIT)
 
     solver.solve()
 
