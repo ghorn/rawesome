@@ -1,15 +1,14 @@
-import zmq
-import time
-import os
+#import time
+#import os
+
 import numpy
+from numpy import pi
 import copy
-from collections import Counter
 
 import casadi as C
 
-import kite_pb2
+import ocp 
 import model
-import joy
 
 #tc0 = 2*389.970797939731
 
@@ -66,113 +65,7 @@ def toProto(x,u):
     cs.u1 = u.at(2)
     return cs
 
-class Constraints():
-    def __init__(self):
-        self._g = []
-        self._glb = []
-        self._gub = []
         
-    def add(self,lhs,comparison,rhs):
-        if comparison=="==":
-            g = lhs - rhs
-            self._g.append(g)
-            self._glb.append(numpy.zeros(g.size()))
-            self._gub.append(numpy.zeros(g.size()))
-        elif comparison=="<=":
-            g = lhs - rhs
-            self._g.append(g)
-            self._glb.append(-numpy.inf*numpy.ones(h.size()))
-            self._gub.append(numpy.zeros(g.size()))
-        elif comparison==">=":                                         
-            g = rhs - lhs
-            self._g.append(g)
-            self._glb.append(-numpy.inf*numpy.ones(h.size()))
-            self._gub.append(numpy.zeros(g.size()))
-        else:
-            raise ValueError('Did not recognize comparison \"'+str(comparison)+'\"')
-
-    def addDynamicsConstraints(self,integrator,states,actions,params=None):
-        nSteps = states.size2()
-        if nSteps != actions.size2():
-            raise ValueError("actions and states have different number of steps")
-
-        for k in range(0,nSteps-1):
-            u = actions[:,k]
-            if params != None: # params are appended to control inputs
-                u = C.veccat([u,params])
-            xk   = states[:,k]
-            xkp1 = states[:,k+1]
-            integrator.call([xk,u])
-            self.add(integrator.call([xk,u])[C.INTEGRATOR_XF],'==',xkp1)
-
-    def getG(self):
-        return C.veccat(self._g)
-    def getLb(self):
-        return C.veccat(self._glb)
-    def getUb(self):
-        return C.veccat(self._gub)
-
-class Bounds():
-    def __init__(self, nSteps, xNames, uNames, pNames):
-        def getRepeated(ns):
-            c = Counter()
-            for n in ns:
-                c[n] += 1
-
-            nonUnique = []
-            for n,k in c.items():
-                if k>1:
-                    nonUnique.append(n)
-            return nonUnique
-
-        r = getRepeated(xNames+uNames+pNames)
-        if len(r)>0:
-            raise ValueError("there are redundant names in the OCP: "+str(r))
-
-        self.nSteps = nSteps
-
-        self.xBnd = [[None for n in range(0,self.nSteps)] for m in xNames]
-        self.uBnd = [[None for n in range(0,self.nSteps)] for m in uNames]
-        self.pBnd = [[None for n in range(0,self.nSteps)] for m in pNames]
-
-        self.boundFcns = {}
-
-        def makeBoundFcn(names,boundMat):
-            for k,name in enumerate(names):
-                self.boundFcns[name] = (k,boundMat)
-        
-        makeBoundFcn(xNames,self.xBnd)
-        makeBoundFcn(uNames,self.uBnd)
-        makeBoundFcn(pNames,self.pBnd)
-
-    def bound(self,name,lbub,timestep=None):
-        if timestep==None:
-            for timestep in range(0,self.nSteps):
-                self.bound(name,lbub,timestep)
-            return
-        
-        if name not in self.boundFcns:
-            raise ValueError("unrecognized variable name \""+name+"\"")
-        #print "called bound("+name+","+str(lbub)+","+str(timestep)+")"
-        (k,boundMat) = self.boundFcns[name]
-        bnd0 = boundMat[k][timestep]
-        if bnd0 != None:
-            print "WARNING: bound for \""+name+"\" at timestep "+str(timestep)+" being changed from "+str(bnd0)+" to "+str(lbub)
-        boundMat[k][timestep] = lbub
-
-    def _concat(self,blah):
-        import itertools
-        chain = itertools.chain(*blah)
-        return list(chain)
-
-    def _concatBnds(self):
-        return self._concat(self.xBnd)+self._concat(self.uBnd)+self._concat(self.pBnd)
-    
-    def getLb(self):
-        return [x[0] for x in self._concatBnds()]
-
-    def getUb(self):
-        return [x[1] for x in self._concatBnds()]
 
 def main():
     nSteps = 10
@@ -216,7 +109,7 @@ def main():
     states = C.msym("x" ,nStates,nSteps)
     actions = C.msym("u",nActions,nSteps)
     params = C.msym("p",nParams)
-    constraints = Constraints()
+    constraints = ocp.Constraints()
 
     constraints.addDynamicsConstraints(integrator, states, actions, params)
 
@@ -246,12 +139,33 @@ def main():
     constraints.add(actions[:,0],'==',actions[:,-1])
 
     # bounds
-    bounds = Bounds(nSteps, others['xNames'], others['uNames'], others['pNames'])
+    bounds = ocp.Bounds(nSteps, others['xNames'], others['uNames'], others['pNames'])
     bounds.bound('u1',(-0.04,0.04))
     bounds.bound('u2',(-0.1,0.1))
     
-    bounds.bound('y',(-3,3),3)
-    bounds.bound('y',(-4,4))
+    bounds.bound('x',(r-2,r+2))
+    bounds.bound('y',(-3,3))
+    bounds.bound('z',(-3,3))
+
+    for e in ['e11','e21','e31','e12','e22','e32','e13','e23','e33']:
+        bounds.bound(e,(-1.1,1.1))
+
+    for d in ['dx','dy','dz']:
+        bounds.bound(d,(-5,5))
+
+    for w in ['w1','w2','w3']:
+        bounds.bound(w,(-4*pi,4*pi))
+
+    bounds.bound('delta',(0,2*pi))
+    bounds.bound('ddelta',(-pi/4,8*pi))
+    bounds.bound('tc',(-200,600))
+
+    bounds.bound('endTime',(0.5,5))
+    bounds.bound('wind_x',(0,0))
+
+    # periodic constraints
+#    bounds.bound('delta',(0,0),0)
+#    bounds.bound('delta',(2*pi,2*pi),nSteps-1)
 
     # make the solver
     designVars = C.veccat( [C.flatten(states), C.flatten(actions), C.flatten(params)] )
@@ -270,9 +184,11 @@ def main():
     solver.setInput(constraints.getLb(), C.NLP_LBG)
     solver.setInput(constraints.getUb(), C.NLP_UBG)
 
-    solver.setInput(bounds.getLb(), C.NLP_LBX)
-    solver.setInput(bounds.getUb(), C.NLP_UBX)
+    lb,ub = bounds.get()
+    solver.setInput(lb, C.NLP_LBX)
+    solver.setInput(ub, C.NLP_UBX)
 
+    # initial conditions
     solver.setInput(numpy.zeros(designVars.size()), C.NLP_X_INIT)
 
     solver.solve()

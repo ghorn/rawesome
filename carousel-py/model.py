@@ -375,7 +375,7 @@ def modelInteg(r, state, u, p):
 
     return (mm, rhs, dRexp, c, cdot)
         
-def model(endTimeSteps):
+def model(endTimeSteps=None):
     zNames =[ "dddelta"
             , "ddx"
             , "ddy"
