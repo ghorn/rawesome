@@ -137,6 +137,24 @@ class DesignVarMap():
         # concatenate then unzip bounds
         return self._concatValues()
 
+    def getTimestepsFromDvs(self,dvs):
+        self.lookup
+        ret = {}
+        ts = 0
+        nx = len(self.xNames)
+        nu = len(self.uNames)
+        nxu = nx+nu
+
+        xus = dvs[:self.nSteps*nxu].reshape([nxu,self.nSteps])
+        p = dvs[self.nSteps*nxu:]
+        
+        x = []
+        u = []
+        for ts in range(0,self.nSteps):
+            x.append(xus[:nx,ts])
+            u.append(xus[nx:,ts])
+        return (x,u,p)
+
     def devectorize(self,xup):
         ret = {}
         n = 0
@@ -198,7 +216,6 @@ class DesignVarMap():
         # error if name not in x/u/p
         else:
             raise ValueError("unrecognized variable name \""+name+"\"")
-
 
 class Bounds(DesignVarMap):
     descriptor = "bound"

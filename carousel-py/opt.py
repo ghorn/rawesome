@@ -37,8 +37,6 @@ x0 = C.DMatrix( [ 1.154244772411
                 , 3.874600000000
                 ])
 
-r = 1.2
-
 def toProto(x,u):
     cs = kite_pb2.CarouselState()
 
@@ -75,18 +73,6 @@ def main():
     print "creating model"
     (dae, others) = model.model((endTime,nSteps))
     dae.init()
-
-#    # compile model code
-#    print "generating model code"
-#    t0 = time.time()
-#    dae.generateCode("dae.c")
-#    print "took "+str(time.time()-t0)+" seconds to generate code"
-#    t0 = time.time()
-#    os.system("gcc -fPIC -O2 -shared dae.c -o dae.so")
-#    print "took "+str(time.time()-t0)+" seconds to compile code"
-#    dae_ext = C.ExternalFunction("./dae.so")
-#    dae_ext.init()
-#    dae = dae_ext
 
     nStates = others['xVec'].size()
     nActions = others['uVec'].size()
@@ -138,7 +124,8 @@ def main():
     constraints.add(dcmError0,'==',0)
 
     # make it periodic
-    constraints.add(states[:,0],'==',states[:,-1])
+    constraints.add(states[:18,0],'==',states[:18,-1])
+    constraints.add(states[19,0],'==',states[19,-1])
     constraints.add(actions[:,0],'==',actions[:,-1])
 
     # bounds
@@ -146,7 +133,7 @@ def main():
     bounds.setBound('u1',(-0.04,0.04))
     bounds.setBound('u2',(-0.1,0.1))
     
-    bounds.setBound('x',(r-2,r+2))
+    bounds.setBound('x',(0,4))
     bounds.setBound('y',(-3,3))
     bounds.setBound('z',(-3,3))
 
@@ -161,7 +148,8 @@ def main():
 
     bounds.setBound('delta',(-0.01,1.01*2*pi))
     bounds.setBound('ddelta',(-pi/4,8*pi))
-    bounds.setBound('tc',(-200,600))
+#    bounds.setBound('tc',(-200,600))
+    bounds.setBound('tc',(389.970797939731,389.970797939731))
     bounds.setBound('endTime',(0.3,5))
     bounds.setBound('wind_x',(0,0))
 
@@ -173,7 +161,9 @@ def main():
     designVars = C.veccat( [C.flatten(states), C.flatten(actions), C.flatten(params)] )
     
     # objective function
-    obj = C.sumAll(actions*actions)
+    dvs = ocp.DesignVars((others['xNames'],states), (others['uNames'],actions), (others['pNames'],params), nSteps)
+    tc0 = 390
+    obj = (C.sumAll(actions[0:2,:]*actions[0:2,:]) + 1e-10*C.sumAll((actions[2,:]-tc0)*(actions[2,:]-tc0)))*dvs.lookup('endTime')
     f = C.MXFunction([designVars], [obj])
     f.init()
 
@@ -193,13 +183,9 @@ def main():
       def __call__(self,f,*args):
           self.iter = self.iter + 1
           xOpt = f.input(C.NLP_X_OPT)
-          nx = nStates
-          nu = nActions
-          kiteProtos = []
-          for k in range(0,nSteps):
-              x = xOpt[k*(nx+nu):k*(nx+nu)+nx]
-              u = xOpt[k*(nx+nu)+nx:(k+1)*(nx+nu)]
-              kiteProtos.append(kiteproto.toKiteProto(x,u))
+
+          xs,us,p = bounds.getTimestepsFromDvs(xOpt)
+          kiteProtos = [kiteproto.toKiteProto(xs[k],us[k]) for k in range(0,nSteps)]
 
           ko = kite_pb2.KiteOpt()
           ko.css.extend(list(kiteProtos))
@@ -223,7 +209,6 @@ def main():
     solver.setOption("iteration_callback",makeCallback())
     solver.setOption("linear_solver","ma57")
     solver.init()
-    solver.init()
 
     solver.setInput(constraints.getLb(), C.NLP_LBG)
     solver.setInput(constraints.getUb(), C.NLP_UBG)
@@ -245,7 +230,7 @@ def main():
     guess.setGuess('endTime',1.6336935276077966)
     
     guess.setGuess('wind_x',0)
-    
+
     solver.setInput(guess.vectorize(), C.NLP_X_INIT)
 
     solver.solve()

@@ -102,8 +102,9 @@ drawFun (Just ko) = VisObjects $ [axes,txt,plane] ++ (map drawOneKite (toList (K
 --          , Vis2dText (printf "u1: %.3g \t(*180/pi = %.3f)" u1 (u1*180/pi)) (30,300) TimesRoman24 (makeColor 1 1 1 1)
 --          , Vis2dText (printf "u2: %.3g \t(*180/pi = %.3f)" u2 (u2*180/pi)) (30,270) TimesRoman24 (makeColor 1 1 1 1)
 --          , Vis2dText (printf "tc: %.3g" tc)                                (30,240) TimesRoman24 (makeColor 1 1 1 1)
-          [ Vis2dText (printf "wind_x: %.3g" (KO.wind_x ko)) (30,210) TimesRoman24 (makeColor 1 1 1 1)
-          , Vis2dText (printf "iters: %d" (KO.iters ko)) (30,180) TimesRoman24 (makeColor 1 1 1 1)
+          [ Vis2dText (printf "endTime: %.3g" (KO.endTime ko)) (30,90) TimesRoman24 (makeColor 1 1 1 1)
+          , Vis2dText (printf "wind_x: %.3g" (KO.wind_x ko)) (30,60) TimesRoman24 (makeColor 1 1 1 1)
+          , Vis2dText (printf "iters: %d" (KO.iters ko)) (30,30) TimesRoman24 (makeColor 1 1 1 1)
           ]
 
 
