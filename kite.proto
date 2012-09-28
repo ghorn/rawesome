@@ -28,9 +28,9 @@ message CarouselState {
   required double u1 = 5;
   required double u2 = 6;
   required double tc = 7;
-  required double wind_x = 8;
-  required double rArm = 9;
-  required double zt = 10;
+  required double rArm = 8;
+  required double zt = 9;
+  optional double wind_x = 10;
 }
 
 message PendulumOpt {
@@ -38,4 +38,11 @@ message PendulumOpt {
   repeated double z = 2;
   required double endTime = 3;
   required int32 iters = 4;
+}
+
+message KiteOpt {
+  repeated CarouselState css = 1;
+  required double endTime = 2;
+  required int32 iters = 3;
+  required double wind_x = 4;
 }

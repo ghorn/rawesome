@@ -5,9 +5,9 @@ license-file:        LICENSE
 build-type:          Simple
 cabal-version:       >=1.8
 
-executable kitevis
+executable kitesim
   hs-source-dirs:    src
-  main-is:           Main.hs
+  main-is:           KiteSim.hs
   other-modules:     Draw
   build-depends:     base ==4.6.*,
                      random,
@@ -19,9 +19,23 @@ executable kitevis
                      zeromq-haskell
   ghc-options:       -O2 -threaded
 
-executable pendvis
+executable kiteopt
   hs-source-dirs:    src
-  main-is:           PendulumOptVis.hs
+  main-is:           KiteOpt.hs
+  other-modules:     Draw
+  build-depends:     base ==4.6.*,
+                     random,
+                     not-gloss,
+                     spatial-math,
+                     hmatrix,
+                     protocol-buffers,
+                     bytestring,
+                     zeromq-haskell
+  ghc-options:       -O2 -threaded
+
+executable pendopt
+  hs-source-dirs:    src
+  main-is:           PendulumOpt.hs
   other-modules:     Draw
   build-depends:     base ==4.6.*,
                      not-gloss,

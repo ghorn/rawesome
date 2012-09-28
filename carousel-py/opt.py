@@ -1,3 +1,4 @@
+import zmq
 #import time
 #import os
 
@@ -7,6 +8,8 @@ import copy
 
 import casadi as C
 
+import kite_pb2
+import kiteproto
 import ocp 
 import model
 
@@ -100,6 +103,9 @@ def main():
     integrator.setOption("t0",0)
     integrator.setOption("tf",1)
     integrator.setOption('name','integrator')
+    integrator.setOption("linear_solver_creator",C.CSparse)
+#    integrator.setOption("linear_solver_creator",C.LapackLUDense)
+    integrator.setOption("linear_solver","user_defined")
     integrator.init()
 
     # make the OCP
@@ -126,8 +132,7 @@ def main():
         f.init()
         return f
     
-    f = invariantErrs()
-    [c0,cdot0,dcmError0] = f.call([states[:,0],actions[:,0],params])
+    [c0,cdot0,dcmError0] = invariantErrs().call([states[:,0],actions[:,0],params])
     constraints.add(c0,'==',0)
     constraints.add(cdot0,'==',0)
     constraints.add(dcmError0,'==',0)
@@ -157,14 +162,12 @@ def main():
     bounds.setBound('delta',(-0.01,1.01*2*pi))
     bounds.setBound('ddelta',(-pi/4,8*pi))
     bounds.setBound('tc',(-200,600))
-
-    bounds.setBound('endTime',(0.5,5))
-    
+    bounds.setBound('endTime',(0.3,5))
     bounds.setBound('wind_x',(0,0))
 
     # boundary conditions
-    bounds.setBound('delta',(0,0),0)
-    bounds.setBound('delta',(2*pi,2*pi),nSteps-1)
+    bounds.setBound('delta',(0,0),timestep=0)
+    bounds.setBound('delta',(2*pi,2*pi),timestep=nSteps-1)
 
     # make the solver
     designVars = C.veccat( [C.flatten(states), C.flatten(actions), C.flatten(params)] )
@@ -172,12 +175,54 @@ def main():
     # objective function
     obj = C.sumAll(actions*actions)
     f = C.MXFunction([designVars], [obj])
+    f.init()
 
     # constraint function
     g = C.MXFunction([designVars], [constraints.getG()])
+    g.setOption('numeric_jacobian',False)
+    g.init()
+
+    context   = zmq.Context(1)
+    publisher = context.socket(zmq.PUB)
+    publisher.bind("tcp://*:5563")
+
+    # callback function
+    class MyCallback:
+      def __init__(self):
+        self.iter = 0 
+      def __call__(self,f,*args):
+          self.iter = self.iter + 1
+          xOpt = f.input(C.NLP_X_OPT)
+          nx = nStates
+          nu = nActions
+          kiteProtos = []
+          for k in range(0,nSteps):
+              x = xOpt[k*(nx+nu):k*(nx+nu)+nx]
+              u = xOpt[k*(nx+nu)+nx:(k+1)*(nx+nu)]
+              kiteProtos.append(kiteproto.toKiteProto(x,u))
+
+          ko = kite_pb2.KiteOpt()
+          ko.css.extend(list(kiteProtos))
+
+          xup = bounds.devectorize(xOpt)
+          ko.endTime = xup['endTime']
+          ko.wind_x = xup['wind_x']
+          ko.iters = self.iter
+          publisher.send_multipart(["carousel-opt", ko.SerializeToString()])
+        
+    def makeCallback():
+        nd = designVars.size()
+        nc = constraints.getG().size()
+        c = C.PyFunction( MyCallback(), C.nlpsolverOut(x_opt=C.sp_dense(nd,1), cost=C.sp_dense(1,1), lambda_x=C.sp_dense(nd,1), lambda_g = C.sp_dense(nc,1), g = C.sp_dense(nc,1) ), [C.sp_dense(1,1)] )
+        c.init()
+        return c
+        
 
     # solver
     solver = C.IpoptSolver(f, g)
+    solver.setOption("iteration_callback",makeCallback())
+    solver.setOption("linear_solver","ma57")
+    solver.init()
     solver.init()
 
     solver.setInput(constraints.getLb(), C.NLP_LBG)
@@ -201,7 +246,7 @@ def main():
     
     guess.setGuess('wind_x',0)
     
-    solver.setInput(guess.get(), C.NLP_X_INIT)
+    solver.setInput(guess.vectorize(), C.NLP_X_INIT)
 
     solver.solve()
 

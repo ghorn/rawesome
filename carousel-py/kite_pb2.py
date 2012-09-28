@@ -11,7 +11,7 @@ from google.protobuf import descriptor_pb2
 DESCRIPTOR = descriptor.FileDescriptor(
   name='kite.proto',
   package='kite',
-  serialized_pb='\n\nkite.proto\x12\x04kite\"&\n\x03Xyz\x12\t\n\x01x\x18\x01 \x02(\x01\x12\t\n\x01y\x18\x02 \x02(\x01\x12\t\n\x01z\x18\x03 \x02(\x01\"z\n\x03\x44\x63m\x12\x0b\n\x03r11\x18\x01 \x02(\x01\x12\x0b\n\x03r12\x18\x02 \x02(\x01\x12\x0b\n\x03r13\x18\x03 \x02(\x01\x12\x0b\n\x03r21\x18\x04 \x02(\x01\x12\x0b\n\x03r22\x18\x05 \x02(\x01\x12\x0b\n\x03r23\x18\x06 \x02(\x01\x12\x0b\n\x03r31\x18\x07 \x02(\x01\x12\x0b\n\x03r32\x18\x08 \x02(\x01\x12\x0b\n\x03r33\x18\t \x02(\x01\"\xb4\x01\n\rCarouselState\x12\x1a\n\x07kiteXyz\x18\x01 \x02(\x0b\x32\t.kite.Xyz\x12\x1a\n\x07kiteDcm\x18\x02 \x02(\x0b\x32\t.kite.Dcm\x12\r\n\x05\x64\x65lta\x18\x03 \x02(\x01\x12\x0e\n\x06\x64\x64\x65lta\x18\x04 \x02(\x01\x12\n\n\x02u1\x18\x05 \x02(\x01\x12\n\n\x02u2\x18\x06 \x02(\x01\x12\n\n\x02tc\x18\x07 \x02(\x01\x12\x0e\n\x06wind_x\x18\x08 \x02(\x01\x12\x0c\n\x04rArm\x18\t \x02(\x01\x12\n\n\x02zt\x18\n \x02(\x01\"C\n\x0bPendulumOpt\x12\t\n\x01x\x18\x01 \x03(\x01\x12\t\n\x01z\x18\x02 \x03(\x01\x12\x0f\n\x07\x65ndTime\x18\x03 \x02(\x01\x12\r\n\x05iters\x18\x04 \x02(\x05')
+  serialized_pb='\n\nkite.proto\x12\x04kite\"&\n\x03Xyz\x12\t\n\x01x\x18\x01 \x02(\x01\x12\t\n\x01y\x18\x02 \x02(\x01\x12\t\n\x01z\x18\x03 \x02(\x01\"z\n\x03\x44\x63m\x12\x0b\n\x03r11\x18\x01 \x02(\x01\x12\x0b\n\x03r12\x18\x02 \x02(\x01\x12\x0b\n\x03r13\x18\x03 \x02(\x01\x12\x0b\n\x03r21\x18\x04 \x02(\x01\x12\x0b\n\x03r22\x18\x05 \x02(\x01\x12\x0b\n\x03r23\x18\x06 \x02(\x01\x12\x0b\n\x03r31\x18\x07 \x02(\x01\x12\x0b\n\x03r32\x18\x08 \x02(\x01\x12\x0b\n\x03r33\x18\t \x02(\x01\"\xb4\x01\n\rCarouselState\x12\x1a\n\x07kiteXyz\x18\x01 \x02(\x0b\x32\t.kite.Xyz\x12\x1a\n\x07kiteDcm\x18\x02 \x02(\x0b\x32\t.kite.Dcm\x12\r\n\x05\x64\x65lta\x18\x03 \x02(\x01\x12\x0e\n\x06\x64\x64\x65lta\x18\x04 \x02(\x01\x12\n\n\x02u1\x18\x05 \x02(\x01\x12\n\n\x02u2\x18\x06 \x02(\x01\x12\n\n\x02tc\x18\x07 \x02(\x01\x12\x0c\n\x04rArm\x18\x08 \x02(\x01\x12\n\n\x02zt\x18\t \x02(\x01\x12\x0e\n\x06wind_x\x18\n \x01(\x01\"C\n\x0bPendulumOpt\x12\t\n\x01x\x18\x01 \x03(\x01\x12\t\n\x01z\x18\x02 \x03(\x01\x12\x0f\n\x07\x65ndTime\x18\x03 \x02(\x01\x12\r\n\x05iters\x18\x04 \x02(\x05\"[\n\x07KiteOpt\x12 \n\x03\x63ss\x18\x01 \x03(\x0b\x32\x13.kite.CarouselState\x12\x0f\n\x07\x65ndTime\x18\x02 \x02(\x01\x12\r\n\x05iters\x18\x03 \x02(\x05\x12\x0e\n\x06wind_x\x18\x04 \x02(\x01')
 
 
 
@@ -199,22 +199,22 @@ _CAROUSELSTATE = descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None),
     descriptor.FieldDescriptor(
-      name='wind_x', full_name='kite.CarouselState.wind_x', index=7,
+      name='rArm', full_name='kite.CarouselState.rArm', index=7,
       number=8, type=1, cpp_type=5, label=2,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     descriptor.FieldDescriptor(
-      name='rArm', full_name='kite.CarouselState.rArm', index=8,
+      name='zt', full_name='kite.CarouselState.zt', index=8,
       number=9, type=1, cpp_type=5, label=2,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     descriptor.FieldDescriptor(
-      name='zt', full_name='kite.CarouselState.zt', index=9,
-      number=10, type=1, cpp_type=5, label=2,
+      name='wind_x', full_name='kite.CarouselState.wind_x', index=9,
+      number=10, type=1, cpp_type=5, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
@@ -281,12 +281,63 @@ _PENDULUMOPT = descriptor.Descriptor(
   serialized_end=434,
 )
 
+
+_KITEOPT = descriptor.Descriptor(
+  name='KiteOpt',
+  full_name='kite.KiteOpt',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    descriptor.FieldDescriptor(
+      name='css', full_name='kite.KiteOpt.css', index=0,
+      number=1, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    descriptor.FieldDescriptor(
+      name='endTime', full_name='kite.KiteOpt.endTime', index=1,
+      number=2, type=1, cpp_type=5, label=2,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    descriptor.FieldDescriptor(
+      name='iters', full_name='kite.KiteOpt.iters', index=2,
+      number=3, type=5, cpp_type=1, label=2,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    descriptor.FieldDescriptor(
+      name='wind_x', full_name='kite.KiteOpt.wind_x', index=3,
+      number=4, type=1, cpp_type=5, label=2,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  extension_ranges=[],
+  serialized_start=436,
+  serialized_end=527,
+)
+
 _CAROUSELSTATE.fields_by_name['kiteXyz'].message_type = _XYZ
 _CAROUSELSTATE.fields_by_name['kiteDcm'].message_type = _DCM
+_KITEOPT.fields_by_name['css'].message_type = _CAROUSELSTATE
 DESCRIPTOR.message_types_by_name['Xyz'] = _XYZ
 DESCRIPTOR.message_types_by_name['Dcm'] = _DCM
 DESCRIPTOR.message_types_by_name['CarouselState'] = _CAROUSELSTATE
 DESCRIPTOR.message_types_by_name['PendulumOpt'] = _PENDULUMOPT
+DESCRIPTOR.message_types_by_name['KiteOpt'] = _KITEOPT
 
 class Xyz(message.Message):
   __metaclass__ = reflection.GeneratedProtocolMessageType
@@ -311,5 +362,11 @@ class PendulumOpt(message.Message):
   DESCRIPTOR = _PENDULUMOPT
   
   # @@protoc_insertion_point(class_scope:kite.PendulumOpt)
+
+class KiteOpt(message.Message):
+  __metaclass__ = reflection.GeneratedProtocolMessageType
+  DESCRIPTOR = _KITEOPT
+  
+  # @@protoc_insertion_point(class_scope:kite.KiteOpt)
 
 # @@protoc_insertion_point(module_scope)
