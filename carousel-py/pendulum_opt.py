@@ -28,11 +28,14 @@ def main():
     # make the integrator
     print "creating integrator"
     integrator = C.IdasIntegrator(dae)
-    integrator.setOption("reltol",1e-8)
-    integrator.setOption("abstol",1e-10)
+    integrator.setOption("reltol",1e-7)
+    integrator.setOption("abstol",1e-9)
     integrator.setOption("t0",0)
     integrator.setOption("tf",1)
     integrator.setOption('name','integrator')
+    integrator.setOption("linear_solver_creator",C.CSparse)
+#    integrator.setOption("linear_solver_creator",C.LapackLUDense)
+    integrator.setOption("linear_solver","user_defined")
     integrator.init()
 
     # make the OCP
@@ -84,9 +87,12 @@ def main():
     # objective function
     obj = dvs.lookup('endTime')
     f = C.MXFunction([designVars], [obj])
+    f.init()
 
     # constraint function
     g = C.MXFunction([designVars], [constraints.getG()])
+    g.setOption('numeric_jacobian',False)
+    g.init()
 
     context   = zmq.Context(1)
     publisher = context.socket(zmq.PUB)
@@ -121,6 +127,7 @@ def main():
     solver.setOption("iteration_callback",makeCallback())
 #    solver.setOption("derivative_test","first-order")
     solver.setOption("linear_solver","ma57")
+
     solver.init()
 
     solver.setInput(constraints.getLb(), C.NLP_LBG)

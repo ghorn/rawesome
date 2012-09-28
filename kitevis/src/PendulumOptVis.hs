@@ -28,7 +28,7 @@ drawFun :: Maybe State -> VisObject Double
 drawFun Nothing = VisObjects []
 drawFun (Just state) = VisObjects $ [axes, txt, plane, trailLines]
   where
-    axes = VisAxes (0.5, 15) (Xyz 0 0 0) (Quat 1 0 0 0)
+    axes = VisAxes (0.5, 15) (Xyz 0 (-0.1) 0) (Quat 1 0 0 0)
     plane = VisPlane (Xyz 0 0 1) 1 (makeColor 1 1 1 1) (makeColor 0.2 0.3 0.32 1)
     txt = VisObjects
           [ Vis2dText (printf "iteration: %d" (sIter state)) (30,60) TimesRoman24 (makeColor 1 1 1 1)
