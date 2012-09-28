@@ -58,11 +58,11 @@ toNice cs = (xyz, q'n'b, r'n0'a0, r'n0't0)
     q'n'b = q'n'a * q'a'b
     q'n'aNWU = q'n'a * q'nwu'ned
 
-    rArm = Xyz 1.085 0 0
+    rArm = Xyz (CS.rArm cs) 0 0
     xyzArm = rArm + Xyz x y z
     xyz = rotVecByQuatB2A q'n'aNWU xyzArm
 
-    zt = -0.01
+    zt = CS.zt cs
     r'n0'a0 = rotVecByQuatB2A q'n'a rArm
     r'n0't0 = xyz + (rotVecByQuatB2A q'n'b $ Xyz 0 0 (-zt))
 
@@ -84,7 +84,6 @@ drawFun state@(State {sCS=Just cs}) = VisObjects $ [axes, txt, ac, plane, trailL
 --        x' = realToFrac $ (x + 1)/0.4*k/5
 --    boxText = Vis3dText "I'm a plane" (Xyz 0 0 (x-0.2)) TimesRoman24 (makeColor 1 0 0 1)
     ddelta = CS.ddelta cs
---    [c,cdot,cddot] = toList $ snd $ modelInteg 1.2 (sX state) (fromList [tc0,0,0])
 
     (u1,u2,tc,wind_x) = (CS.u1 cs, CS.u2 cs, CS.tc cs, CS.wind_x cs)
     txt = VisObjects

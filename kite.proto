@@ -29,6 +29,8 @@ message CarouselState {
   required double u2 = 6;
   required double tc = 7;
   required double wind_x = 8;
+  required double rArm = 9;
+  required double zt = 10;
 }
 
 message PendulumOpt {

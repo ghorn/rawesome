@@ -4,7 +4,7 @@ import os
 
 import casadi as C
 
-import kite_pb2
+import kiteproto
 import model
 import joy
 
@@ -32,61 +32,22 @@ x0 = C.DMatrix( [ 1.154244772411
                 , 3.874600000000
                 ])
 
-r = 1.2
-
 ts = 0.02
-
-def toProto(x,u):
-    cs = kite_pb2.CarouselState()
-
-    cs.kiteXyz.x = x.at(0)
-    cs.kiteXyz.y = x.at(1)
-    cs.kiteXyz.z = x.at(2)
-
-    cs.kiteDcm.r11 = x.at(3)
-    cs.kiteDcm.r12 = x.at(4)
-    cs.kiteDcm.r13 = x.at(5)
-
-    cs.kiteDcm.r21 = x.at(6)
-    cs.kiteDcm.r22 = x.at(7)
-    cs.kiteDcm.r23 = x.at(8)
-
-    cs.kiteDcm.r31 = x.at(9)
-    cs.kiteDcm.r32 = x.at(10)
-    cs.kiteDcm.r33 = x.at(11)
-
-    cs.delta = x.at(18)
-    cs.ddelta = x.at(19)
-    
-    cs.tc = u.at(0)
-    cs.u1 = u.at(1)
-    cs.u2 = u.at(2)
-    cs.wind_x = u.at(3)
-    return cs
 
 if __name__=='__main__':
     print "creating model"
     (dae, others) = model.model()
     dae.init()
 
-    # compile model code
-    print "generating model code"
-    t0 = time.time()
-    dae.generateCode("dae.c")
-    print "took "+str(time.time()-t0)+" seconds to generate code"
-    t0 = time.time()
-    os.system("gcc -fPIC -O2 -shared dae.c -o dae.so")
-    print "took "+str(time.time()-t0)+" seconds to compile code"
-    dae_ext = C.ExternalFunction("./dae.so")
-    dae_ext.init()
-    dae = dae_ext
-    
     print "creating integrator"
     f = C.IdasIntegrator(dae)
     f.setOption("reltol",1e-6)
     f.setOption("abstol",1e-8)
     f.setOption("t0",0)
     f.setOption("tf",ts)
+    f.setOption('name','integrator')
+    f.setOption("linear_solver_creator",C.CSparse)
+    f.setOption("linear_solver","user_defined")
     f.init()
     
     js = joy.Joy()
@@ -114,13 +75,12 @@ if __name__=='__main__':
         while True:
             t0 = time.time()
             (x,u) = advanceState(x)
-            p = toProto(x,u)
+            p = kiteproto.toKiteProto(x,u)
             publisher.send_multipart(["carousel", p.SerializeToString()])
             
             deltaTime = (t0 + ts) - time.time()
             if deltaTime > 0:
                 time.sleep(deltaTime)
-
     except KeyboardInterrupt:
         print "closing..."
         publisher.close()

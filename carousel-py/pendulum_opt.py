@@ -113,7 +113,6 @@ def main():
           po.iters = self.iter
           publisher.send_multipart(["pendulum-opt", po.SerializeToString()])
         
-        
     def makeCallback():
         nd = designVars.size()
         nc = constraints.getG().size()
@@ -127,7 +126,6 @@ def main():
     solver.setOption("iteration_callback",makeCallback())
 #    solver.setOption("derivative_test","first-order")
     solver.setOption("linear_solver","ma57")
-
     solver.init()
 
     solver.setInput(constraints.getLb(), C.NLP_LBG)
