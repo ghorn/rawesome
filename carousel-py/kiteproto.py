@@ -19,7 +19,10 @@ def toKiteProto(x,u):
     cs.kiteDcm.r32 = x.at(10)
     cs.kiteDcm.r33 = x.at(11)
 
-    cs.delta = x.at(18)
+    if x.size()>=19:
+        cs.delta = x.at(18)
+    else:
+        cs.delta = 0
     cs.rArm = 1.085
     cs.zt = -0.01
 
