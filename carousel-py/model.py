@@ -51,32 +51,32 @@ def forcesTorques(state, u, p):
     chord = 0.1
     
     ###########     model integ ###################
-    x =   state[0]
-    y =   state[1]
+    x =   state['x']
+    y =   state['y']
 
-    e11 = state[3]
-    e12 = state[4]
-    e13 = state[5]
+    e11 = state['e11']
+    e12 = state['e12']
+    e13 = state['e13']
 
-    e21 = state[6]
-    e22 = state[7]
-    e23 = state[8]
+    e21 = state['e21']
+    e22 = state['e22']
+    e23 = state['e23']
 
-    e31 = state[9]
-    e32 = state[10]
-    e33 = state[11]
+    e31 = state['e31']
+    e32 = state['e32']
+    e33 = state['e33']
+                   
+    dx  =  state['dx']
+    dy  =  state['dy']
+    dz  =  state['dz']
 
-    dx =  state[12]
-    dy =  state[13]
-    dz =  state[14]
+    w1  =  state['w1']
+    w2  =  state['w2']
+    w3  =  state['w3']
 
-    w1 =  state[15]
-    w2 =  state[16]
-    w3 =  state[17]
+    delta = state['delta']
+    ddelta = state['ddelta']
 
-    delta = state[18]
-    ddelta = state[19]
-    
     u1 = u['u1']
     u2 = u['u2']
     
@@ -163,6 +163,8 @@ def forcesTorques(state, u, p):
     # ###############################
     cL = 0.2*cL_
     cD = 0.5*cD_
+#    cL = cL_*0.5
+#    cD = cD_*0.5
     fL1 =  rho*cL*eLe1*vKite/2.0
     fL2 =  rho*cL*eLe2*vKite/2.0
     fL3 =  rho*cL*eLe3*vKite/2.0
@@ -192,7 +194,7 @@ def forcesTorques(state, u, p):
     return (f1, f2, f3, t1, t2, t3)
     
 
-def modelInteg(r, state, u, p):
+def modelInteg(state, u, p):
     #  PARAMETERS OF THE KITE :
     #  ##############
     m =  0.626      #  mass of the kite               #  [ kg    ]
@@ -220,31 +222,36 @@ def modelInteg(r, state, u, p):
     cfric = 100
 
     ###########     model integ ###################
-    x =   state[0]
-    y =   state[1]
-    z =   state[2]
-    
-    e11 = state[3]
-    e12 = state[4]
-    e13 = state[5]
-    
-    e21 = state[6]
-    e22 = state[7]
-    e23 = state[8]
-    
-    e31 = state[9]
-    e32 = state[10]
-    e33 = state[11]
-    
-    dx =  state[12]
-    dy =  state[13]
-    dz =  state[14]
-    
-    w1 =  state[15]
-    w2 =  state[16]
-    w3 =  state[17]
+    x =   state['x']
+    y =   state['y']
+    z =   state['z']
 
-    ddelta = state[19]
+    e11 = state['e11']
+    e12 = state['e12']
+    e13 = state['e13']
+
+    e21 = state['e21']
+    e22 = state['e22']
+    e23 = state['e23']
+
+    e31 = state['e31']
+    e32 = state['e32']
+    e33 = state['e33']
+                   
+    dx  =  state['dx']
+    dy  =  state['dy']
+    dz  =  state['dz']
+
+    w1  =  state['w1']
+    w2  =  state['w2']
+    w3  =  state['w3']
+
+    ddelta = state['ddelta']
+
+    r = state['r']
+    dr = state['dr']
+    
+    ddr = u['ddr']
     
     tc = u['tc'] #Carousel motor torque
 
@@ -339,8 +346,8 @@ def modelInteg(r, state, u, p):
           , f3 - g*m 
           , t1 - w2*(j3*w3 + j31*w1) + j2*w2*w3 
           , t2 + w1*(j3*w3 + j31*w1) - w3*(j1*w1 + j31*w3) 
-          , t3 + w2*(j1*w1 + j31*w3) - j2*w1*w2 
-          , (w1 - ddelta*e13)*(e21*(zt*dx - zt2*e21*(w1 - ddelta*e13) + zt2*e11*(w2 - ddelta*e23)) + e22*(zt*dy - zt2*e22*(w1 - ddelta*e13) + zt2*e12*(w2 - ddelta*e23)) + zt*e33*(z*w1 + ddelta*e11*x + ddelta*e12*y + zt*e33*w1 + zt*ddelta*e11*e31 + zt*ddelta*e12*e32) + zt*e23*(dz + zt*e13*w2 - zt*e23*w1) + zt*e31*(w1 - ddelta*e13)*(x + zt*e31) + zt*e32*(w1 - ddelta*e13)*(y + zt*e32)) - dz*(dz + zt*e13*w2 - zt*e23*w1) - dx*(dx - zt*e21*(w1 - ddelta*e13) + zt*e11*(w2 - ddelta*e23)) - dy*(dy - zt*e22*(w1 - ddelta*e13) + zt*e12*(w2 - ddelta*e23)) - (zt*w1*(e11*x + e12*y + e13*z + zt*e11*e31 + zt*e12*e32 + zt*e13*e33) + zt*w2*(e21*x + e22*y + e23*z + zt*e21*e31 + zt*e22*e32 + zt*e23*e33))*(w3 - ddelta*e33) - (w2 - ddelta*e23)*(e11*(zt*dx - zt2*e21*(w1 - ddelta*e13) + zt2*e11*(w2 - ddelta*e23)) + e12*(zt*dy - zt2*e22*(w1 - ddelta*e13) + zt2*e12*(w2 - ddelta*e23)) - zt*e33*(z*w2 + ddelta*e21*x + ddelta*e22*y + zt*e33*w2 + zt*ddelta*e21*e31 + zt*ddelta*e22*e32) + zt*e13*(dz + zt*e13*w2 - zt*e23*w1) - zt*e31*(w2 - ddelta*e23)*(x + zt*e31) - zt*e32*(w2 - ddelta*e23)*(y + zt*e32)) 
+          , t3 + w2*(j1*w1 + j31*w3) - j2*w1*w2
+          , dr*dr + ddr*r - (zt*w1*(e11*x + e12*y + e13*z + zt*e11*e31 + zt*e12*e32 + zt*e13*e33) + zt*w2*(e21*x + e22*y + e23*z + zt*e21*e31 + zt*e22*e32 + zt*e23*e33))*(w3 - ddelta*e33) - dx*(dx - zt*e21*(w1 - ddelta*e13) + zt*e11*(w2 - ddelta*e23)) - dy*(dy - zt*e22*(w1 - ddelta*e13) + zt*e12*(w2 - ddelta*e23)) - dz*(dz - zt*e23*(w1 - ddelta*e13) + zt*e13*(w2 - ddelta*e23)) + (w1 - ddelta*e13)*(e21*(zt*dx - zt2*e21*(w1 - ddelta*e13) + zt2*e11*(w2 - ddelta*e23)) + e22*(zt*dy - zt2*e22*(w1 - ddelta*e13) + zt2*e12*(w2 - ddelta*e23)) + zt*e23*(dz + zt*e13*w2 - zt*e23*w1) + zt*e33*(w1*z + zt*e33*w1 + ddelta*e11*x + ddelta*e12*y + zt*ddelta*e11*e31 + zt*ddelta*e12*e32) + zt*e31*(x + zt*e31)*(w1 - ddelta*e13) + zt*e32*(y + zt*e32)*(w1 - ddelta*e13)) - (w2 - ddelta*e23)*(e11*(zt*dx - zt2*e21*(w1 - ddelta*e13) + zt2*e11*(w2 - ddelta*e23)) + e12*(zt*dy - zt2*e22*(w1 - ddelta*e13) + zt2*e12*(w2 - ddelta*e23)) + zt*e13*(dz + zt*e13*w2 - zt*e23*w1) - zt*e33*(w2*z + zt*e33*w2 + ddelta*e21*x + ddelta*e22*y + zt*ddelta*e21*e31 + zt*ddelta*e22*e32) - zt*e31*(x + zt*e31)*(w2 - ddelta*e23) - zt*e32*(y + zt*e32)*(w2 - ddelta*e23))
           ]
           )
     
@@ -405,11 +412,14 @@ def model(endTimeSteps=None):
                  , "w3"  # state 17
                  , "delta" # state 18
                  , "ddelta" # state 19
+                 , "r" # state 20
+                 , "dr" # state 21
                  ]
     
     uNames = [ "tc"
              , "u1"
              , "u2"
+             , 'ddr'
              ]
 
     pNames = [ "wind_x"
@@ -437,18 +447,20 @@ def model(endTimeSteps=None):
     ddX = zVec[1:4]
     dw = zVec[4:7]
 
-    dx = stateVec[12]
-    dy = stateVec[13]
-    dz = stateVec[14]
-    ddelta = stateVec[19]
+    dx = stateDict['dx']
+    dy = stateDict['dy']
+    dz = stateDict['dz']
+    ddelta = stateDict['ddelta']
 
-    (massMatrix, rhs, dRexp, c, cdot) = modelInteg(1.2, stateVec, uDict, pDict)
+    (massMatrix, rhs, dRexp, c, cdot) = modelInteg(stateDict, uDict, pDict)
 
     ode = C.veccat( [ C.veccat([dx,dy,dz])
                     , dRexp.trans().reshape([9,1])
                     , ddX
                     , dw
                     , C.veccat([ddelta, dddelta])
+                    , stateDict['dr']
+                    , uDict['ddr']
                     ] )
 
     scaledStateDotDummy = stateDotDummy
@@ -461,6 +473,7 @@ def model(endTimeSteps=None):
         scaledStateDotDummy = stateDotDummy/(endTime/(nSteps-1))
 
     odeRes = ode - scaledStateDotDummy
+    print zVec
     algebraicRes = C.mul(massMatrix, zVec) - rhs
 
     dae = C.SXFunction( C.daeIn( x=stateVec, z=zVec, p=C.veccat([uVec,pVec]), xdot=stateDotDummy ),

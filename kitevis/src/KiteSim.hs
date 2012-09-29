@@ -3,6 +3,7 @@
 
 module Main where
 
+import Data.Foldable ( toList )
 import Data.Maybe ( fromMaybe )
 import System.Random ( randomRs, mkStdGen)
 import qualified System.ZMQ as ZMQ
@@ -10,8 +11,8 @@ import Control.Concurrent ( MVar, forkIO, modifyMVar_, newMVar, readMVar)
 import Control.Monad ( forever )
 import qualified Data.ByteString.Lazy as BL
 import Data.Packed ( fromLists )
-import Text.Printf ( printf )
 import Text.ProtocolBuffers ( messageGet )
+import Text.ProtocolBuffers.Basic ( uToString )
 
 import qualified Kite.CarouselState as CS
 import qualified Kite.Dcm as Dcm
@@ -72,47 +73,39 @@ drawFun :: State -> VisObject Double
 drawFun (State {sCS=Nothing}) = VisObjects []
 drawFun state@(State {sCS=Just cs}) = VisObjects $ [axes, txt, ac, plane, trailLines, arm, line, points]
   where
-    (pos@(Xyz px py pz), quat, r'n0'a0, r'n0't0) = toNice cs
+    (pos@(Xyz _ _ z), quat, r'n0'a0, r'n0't0) = toNice cs
 
     points = VisPoints (sParticles state) (Just 2) $ makeColor 1 1 1 0.5
     
     axes = VisAxes (0.5, 15) (Xyz 0 0 0) (Quat 1 0 0 0)
     arm  = VisLine [Xyz 0 0 0, r'n0'a0] $ makeColor 1 1 0 1
     line = VisLine [r'n0'a0, r'n0't0]   $ makeColor 0 1 1 1
-    plane = VisPlane (Xyz 0 0 1) 1 (makeColor 1 1 1 1) (makeColor 0.2 0.3 0.32 1)
---    text k = Vis2dText "KITEVIS 4EVER" (100,500 - k*100*x) TimesRoman24 (makeColor 0 (0.5 + x'/2) (0.5 - x'/2) 1)
---      where
---        x' = realToFrac $ (x + 1)/0.4*k/5
---    boxText = Vis3dText "I'm a plane" (Xyz 0 0 (x-0.2)) TimesRoman24 (makeColor 1 0 0 1)
-    ddelta = CS.ddelta cs
+    plane = VisPlane (Xyz 0 0 1) planeZ (makeColor 1 1 1 1) (makeColor 0.2 0.3 0.32 (realToFrac planeAlpha))
+    planeZ' = planeZ-0.5
+    planeAlpha
+      | z < planeZ' = 1
+      | z < planeZ'+2 = (planeZ'+2-z)/2
+      | otherwise = 0
 
-    (u1,u2,tc,wind_x) = (CS.u1 cs, CS.u2 cs, CS.tc cs, fromMaybe 0 (CS.wind_x cs))
-    txt = VisObjects
-          [ Vis2dText (printf "x: %.3f" px) (30,90) TimesRoman24 (makeColor 1 1 1 1)
-          , Vis2dText (printf "y: %.3f" py) (30,60) TimesRoman24 (makeColor 1 1 1 1)
-          , Vis2dText (printf "z: %.3f" pz) (30,30) TimesRoman24 (makeColor 1 1 1 1)
-          , Vis2dText (printf "RPM: %.3f" (ddelta*60/(2*pi))) (30,120) TimesRoman24 (makeColor 1 1 1 1)
---          , Vis2dText (printf "c:   %.3g" c    ) (30,150) TimesRoman24 (makeColor 1 1 1 1)
---          , Vis2dText (printf "c':  %.3g" cdot ) (30,180) TimesRoman24 (makeColor 1 1 1 1)
---          , Vis2dText (printf "c'': %.3g" cddot) (30,210) TimesRoman24 (makeColor 1 1 1 1)
-          , Vis2dText (printf "u1: %.3g \t(*180/pi = %.3f)" u1 (u1*180/pi)) (30,300) TimesRoman24 (makeColor 1 1 1 1)
-          , Vis2dText (printf "u2: %.3g \t(*180/pi = %.3f)" u2 (u2*180/pi)) (30,270) TimesRoman24 (makeColor 1 1 1 1)
-          , Vis2dText (printf "tc: %.3g" tc)                                (30,240) TimesRoman24 (makeColor 1 1 1 1)
-          , Vis2dText (printf "wind_x: %.3g" wind_x)                        (30,210) TimesRoman24 (makeColor 1 1 1 1)
-          ]
+    txt = VisObjects $
+          zipWith (\s k -> Vis2dText (uToString s) (30,fromIntegral $ 30*k) TimesRoman24 (makeColor 1 1 1 1)) messages (reverse [1..length messages])
+    messages = toList $ CS.messages cs
+
     (ac,_) = drawAc pos quat
 
     trailLines = drawTrails (sTrails state)
 
+planeZ :: Double
+planeZ = 1
 
 particleBox :: Double
-particleBox = 4
+particleBox = 8
 
 state0 :: State
 state0 = State { sCS = Nothing
                , sTrails = [[],[],[]]
-               , sParticles = take 100 $ randomRs (Xyz (-particleBox) (-particleBox) (-particleBox),
-                                                   Xyz particleBox particleBox particleBox)
+               , sParticles = take 300 $ randomRs (Xyz (-particleBox) (-particleBox) (planeZ-2*particleBox),
+                                                   Xyz particleBox particleBox planeZ)
                               (mkStdGen 0)
                }
 

@@ -36,6 +36,7 @@ x0 = C.DMatrix( [ 1.154244772411
                 , 0.000000000000
                 , 3.874600000000
                 ])
+x0=C.veccat([x0,C.sqrt(C.sumAll(x0[0:2]*x0[0:2])),0])
 
 def toProto(x,u):
     cs = kite_pb2.CarouselState()
@@ -67,7 +68,7 @@ def toProto(x,u):
         
 
 def main():
-    nSteps = 10
+    nSteps = 15
     endTime = C.ssym('endTime')
 
     print "creating model"
@@ -84,8 +85,8 @@ def main():
     # make the integrator
     print "creating integrator"
     integrator = C.IdasIntegrator(dae)
-    integrator.setOption("reltol",1e-6)
-    integrator.setOption("abstol",1e-8)
+    integrator.setOption("reltol",1e-7)
+    integrator.setOption("abstol",1e-9)
     integrator.setOption("t0",0)
     integrator.setOption("tf",1)
     integrator.setOption('name','integrator')
@@ -136,6 +137,10 @@ def main():
     bounds.setBound('x',(0,4))
     bounds.setBound('y',(-3,3))
     bounds.setBound('z',(-3,3))
+    bounds.setBound('r',(1,2))
+    bounds.setBound('dr',(-1,1))
+    bounds.setBound('ddr',(0,0))
+    bounds.setBound('r',(1.2,1.2),timestep=0)
 
     for e in ['e11','e21','e31','e12','e22','e32','e13','e23','e33']:
         bounds.setBound(e,(-1.1,1.1))

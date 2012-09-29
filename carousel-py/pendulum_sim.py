@@ -56,7 +56,6 @@ if __name__=='__main__':
 #    dae_ext = C.ExternalFunction("./dae.so")
 #    dae_ext.init()
 #    dae = dae_ext
-    extern void blah(int h)
     
     print "creating integrator"
     f = C.IdasIntegrator(dae)

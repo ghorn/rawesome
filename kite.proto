@@ -24,18 +24,16 @@ message CarouselState {
   required Xyz kiteXyz = 1;
   required Dcm kiteDcm = 2;
   required double delta = 3;
-  required double ddelta = 4;
-  required double u1 = 5;
-  required double u2 = 6;
-  required double tc = 7;
-  required double rArm = 8;
-  required double zt = 9;
-  optional double wind_x = 10;
+  required double rArm = 4;
+  required double zt = 5;
+  repeated string messages = 6;
+  optional double wind_x = 7;
 }
 
 message PendulumOpt {
   repeated double x = 1;
   repeated double z = 2;
+  //  repeated string messages = 3;
   required double endTime = 3;
   required int32 iters = 4;
 }
