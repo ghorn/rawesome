@@ -2,6 +2,8 @@ from IPython.core.debugger import Tracer; debug_here = Tracer()
 import casadi as C
 
 def forcesTorques(state, u, p):
+    outputs = {}
+    
     rho =    1.23      #  density of the air             #  [ kg/m^3]
     rA = 1.085 #(dixit Kurt)
     alpha0 = -0*C.pi/180 
@@ -53,6 +55,7 @@ def forcesTorques(state, u, p):
     ###########     model integ ###################
     x =   state['x']
     y =   state['y']
+    z =   state['z']
 
     e11 = state['e11']
     e12 = state['e12']
@@ -85,10 +88,15 @@ def forcesTorques(state, u, p):
                     , dx*e21 + dy*e22 + dz*e23 + ddelta*e22*rA + ddelta*e22*x - ddelta*e21*y
                     , dx*e31 + dy*e32 + dz*e33 + ddelta*e32*rA + ddelta*e32*x - ddelta*e31*y
                     ])
+    z0 = 100
+    zt_roughness = 0.1
+    zsat = 0.5*(z+C.sqrt(z*z))
+    wind_x = p['w0']*C.log((zsat+zt_roughness+2)/zt_roughness)/C.log(z0/zt_roughness)
     dp_carousel_frame = C.veccat( [ dx - ddelta*y
                                   , dy + ddelta*rA + ddelta*x
                                   , dz
-                                  ]) - C.veccat([C.cos(delta)*p['wind_x'],C.sin(delta)*p['wind_x'],0])
+                                  ]) - C.veccat([C.cos(delta)*wind_x,C.sin(delta)*wind_x,0])
+    outputs['wind at altitude'] = wind_x
     
     ##### more model_integ ###########
     # EFFECTIVE WIND IN THE KITE`S SYSTEM :
@@ -101,6 +109,7 @@ def forcesTorques(state, u, p):
     
     vKite2 = C.mul(dp_carousel_frame.trans(), dp_carousel_frame) #Airfoil speed^2 
     vKite = C.sqrt(vKite2) #Airfoil speed
+    outputs['airspeed'] = vKite
     
     # CALCULATION OF THE FORCES :
     # ###############################
@@ -146,6 +155,11 @@ def forcesTorques(state, u, p):
     beta = wE2/C.sqrt(wE1*wE1 + wE3*wE3)
     alphaTail = alpha0-vT3/vT1
     
+    outputs['alpha(deg)']=alpha*180/C.pi
+    outputs['alphaTail(deg)']=alphaTail*180/C.pi
+    outputs['beta(deg)']=beta*180/C.pi
+    outputs['betaTail(deg)']=betaTail*180/C.pi
+
     # cL = cLA*alpha + cLe*u2   + cL0
     # cD = cDA*alpha + cDA2*alpha*alpha + cDB2*beta*beta + cDe*u2 + cDr*u1 + cD0
     # cR = -rD*w1 + cRB*beta + cRAB*alphaTail*beta + cRr*u1
@@ -163,8 +177,8 @@ def forcesTorques(state, u, p):
     # ###############################
     cL = 0.2*cL_
     cD = 0.5*cD_
-#    cL = cL_*0.5
-#    cD = cD_*0.5
+    outputs['cL'] = cL
+    outputs['cD'] = cD
     fL1 =  rho*cL*eLe1*vKite/2.0
     fL2 =  rho*cL*eLe2*vKite/2.0
     fL3 =  rho*cL*eLe3*vKite/2.0
@@ -191,10 +205,11 @@ def forcesTorques(state, u, p):
     t1 =  0.5*rho*vKite2*span*cR
     t2 =  0.5*rho*vKite2*chord*cP
     t3 =  0.5*rho*vKite2*span*cY
-    return (f1, f2, f3, t1, t2, t3)
+    return ((f1, f2, f3, t1, t2, t3), outputs)
     
 
-def modelInteg(state, u, p):
+def modelInteg(state, u, p, zt):
+    outputs = {}
     #  PARAMETERS OF THE KITE :
     #  ##############
     m =  0.626      #  mass of the kite               #  [ kg    ]
@@ -209,8 +224,6 @@ def modelInteg(state, u, p):
     #CAROUSEL ARM LENGTH
     rA = 1.085 #(dixit Kurt)
 
-    zt = -0.01
-    
     #INERTIA MATRIX (Kurt's direct measurements)
     j1 = 0.0163
     j31 = 0.0006
@@ -255,7 +268,8 @@ def modelInteg(state, u, p):
     
     tc = u['tc'] #Carousel motor torque
 
-    (f1, f2, f3, t1, t2, t3) = forcesTorques(state, u, p)
+    ((f1, f2, f3, t1, t2, t3), outputs_) = forcesTorques(state, u, p)
+    outputs = dict(outputs.items()+outputs_.items())
 
     # ATTITUDE DYNAMICS
     # #############################
@@ -380,9 +394,11 @@ def modelInteg(state, u, p):
 #        ddz = ddX @> 2
 #        dddelta = dddelta' @> 0
 
-    return (mm, rhs, dRexp, c, cdot)
+    outputs['c'] = c
+    outputs['cdot'] = cdot
+    return (mm, rhs, dRexp, c, cdot, outputs)
         
-def model(endTimeSteps=None):
+def model(zt,endTimeSteps=None):
     zNames =[ "dddelta"
             , "ddx"
             , "ddy"
@@ -422,8 +438,7 @@ def model(endTimeSteps=None):
              , 'ddr'
              ]
 
-    pNames = [ "wind_x"
-             ]
+    pNames = ['w0']
     
     uSyms = [C.ssym(name) for name in uNames]
     uDict = dict(zip(uNames,uSyms))
@@ -452,7 +467,7 @@ def model(endTimeSteps=None):
     dz = stateDict['dz']
     ddelta = stateDict['ddelta']
 
-    (massMatrix, rhs, dRexp, c, cdot) = modelInteg(stateDict, uDict, pDict)
+    (massMatrix, rhs, dRexp, c, cdot, outputs) = modelInteg(stateDict, uDict, pDict, zt)
 
     ode = C.veccat( [ C.veccat([dx,dy,dz])
                     , dRexp.trans().reshape([9,1])
@@ -481,7 +496,7 @@ def model(endTimeSteps=None):
     return (dae, {'xVec':stateVec,'xDict':stateDict,'xNames':stateNames,
                   'uVec':uVec,'uNames':uNames,
                   'pVec':pVec,'pNames':pNames,
-                  'zVec':zVec,'c':c,'cdot':cdot})
+                  'zVec':zVec,'c':c,'cdot':cdot}, outputs)
 
 if __name__=='__main__':
     (f,others) = model()

@@ -4,7 +4,6 @@
 module Main where
 
 import Data.Foldable ( toList )
-import Data.Maybe ( fromMaybe )
 import System.Random ( randomRs, mkStdGen)
 import qualified System.ZMQ as ZMQ
 import Control.Concurrent ( MVar, forkIO, modifyMVar_, newMVar, readMVar)
@@ -71,11 +70,14 @@ toNice cs = (xyz, q'n'b, r'n0'a0, r'n0't0)
 drawFun :: State -> VisObject Double
 ----drawFun state = VisObjects $ [axes] ++ (map text [-5..5]) ++ [boxText, ac, plane,trailLines]
 drawFun (State {sCS=Nothing}) = VisObjects []
-drawFun state@(State {sCS=Just cs}) = VisObjects $ [axes, txt, ac, plane, trailLines, arm, line, points]
+drawFun state@(State {sCS=Just cs}) =
+  VisObjects [axes, txt, ac, plane, trailLines, arm, line, zLine, xyLine, points]
   where
-    (pos@(Xyz _ _ z), quat, r'n0'a0, r'n0't0) = toNice cs
+    (pos@(Xyz x y z), quat, r'n0'a0, r'n0't0) = toNice cs
 
     points = VisPoints (sParticles state) (Just 2) $ makeColor 1 1 1 0.5
+    zLine = VisLine [Xyz x y (planeZ-0.01), pos]            $ makeColor 0.1 0.2 1 0.5
+    xyLine = VisLine [Xyz x y (planeZ-0.01), Xyz 0 0 (planeZ-0.01)] $ makeColor 0.2 0.7 1 0.5
     
     axes = VisAxes (0.5, 15) (Xyz 0 0 0) (Quat 1 0 0 0)
     arm  = VisLine [Xyz 0 0 0, r'n0'a0] $ makeColor 1 1 0 1
@@ -120,18 +122,27 @@ boundParticle xyz@(Xyz x y z)
   | x < -particleBox = boundParticle (Xyz (x+2*particleBox) y z)
   | y >  particleBox = boundParticle (Xyz x (y-2*particleBox) z)
   | y < -particleBox = boundParticle (Xyz x (y+2*particleBox) z)
-  | z >  particleBox = boundParticle (Xyz x y (z-2*particleBox))
-  | z < -particleBox = boundParticle (Xyz x y (z+2*particleBox))
+  | z > planeZ               = boundParticle (Xyz x y (z-2*particleBox))
+  | z < planeZ-2*particleBox = boundParticle (Xyz x y (z+2*particleBox))
   | otherwise = xyz
 
+windShear :: Double -> Double -> Double
+windShear w0 z
+  | z' < zt = 0
+  | otherwise = w0*log(z'/zt)/log(z0/zt)
+  where
+    z' = z + planeZ + zt + 2
+    z0 = 100
+    zt = 0.1
+    
 updateState :: CS.CarouselState -> State -> IO State
 updateState cs x0 =
   return $ State { sCS = Just cs
                  , sTrails = zipWith updateTrail trails0 trails
-                 , sParticles = map (boundParticle . ((Xyz (ts*wind_x) 0 0) +)) (sParticles x0)
+                 , sParticles = map (\xyz@(Xyz _ _ z) -> boundParticle $ (Xyz (ts*(windShear w0 (-z))) 0 0) + xyz) (sParticles x0)
                  }
   where
-    wind_x = fromMaybe 0 (CS.wind_x cs)
+    w0 = CS.w0 cs
     trails0 = sTrails x0
     (pos,q,_,_) = toNice cs
     (_,trails) = drawAc pos q

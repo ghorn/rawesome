@@ -13,25 +13,29 @@ class Joy():
         self.oldstdout = os.dup(1)
         self.devnull = os.open('/dev/null', os.O_WRONLY)
 
-    def getAxes(self):
-        return self.redirectStdout(self._getAxes)
-    def getButtons(self):
-        return self.redirectStdout(self._getButtons)
-    def getHats(self):
-        return self.redirectStdout(self._getHats)
-
     def _getAxes(self):
-        pygame.event.pump()
         return [self.js.get_axis(k) for k in range(0,self.js.get_numaxes())] 
 
     def _getButtons(self):
-        pygame.event.pump()
         return [self.js.get_button(k) for k in range(0,self.js.get_numbuttons())] 
     
     def _getHats(self):
-        pygame.event.pump()
         return [self.js.get_hat(k) for k in range(0,self.js.get_numhats())] 
-    
+
+    def _getAll(self):
+        js = {}
+        js['buttonsDown'] = set()
+        js['buttonsUp'] = set()
+        for e in pygame.event.get():
+            if pygame.event.event_name(e.type) =="JoyButtonDown":
+                js['buttonsDown'].add(e.button)
+            elif pygame.event.event_name(e.type) =="JoyButtonUp":
+                js['buttonsUp'].add(e.button)
+        js['axes'] = self._getAxes()
+        return js
+
+    def getAll(self):
+        return self.redirectStdout(self._getAll)
 
     def redirectStdout(self,action):
         sys.stdout.flush() # <--- important when redirecting to files

@@ -1,6 +1,6 @@
 import kite_pb2
 
-def toKiteProto(x,u):
+def toKiteProto(x,u,p):
     cs = kite_pb2.CarouselState()
 
     cs.kiteXyz.x = x.at(0)
@@ -26,4 +26,5 @@ def toKiteProto(x,u):
     cs.rArm = 1.085
     cs.zt = -0.01
 
+    cs.w0 = p.at(0)
     return cs

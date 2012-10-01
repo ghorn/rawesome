@@ -27,7 +27,7 @@ message CarouselState {
   required double rArm = 4;
   required double zt = 5;
   repeated string messages = 6;
-  optional double wind_x = 7;
+  required double w0 = 7;
 }
 
 message PendulumOpt {
