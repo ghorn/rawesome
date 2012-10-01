@@ -106,8 +106,8 @@ if __name__=='__main__':
             sim.playReplay(communicator)
             sim.loadDefault()
         
-        u1 = -js['axes'][0]*0.05
-        u2 =  js['axes'][1]*0.2
+        aileron = -js['axes'][0]*0.05
+        elevator =  js['axes'][1]*0.2
         tc = 500*(1 - js['axes'][6])
         w0 = 10*(1-js['axes'][7])
 
@@ -131,7 +131,7 @@ if __name__=='__main__':
         ddr = (drRef-dr)/sim.tsSimStep
 #        print "r: %.2f\tdr: %.2f\tdrRef: %.2f\tdrErr: %.2f\tddr: %.2f" % (r,dr,drRef,drRef-dr,ddr)
         
-        u = C.DMatrix([tc,u1,u2,ddr])
+        u = C.DMatrix([tc,aileron,elevator,ddr])
         p = C.DMatrix([w0])
         
         f.setInput(x,C.INTEGRATOR_X0)

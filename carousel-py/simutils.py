@@ -22,12 +22,6 @@ class Communicator():
         assert(isinstance(otherMessages,list))
         pb = kiteproto.toKiteProto(x,u,p)
         pb.messages.append("sloMoFactor: "+str(sim.sloMoFactor))
-        pb.messages.append("torque: "+str(u.at(0)))
-        pb.messages.append("u1: %.2f"%(u.at(1)*180/math.pi)+" deg")
-        pb.messages.append("u2: %.2f"%(u.at(2)*180/math.pi)+" deg")
-        pb.messages.append("r:  %.3f"%x.at(20))
-        pb.messages.append("dr: %.3f"%x.at(21))
-        pb.messages.append("RPM: "+str(x.at(19)*60/(2*math.pi)))
         pb.messages.append("-------------------------")
 
         self.fOutputs.setInput(x,0)

@@ -77,8 +77,8 @@ def forcesTorques(state, u, p, outputs):
     delta = state['delta']
     ddelta = state['ddelta']
 
-    u1 = u['u1']
-    u2 = u['u2']
+    u1 = u['aileron']
+    u2 = u['elevator']
     
     ####### kinfile ######
     dpE = C.veccat( [ dx*e11 + dy*e12 + dz*e13 + ddelta*e12*rA + ddelta*e12*x - ddelta*e11*y
@@ -429,8 +429,8 @@ def model(zt,endTimeSteps=None):
                  ]
     
     uNames = [ "tc"
-             , "u1"
-             , "u2"
+             , "aileron"
+             , "elevator"
              , 'ddr'
              ]
 
@@ -464,6 +464,11 @@ def model(zt,endTimeSteps=None):
     ddelta = stateDict['ddelta']
 
     outputs = {}
+    outputs['r']=stateDict['r']
+    outputs['dr']=stateDict['dr']
+    outputs['RPM']=stateDict['ddelta']*60/(2*C.pi)
+    outputs['aileron(deg)']=uDict['aileron']*180/C.pi
+    outputs['elevator(deg)']=uDict['elevator']*180/C.pi
     (massMatrix, rhs, dRexp, c, cdot) = modelInteg(stateDict, uDict, pDict, zt, outputs)
 
     ode = C.veccat( [ C.veccat([dx,dy,dz])
