@@ -469,6 +469,7 @@ def model(zt,endTimeSteps=None):
     outputs['RPM']=stateDict['ddelta']*60/(2*C.pi)
     outputs['aileron(deg)']=uDict['aileron']*180/C.pi
     outputs['elevator(deg)']=uDict['elevator']*180/C.pi
+    outputs['torque']=uDict['tc']
     (massMatrix, rhs, dRexp, c, cdot) = modelInteg(stateDict, uDict, pDict, zt, outputs)
 
     ode = C.veccat( [ C.veccat([dx,dy,dz])

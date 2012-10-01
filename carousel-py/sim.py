@@ -80,9 +80,9 @@ if __name__=='__main__':
     def advanceState():
         js = sim.handleInput()
 #        print [(k,v) for k,v in enumerate(js['axes'])]
-#        print js['buttonsDown']
+#        if len(js['buttonsDown']) > 0: print js['buttonsDown']
 
-        # saving/loading
+        # saving/loading states
         fstButton=13
         for k in range(0,4):
             if k+fstButton+4 in js['buttonsDown'] and k in sim._saves:
@@ -100,6 +100,13 @@ if __name__=='__main__':
             k = sim.default
             print "loading save #"+str(k+1)
             sim.load(k)
+
+        if 4 in js['buttonsDown']:
+            print "saving file"
+            sim.saveFile()
+        if 2 in js['buttonsDown']:
+            print "loading file"
+            sim.loadFile()
 
         # play replay
         if 3 in js['buttonsDown']:

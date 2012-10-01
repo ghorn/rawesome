@@ -3,6 +3,7 @@ import time
 import os
 import math
 import copy
+import pickle
 
 import casadi as C
 
@@ -87,6 +88,30 @@ class Sim():
 
         else:
             print "can't load #"+str(k)+" because that save doesn't exist"
+
+    def saveFile(self,filename='defaultSave.dat'):
+        saves = copy.deepcopy(self._saves)
+        for k in saves.keys():
+            saves[k].x = list(saves[k].x)
+            saves[k]._log = [(list(x),list(u),list(p)) for (x,u,p) in saves[k]._log]
+        saves['default'] = self.default
+        
+        f=open(filename,'w')
+        pickle.dump(saves,f)
+        f.close()
+
+    def loadFile(self,filename='defaultSave.dat'):
+        f=open(filename,'r')
+        saves = pickle.load(f)
+        f.close()
+        
+        for k in saves.keys():
+            if isinstance(k,int):
+                saves[k].x = C.DMatrix(saves[k].x)
+                saves[k]._log = [(C.DMatrix(x),C.DMatrix(u),C.DMatrix(p)) for (x,u,p) in saves[k]._log]
+        self.default = saves['default']
+        self._saves = saves
+        self.load(self.default)
 
     def loadDefault(self):
         self.load(self.default)
