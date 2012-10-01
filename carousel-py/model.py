@@ -1,9 +1,6 @@
-from IPython.core.debugger import Tracer; debug_here = Tracer()
 import casadi as C
 
-def forcesTorques(state, u, p):
-    outputs = {}
-    
+def forcesTorques(state, u, p, outputs):
     rho =    1.23      #  density of the air             #  [ kg/m^3]
     rA = 1.085 #(dixit Kurt)
     alpha0 = -0*C.pi/180 
@@ -97,6 +94,7 @@ def forcesTorques(state, u, p):
                                   , dz
                                   ]) - C.veccat([C.cos(delta)*wind_x,C.sin(delta)*wind_x,0])
     outputs['wind at altitude'] = wind_x
+    outputs['w0'] = p['w0']
     
     ##### more model_integ ###########
     # EFFECTIVE WIND IN THE KITE`S SYSTEM :
@@ -205,11 +203,10 @@ def forcesTorques(state, u, p):
     t1 =  0.5*rho*vKite2*span*cR
     t2 =  0.5*rho*vKite2*chord*cP
     t3 =  0.5*rho*vKite2*span*cY
-    return ((f1, f2, f3, t1, t2, t3), outputs)
+    return (f1, f2, f3, t1, t2, t3)
     
 
-def modelInteg(state, u, p, zt):
-    outputs = {}
+def modelInteg(state, u, p, zt, outputs):
     #  PARAMETERS OF THE KITE :
     #  ##############
     m =  0.626      #  mass of the kite               #  [ kg    ]
@@ -268,8 +265,7 @@ def modelInteg(state, u, p, zt):
     
     tc = u['tc'] #Carousel motor torque
 
-    ((f1, f2, f3, t1, t2, t3), outputs_) = forcesTorques(state, u, p)
-    outputs = dict(outputs.items()+outputs_.items())
+    (f1, f2, f3, t1, t2, t3) = forcesTorques(state, u, p, outputs)
 
     # ATTITUDE DYNAMICS
     # #############################
@@ -396,7 +392,7 @@ def modelInteg(state, u, p, zt):
 
     outputs['c'] = c
     outputs['cdot'] = cdot
-    return (mm, rhs, dRexp, c, cdot, outputs)
+    return (mm, rhs, dRexp, c, cdot)
         
 def model(zt,endTimeSteps=None):
     zNames =[ "dddelta"
@@ -467,7 +463,8 @@ def model(zt,endTimeSteps=None):
     dz = stateDict['dz']
     ddelta = stateDict['ddelta']
 
-    (massMatrix, rhs, dRexp, c, cdot, outputs) = modelInteg(stateDict, uDict, pDict, zt)
+    outputs = {}
+    (massMatrix, rhs, dRexp, c, cdot) = modelInteg(stateDict, uDict, pDict, zt, outputs)
 
     ode = C.veccat( [ C.veccat([dx,dy,dz])
                     , dRexp.trans().reshape([9,1])

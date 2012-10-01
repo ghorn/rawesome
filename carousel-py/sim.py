@@ -58,6 +58,8 @@ if __name__=='__main__':
     fOutputs = C.SXFunction([others['xVec'],C.veccat([others['uVec'],others['pVec']])],[outputs[n] for n in outputNames])
     fOutputs.setOption('name','fOutputs')
     fOutputs.init()
+
+    print "creating communicator"
     communicator = simutils.Communicator(fOutputs,outputNames)
 
     print "creating integrator"
@@ -149,9 +151,6 @@ if __name__=='__main__':
                 sim.currentState.x = xNext
                 if len(sim._saves[sim.default]._log)==0:
                     sim.save(sim.default)
-
-                if len(sim.getCurrentState()._log)==0:
-                    sim.log(x,u,p)
             except RuntimeError:
                 sim.loadDefault()
                 x,u,p = sim.getCurrentState()._log[-1]
