@@ -1,7 +1,7 @@
 import zmq
 import time
 import os
-import math
+import simutils
 
 import casadi as C
 
@@ -11,10 +11,10 @@ import joy
 
 #tc0 = 2*389.970797939731
 
-x0 = C.DMatrix( [ 1.154244772411
-                , -0.103540608242
-                , -0.347959211327
-                , 1
+x0 = C.DMatrix( [ -10 # position
+                , 0
+                , 15
+                , 1   # DCM
                 , 0
                 , 0
                 , 0
@@ -23,123 +23,106 @@ x0 = C.DMatrix( [ 1.154244772411
                 , 0
                 , 0
                 , 1
-                , 20.0
+                , 20.0 # vel
                 , 0.0
                 , 0.0
-                , 0.137035790811
-                , 3.664945343102
-                , -1.249768772258
-#                , 0.000000000000
-#                , 3.874600000000
+                , 0   # ang vel
+                , 0
+                , 0
                 ])
 
-ts=0.02
-simState = {}
-simState['slowMoFactor'] = 4
-tsSimStep = ts/simState['slowMoFactor']
-
+ts = 0.02
+sim = simutils.Sim(ts=ts, sloMoFactor=4, state0=simutils.SimState(pdOn = False, x = x0))
 
 if __name__=='__main__':
     print "creating model"
-    (ode, others) = freemodel.model()
+    (ode, others, outputs) = freemodel.model()
     ode.init()
+
+    print "creating outputs function"
+    outputNames = outputs.keys()
+    fOutputs = C.SXFunction([others['xVec'],C.veccat([others['uVec'],others['pVec']])],[outputs[n] for n in outputNames])
+    fOutputs.setOption('name','fOutputs')
+    fOutputs.init()
+
+    print "creating communicator"
+    communicator = simutils.Communicator(fOutputs,outputNames)
 
     print "creating integrator"
     f = C.CVodesIntegrator(ode)
     f.setOption("reltol",1e-5)
     f.setOption("abstol",1e-7)
     f.setOption("t0",0)
-    f.setOption("tf",tsSimStep)
+    f.setOption("tf",0.02)
     f.setOption('name','integrator')
 #    f.setOption("linear_solver_creator",C.CSparse)
 #    f.setOption("linear_solver","user_defined")
 #    f.setOption("monitor",["res"])
     f.init()
     
-    js = joy.Joy()
-
-    context   = zmq.Context(1)
-    publisher = context.socket(zmq.PUB)
-    publisher.bind("tcp://*:5563")
-
-    stateLog = []
-    xSave = {}
-    xSave[0]=x0
-    def advanceState(x):
-        axes = js.getAxes()
-        buttons = js.getButtons()
-#        print [(k,v) for k,v in enumerate(axes)]
-#        print [(k,v) for k,v in enumerate(buttons)]
-
-        # time dialation
-        thumb = axes[8]
-        if thumb>=0:
-            simState['slowMoFactor'] = 1 + 9*thumb
-        else:
-            simState['slowMoFactor'] = 1 + thumb*0.9
+    def advanceState():
+        js = sim.handleInput()
 
         # saving/loading
         fstButton=13
         for k in range(0,4):
-            if buttons[k+fstButton+4] and k in xSave:
+            if k+fstButton+4 in js['buttonsDown'] and k in sim._saves:
                 print "loading save #"+str(k+1)
-                x = xSave[k]
-            if buttons[k+fstButton]:
+                sim.load(k)
+                sim.default = k
+            if k+fstButton in js['buttonsDown']:
                 if k==0:
                     print "can't override save0"
                 else:
                     print "making save #"+str(k+1)
-                    xSave[k] = x
+                    sim.save(k)
+                    sim.default=k
+        if 5 in js['buttonsDown']:
+            k = sim.default
+            print "loading save #"+str(k+1)
+            sim.load(k)
 
+        # play replay
+        if 3 in js['buttonsDown']:
+            sim.playReplay(communicator)
+            sim.loadDefault()
         
-        u1 = -axes[0]*0.03
-        u2 =  axes[1]*0.1
-        tc = 600*(1 - axes[6])
-        wind_x = 5*(1-axes[7])
+        aileron = -js['axes'][0]*0.05
+        elevator =  js['axes'][1]*0.2
+        rudder = -js['axes'][2]*0.15
+        tc = 600*(1 - js['axes'][6])
+        wind_x = 5*(1-js['axes'][7])
         wind_x = 0
 
-#        tc = 389.970797939731
+        x = sim.getCurrentState().x
+        u = C.DMatrix([tc,aileron,elevator,rudder])
+        p = C.DMatrix([wind_x])
 
-        drRef = 2*axes[10]
-
-#        r = x[20]
-#        dr = x[21]
-#        ddr = (drRef-dr)/tsSimStep
-#        print "r: %.2f\tdr: %.2f\tdrRef: %.2f\tdrErr: %.2f\tddr: %.2f" % (r,dr,drRef,drRef-dr,ddr)
-        
-        u = C.DMatrix([tc,u1,u2,wind_x])
-        stateLog.append((x,u))
-        
         f.setInput(x,C.INTEGRATOR_X0)
-        f.setInput(u,C.INTEGRATOR_P)
+        f.setInput(C.veccat([u,p]),C.INTEGRATOR_P)
         f.evaluate()
 
-        return (C.DMatrix(f.output()), u)
+        xNext = C.DMatrix(f.output())
+        return ((x, u, p), xNext)
 
     x = x0
     print "simulating..."
     try:
         while True:
             t0 = time.time()
-            (x,u) = advanceState(x)
-            p = kiteproto.toKiteProto(x,u)
-            p.wind_x = u.at(3)
-            p.messages.append("slowMoFactor: "+str(simState['slowMoFactor']))
-            p.messages.append("torque: "+str(u.at(0)))
-            p.messages.append("u1: "+str(u.at(1))+" ("+str(u.at(1)*180/math.pi)+" deg)")
-            p.messages.append("u2: "+str(u.at(2))+" ("+str(u.at(2)*180/math.pi)+" deg)")
-            p.messages.append("wind_x: "+str(u.at(3)))
-            dx = x.at(12)
-            dy = x.at(13)
-            dz = x.at(14)
-            p.messages.append("v: "+str(math.sqrt(dx*dx+dy*dy+dz*dz)))
-#            p.messages.append("r:  "+str(x.at(20)))
-#            p.messages.append("dr: "+str(x.at(21)))
-#            p.messages.append("RPM: "+str(x.at(19)*60/(2*math.pi)))
+            try:
+                ((x,u,p), xNext) = advanceState()
+                sim.currentState.log(x,u,p)
+                sim.currentState.x = xNext
+                if len(sim._saves[sim.default]._log)==0:
+                    sim.save(sim.default)
+            except RuntimeError:
+                sim.loadDefault()
+                x,u,p = sim.getCurrentState()._log[-1]
+                pass
+            communicator.sendKite(sim,(x,u,p))
             
-            publisher.send_multipart(["carousel", p.SerializeToString()])
-            
-            deltaTime = (t0 + tsSimStep*simState['slowMoFactor']) - time.time()
+            deltaTime = (t0 + sim.tsSimStep*sim.sloMoFactor) - time.time()
             if deltaTime > 0:
                 time.sleep(deltaTime)
     except KeyboardInterrupt:

@@ -1,7 +1,6 @@
-from IPython.core.debugger import Tracer; debug_here = Tracer()
 import casadi as C
 
-def forcesTorques(state, u, p):
+def forcesTorques(state, u, p, outputs):
     rho =    1.23      #  density of the air             #  [ kg/m^3]
     rA = 1.085 #(dixit Kurt)
     alpha0 = -0*C.pi/180 
@@ -46,6 +45,9 @@ def forcesTorques(state, u, p):
     #Yaw (report p. 76)
     cYB = 0.05
     cYAB = 0.229
+
+    # rudder (fudged by Greg)
+    cYr = 0.02
     
     span = 0.96
     chord = 0.1
@@ -77,8 +79,9 @@ def forcesTorques(state, u, p):
     delta = 0
     ddelta = 0
 
-    u1 = u['u1']
-    u2 = u['u2']
+    aileron = u['aileron']
+    elevator = u['elevator']
+    rudder = u['rudder']
     
     ####### kinfile ######
     dpE = C.veccat( [ dx*e11 + dy*e12 + dz*e13 + ddelta*e12*rA + ddelta*e12*x - ddelta*e11*y
@@ -101,6 +104,7 @@ def forcesTorques(state, u, p):
     
     vKite2 = C.mul(dp_carousel_frame.trans(), dp_carousel_frame) #Airfoil speed^2 
     vKite = C.sqrt(vKite2) #Airfoil speed
+    outputs['airspeed'] = vKite
     
     # CALCULATION OF THE FORCES :
     # ###############################
@@ -145,26 +149,31 @@ def forcesTorques(state, u, p):
     betaTail = vT2/C.sqrt(vT1*vT1 + vT3*vT3)
     beta = wE2/C.sqrt(wE1*wE1 + wE3*wE3)
     alphaTail = alpha0-vT3/vT1
+    outputs['alpha(deg)']=alpha*180/C.pi
+    outputs['alphaTail(deg)']=alphaTail*180/C.pi
+    outputs['beta(deg)']=beta*180/C.pi
+    outputs['betaTail(deg)']=betaTail*180/C.pi
     
-    # cL = cLA*alpha + cLe*u2   + cL0
-    # cD = cDA*alpha + cDA2*alpha*alpha + cDB2*beta*beta + cDe*u2 + cDr*u1 + cD0
-    # cR = -rD*w1 + cRB*beta + cRAB*alphaTail*beta + cRr*u1
-    # cP = cPA*alphaTail + cPe*u2  + cP0
+    # cL = cLA*alpha + cLe*elevator   + cL0
+    # cD = cDA*alpha + cDA2*alpha*alpha + cDB2*beta*beta + cDe*elevator + cDr*aileron + cD0
+    # cR = -rD*w1 + cRB*beta + cRAB*alphaTail*beta + cRr*aileron
+    # cP = cPA*alphaTail + cPe*elevator  + cP0
     # cY = cYB*beta + cYAB*alphaTail*beta
     
-    cL_ = cLA*alpha + cLe*u2 + cL0
+    cL_ = cLA*alpha + cLe*elevator + cL0
     cD_ = cDA*alpha + cDA2*alpha*alpha + cDB2*beta*beta + cD0
-    cR = -rD*w1 + cRB*betaTail + cRr*u1 + cRAB*alphaTail*betaTail
-    cP = -pD*w2 + cPA*alphaTail + cPe*u2 + cP0
-    cY = -yD*w3 + cYB*betaTail + cYAB*alphaTail*betaTail
+    cR = -rD*w1 + cRB*betaTail + cRr*aileron + cRAB*alphaTail*betaTail
+    cP = -pD*w2 + cPA*alphaTail + cPe*elevator + cP0
+    cY = -yD*w3 + cYB*betaTail + cYAB*alphaTail*betaTail + cYr*rudder
     
     
     # LIFT :
     # ###############################
     cL = 0.2*cL_
     cD = 0.5*cD_
-#    cL = cL_
-#    cD = cD_
+    outputs['cL'] = cL
+    outputs['cD'] = cD
+
     fL1 =  rho*cL*eLe1*vKite/2.0
     fL2 =  rho*cL*eLe2*vKite/2.0
     fL3 =  rho*cL*eLe3*vKite/2.0
@@ -194,7 +203,7 @@ def forcesTorques(state, u, p):
     return (f1, f2, f3, t1, t2, t3)
     
 
-def modelInteg(state, u, p):
+def modelInteg(state, u, p, outputs):
     #  PARAMETERS OF THE KITE :
     #  ##############
     m =  0.626      #  mass of the kite               #  [ kg    ]
@@ -250,7 +259,7 @@ def modelInteg(state, u, p):
 
     tc = 0 # = u['tc'] #Carousel motor torque
 
-    (f1, f2, f3, t1, t2, t3) = forcesTorques(state, u, p)
+    (f1, f2, f3, t1, t2, t3) = forcesTorques(state, u, p, outputs)
 
     # ATTITUDE DYNAMICS
     # #############################
@@ -399,8 +408,9 @@ def model(endTimeSteps=None):
                  ]
     
     uNames = [ "tc"
-             , "u1"
-             , "u2"
+             , "aileron"
+             , "elevator"
+             , "rudder"
 #             , 'ddr'
              ]
 
@@ -423,9 +433,13 @@ def model(endTimeSteps=None):
     dy = stateDict['dy']
     dz = stateDict['dz']
 
-    (massMatrix, rhs, dRexp) = modelInteg(stateDict, uDict, pDict)
+    outputs = {}
+    outputs['aileron(deg)']=uDict['aileron']*180/C.pi
+    outputs['elevator(deg)']=uDict['elevator']*180/C.pi
+    outputs['rudder(deg)']=uDict['rudder']*180/C.pi
+    (massMatrix, rhs, dRexp) = modelInteg(stateDict, uDict, pDict, outputs)
+    
     zVec = C.solve(massMatrix, rhs)
-#    zVec = C.mul(C.inv(massMatrix), rhs)
     
     ddX = zVec[0:3]
     dw = zVec[3:6]
@@ -448,8 +462,7 @@ def model(endTimeSteps=None):
                         C.daeOut( ode=ode))
     return (dae, {'xVec':stateVec,'xDict':stateDict,'xNames':stateNames,
                   'uVec':uVec,'uNames':uNames,
-                  'pVec':pVec,'pNames':pNames,
-                  })
+                  'pVec':pVec,'pNames':pNames}, outputs)
 
 if __name__=='__main__':
     (f,others) = model()
