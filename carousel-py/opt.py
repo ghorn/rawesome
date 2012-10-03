@@ -38,41 +38,12 @@ x0 = C.DMatrix( [ 1.154244772411
                 ])
 x0=C.veccat([x0,C.sqrt(C.sumAll(x0[0:2]*x0[0:2])),0])
 
-def toProto(x,u):
-    cs = kite_pb2.CarouselState()
-
-    cs.kiteXyz.x = x.at(0)
-    cs.kiteXyz.y = x.at(1)
-    cs.kiteXyz.z = x.at(2)
-
-    cs.kiteDcm.r11 = x.at(3)
-    cs.kiteDcm.r12 = x.at(4)
-    cs.kiteDcm.r13 = x.at(5)
-
-    cs.kiteDcm.r21 = x.at(6)
-    cs.kiteDcm.r22 = x.at(7)
-    cs.kiteDcm.r23 = x.at(8)
-
-    cs.kiteDcm.r31 = x.at(9)
-    cs.kiteDcm.r32 = x.at(10)
-    cs.kiteDcm.r33 = x.at(11)
-
-    cs.delta = x.at(18)
-    cs.ddelta = x.at(19)
-    
-    cs.tc = u.at(0)
-    cs.u0 = u.at(1)
-    cs.u1 = u.at(2)
-    return cs
-
-        
-
 def main():
     nSteps = 15
     endTime = C.ssym('endTime')
 
     print "creating model"
-    (dae, others) = model.model((endTime,nSteps))
+    (dae, others, outputs) = model.model(-0.01,(endTime,nSteps))
     dae.init()
 
     nStates = others['xVec'].size()
@@ -131,8 +102,8 @@ def main():
 
     # bounds
     bounds = ocp.Bounds(others['xNames'], others['uNames'], others['pNames'], nSteps)
-    bounds.setBound('u1',(-0.04,0.04))
-    bounds.setBound('u2',(-0.1,0.1))
+    bounds.setBound('aileron',(-0.04,0.04))
+    bounds.setBound('elevator',(-0.1,0.1))
     
     bounds.setBound('x',(0,4))
     bounds.setBound('y',(-3,3))
@@ -153,10 +124,11 @@ def main():
 
     bounds.setBound('delta',(-0.01,1.01*2*pi))
     bounds.setBound('ddelta',(-pi/4,8*pi))
-#    bounds.setBound('tc',(-200,600))
+    bounds.setBound('tc',(-200,600))
     bounds.setBound('tc',(389.970797939731,389.970797939731))
-    bounds.setBound('endTime',(0.3,5))
-    bounds.setBound('wind_x',(0,0))
+#    bounds.setBound('endTime',(0.5,2.0))
+    bounds.setBound('endTime',(1.6336935276077966,1.6336935276077966))
+    bounds.setBound('w0',(0,0))
 
     # boundary conditions
     bounds.setBound('delta',(0,0),timestep=0)
@@ -190,17 +162,17 @@ def main():
           xOpt = f.input(C.NLP_X_OPT)
 
           xs,us,p = bounds.getTimestepsFromDvs(xOpt)
-          kiteProtos = [kiteproto.toKiteProto(xs[k],us[k]) for k in range(0,nSteps)]
+          kiteProtos = [kiteproto.toKiteProto(xs[k],us[k],p) for k in range(0,nSteps)]
 
           ko = kite_pb2.KiteOpt()
           ko.css.extend(list(kiteProtos))
 
           xup = bounds.devectorize(xOpt)
           ko.endTime = xup['endTime']
-          ko.wind_x = xup['wind_x']
+          ko.wind_x = xup['w0']
           ko.iters = self.iter
           publisher.send_multipart(["carousel-opt", ko.SerializeToString()])
-        
+    
     def makeCallback():
         nd = designVars.size()
         nc = constraints.getG().size()
@@ -229,12 +201,14 @@ def main():
         val = 2*pi*k/(nSteps-1)
         guess.setGuess('delta',val,timestep=k,quiet=True)
 
-    guess.setGuess('u1',0)
-    guess.setGuess('u2',0)
+    guess.setGuess('aileron',0)
+    guess.setGuess('elevator',0)
     guess.setGuess('tc',389.970797939731)
     guess.setGuess('endTime',1.6336935276077966)
     
-    guess.setGuess('wind_x',0)
+    guess.setGuess('ddr',0)
+    guess.setGuess('w0',0)
+
 
     solver.setInput(guess.vectorize(), C.NLP_X_INIT)
 
