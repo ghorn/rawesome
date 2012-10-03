@@ -49,7 +49,7 @@ class Constraints():
 
         for k in range(0,nSteps-1):
             u = actions[:,k]
-            if params != None: # params are appended to control inputs
+            if params is not None: # params are appended to control inputs
                 u = C.veccat([u,params])
             xk   = states[:,k]
             xkp1 = states[:,k+1]
@@ -105,24 +105,24 @@ class DesignVarMap():
         # set state or action
         if name in self.xuNames():
             # set state or action for all timesteps
-            if timestep==None:
+            if timestep is None:
                 for timestep in range(0,self.nSteps):
                     self.dvmapSet(name,val,timestep)
                 return
             # set state or action for one timestep
             val0 = self.dvmap[name][timestep]
             # warn if value being overwritten
-            if val0 != None and not quiet:
+            if (val0 is not None) and (not quiet):
                 print "WARNING: "+self.descriptor+" value for \""+name+"\" at timestep "+str(timestep)+" being changed from "+str(val0)+" to "+str(val)
             self.dvmap[name][timestep] = val
 
         # set param
         elif name in self.pNames:
-            if timestep!=None:
+            if timestep is not None:
                 raise ValueError('Can\'t set a parameter at a specific timestep')
             val0 = self.dvmap[name]
             # error if value being overwritten
-            if val0 != None:
+            if val0 is not None:
                 raise ValueError(self.descriptor+" value for parameter \""+name+"\" being changed from "+str(val0)+" to "+str(val))
             self.dvmap[name] = val
 
@@ -177,14 +177,14 @@ class DesignVarMap():
         missing = {}
         for name in self.xuNames():
             for ts,val in enumerate(self.dvmap[name]):
-                if val==None:
+                if val is None:
                     if name in missing:
                         missing[name].append(ts)
                     else:
                         missing[name]=[ts]
                         
         for name in self.pNames:
-            if self.dvmap[name]==None:
+            if self.dvmap[name] is None:
                 missing[name] = True
 
         # if dictionary is not empty, raise error
@@ -203,13 +203,13 @@ class DesignVarMap():
         # get state or action
         if name in self.xuNames():
             # set state or action for all timesteps
-            if timestep==None:
+            if timestep is None:
                 return [self.dvmap[name][ts] for ts in range(0,self.nSteps)]
             return self.dvmap[name][timestep]
 
         # get param
         elif name in self.pNames:
-            if timestep!=None:
+            if timestep is not None:
                 raise ValueError('Can\'t lookup a parameter at a specific timestep')
             return self.dvmap[name]
 

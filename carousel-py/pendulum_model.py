@@ -39,7 +39,7 @@ def pendulum_model(endTimeSteps=None):
 
     scaledStateDotDummy = stateDotDummy
     
-    if endTimeSteps!=None:
+    if endTimeSteps is not None:
         endTime,nSteps = endTimeSteps
         pNames.append("endTime")
         p["endTime"] = endTime

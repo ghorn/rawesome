@@ -483,7 +483,7 @@ def model(zt,endTimeSteps=None):
 
     scaledStateDotDummy = stateDotDummy
     
-    if endTimeSteps!=None:
+    if endTimeSteps is not None:
         endTime,nSteps = endTimeSteps
         pNames.append("endTime")
         pDict["endTime"] = endTime

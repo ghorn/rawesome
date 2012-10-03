@@ -42,7 +42,7 @@ class Communicator():
 class SimState():
     def __init__(self,pdOn=None, x=None):
         assert( isinstance(pdOn, bool) )
-        assert( x != None )
+        assert( x is not None )
         
         self.pdOn=pdOn
         self.x = x
@@ -54,8 +54,8 @@ class SimState():
 
 class Sim():
     def __init__(self,ts=None, sloMoFactor=None, state0=None):
-        assert(ts!=None)
-        assert(sloMoFactor!=None)
+        assert(ts is not None)
+        assert(sloMoFactor is not None)
         assert(isinstance(state0, SimState))
 
         self.ts = ts
