@@ -69,7 +69,7 @@ def pendulum_model(endTimeSteps=None):
         ]
     
     dae = C.SXFunction( C.daeIn( x=xVec, z=zVec, p=C.veccat([uVec,pVec]), xdot=stateDotDummy ),
-                        C.daeOut( alg=alg, ode=ode))
+                        C.daeOut( alg=C.veccat(alg), ode=C.veccat(ode)))
     return (dae, {'xVec':xVec,'xDict':x,'xNames':xNames,
                   'uVec':uVec,'uNames':uNames,
                   'pVec':pVec,'pNames':pNames,
