@@ -15,7 +15,7 @@ import qualified Kite.PendulumOpt as PO
 
 import SpatialMath
 import Vis
-import Draw
+import DrawAC
 
 data State = State { sTrails :: [Xyz Double]
                    , sEndTime :: Double
@@ -28,11 +28,11 @@ drawFun :: Maybe State -> VisObject Double
 drawFun Nothing = VisObjects []
 drawFun (Just state) = VisObjects $ [axes, txt, plane, trailLines]
   where
-    axes = VisAxes (0.5, 15) (Xyz 0 (-0.1) 0) (Quat 1 0 0 0)
-    plane = VisPlane (Xyz 0 0 1) 1 (makeColor 1 1 1 1) (makeColor 0.2 0.3 0.32 1)
+    axes = Trans (Xyz 0 (-0.1) 0) $ Axes (0.5, 15)
+    plane = Trans (Xyz 0 0 1) $ Plane (Xyz 0 0 1) (makeColor 1 1 1 1) (makeColor 0.2 0.3 0.32 1)
     txt = VisObjects
-          [ Vis2dText (printf "iteration: %d" (sIter state)) (30,60) TimesRoman24 (makeColor 1 1 1 1)
-          , Vis2dText (printf "endTime: %.3f" (sEndTime state)) (30,30) TimesRoman24 (makeColor 1 1 1 1)
+          [ Text2d (printf "iteration: %d" (sIter state)) (30,60) TimesRoman24 (makeColor 1 1 1 1)
+          , Text2d (printf "endTime: %.3f" (sEndTime state)) (30,30) TimesRoman24 (makeColor 1 1 1 1)
           ]
     trailLines = drawTrail (sTrails state) (\a -> makeColor a (1-a) 0 1)
 
@@ -71,4 +71,4 @@ main = do
   
   let simFun _ _ = return ()
       df _ = fmap drawFun (readMVar m)
-  simulateIO ts () df simFun
+  simulateIO (Just ((1260,940),(1930,40))) "pendulum optimization" ts () df simFun

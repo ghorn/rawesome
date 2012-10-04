@@ -1,9 +1,9 @@
 {-# OPTIONS_GHC -Wall #-}
 
-module Draw ( drawAc
-            , drawTrails
-            , drawTrail
-            ) where
+module DrawAC ( drawAc
+              , drawTrails
+              , drawTrail
+              ) where
 
 import SpatialMath
 import Vis
@@ -11,7 +11,7 @@ import Vis
 drawAc :: Xyz Double -> Quat Double -> (VisObject Double, [Xyz Double])
 drawAc pos quat = (VisObjects $ wing ++ [htail,vtail,body,axes], vtip:wingtips)
   where
-    axes = VisAxes (0.5, 15) pos quat
+    axes = Trans pos $ RotQuat quat $ Axes (0.5, 15)
     spanW = 0.96
     arW = 9
     
@@ -38,13 +38,13 @@ drawAc pos quat = (VisObjects $ wing ++ [htail,vtail,body,axes], vtip:wingtips)
     wingtips = map rotateTranslate [Xyz 0 (-spanW/2) 0, Xyz 0 (spanW/2) 0]
     vtip = rotateTranslate $ Xyz (-deltaWingTail) 0 (-spanV)
     
-    wing = [ VisQuad
+    wing = [ Quad
              (rotateTranslate $ Xyz ( chordW/2) ( spanW/2) 0)
              (rotateTranslate $ Xyz ( chordW/2) (-spanW/2) 0)
              (rotateTranslate $ Xyz (-chordW/2) (-spanW/2) 0)
              (rotateTranslate $ Xyz (-chordW/2) ( spanW/2) 0)
              blue
-           , VisQuad
+           , Quad
              (rotateTranslate $ Xyz (-chordW/2) ( spanW/2) (-0.01))
              (rotateTranslate $ Xyz (-chordW/2) (-spanW/2) (-0.01))
              (rotateTranslate $ Xyz ( chordW/2) (-spanW/2) (-0.01))
@@ -55,7 +55,7 @@ drawAc pos quat = (VisObjects $ wing ++ [htail,vtail,body,axes], vtip:wingtips)
         chordW = spanW/arW
     
         
-    htail = VisQuad
+    htail = Quad
             (rotateTranslate $ Xyz (-deltaWingTail + chordH/2) ( spanH/2) 0)
             (rotateTranslate $ Xyz (-deltaWingTail + chordH/2) (-spanH/2) 0)
             (rotateTranslate $ Xyz (-deltaWingTail - chordH/2) (-spanH/2) 0)
@@ -65,7 +65,7 @@ drawAc pos quat = (VisObjects $ wing ++ [htail,vtail,body,axes], vtip:wingtips)
         spanH = spanW*spanHRatio
         chordH = spanH/arH
         
-    vtail = VisQuad
+    vtail = Quad
             (rotateTranslate $ Xyz (-deltaWingTail + chordV/2) 0 (-spanV))
             (rotateTranslate $ Xyz (-deltaWingTail + chordV/2) 0 (     0))
             (rotateTranslate $ Xyz (-deltaWingTail - chordV/2) 0 (     0))
@@ -74,17 +74,14 @@ drawAc pos quat = (VisObjects $ wing ++ [htail,vtail,body,axes], vtip:wingtips)
       where
         chordV = spanV/arV
             
-    body = VisEllipsoid (len/2, width/2, width/2)
-           (rotateTranslate $ Xyz (len/2-deltaWingTail) 0 0)
-           quat
-           Solid
-           blue
+    body = Trans (rotateTranslate (Xyz (len/2-deltaWingTail) 0 0)) $ RotQuat quat $ 
+           Ellipsoid (len/2, width/2, width/2) Solid blue
 
 drawTrails :: [[Xyz a]] -> VisObject a
 drawTrails xyzs = VisObjects $ zipWith drawTrail xyzs $ cycle [makeColor 0 0 1, makeColor 1 0 0, makeColor 0 1 0]
 
 drawTrail :: [Xyz a] -> (Float -> Color) -> VisObject a
-drawTrail trail mkCol = VisLine' $ zip trail (map mkCol (linspace 1 0 (length trail)))
+drawTrail trail mkCol = Line' $ zip trail (map mkCol (linspace 1 0 (length trail)))
   where
     linspace :: Fractional a => a -> a -> Int -> [a]
     linspace x0 xf n = map (\k -> x0 + (xf - x0) * (fromIntegral k) / (fromIntegral n-1)) [0..(n-1)]

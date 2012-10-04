@@ -19,7 +19,7 @@ import qualified Kite.Xyz as KiteXyz
 
 import SpatialMath
 import Vis
-import Draw
+import DrawAC
 
 data State = State { sTrails :: [[Xyz Double]]
                    , sCS :: Maybe CS.CarouselState
@@ -75,14 +75,14 @@ drawFun state@(State {sCS=Just cs}) =
   where
     (pos@(Xyz x y z), quat, r'n0'a0, r'n0't0) = toNice cs
 
-    points = VisPoints (sParticles state) (Just 2) $ makeColor 1 1 1 0.5
-    zLine = VisLine [Xyz x y (planeZ-0.01), pos]            $ makeColor 0.1 0.2 1 0.5
-    xyLine = VisLine [Xyz x y (planeZ-0.01), Xyz 0 0 (planeZ-0.01)] $ makeColor 0.2 0.7 1 0.5
+    points = Points (sParticles state) (Just 2) $ makeColor 1 1 1 0.5
+    zLine = Line [Xyz x y (planeZ-0.01), pos]            $ makeColor 0.1 0.2 1 0.5
+    xyLine = Line [Xyz x y (planeZ-0.01), Xyz 0 0 (planeZ-0.01)] $ makeColor 0.2 0.7 1 0.5
     
-    axes = VisAxes (0.5, 15) (Xyz 0 0 0) (Quat 1 0 0 0)
-    arm  = VisLine [Xyz 0 0 0, r'n0'a0] $ makeColor 1 1 0 1
-    line = VisLine [r'n0'a0, r'n0't0]   $ makeColor 0 1 1 1
-    plane = VisPlane (Xyz 0 0 1) planeZ (makeColor 1 1 1 1) (makeColor 0.2 0.3 0.32 (realToFrac planeAlpha))
+    axes = Axes (0.5, 15)
+    arm  = Line [Xyz 0 0 0, r'n0'a0] $ makeColor 1 1 0 1
+    line = Line [r'n0'a0, r'n0't0]   $ makeColor 0 1 1 1
+    plane = Trans (Xyz 0 0 planeZ) $ Plane (Xyz 0 0 1) (makeColor 1 1 1 1) (makeColor 0.2 0.3 0.32 (realToFrac planeAlpha))
     planeZ' = planeZ-0.5
     planeAlpha
       | z < planeZ' = 1
@@ -90,7 +90,7 @@ drawFun state@(State {sCS=Just cs}) =
       | otherwise = 0
 
     txt = VisObjects $
-          zipWith (\s k -> Vis2dText (uToString s) (30,fromIntegral $ 30*k) TimesRoman24 (makeColor 1 1 1 1)) messages (reverse [1..length messages])
+          zipWith (\s k -> Text2d (uToString s) (30,fromIntegral $ 30*k) TimesRoman24 (makeColor 1 1 1 1)) messages (reverse [1..length messages])
     messages = toList $ CS.messages cs
 
     (ac,_) = drawAc pos quat
@@ -175,4 +175,4 @@ main = do
 --  threadDelay 5000000
   let simFun _ _ = return ()
       df _ = fmap drawFun (readMVar m)
-  simulateIO ts () df simFun
+  simulateIO (Just ((1260,940),(1930,40))) "kite sim" ts () df simFun

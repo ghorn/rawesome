@@ -19,7 +19,7 @@ import qualified Kite.Xyz as KiteXyz
 
 import SpatialMath
 import Vis
-import Draw
+import DrawAC
 
 type State = Maybe KO.KiteOpt
 
@@ -69,8 +69,8 @@ drawOneKite cs = VisObjects [ac, arm, line]
   where
     (pos@(Xyz _ _ _), quat, r'n0'a0, r'n0't0) = toNice cs
 
-    arm  = VisLine [Xyz 0 0 0, r'n0'a0] $ makeColor 1 1 0 1
-    line = VisLine [r'n0'a0, r'n0't0]   $ makeColor 0 1 1 1
+    arm  = Line [Xyz 0 0 0, r'n0'a0] $ makeColor 1 1 0 1
+    line = Line [r'n0'a0, r'n0't0]   $ makeColor 0 1 1 1
 
     (ac,_) = drawAc pos quat
 
@@ -78,33 +78,33 @@ drawFun :: State -> VisObject Double
 drawFun Nothing = VisObjects []
 drawFun (Just ko) = VisObjects $ [axes,txt,plane] ++ (map drawOneKite (toList (KO.css ko)))
   where
---    points = VisPoints (sParticles state) (Just 2) $ makeColor 1 1 1 0.5
+--    points = Points (sParticles state) (Just 2) $ makeColor 1 1 1 0.5
     
-    axes = VisAxes (0.5, 15) (Xyz 0 0 0) (Quat 1 0 0 0)
---    arm  = VisLine [Xyz 0 0 0, r'n0'a0] $ makeColor 1 1 0 1
---    line = VisLine [r'n0'a0, r'n0't0]   $ makeColor 0 1 1 1
-    plane = VisPlane (Xyz 0 0 1) 1 (makeColor 1 1 1 1) (makeColor 0.2 0.3 0.32 1)
---    text k = Vis2dText "KITEVIS 4EVER" (100,500 - k*100*x) TimesRoman24 (makeColor 0 (0.5 + x'/2) (0.5 - x'/2) 1)
+    axes = Axes (0.5, 15)
+--    arm  = Line [Xyz 0 0 0, r'n0'a0] $ makeColor 1 1 0 1
+--    line = Line [r'n0'a0, r'n0't0]   $ makeColor 0 1 1 1
+    plane = Trans (Xyz 0 0 1) $ Plane (Xyz 0 0 1) (makeColor 1 1 1 1) (makeColor 0.2 0.3 0.32 1)
+--    text k = 2dText "KITEVIS 4EVER" (100,500 - k*100*x) TimesRoman24 (makeColor 0 (0.5 + x'/2) (0.5 - x'/2) 1)
 --      where
 --        x' = realToFrac $ (x + 1)/0.4*k/5
---    boxText = Vis3dText "I'm a plane" (Xyz 0 0 (x-0.2)) TimesRoman24 (makeColor 1 0 0 1)
+--    boxText = 3dText "I'm a plane" (Xyz 0 0 (x-0.2)) TimesRoman24 (makeColor 1 0 0 1)
 --    ddelta = CS.ddelta cs
 
 --    (u1,u2,tc,wind_x) = (CS.u1 cs, CS.u2 cs, CS.tc cs, CS.wind_x cs)
     txt = VisObjects
---          [ Vis2dText (printf "x: %.3f" px) (30,90) TimesRoman24 (makeColor 1 1 1 1)
---          , Vis2dText (printf "y: %.3f" py) (30,60) TimesRoman24 (makeColor 1 1 1 1)
---          , Vis2dText (printf "z: %.3f" pz) (30,30) TimesRoman24 (makeColor 1 1 1 1)
---          , Vis2dText (printf "RPM: %.3f" (ddelta*60/(2*pi))) (30,120) TimesRoman24 (makeColor 1 1 1 1)
---          , Vis2dText (printf "c:   %.3g" c    ) (30,150) TimesRoman24 (makeColor 1 1 1 1)
---          , Vis2dText (printf "c':  %.3g" cdot ) (30,180) TimesRoman24 (makeColor 1 1 1 1)
---          , Vis2dText (printf "c'': %.3g" cddot) (30,210) TimesRoman24 (makeColor 1 1 1 1)
---          , Vis2dText (printf "u1: %.3g \t(*180/pi = %.3f)" u1 (u1*180/pi)) (30,300) TimesRoman24 (makeColor 1 1 1 1)
---          , Vis2dText (printf "u2: %.3g \t(*180/pi = %.3f)" u2 (u2*180/pi)) (30,270) TimesRoman24 (makeColor 1 1 1 1)
---          , Vis2dText (printf "tc: %.3g" tc)                                (30,240) TimesRoman24 (makeColor 1 1 1 1)
-          [ Vis2dText (printf "endTime: %.3g" (KO.endTime ko)) (30,90) TimesRoman24 (makeColor 1 1 1 1)
-          , Vis2dText (printf "wind_x: %.3g" (KO.wind_x ko)) (30,60) TimesRoman24 (makeColor 1 1 1 1)
-          , Vis2dText (printf "iters: %d" (KO.iters ko)) (30,30) TimesRoman24 (makeColor 1 1 1 1)
+--          [ Text2d (printf "x: %.3f" px) (30,90) TimesRoman24 (makeColor 1 1 1 1)
+--          , Text2d (printf "y: %.3f" py) (30,60) TimesRoman24 (makeColor 1 1 1 1)
+--          , Text2d (printf "z: %.3f" pz) (30,30) TimesRoman24 (makeColor 1 1 1 1)
+--          , Text2d (printf "RPM: %.3f" (ddelta*60/(2*pi))) (30,120) TimesRoman24 (makeColor 1 1 1 1)
+--          , Text2d (printf "c:   %.3g" c    ) (30,150) TimesRoman24 (makeColor 1 1 1 1)
+--          , Text2d (printf "c':  %.3g" cdot ) (30,180) TimesRoman24 (makeColor 1 1 1 1)
+--          , Text2d (printf "c'': %.3g" cddot) (30,210) TimesRoman24 (makeColor 1 1 1 1)
+--          , Text2d (printf "u1: %.3g \t(*180/pi = %.3f)" u1 (u1*180/pi)) (30,300) TimesRoman24 (makeColor 1 1 1 1)
+--          , Text2d (printf "u2: %.3g \t(*180/pi = %.3f)" u2 (u2*180/pi)) (30,270) TimesRoman24 (makeColor 1 1 1 1)
+--          , Text2d (printf "tc: %.3g" tc)                                (30,240) TimesRoman24 (makeColor 1 1 1 1)
+          [ Text2d (printf "endTime: %.3g" (KO.endTime ko)) (30,90) TimesRoman24 (makeColor 1 1 1 1)
+          , Text2d (printf "wind_x: %.3g" (KO.wind_x ko)) (30,60) TimesRoman24 (makeColor 1 1 1 1)
+          , Text2d (printf "iters: %d" (KO.iters ko)) (30,30) TimesRoman24 (makeColor 1 1 1 1)
           ]
 
 
@@ -157,4 +157,4 @@ main = do
 --  threadDelay 5000000
   let simFun _ _ = return ()
       df _ = fmap drawFun (readMVar m)
-  simulateIO ts () df simFun
+  simulateIO (Just ((1260,940),(1930,40))) "carousel optimization" ts () df simFun

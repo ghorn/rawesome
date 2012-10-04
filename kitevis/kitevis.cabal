@@ -8,10 +8,10 @@ cabal-version:       >=1.8
 executable kitesim
   hs-source-dirs:    src
   main-is:           KiteSim.hs
-  other-modules:     Draw
+  other-modules:     DrawAC
   build-depends:     base ==4.6.*,
                      random,
-                     not-gloss,
+                     not-gloss >= 0.5.0,
                      spatial-math,
                      hmatrix,
                      protocol-buffers,
@@ -22,10 +22,10 @@ executable kitesim
 executable kiteopt
   hs-source-dirs:    src
   main-is:           KiteOpt.hs
-  other-modules:     Draw
+  other-modules:     DrawAC
   build-depends:     base ==4.6.*,
                      random,
-                     not-gloss,
+                     not-gloss >= 0.5.0,
                      spatial-math,
                      hmatrix,
                      protocol-buffers,
@@ -36,9 +36,9 @@ executable kiteopt
 executable pendopt
   hs-source-dirs:    src
   main-is:           PendulumOpt.hs
-  other-modules:     Draw
+  other-modules:     DrawAC
   build-depends:     base ==4.6.*,
-                     not-gloss,
+                     not-gloss >= 0.5.0,
                      spatial-math,
                      protocol-buffers,
                      bytestring,
