@@ -1,6 +1,7 @@
 import casadi as C
+from dae import Dae
 
-def forcesTorques(state, u, p, outputs):
+def forcesTorques(dae):
     rho =    1.23      #  density of the air             #  [ kg/m^3]
     rA = 1.085 #(dixit Kurt)
     alpha0 = -0*C.pi/180 
@@ -50,35 +51,35 @@ def forcesTorques(state, u, p, outputs):
     chord = 0.1
     
     ###########     model integ ###################
-    x =   state['x']
-    y =   state['y']
-    z =   state['z']
+    x =   dae.x('x')
+    y =   dae.x('y')
+    z =   dae.x('z')
 
-    e11 = state['e11']
-    e12 = state['e12']
-    e13 = state['e13']
+    e11 = dae.x('e11')
+    e12 = dae.x('e12')
+    e13 = dae.x('e13')
 
-    e21 = state['e21']
-    e22 = state['e22']
-    e23 = state['e23']
+    e21 = dae.x('e21')
+    e22 = dae.x('e22')
+    e23 = dae.x('e23')
 
-    e31 = state['e31']
-    e32 = state['e32']
-    e33 = state['e33']
+    e31 = dae.x('e31')
+    e32 = dae.x('e32')
+    e33 = dae.x('e33')
                    
-    dx  =  state['dx']
-    dy  =  state['dy']
-    dz  =  state['dz']
+    dx  =  dae.x('dx')
+    dy  =  dae.x('dy')
+    dz  =  dae.x('dz')
 
-    w1  =  state['w1']
-    w2  =  state['w2']
-    w3  =  state['w3']
+    w1  =  dae.x('w1')
+    w2  =  dae.x('w2')
+    w3  =  dae.x('w3')
 
-    delta = state['delta']
-    ddelta = state['ddelta']
+    delta = dae.x('delta')
+    ddelta = dae.x('ddelta')
 
-    u1 = u['aileron']
-    u2 = u['elevator']
+    u1 = dae.u('aileron')
+    u2 = dae.u('elevator')
     
     ####### kinfile ######
     dpE = C.veccat( [ dx*e11 + dy*e12 + dz*e13 + ddelta*e12*rA + ddelta*e12*x - ddelta*e11*y
@@ -88,13 +89,13 @@ def forcesTorques(state, u, p, outputs):
     z0 = 100
     zt_roughness = 0.1
     zsat = 0.5*(z+C.sqrt(z*z))
-    wind_x = p['w0']*C.log((zsat+zt_roughness+2)/zt_roughness)/C.log(z0/zt_roughness)
+    wind_x = dae.p('w0')*C.log((zsat+zt_roughness+2)/zt_roughness)/C.log(z0/zt_roughness)
     dp_carousel_frame = C.veccat( [ dx - ddelta*y
                                   , dy + ddelta*rA + ddelta*x
                                   , dz
                                   ]) - C.veccat([C.cos(delta)*wind_x,C.sin(delta)*wind_x,0])
-    outputs['wind at altitude'] = wind_x
-    outputs['w0'] = p['w0']
+    dae.addOutput('wind at altitude', wind_x)
+    dae.addOutput('w0', dae.p('w0'))
     
     ##### more model_integ ###########
     # EFFECTIVE WIND IN THE KITE`S SYSTEM :
@@ -107,7 +108,7 @@ def forcesTorques(state, u, p, outputs):
     
     vKite2 = C.mul(dp_carousel_frame.trans(), dp_carousel_frame) #Airfoil speed^2 
     vKite = C.sqrt(vKite2) #Airfoil speed
-    outputs['airspeed'] = vKite
+    dae.addOutput('airspeed', vKite)
     
     # CALCULATION OF THE FORCES :
     # ###############################
@@ -153,10 +154,10 @@ def forcesTorques(state, u, p, outputs):
     beta = wE2/C.sqrt(wE1*wE1 + wE3*wE3)
     alphaTail = alpha0-vT3/vT1
     
-    outputs['alpha(deg)']=alpha*180/C.pi
-    outputs['alphaTail(deg)']=alphaTail*180/C.pi
-    outputs['beta(deg)']=beta*180/C.pi
-    outputs['betaTail(deg)']=betaTail*180/C.pi
+    dae.addOutput('alpha(deg)', alpha*180/C.pi)
+    dae.addOutput('alphaTail(deg)', alphaTail*180/C.pi)
+    dae.addOutput('beta(deg)', beta*180/C.pi)
+    dae.addOutput('betaTail(deg)', betaTail*180/C.pi)
 
     # cL = cLA*alpha + cLe*u2   + cL0
     # cD = cDA*alpha + cDA2*alpha*alpha + cDB2*beta*beta + cDe*u2 + cDr*u1 + cD0
@@ -175,8 +176,9 @@ def forcesTorques(state, u, p, outputs):
     # ###############################
     cL = 0.2*cL_
     cD = 0.5*cD_
-    outputs['cL'] = cL
-    outputs['cD'] = cD
+
+    dae.addOutput('cL', cL)
+    dae.addOutput('cD', cD)
     fL1 =  rho*cL*eLe1*vKite/2.0
     fL2 =  rho*cL*eLe2*vKite/2.0
     fL3 =  rho*cL*eLe3*vKite/2.0
@@ -206,7 +208,7 @@ def forcesTorques(state, u, p, outputs):
     return (f1, f2, f3, t1, t2, t3)
     
 
-def modelInteg(state, u, p, zt, outputs):
+def modelInteg(dae, zt):
     #  PARAMETERS OF THE KITE :
     #  ##############
     m =  0.626      #  mass of the kite               #  [ kg    ]
@@ -232,40 +234,40 @@ def modelInteg(state, u, p, zt, outputs):
     cfric = 100
 
     ###########     model integ ###################
-    x =   state['x']
-    y =   state['y']
-    z =   state['z']
+    x =   dae.x('x')
+    y =   dae.x('y')
+    z =   dae.x('z')
 
-    e11 = state['e11']
-    e12 = state['e12']
-    e13 = state['e13']
+    e11 = dae.x('e11')
+    e12 = dae.x('e12')
+    e13 = dae.x('e13')
 
-    e21 = state['e21']
-    e22 = state['e22']
-    e23 = state['e23']
+    e21 = dae.x('e21')
+    e22 = dae.x('e22')
+    e23 = dae.x('e23')
 
-    e31 = state['e31']
-    e32 = state['e32']
-    e33 = state['e33']
+    e31 = dae.x('e31')
+    e32 = dae.x('e32')
+    e33 = dae.x('e33')
                    
-    dx  =  state['dx']
-    dy  =  state['dy']
-    dz  =  state['dz']
+    dx  =  dae.x('dx')
+    dy  =  dae.x('dy')
+    dz  =  dae.x('dz')
 
-    w1  =  state['w1']
-    w2  =  state['w2']
-    w3  =  state['w3']
+    w1  =  dae.x('w1')
+    w2  =  dae.x('w2')
+    w3  =  dae.x('w3')
 
-    ddelta = state['ddelta']
+    ddelta = dae.x('ddelta')
 
-    r = state['r']
-    dr = state['dr']
+    r = dae.x('r')
+    dr = dae.x('dr')
     
-    ddr = u['ddr']
+    ddr = dae.u('ddr')
     
-    tc = u['tc'] #Carousel motor torque
+    tc = dae.u('tc') #Carousel motor torque
 
-    (f1, f2, f3, t1, t2, t3) = forcesTorques(state, u, p, outputs)
+    (f1, f2, f3, t1, t2, t3) = forcesTorques(dae)
 
     # ATTITUDE DYNAMICS
     # #############################
@@ -390,116 +392,94 @@ def modelInteg(state, u, p, zt, outputs):
 #        ddz = ddX @> 2
 #        dddelta = dddelta' @> 0
 
-    outputs['c'] = c
-    outputs['cdot'] = cdot
+    dae.addOutput('c',  c)
+    dae.addOutput('cdot', cdot)
     return (mm, rhs, dRexp, c, cdot)
         
-def model(zt,endTimeSteps=None):
-    zNames =[ "dddelta"
-            , "ddx"
-            , "ddy"
-            , "ddz"
-            , "dw1"
-            , "dw2"
-            , "dw3"
-            , "nu"
-            ]
-    stateNames = [ "x"   # state 0
-                 , "y"   # state 1
-                 , "z"   # state 2
-                 , "e11" # state 3
-                 , "e12" # state 4
-                 , "e13" # state 5
-                 , "e21" # state 6
-                 , "e22" # state 7
-                 , "e23" # state 8
-                 , "e31" # state 9
-                 , "e32" # state 10
-                 , "e33" # state 11
-                 , "dx"  # state 12
-                 , "dy"  # state 13
-                 , "dz"  # state 14
-                 , "w1"  # state 15
-                 , "w2"  # state 16
-                 , "w3"  # state 17
-                 , "delta" # state 18
-                 , "ddelta" # state 19
-                 , "r" # state 20
-                 , "dr" # state 21
-                 ]
+def model(zt,nSteps=None):
+    dae = Dae()
+    dae.addZ( [ "dddelta"
+              , "ddx"
+              , "ddy"
+              , "ddz"
+              , "dw1"
+              , "dw2"
+              , "dw3"
+              , "nu"
+              ] )
+    dae.addX( [ "x"   # state 0
+              , "y"   # state 1
+              , "z"   # state 2
+              , "e11" # state 3
+              , "e12" # state 4
+              , "e13" # state 5
+              , "e21" # state 6
+              , "e22" # state 7
+              , "e23" # state 8
+              , "e31" # state 9
+              , "e32" # state 10
+              , "e33" # state 11
+              , "dx"  # state 12
+              , "dy"  # state 13
+              , "dz"  # state 14
+              , "w1"  # state 15
+              , "w2"  # state 16
+              , "w3"  # state 17
+              , "delta" # state 18
+              , "ddelta" # state 19
+              , "r" # state 20
+              , "dr" # state 21
+              ] )
     
-    uNames = [ "tc"
-             , "aileron"
-             , "elevator"
-             , 'ddr'
-             ]
+    dae.addU( [ "tc"
+              , "aileron"
+              , "elevator"
+              , 'ddr'
+              ] )
 
-    pNames = ['w0']
+    dae.addP( ['w0'] )
     
-    uSyms = [C.ssym(name) for name in uNames]
-    uDict = dict(zip(uNames,uSyms))
-    uVec = C.veccat( uSyms )
+    stateDotDummy = C.veccat( [C.ssym(name+"DotDummy") for name in dae._xNames] )
 
-    pSyms = [C.ssym(name) for name in pNames]
-    pDict = dict(zip(pNames,pSyms))
-    pVec = C.veccat( pSyms )
+    dddelta = dae.zVec()[0]
+    ddX = dae.zVec()[1:4]
+    dw = dae.zVec()[4:7]
 
-    stateSyms = [C.ssym(name) for name in stateNames]
-    stateDict = dict(zip(stateNames,stateSyms))
-    stateVec = C.veccat( stateSyms )
+    dx = dae.x('dx')
+    dy = dae.x('dy')
+    dz = dae.x('dz')
+    ddelta = dae.x('ddelta')
 
-    zSyms = [C.ssym(name) for name in zNames]
-    zDict = dict(zip(zNames, zSyms))
-    zVec = C.veccat( zSyms )
-
-    stateDotDummy = C.veccat( [C.ssym(name+"DotDummy") for name in stateNames] )
-
-    dddelta = zVec[0]
-    ddX = zVec[1:4]
-    dw = zVec[4:7]
-
-    dx = stateDict['dx']
-    dy = stateDict['dy']
-    dz = stateDict['dz']
-    ddelta = stateDict['ddelta']
-
-    outputs = {}
-    outputs['r']=stateDict['r']
-    outputs['dr']=stateDict['dr']
-    outputs['RPM']=stateDict['ddelta']*60/(2*C.pi)
-    outputs['aileron(deg)']=uDict['aileron']*180/C.pi
-    outputs['elevator(deg)']=uDict['elevator']*180/C.pi
-    outputs['torque']=uDict['tc']
-    (massMatrix, rhs, dRexp, c, cdot) = modelInteg(stateDict, uDict, pDict, zt, outputs)
+    dae.addOutput('r', dae.x('r'))
+    dae.addOutput('dr', dae.x('dr'))
+    dae.addOutput('RPM', dae.x('ddelta')*60/(2*C.pi))
+    dae.addOutput('aileron(deg)', dae.u('aileron')*180/C.pi)
+    dae.addOutput('elevator(deg)', dae.u('elevator')*180/C.pi)
+    dae.addOutput('torque', dae.u('tc'))
+    (massMatrix, rhs, dRexp, c, cdot) = modelInteg(dae, zt)
 
     ode = C.veccat( [ C.veccat([dx,dy,dz])
                     , dRexp.trans().reshape([9,1])
                     , ddX
                     , dw
                     , C.veccat([ddelta, dddelta])
-                    , stateDict['dr']
-                    , uDict['ddr']
+                    , dae.x('dr')
+                    , dae.u('ddr')
                     ] )
 
     scaledStateDotDummy = stateDotDummy
     
-    if endTimeSteps is not None:
-        endTime,nSteps = endTimeSteps
-        pNames.append("endTime")
-        pDict["endTime"] = endTime
-        pVec = C.veccat([pVec,endTime])
+    if nSteps is not None:
+        endTime = dae.addP('endTime')
         scaledStateDotDummy = stateDotDummy/(endTime/(nSteps-1))
 
     odeRes = ode - scaledStateDotDummy
-    print zVec
-    algebraicRes = C.mul(massMatrix, zVec) - rhs
+    algebraicRes = C.mul(massMatrix, dae.zVec()) - rhs
 
-    dae = C.SXFunction( C.daeIn( x=stateVec, z=zVec, p=C.veccat([uVec,pVec]), xdot=stateDotDummy ),
-                        C.daeOut( alg=algebraicRes, ode=odeRes))
-    return (dae, {'xVec':stateVec,'xDict':stateDict,'xNames':stateNames,
-                  'uVec':uVec,'uNames':uNames,
-                  'pVec':pVec,'pNames':pNames,
-                  'zVec':zVec,'c':c,'cdot':cdot}, outputs)
+    dae.sxfun = C.SXFunction( C.daeIn( x=dae.xVec(), z=dae.zVec(), p=C.veccat([dae.uVec(),dae.pVec()]), xdot=stateDotDummy ),
+                              C.daeOut( alg=algebraicRes, ode=odeRes))
+    
+    return dae
 
 if __name__=='__main__':
     (f,others) = model()

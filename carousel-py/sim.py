@@ -50,20 +50,18 @@ sim = simutils.Sim(ts=0.02, sloMoFactor=4, state0=simutils.SimState(pdOn = False
 
 if __name__=='__main__':
     print "creating model"
-    (dae, others, outputs) = model.model(zt)
-    dae.init()
+    dae = model.model(zt)
+    dae.sxfun.init()
 
     print "creating outputs function"
-    outputNames = outputs.keys()
-    fOutputs = C.SXFunction([others['xVec'],C.veccat([others['uVec'],others['pVec']])],[outputs[n] for n in outputNames])
-    fOutputs.setOption('name','fOutputs')
+    fOutputs = dae.outputsFun()
     fOutputs.init()
 
     print "creating communicator"
-    communicator = simutils.Communicator(fOutputs,outputNames)
+    communicator = simutils.Communicator(fOutputs,dae._outputNames)
 
     print "creating integrator"
-    f = C.IdasIntegrator(dae)
+    f = C.IdasIntegrator(dae.sxfun)
     f.setOption("reltol",1e-6)
     f.setOption("abstol",1e-8)
     f.setOption("t0",0)

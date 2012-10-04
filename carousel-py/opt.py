@@ -40,22 +40,21 @@ x0=C.veccat([x0,C.sqrt(C.sumAll(x0[0:2]*x0[0:2])),0])
 
 def main():
     nSteps = 15
-    endTime = C.ssym('endTime')
 
     print "creating model"
-    (dae, others, outputs) = model.model(-0.01,(endTime,nSteps))
-    dae.init()
+    dae = model.model(-0.01,nSteps)
+    dae.sxfun.init()
 
-    nStates = others['xVec'].size()
-    nActions = others['uVec'].size()
-    nParams = others['pVec'].size()
+    nStates = dae.xVec().size()
+    nActions = dae.uVec().size()
+    nParams = dae.pVec().size()
 
-    assert(nStates==dae.inputSX(C.DAE_X).size())
-    assert(nActions+nParams==dae.inputSX(C.DAE_P).size())
+    assert(nStates==dae.sxfun.inputSX(C.DAE_X).size())
+    assert(nActions+nParams==dae.sxfun.inputSX(C.DAE_P).size())
     
     # make the integrator
     print "creating integrator"
-    integrator = C.IdasIntegrator(dae)
+    integrator = C.IdasIntegrator(dae.sxfun)
     integrator.setOption("reltol",1e-7)
     integrator.setOption("abstol",1e-9)
     integrator.setOption("t0",0)
@@ -77,14 +76,14 @@ def main():
 
     # constrain invariants
     def invariantErrs():
-        dcm = C.horzcat( [ C.veccat([others['xDict']['e11'], others['xDict']['e21'], others['xDict']['e31']])
-                         , C.veccat([others['xDict']['e12'], others['xDict']['e22'], others['xDict']['e32']])
-                         , C.veccat([others['xDict']['e13'], others['xDict']['e23'], others['xDict']['e33']])
+        dcm = C.horzcat( [ C.veccat([dae.x('e11'), dae.x('e21'), dae.x('e31')])
+                         , C.veccat([dae.x('e12'), dae.x('e22'), dae.x('e32')])
+                         , C.veccat([dae.x('e13'), dae.x('e23'), dae.x('e33')])
                          ] ).trans()
         err = C.mul(dcm.trans(), dcm)
         dcmErr = C.veccat([ err[0,0]-1, err[1,1]-1, err[2,2]-1, err[0,1], err[0,2], err[1,2] ])
-        f = C.SXFunction( [others['xVec'],others['uVec'],others['pVec']]
-                        , [others['c'],others['cdot'],dcmErr]
+        f = C.SXFunction( [dae.xVec(),dae.uVec(),dae.pVec()]
+                        , [dae.output('c'),dae.output('cdot'),dcmErr]
                         )
         f.setOption('name','invariant errors')
         f.init()
@@ -101,7 +100,7 @@ def main():
     constraints.add(actions[:,0],'==',actions[:,-1])
 
     # bounds
-    bounds = ocp.Bounds(others['xNames'], others['uNames'], others['pNames'], nSteps)
+    bounds = ocp.Bounds(dae._xNames, dae._uNames, dae._pNames, nSteps)
     bounds.setBound('aileron',(-0.04,0.04))
     bounds.setBound('elevator',(-0.1,0.1))
     
@@ -138,7 +137,7 @@ def main():
     designVars = C.veccat( [C.flatten(states), C.flatten(actions), C.flatten(params)] )
     
     # objective function
-    dvs = ocp.DesignVars((others['xNames'],states), (others['uNames'],actions), (others['pNames'],params), nSteps)
+    dvs = ocp.DesignVars((dae._xNames,states), (dae._uNames,actions), (dae._pNames,params), nSteps)
     tc0 = 390
     obj = (C.sumAll(actions[0:2,:]*actions[0:2,:]) + 1e-10*C.sumAll((actions[2,:]-tc0)*(actions[2,:]-tc0)))*dvs.lookup('endTime')
     f = C.MXFunction([designVars], [obj])
@@ -146,8 +145,23 @@ def main():
 
     # constraint function
     g = C.MXFunction([designVars], [constraints.getG()])
-    g.setOption('numeric_jacobian',False)
     g.init()
+    def mkParallelG():
+        oldg = C.MXFunction([designVars], [constraints.getG()])
+        oldg.init()
+    
+        gs = [C.MXFunction([designVars],[gg]) for gg in constraints._g]
+        for gg in gs:
+            gg.init()
+        
+        pg = C.Parallelizer(gs)
+        pg.setOption("parallelization","openmp")
+        pg.init()
+        dvsDummy = C.msym('dvs',(nStates+nActions)*nSteps+nParams)
+        g_ = C.MXFunction([dvsDummy],[C.veccat(pg.call([dvsDummy]*len(gs)))])
+        g_.init()
+        return g_
+    parallelG = mkParallelG()
 
     context   = zmq.Context(1)
     publisher = context.socket(zmq.PUB)
@@ -179,12 +193,14 @@ def main():
         c = C.PyFunction( MyCallback(), C.nlpsolverOut(x_opt=C.sp_dense(nd,1), cost=C.sp_dense(1,1), lambda_x=C.sp_dense(nd,1), lambda_g = C.sp_dense(nc,1), g = C.sp_dense(nc,1) ), [C.sp_dense(1,1)] )
         c.init()
         return c
-        
+
 
     # solver
     solver = C.IpoptSolver(f, g)
+#    solver = C.IpoptSolver(f, parallelG)
     solver.setOption("iteration_callback",makeCallback())
     solver.setOption("linear_solver","ma57")
+    solver.setOption("max_iter",5)
     solver.init()
 
     solver.setInput(constraints.getLb(), C.NLP_LBG)
@@ -195,7 +211,7 @@ def main():
     solver.setInput(ub, C.NLP_UBX)
 
     # initial conditions
-    guess = ocp.InitialGuess(others['xNames'], others['uNames'], others['pNames'], nSteps)
+    guess = ocp.InitialGuess(dae._xNames, dae._uNames, dae._pNames, nSteps)
     guess.setXVec(x0)
     for k in range(0,nSteps):
         val = 2*pi*k/(nSteps-1)
@@ -209,6 +225,14 @@ def main():
     guess.setGuess('ddr',0)
     guess.setGuess('w0',0)
 
+#    parallelG.setInput([x*1.1 for x in guess.vectorize()])
+#    g.setInput([x*1.1 for x in guess.vectorize()])
+#
+#    parallelG.evaluate()
+#    g.evaluate()
+#
+#    print parallelG.output()-g.output()
+#    return
 
     solver.setInput(guess.vectorize(), C.NLP_X_INIT)
 
