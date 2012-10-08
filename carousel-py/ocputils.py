@@ -1,19 +1,169 @@
 import numpy
-from collections import Counter
 import numbers
+
+from dae import Dae
+from dvmap import DesignVarMap
 
 import casadi as C
 
-def getRepeated(ns):
-    c = Counter()
-    for n in ns:
-        c[n] += 1
+def setFXOptions(fun, options):
+    assert(isinstance(options,list))
+    for intOpt in options:
+        assert(isinstance(intOpt,tuple))
+        assert(len(intOpt)==2)
+        assert(isinstance(intOpt[0],str))
+        optName,optVal = intOpt
+        fun.setOption(optName, optVal)
 
-    nonUnique = []
-    for n,k in c.items():
-        if k>1:
-            nonUnique.append(n)
-    return nonUnique
+class MultipleShootingInterval():
+    def __init__(self, dae, nSteps):
+        # check inputs
+        assert(isinstance(dae, Dae))
+        assert(isinstance(nSteps, int))
+        
+        self.dae = dae
+        self.dae.sxfun.init()
+        self.dae._freeze('MultipleShootingInterval(dae)')
+
+        assert(self.nStates()==self.dae.sxfun.inputSX(C.DAE_X).size())
+        assert(self.nActions()+self.nParams()==self.dae.sxfun.inputSX(C.DAE_P).size())
+
+        # set up design vars
+        self.nSteps = nSteps
+        self.states = C.msym("x" ,self.nStates(),self.nSteps)
+        self.actions = C.msym("u",self.nActions(),self.nSteps)
+        self.params = C.msym("p",self.nParams())
+
+        # set up interface
+        self._constraints = Constraints()
+        self._bounds = Bounds(self.dae._xNames, self.dae._uNames, self.dae._pNames, self.nSteps)
+        self._initialGuess = InitialGuess(self.dae._xNames, self.dae._uNames, self.dae._pNames, self.nSteps)
+        self._designVars = DesignVars((self.dae._xNames,self.states),
+                                      (self.dae._uNames,self.actions),
+                                      (self.dae._pNames,self.params),
+                                      self.nSteps)
+
+    def nStates(self):
+        return self.dae.xVec().size()
+    def nActions(self):
+        return self.dae.uVec().size()
+    def nParams(self):
+        return self.dae.pVec().size()
+
+
+    def makeIdasIntegrator(self, integratorOptions=[]):
+        self.integrator = C.IdasIntegrator(self.dae.sxfun)
+        setFXOptions(self.integrator, integratorOptions)
+        self.integrator.init()
+
+    # constraints
+    def addConstraint(self,lhs,comparison,rhs):
+        if hasattr(self, '_solver'):
+            raise ValueError("Can't add a constraint once the solver has been set")
+        self._constraints.add(lhs,comparison,rhs)
+
+    def addDynamicsConstraints(self):
+        nSteps = self.states.size2()
+        if nSteps != self.actions.size2():
+            raise ValueError("actions and states have different number of steps")
+
+        for k in range(0,self.nSteps-1):
+            up = C.veccat([self.actions[:,k], self.params])
+            xk   = self.states[:,k]
+            xkp1 = self.states[:,k+1]
+            self.addConstraint(self.integrator.call([xk,up])[C.INTEGRATOR_XF],'==',xkp1)
+
+    # bounds
+    def setBound(self,name,val,**kwargs):
+        self._bounds.setBound(name,val,**kwargs)
+
+    # initial guess
+    def setGuess(self,name,val,**kwargs):
+        self._initialGuess.setGuess(name,val,**kwargs)
+    def setXGuess(self,*args,**kwargs):
+        self._initialGuess.setXVec(*args,**kwargs)
+    def setUGuess(self,*args,**kwargs):
+        self._initialGuess.setUVec(*args,**kwargs)
+
+    def getDesignVars(self):
+        return C.veccat( [C.flatten(self.states), C.flatten(self.actions), C.flatten(self.params)] )
+
+    # design vars
+    def lookup(self,name,timestep=None):
+        return self._designVars.lookup(name,timestep)
+    def devectorize(self,xup):
+        return self._designVars.devectorize(xup)
+    def getTimestepsFromDvs(self,dvs):
+        return self._designVars.getTimestepsFromDvs(dvs)
+
+    # solver
+    def setObjective(self, objective):
+        if hasattr(self, '_objective'):
+            raise ValueError("You've already set an objective and you can't change it")
+        self._objective = objective
+        
+    def setSolver(self, solver, solverOptions=[], objFunOptions=[], constraintFunOptions=[]):
+        if hasattr(self, '_solver'):
+            raise ValueError("You've already set a solver and you can't change it")
+        if not hasattr(self, '_objective'):
+            raise ValueError("You need to set an objective")
+
+        # make objective function
+        f = C.MXFunction([self.getDesignVars()], [self._objective])
+        setFXOptions(f, objFunOptions)
+        f.init()
+
+        # make constraint function
+        g = C.MXFunction([self.getDesignVars()], [self._constraints.getG()])
+        setFXOptions(g, constraintFunOptions)
+        g.init()
+
+        def mkParallelG():
+            oldg = C.MXFunction([self.getDesignVars()], [self._constraints.getG()])
+            oldg.init()
+        
+            gs = [C.MXFunction([self.getDesignVars()],[gg]) for gg in self._constraints._g]
+            for gg in gs:
+                gg.init()
+            
+            pg = C.Parallelizer(gs)
+            pg.setOption("parallelization","openmp")
+            pg.init()
+    
+            dvsDummy = C.msym('dvs',(self.nStates()+self.nActions())*self.nSteps+self.nParams())
+            g_ = C.MXFunction([dvsDummy],[C.veccat(pg.call([dvsDummy]*len(gs)))])
+            g_.init()
+            return g_
+
+#    parallelG.setInput([x*1.1 for x in guess.vectorize()])
+#    g.setInput([x*1.1 for x in guess.vectorize()])
+#
+#    parallelG.evaluate()
+#    g.evaluate()
+#
+#    print parallelG.output()-g.output()
+#    return
+
+        # make solver function
+        # self._solver = solver(f, mkParallelG())
+        self._solver = solver(f, g)
+        setFXOptions(self._solver, solverOptions)
+        self._solver.init()
+
+        # set constraints
+        self._solver.setInput(self._constraints.getLb(), C.NLP_LBG)
+        self._solver.setInput(self._constraints.getUb(), C.NLP_UBG)
+
+        self.setBounds()
+
+    def setBounds(self):
+        lb,ub = self._bounds.get()
+        self._solver.setInput(lb, C.NLP_LBX)
+        self._solver.setInput(ub, C.NLP_UBX)
+
+    def solve(self):
+        self._solver.setInput(self._initialGuess.vectorize(), C.NLP_X_INIT)
+        self._solver.solve()
 
 
 class Constraints():
@@ -42,19 +192,6 @@ class Constraints():
         else:
             raise ValueError('Did not recognize comparison \"'+str(comparison)+'\"')
 
-    def addDynamicsConstraints(self,integrator,states,actions,params=None):
-        nSteps = states.size2()
-        if nSteps != actions.size2():
-            raise ValueError("actions and states have different number of steps")
-
-        for k in range(0,nSteps-1):
-            u = actions[:,k]
-            if params is not None: # params are appended to control inputs
-                u = C.veccat([u,params])
-            xk   = states[:,k]
-            xkp1 = states[:,k+1]
-            self.add(integrator.call([xk,u])[C.INTEGRATOR_XF],'==',xkp1)
-
     def getG(self):
         return C.veccat(self._g)
     def getLb(self):
@@ -62,160 +199,6 @@ class Constraints():
     def getUb(self):
         return C.veccat(self._gub)
 
-class DesignVarMap():
-    descriptor = ""
-    def __init__(self, xNames, uNames, pNames, nSteps):
-        r = getRepeated(xNames+uNames+pNames)
-        if len(r)>0:
-            raise ValueError("there are redundant names in the OCP: "+str(r))
-
-        self.nSteps = nSteps
-        self.xNames = xNames
-        self.uNames = uNames
-        self.pNames = pNames
-        
-        self.dvmap = {}
-        
-        for name in self.xuNames():
-            self.dvmap[name] = [None for k in range(0,self.nSteps)]
-        for name in self.pNames:
-            self.dvmap[name] = None
-
-    def xuNames(self):
-        return self.xNames+self.uNames
-
-    def _dvmapSetVec(self,val,names,**kwargs):
-        if isinstance(val,list):
-            length = len(val)
-        elif hasattr(val,'size'):
-            length = val.size()
-        else:
-            raise ValueError("can't figure out how long "+str(val)+" is")
-        assert(len(names)==length)
-        for k,name in enumerate(names):
-            self.dvmapSet(name,val[k],**kwargs)
-        
-    def setXVec(self,val,**kwargs):
-        self._dvmapSetVec(val,self.xNames,**kwargs)
-
-    def setUVec(self,val,**kwargs):
-        self._dvmapSetVec(val,self.uNames,**kwargs)
-
-    def dvmapSet(self,name,val,timestep=None,quiet=False):
-        # set state or action
-        if name in self.xuNames():
-            # set state or action for all timesteps
-            if timestep is None:
-                for timestep in range(0,self.nSteps):
-                    self.dvmapSet(name,val,timestep)
-                return
-            # set state or action for one timestep
-            val0 = self.dvmap[name][timestep]
-            # warn if value being overwritten
-            if (val0 is not None) and (not quiet):
-                print "WARNING: "+self.descriptor+" value for \""+name+"\" at timestep "+str(timestep)+" being changed from "+str(val0)+" to "+str(val)
-            self.dvmap[name][timestep] = val
-
-        # set param
-        elif name in self.pNames:
-            if timestep is not None:
-                raise ValueError('Can\'t set a parameter at a specific timestep')
-            val0 = self.dvmap[name]
-            # error if value being overwritten
-            if val0 is not None:
-                raise ValueError(self.descriptor+" value for parameter \""+name+"\" being changed from "+str(val0)+" to "+str(val))
-            self.dvmap[name] = val
-
-        # error if name not in x/u/p
-        else:
-            raise ValueError("unrecognized variable name \""+name+"\"")
-
-    def vectorize(self):
-        # make sure all bounds are set
-        self._assertAllValuesSet()
-        
-        # concatenate then unzip bounds
-        return self._concatValues()
-
-    def getTimestepsFromDvs(self,dvs):
-        self.lookup
-        ret = {}
-        ts = 0
-        nx = len(self.xNames)
-        nu = len(self.uNames)
-        nxu = nx+nu
-
-        xus = dvs[:self.nSteps*nxu].reshape([nxu,self.nSteps])
-        p = dvs[self.nSteps*nxu:]
-        
-        x = []
-        u = []
-        for ts in range(0,self.nSteps):
-            x.append(xus[:nx,ts])
-            u.append(xus[nx:,ts])
-        return (x,u,p)
-
-    def devectorize(self,xup):
-        ret = {}
-        n = 0
-        for name in self.xuNames():
-            ret[name]=xup[n*self.nSteps:(n+1)*self.nSteps]
-            n = n+1
-        for k,name in enumerate(self.pNames):
-            ret[name]=xup[n*self.nSteps+k].at(0)
-        return ret
-
-    def _concatValues(self):
-        xuVals = [self.dvmap[name] for name in self.xuNames()]
-         
-        import itertools
-        chain = itertools.chain(*xuVals)
-        return list(chain)+[self.dvmap[name] for name in self.pNames]
-    
-    def _assertAllValuesSet(self): # make sure all bounds are set
-        # populate dictionary of missing values
-        missing = {}
-        for name in self.xuNames():
-            for ts,val in enumerate(self.dvmap[name]):
-                if val is None:
-                    if name in missing:
-                        missing[name].append(ts)
-                    else:
-                        missing[name]=[ts]
-                        
-        for name in self.pNames:
-            if self.dvmap[name] is None:
-                missing[name] = True
-
-        # if dictionary is not empty, raise error
-        errs = []
-        for name in self.xuNames()+self.pNames:
-            if name in missing:
-                if isinstance(missing[name],list):
-                    errs.append(self.descriptor+" missing for: state/action \""+name+"\" at timesteps "+str(missing[name]))
-                else:
-                    errs.append(self.descriptor+" missing for: parameter \""+name+"\"")
-        if len(errs)>0:
-            raise ValueError("\n"+"\n".join(errs))
-
-
-    def lookup(self,name,timestep=None):
-        # get state or action
-        if name in self.xuNames():
-            # set state or action for all timesteps
-            if timestep is None:
-                return [self.dvmap[name][ts] for ts in range(0,self.nSteps)]
-            return self.dvmap[name][timestep]
-
-        # get param
-        elif name in self.pNames:
-            if timestep is not None:
-                raise ValueError('Can\'t lookup a parameter at a specific timestep')
-            return self.dvmap[name]
-
-        # error if name not in x/u/p
-        else:
-            raise ValueError("unrecognized variable name \""+name+"\"")
 
 class Bounds(DesignVarMap):
     descriptor = "bound"
