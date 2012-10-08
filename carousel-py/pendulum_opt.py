@@ -12,22 +12,21 @@ import pendulum_model
 
 def main():
     nSteps = 15
-    endTime = C.ssym('endTime')
 
     print "creating model"
-    (dae, others) = pendulum_model.pendulum_model((endTime,nSteps))
-    dae.init()
+    dae = pendulum_model.pendulum_model(nSteps=nSteps)
+    dae.sxfun.init()
 
-    nStates = others['xVec'].size()
-    nActions = others['uVec'].size()
-    nParams = others['pVec'].size()
+    nStates  = dae.xVec().size()
+    nActions = dae.uVec().size()
+    nParams  = dae.pVec().size()
 
-    assert(nStates==dae.inputSX(C.DAE_X).size())
-    assert(nActions+nParams==dae.inputSX(C.DAE_P).size())
+    assert(nStates==dae.sxfun.inputSX(C.DAE_X).size())
+    assert(nActions+nParams==dae.sxfun.inputSX(C.DAE_P).size())
     
     # make the integrator
     print "creating integrator"
-    integrator = C.IdasIntegrator(dae)
+    integrator = C.IdasIntegrator(dae.sxfun)
     integrator.setOption("reltol",1e-7)
     integrator.setOption("abstol",1e-9)
     integrator.setOption("t0",0)
@@ -49,8 +48,8 @@ def main():
 
     # constrain invariants
     def invariantErrs():
-        f = C.SXFunction( [others['xVec'],others['uVec'],others['pVec']]
-                        , [C.veccat(others['c'])]
+        f = C.SXFunction( [dae.xVec(),dae.uVec(),dae.pVec()]
+                        , [dae.output('invariants')]
                         )
         f.setOption('name','invariant errors')
         f.init()
@@ -60,7 +59,7 @@ def main():
     constraints.add(c0,'==',0)
 
     # bounds
-    bounds = ocp.Bounds(others['xNames'], others['uNames'], others['pNames'], nSteps)
+    bounds = ocp.Bounds(dae._xNames, dae._uNames, dae._pNames, nSteps)
     r = 0.3
     bounds.setBound('x',(-0.5,0.5))
     bounds.setBound('z',(-0.5,0.5))
@@ -82,7 +81,7 @@ def main():
 
     # make the solver
     designVars = C.veccat( [C.flatten(states), C.flatten(actions), C.flatten(params)] )
-    dvs = ocp.DesignVars((others['xNames'],states), (others['uNames'],actions), (others['pNames'],params), nSteps)
+    dvs = ocp.DesignVars((dae._xNames,states), (dae._uNames,actions), (dae._pNames,params), nSteps)
     
     # objective function
     obj = dvs.lookup('endTime')
@@ -136,7 +135,7 @@ def main():
     solver.setInput(ub, C.NLP_UBX)
 
     # initial conditions
-    guess = ocp.InitialGuess(others['xNames'], others['uNames'], others['pNames'], nSteps)
+    guess = ocp.InitialGuess(dae._xNames, dae._uNames, dae._pNames, nSteps)
     guess.setXVec([r,0,0,0])
     guess.setGuess('torque',0)
     guess.setGuess('m',0.4)
