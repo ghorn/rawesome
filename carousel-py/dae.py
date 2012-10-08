@@ -105,7 +105,7 @@ class Dae():
         self._outputDict[name] = val
 
     def outputsFun(self):
-        self._freeze()
+        self._freeze('outputsFun()')
         inputs = [self.xVec(),C.veccat([self.uVec(),self.pVec()])]
         outputs = [self._outputDict[n] for n in self._outputNames]
         fOutputs = C.SXFunction(inputs,outputs)
