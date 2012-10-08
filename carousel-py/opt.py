@@ -10,7 +10,7 @@ import casadi as C
 
 import kite_pb2
 import kiteproto
-import ocp 
+import ocputils
 import model
 
 #tc0 = 2*389.970797939731
@@ -70,7 +70,7 @@ def main():
     states = C.msym("x" ,nStates,nSteps)
     actions = C.msym("u",nActions,nSteps)
     params = C.msym("p",nParams)
-    constraints = ocp.Constraints()
+    constraints = ocputils.Constraints()
 
     constraints.addDynamicsConstraints(integrator, states, actions, params)
 
@@ -100,7 +100,7 @@ def main():
     constraints.add(actions[:,0],'==',actions[:,-1])
 
     # bounds
-    bounds = ocp.Bounds(dae._xNames, dae._uNames, dae._pNames, nSteps)
+    bounds = ocputils.Bounds(dae._xNames, dae._uNames, dae._pNames, nSteps)
     bounds.setBound('aileron',(-0.04,0.04))
     bounds.setBound('elevator',(-0.1,0.1))
     
@@ -137,7 +137,7 @@ def main():
     designVars = C.veccat( [C.flatten(states), C.flatten(actions), C.flatten(params)] )
     
     # objective function
-    dvs = ocp.DesignVars((dae._xNames,states), (dae._uNames,actions), (dae._pNames,params), nSteps)
+    dvs = ocputils.DesignVars((dae._xNames,states), (dae._uNames,actions), (dae._pNames,params), nSteps)
     tc0 = 390
     obj = (C.sumAll(actions[0:2,:]*actions[0:2,:]) + 1e-10*C.sumAll((actions[2,:]-tc0)*(actions[2,:]-tc0)))*dvs.lookup('endTime')
     f = C.MXFunction([designVars], [obj])
@@ -211,7 +211,7 @@ def main():
     solver.setInput(ub, C.NLP_UBX)
 
     # initial conditions
-    guess = ocp.InitialGuess(dae._xNames, dae._uNames, dae._pNames, nSteps)
+    guess = ocputils.InitialGuess(dae._xNames, dae._uNames, dae._pNames, nSteps)
     guess.setXVec(x0)
     for k in range(0,nSteps):
         val = 2*pi*k/(nSteps-1)

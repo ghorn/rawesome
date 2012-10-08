@@ -7,7 +7,7 @@ import copy
 import kite_pb2
 import casadi as C
 
-import ocp 
+import ocputils
 import pendulum_model
 
 def main():
@@ -42,7 +42,7 @@ def main():
     states = C.msym("x" ,nStates,nSteps)
     actions = C.msym("u",nActions,nSteps)
     params = C.msym("p",nParams)
-    constraints = ocp.Constraints()
+    constraints = ocputils.Constraints()
 
     constraints.addDynamicsConstraints(integrator, states, actions, params)
 
@@ -59,7 +59,7 @@ def main():
     constraints.add(c0,'==',0)
 
     # bounds
-    bounds = ocp.Bounds(dae._xNames, dae._uNames, dae._pNames, nSteps)
+    bounds = ocputils.Bounds(dae._xNames, dae._uNames, dae._pNames, nSteps)
     r = 0.3
     bounds.setBound('x',(-0.5,0.5))
     bounds.setBound('z',(-0.5,0.5))
@@ -81,7 +81,7 @@ def main():
 
     # make the solver
     designVars = C.veccat( [C.flatten(states), C.flatten(actions), C.flatten(params)] )
-    dvs = ocp.DesignVars((dae._xNames,states), (dae._uNames,actions), (dae._pNames,params), nSteps)
+    dvs = ocputils.DesignVars((dae._xNames,states), (dae._uNames,actions), (dae._pNames,params), nSteps)
     
     # objective function
     obj = dvs.lookup('endTime')
@@ -135,7 +135,7 @@ def main():
     solver.setInput(ub, C.NLP_UBX)
 
     # initial conditions
-    guess = ocp.InitialGuess(dae._xNames, dae._uNames, dae._pNames, nSteps)
+    guess = ocputils.InitialGuess(dae._xNames, dae._uNames, dae._pNames, nSteps)
     guess.setXVec([r,0,0,0])
     guess.setGuess('torque',0)
     guess.setGuess('m',0.4)
