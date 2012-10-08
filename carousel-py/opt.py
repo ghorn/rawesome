@@ -49,7 +49,7 @@ def main():
     ocp = MultipleShootingInterval(dae, nSteps)
 
     # make the integrator
-    print "creating integrator"
+    print "setting up dynamics constraints"
     integratorOptions = [ ("reltol",1e-7)
                         , ("abstol",1e-9)
                         , ("t0",0)
@@ -59,11 +59,7 @@ def main():
 #                        , ("linear_solver_creator",C.LapackLUDense)
                         , ("linear_solver","user_defined")
                         ]
-    ocp.makeIdasIntegrator(integratorOptions)
-
-    # dynamics constraints
-    print "setting up dynamics constraints"
-    ocp.addDynamicsConstraints()
+    ocp.setIdasIntegrator(integratorOptions)
 
     # constrain invariants
     def invariantErrs():

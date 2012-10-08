@@ -50,11 +50,16 @@ class MultipleShootingInterval():
     def nParams(self):
         return self.dae.pVec().size()
 
-
-    def makeIdasIntegrator(self, integratorOptions=[]):
+    def setIdasIntegrator(self, integratorOptions=[]):
         self.integrator = C.IdasIntegrator(self.dae.sxfun)
         setFXOptions(self.integrator, integratorOptions)
         self.integrator.init()
+
+        def f((xk,uk),(xkp1,ukp1),p):
+            upk = C.veccat([uk,p])
+            self.addConstraint(self.integrator.call([xk,upk])[C.INTEGRATOR_XF],'==',xkp1)
+        
+        self._addDynamicsConstraints(f)
 
     # constraints
     def addConstraint(self,lhs,comparison,rhs):
@@ -62,16 +67,13 @@ class MultipleShootingInterval():
             raise ValueError("Can't add a constraint once the solver has been set")
         self._constraints.add(lhs,comparison,rhs)
 
-    def addDynamicsConstraints(self):
-        nSteps = self.states.size2()
-        if nSteps != self.actions.size2():
-            raise ValueError("actions and states have different number of steps")
-
+    def _addDynamicsConstraints(self,f):
         for k in range(0,self.nSteps-1):
-            up = C.veccat([self.actions[:,k], self.params])
+            uk   = self.actions[:,k]
+            ukp1 = self.actions[:,k+1]
             xk   = self.states[:,k]
             xkp1 = self.states[:,k+1]
-            self.addConstraint(self.integrator.call([xk,up])[C.INTEGRATOR_XF],'==',xkp1)
+            f((xk,uk),(xkp1,ukp1),self.params)
 
     # bounds
     def setBound(self,name,val,**kwargs):
