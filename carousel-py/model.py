@@ -430,25 +430,14 @@ def model(zt,nSteps=None):
               , "r" # state 20
               , "dr" # state 21
               ] )
-    
     dae.addU( [ "tc"
               , "aileron"
               , "elevator"
               , 'ddr'
               ] )
-
     dae.addP( ['w0'] )
     
     stateDotDummy = C.veccat( [C.ssym(name+"DotDummy") for name in dae._xNames] )
-
-    dddelta = dae.zVec()[0]
-    ddX = dae.zVec()[1:4]
-    dw = dae.zVec()[4:7]
-
-    dx = dae.x('dx')
-    dy = dae.x('dy')
-    dz = dae.x('dz')
-    ddelta = dae.x('ddelta')
 
     dae.addOutput('r', dae.x('r'))
     dae.addOutput('dr', dae.x('dr'))
@@ -456,13 +445,14 @@ def model(zt,nSteps=None):
     dae.addOutput('aileron(deg)', dae.u('aileron')*180/C.pi)
     dae.addOutput('elevator(deg)', dae.u('elevator')*180/C.pi)
     dae.addOutput('torque', dae.u('tc'))
+    
     (massMatrix, rhs, dRexp, c, cdot) = modelInteg(dae, zt)
 
-    ode = C.veccat( [ C.veccat([dx,dy,dz])
+    ode = C.veccat( [ C.veccat(dae.x(['dx','dy','dz']))
                     , dRexp.trans().reshape([9,1])
-                    , ddX
-                    , dw
-                    , C.veccat([ddelta, dddelta])
+                    , C.veccat(dae.z(['ddx','ddy','ddz']))
+                    , C.veccat(dae.z(['dw1','dw2','dw3']))
+                    , C.veccat([dae.x('ddelta'), dae.z('dddelta')])
                     , dae.x('dr')
                     , dae.u('ddr')
                     ] )

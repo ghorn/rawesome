@@ -3,6 +3,8 @@ import casadi as C
 
 class Dae():
     def __init__(self):
+        self._frozen = set()
+        
         self._xNames = []
         self._zNames = []
         self._uNames = []
@@ -14,6 +16,13 @@ class Dae():
         self._uDict = {}
         self._pDict = {}
         self._outputDict = {}
+
+    def _freeze(self,msg):
+        self._frozen.add(msg)
+
+    def assertNotFrozen(self):
+        if len(self._frozen) > 0:
+            raise ValueError("can't perform this operation because Dae has been frozen by: "+str([n for n in self._frozen]))
 
     def assertUniqueName(self, name):
         allNames = self._xNames + self._zNames + self._uNames + self._pNames + self._outputNames
@@ -32,6 +41,7 @@ class Dae():
         return namedict[name]
 
     def _addVar(self,name,namelist,namedict):
+        self.assertNotFrozen()
         if isinstance(name,list):
             return [self._addVar(n,namelist,namedict) for n in name]
 
@@ -73,12 +83,16 @@ class Dae():
         return self._getVar(name,self._outputNames,self._outputDict)
 
     def xVec(self):
+        self._freeze('xVec()')
         return C.veccat([self._xDict[n] for n in self._xNames])
     def zVec(self):
+        self._freeze('zVec()')
         return C.veccat([self._zDict[n] for n in self._zNames])
     def uVec(self):
+        self._freeze('uVec()')
         return C.veccat([self._uDict[n] for n in self._uNames])
     def pVec(self):
+        self._freeze('pVec()')
         return C.veccat([self._pDict[n] for n in self._pNames])
 
     def addOutput(self,name,val):
@@ -91,6 +105,7 @@ class Dae():
         self._outputDict[name] = val
 
     def outputsFun(self):
+        self._freeze()
         inputs = [self.xVec(),C.veccat([self.uVec(),self.pVec()])]
         outputs = [self._outputDict[n] for n in self._outputNames]
         fOutputs = C.SXFunction(inputs,outputs)
