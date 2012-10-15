@@ -11,7 +11,7 @@ import casadi as C
 import kite_pb2
 import kiteproto
 
-from ocputils import MultipleShootingInterval
+from ocputils import MultipleShootingStage
 import model
 
 #tc0 = 2*389.970797939731
@@ -46,7 +46,7 @@ def main():
     dae = model.model(-0.01,nSteps)
 
     print "setting up OCP"
-    ocp = MultipleShootingInterval(dae, nSteps)
+    ocp = MultipleShootingStage(dae, nSteps)
 
     # make the integrator
     print "setting up dynamics constraints"
@@ -81,18 +81,13 @@ def main():
     ocp.addConstraint(cdot0,'==',0)
     ocp.addConstraint(dcmError0,'==',0)
 
-    # make it periodic
-    ocp.addConstraint(ocp.states[:18,0],'==',ocp.states[:18,-1])
-    ocp.addConstraint(ocp.states[19,0],'==',ocp.states[19,-1])
-    ocp.addConstraint(ocp.actions[:,0],'==',ocp.actions[:,-1])
-
     # bounds
     ocp.setBound('aileron',(-0.04,0.04))
     ocp.setBound('elevator',(-0.1,0.1))
 
     ocp.setBound('x',(0,4))
     ocp.setBound('y',(-3,3))
-    ocp.setBound('z',(-3,3))
+    ocp.setBound('z',(-2,3))
     ocp.setBound('r',(1,2))
     ocp.setBound('dr',(-1,1))
     ocp.setBound('ddr',(0,0))
@@ -105,19 +100,24 @@ def main():
         ocp.setBound(d,(-50,50))
 
     for w in ['w1','w2','w3']:
-        ocp.setBound(w,(-4*pi,4*pi))
+        ocp.setBound(w,(-8*pi,8*pi))
 
     ocp.setBound('delta',(-0.01,1.01*2*pi))
     ocp.setBound('ddelta',(-pi/4,8*pi))
     ocp.setBound('tc',(-200,600))
-    ocp.setBound('tc',(389.970797939731,389.970797939731))
-#    ocp.setBound('endTime',(0.5,2.0))
-    ocp.setBound('endTime',(1.6336935276077966,1.6336935276077966))
-    ocp.setBound('w0',(0,0))
+#    ocp.setBound('tc',(389.970797939731,389.970797939731))
+    ocp.setBound('endTime',(0.5,2.0))
+#    ocp.setBound('endTime',(1.6336935276077966,1.6336935276077966))
+    ocp.setBound('w0',(10,10))
 
     # boundary conditions
     ocp.setBound('delta',(0,0),timestep=0)
     ocp.setBound('delta',(2*pi,2*pi),timestep=nSteps-1)
+
+    # make it periodic
+    ocp.addConstraint(ocp.states[:18,0],'==',ocp.states[:18,-1])
+    ocp.addConstraint(ocp.states[19,0],'==',ocp.states[19,-1])
+    ocp.addConstraint(ocp.actions[:,0],'==',ocp.actions[:,-1])
 
     # make the solver
     # objective function
@@ -125,6 +125,7 @@ def main():
     obj = (C.sumAll(ocp.actions[0:2,:]*ocp.actions[0:2,:]) + 1e-10*C.sumAll((ocp.actions[2,:]-tc0)*(ocp.actions[2,:]-tc0)))*ocp.lookup('endTime')
     ocp.setObjective(obj)
 
+    # zero mq setup
     context   = zmq.Context(1)
     publisher = context.socket(zmq.PUB)
     publisher.bind("tcp://*:5563")
@@ -160,7 +161,7 @@ def main():
     # solver
     solverOptions = [ ("iteration_callback",makeCallback())
                     , ("linear_solver","ma57")
-                    , ("max_iter",5)
+#                    , ("max_iter",5)
                     ]
     
     ocp.setSolver( C.IpoptSolver, solverOptions=solverOptions )

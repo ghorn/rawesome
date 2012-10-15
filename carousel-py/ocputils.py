@@ -15,24 +15,41 @@ def setFXOptions(fun, options):
         optName,optVal = intOpt
         fun.setOption(optName, optVal)
 
-class MultipleShootingInterval():
+
+
+class MultipleShootingStage():
     def __init__(self, dae, nSteps):
         # check inputs
         assert(isinstance(dae, Dae))
         assert(isinstance(nSteps, int))
+
+        # make sure dae has everything
+        assert(hasattr(dae,'odeRes'))
+        assert(hasattr(dae,'algRes'))
+        assert(hasattr(dae,'stateDotDummy'))
         
         self.dae = dae
-        self.dae.sxfun.init()
-        self.dae._freeze('MultipleShootingInterval(dae)')
-
-        assert(self.nStates()==self.dae.sxfun.inputSX(C.DAE_X).size())
-        assert(self.nActions()+self.nParams()==self.dae.sxfun.inputSX(C.DAE_P).size())
+        self.dae._freeze('MultipleShootingStage(dae)')
 
         # set up design vars
         self.nSteps = nSteps
         self.states = C.msym("x" ,self.nStates(),self.nSteps)
         self.actions = C.msym("u",self.nActions(),self.nSteps)
         self.params = C.msym("p",self.nParams())
+        
+#        self._dvs = C.msym("dv",self.nStates()*self.nSteps+self.nActions()*self.nSteps+self.nParams())
+#
+#        numXVars = self.nStates()*self.nSteps
+#        numUVars = self.nActions()*self.nSteps
+#        numPVars = self.nParams()
+#        
+#        self.states  = C.reshape(self._dvs[:numXVars], [self.nStates(), self.nSteps])
+#        self.actions = C.reshape(self._dvs[numXVars:numXVars+numUVars], [self.nActions(), self.nSteps])
+#        self.params = self._dvs[numXVars+numUVars:]
+#
+#        assert( self.states.size() == numXVars )
+#        assert( self.actions.size() == numUVars )
+#        assert( self.params.size() == numPVars )
 
         # set up interface
         self._constraints = Constraints()
@@ -51,29 +68,31 @@ class MultipleShootingInterval():
         return self.dae.pVec().size()
 
     def setIdasIntegrator(self, integratorOptions=[]):
-        self.integrator = C.IdasIntegrator(self.dae.sxfun)
+        # make dae input fun
+        daeSXFun = self.dae.sxFun()
+        assert(self.nStates()==daeSXFun.inputSX(C.DAE_X).size())
+        assert(self.nActions()+self.nParams()==daeSXFun.inputSX(C.DAE_P).size())
+
+        # make integrator
+        self.integrator = C.IdasIntegrator(daeSXFun)
         setFXOptions(self.integrator, integratorOptions)
         self.integrator.init()
 
-        def f((xk,uk),(xkp1,ukp1),p):
+        # set up dynamics constraints
+        for k in range(0,self.nSteps-1):
+            uk   = self.actions[:,k]
+            ukp1 = self.actions[:,k+1]
+            xk   = self.states[:,k]
+            xkp1 = self.states[:,k+1]
+            p = self.params
             upk = C.veccat([uk,p])
             self.addConstraint(self.integrator.call([xk,upk])[C.INTEGRATOR_XF],'==',xkp1)
-        
-        self._addDynamicsConstraints(f)
 
     # constraints
     def addConstraint(self,lhs,comparison,rhs):
         if hasattr(self, '_solver'):
             raise ValueError("Can't add a constraint once the solver has been set")
         self._constraints.add(lhs,comparison,rhs)
-
-    def _addDynamicsConstraints(self,f):
-        for k in range(0,self.nSteps-1):
-            uk   = self.actions[:,k]
-            ukp1 = self.actions[:,k+1]
-            xk   = self.states[:,k]
-            xkp1 = self.states[:,k+1]
-            f((xk,uk),(xkp1,ukp1),self.params)
 
     # bounds
     def setBound(self,name,val,**kwargs):
@@ -89,6 +108,7 @@ class MultipleShootingInterval():
 
     def getDesignVars(self):
         return C.veccat( [C.flatten(self.states), C.flatten(self.actions), C.flatten(self.params)] )
+        #return self._dvs
 
     # design vars
     def lookup(self,name,timestep=None):
@@ -121,15 +141,14 @@ class MultipleShootingInterval():
         g.init()
 
         def mkParallelG():
-            oldg = C.MXFunction([self.getDesignVars()], [self._constraints.getG()])
-            oldg.init()
-        
             gs = [C.MXFunction([self.getDesignVars()],[gg]) for gg in self._constraints._g]
             for gg in gs:
                 gg.init()
             
             pg = C.Parallelizer(gs)
-            pg.setOption("parallelization","openmp")
+#            pg.setOption("parallelization","openmp")
+            pg.setOption("parallelization","serial")
+#            pg.setOption("parallelization","expand")
             pg.init()
     
             dvsDummy = C.msym('dvs',(self.nStates()+self.nActions())*self.nSteps+self.nParams())
@@ -137,14 +156,16 @@ class MultipleShootingInterval():
             g_.init()
             return g_
 
-#    parallelG.setInput([x*1.1 for x in guess.vectorize()])
-#    g.setInput([x*1.1 for x in guess.vectorize()])
-#
-#    parallelG.evaluate()
-#    g.evaluate()
-#
-#    print parallelG.output()-g.output()
-#    return
+#        parallelG = mkParallelG()
+#        guess = self._initialGuess.vectorize()
+#        parallelG.setInput([x*1.1 for x in guess])
+#        g.setInput([x*1.1 for x in guess])
+#    
+#        g.evaluate()
+#        parallelG.evaluate()
+    
+#        print parallelG.output()-g.output()
+#        exit(0)
 
         # make solver function
         # self._solver = solver(f, mkParallelG())

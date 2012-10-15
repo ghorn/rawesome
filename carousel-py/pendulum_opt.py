@@ -7,7 +7,7 @@ import copy
 import kite_pb2
 import casadi as C
 
-from ocputils import MultipleShootingInterval
+from ocputils import MultipleShootingStage
 import pendulum_model
 
 def main():
@@ -17,7 +17,7 @@ def main():
     dae = pendulum_model.pendulum_model(nSteps=nSteps)
 
     print "setting up OCP"
-    ocp = MultipleShootingInterval(dae, nSteps)
+    ocp = MultipleShootingStage(dae, nSteps)
     
     # make the integrator
     print "setting up dynamics constraints"

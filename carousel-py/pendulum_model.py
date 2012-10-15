@@ -19,13 +19,13 @@ def pendulum_model(nSteps=None):
 
     r = 0.3
     
-    stateDotDummy = C.veccat( [C.ssym(name+"DotDummy") for name in dae._xNames] )
+    dae.stateDotDummy = C.veccat( [C.ssym(name+"DotDummy") for name in dae._xNames] )
 
-    scaledStateDotDummy = stateDotDummy
+    scaledStateDotDummy = dae.stateDotDummy
     
     if nSteps is not None:
         endTime = dae.addP('endTime')
-        scaledStateDotDummy = stateDotDummy/(endTime/(nSteps-1))
+        scaledStateDotDummy = dae.stateDotDummy/(endTime/(nSteps-1))
 
     xDotDummy  = scaledStateDotDummy[0]
     zDotDummy  = scaledStateDotDummy[1]
@@ -49,9 +49,9 @@ def pendulum_model(nSteps=None):
         ]
     dae.addOutput('invariants',C.veccat(c))
 
-    dae.sxfun = C.SXFunction( C.daeIn( x=dae.xVec(), z=dae.zVec(), p=C.veccat([dae.uVec(),dae.pVec()]), xdot=stateDotDummy ),
-                              C.daeOut( alg=C.veccat(alg), ode=C.veccat(ode)) )
-
+    dae.algRes = alg
+    dae.odeRes = ode
+    
     return dae
 
 if __name__=='__main__':

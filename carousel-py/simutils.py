@@ -26,7 +26,8 @@ class Communicator():
         pb.messages.append("-------------------------")
 
         self.fOutputs.setInput(x,0)
-        self.fOutputs.setInput(C.veccat([u,p]),1)
+        self.fOutputs.setInput(u,1)
+        self.fOutputs.setInput(p,2)
         self.fOutputs.evaluate()
         for k,n in enumerate(self.outputNames):
             pb.messages.append(n+": "+str(self.fOutputs.output(k)))

@@ -437,7 +437,7 @@ def model(zt,nSteps=None):
               ] )
     dae.addP( ['w0'] )
     
-    stateDotDummy = C.veccat( [C.ssym(name+"DotDummy") for name in dae._xNames] )
+    dae.stateDotDummy = C.veccat( [C.ssym(name+"DotDummy") for name in dae._xNames] )
 
     dae.addOutput('r', dae.x('r'))
     dae.addOutput('dr', dae.x('dr'))
@@ -457,17 +457,14 @@ def model(zt,nSteps=None):
                     , dae.u('ddr')
                     ] )
 
-    scaledStateDotDummy = stateDotDummy
+    scaledStateDotDummy = dae.stateDotDummy
     
     if nSteps is not None:
         endTime = dae.addP('endTime')
-        scaledStateDotDummy = stateDotDummy/(endTime/(nSteps-1))
+        scaledStateDotDummy = dae.stateDotDummy/(endTime/(nSteps-1))
 
-    odeRes = ode - scaledStateDotDummy
-    algebraicRes = C.mul(massMatrix, dae.zVec()) - rhs
-
-    dae.sxfun = C.SXFunction( C.daeIn( x=dae.xVec(), z=dae.zVec(), p=C.veccat([dae.uVec(),dae.pVec()]), xdot=stateDotDummy ),
-                              C.daeOut( alg=algebraicRes, ode=odeRes))
+    dae.odeRes = ode - scaledStateDotDummy
+    dae.algRes = C.mul(massMatrix, dae.zVec()) - rhs
     
     return dae
 

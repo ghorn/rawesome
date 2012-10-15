@@ -106,12 +106,26 @@ class Dae():
 
     def outputsFun(self):
         self._freeze('outputsFun()')
-        inputs = [self.xVec(),C.veccat([self.uVec(),self.pVec()])]
+        inputs = [self.xVec(),self.uVec(),self.pVec()]
         outputs = [self._outputDict[n] for n in self._outputNames]
         fOutputs = C.SXFunction(inputs,outputs)
-        fOutputs.setOption('name','fOutputs')
+        fOutputs.setOption('name','outputsFun')
         return fOutputs
 
+    def sxFun(self):
+        self._freeze('sxFun()')
+        algRes = None
+        if hasattr(self,'algRes'):
+            algRes = self.algRes
+        odeRes = self.odeRes
+
+        if isinstance(odeRes,list):
+            odeRes = C.veccat(odeRes)
+        if isinstance(algRes,list):
+            algRes = C.veccat(algRes)
+            
+        return C.SXFunction( C.daeIn( x=self.xVec(), z=self.zVec(), p=C.veccat([self.uVec(),self.pVec()]), xdot=self.stateDotDummy ),
+                             C.daeOut( alg=algRes, ode=odeRes) )
 
 if __name__=='__main__':
     dae = Dae()
