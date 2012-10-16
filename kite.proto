@@ -6,6 +6,7 @@ message Xyz {
   required double z = 3;
 }
 
+// rotation matrix components
 message Dcm {
   required double r11 = 1;
   required double r12 = 2;
@@ -21,12 +22,19 @@ message Dcm {
 }
 
 message CarouselState {
+  // position of kite relative to tip of carousel arm, in carousel arm frame
   required Xyz kiteXyz = 1;
+  // rotaton from kite frame to carousel arm frame
   required Dcm kiteDcm = 2;
+  // carousel arm rotation angle in radians
   required double delta = 3;
+  // carousel arm length (should be positive)
   required double rArm = 4;
+  // bridle length (should be negative)
   required double zt = 5;
+  // list of strings you would like to display on-screen
   repeated string messages = 6;
+  // wind at 100 meters altitude in logarithmic wind shear model
   required double w0 = 7;
 }
 
