@@ -161,11 +161,11 @@ def nlpSetup(xd,xa,u,p,nicp,nk,deg,p_init,p_min,p_max,xD_init,xA_init,xD_min,xA_
     # NLP setup
     # -----------------------------------------------------------------------------
     # Dimensions of the problem
-    nx = xd.size()          # total number of states
-    ndiff = nx              # number of differential states
-    nalg = xa.size()        # number of algebraic states
-    nu = u.size()           # number of controls
-    NP  = p.size()          # number of parameters
+    nx = xd.size() +xa.size() # total number of states
+    ndiff = xd.size()         # number of differential states
+    nalg = xa.size()          # number of algebraic states
+    nu = u.size()             # number of controls
+    NP  = p.size()            # number of parameters
     
     # Total number of variables
     NXD = nicp*nk*(deg+1)*ndiff # Collocated differential states
