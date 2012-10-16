@@ -12,7 +12,7 @@ kite.pb.o:kite.pb.cc
 sender_example.o:kite.pb.h
 
 sender_example:sender_example.o kite.pb.o
-	${CXX} $^ -o $@ -lprotobuf
+	${CXX} $^ -o $@ -lprotobuf -lzmq
 
 clean:
 	rm -f ${TARGETS} *.o  *.pb.cc *.pb.h
