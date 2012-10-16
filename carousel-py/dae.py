@@ -95,6 +95,19 @@ class Dae():
         self._freeze('pVec()')
         return C.veccat([self._pDict[n] for n in self._pNames])
 
+    def xNames(self):
+        self._freeze('xNames()')
+        return self._xNames
+    def zNames(self):
+        self._freeze('zNames()')
+        return self._zNames
+    def uNames(self):
+        self._freeze('uNames()')
+        return self._uNames
+    def pNames(self):
+        self._freeze('pNames()')
+        return self._pNames
+
     def addOutput(self,name,val):
 #        print "adding output name: \""+name+"\", val: "+str(val)
         assert( isinstance(name, str) )

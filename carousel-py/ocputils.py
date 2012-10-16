@@ -15,8 +15,6 @@ def setFXOptions(fun, options):
         optName,optVal = intOpt
         fun.setOption(optName, optVal)
 
-
-
 class MultipleShootingStage():
     def __init__(self, dae, nSteps):
         # check inputs
