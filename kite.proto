@@ -24,7 +24,7 @@ message Dcm {
 message CarouselState {
   // position of kite relative to tip of carousel arm, in carousel arm frame
   required Xyz kiteXyz = 1;
-  // rotaton from kite frame to carousel arm frame
+  // rotaton from carousel arm frame to kite frame
   required Dcm kiteDcm = 2;
   // carousel arm rotation angle in radians
   required double delta = 3;
