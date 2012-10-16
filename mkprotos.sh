@@ -1,9 +1,9 @@
 #!/bin/sh
 
-cd carousel-py
-protoc -I.. --python_out=. ../kite.proto
-cd ..
+mkdir -p carousel-cpp
+protoc --python_out=carousel-py --cpp_out=carousel-cpp kite.proto
 
 cd kitevis
 hprotoc -I.. --haskell_out=src kite.proto
 cd ..
+
