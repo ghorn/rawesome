@@ -1,6 +1,9 @@
 import casadi as CS
 import numpy as np
 import matplotlib.pyplot as plt
+import numbers
+
+from dae import Dae
 
 def mkCollocationPoints():
     # Legendre collocation points
@@ -21,7 +24,6 @@ def mkCollocationPoints():
     
     # Type of collocation points
     return {'LEGENDRE':legendre_points, 'RADAU':radau_points}
-        
 
 def setup_coeffs(deg=None,collPoly=None,nk=None,h=None):
     assert(deg is not None)
@@ -68,62 +70,86 @@ def setup_coeffs(deg=None,collPoly=None,nk=None,h=None):
   
     return (C,D,tau,tau_root)
 
-def modelSetup(nk,nicp,deg):
+def modelSetup(nk,nicp,deg,coll):
     # -----------------------------------------------------------------------------
     # Model setup
     # -----------------------------------------------------------------------------
     # Declare variables (use scalar graph)
     t  = CS.ssym("t")          # time
-    u  = CS.ssym("u")          # control
-    xd = CS.ssym("xd",3)       # differential state
-    xa = CS.ssym("xa",0,1)     # algebraic state
-    xddot = CS.ssym("xdot",3)  # differential state time derivative
-    p     = CS.ssym("p",0,1)      # parameters
-    
-    # ODE right hand side function
-    rhs = CS.vertcat([(1 - xd[1]*xd[1])*xd[0] - xd[1] + u, \
-           xd[0], \
-           xd[0]*xd[0] + xd[1]*xd[1] + u*u])
-    # System dynamics (implicit formulation)
-    ffcn = CS.SXFunction([t,xddot,xd,xa,u,p],[xddot - rhs])
+#    u  = CS.ssym("u")          # control
+#    xd = CS.ssym("xd",3)       # differential state
+#    xa = CS.ssym("xa",0,1)     # algebraic state
+#    xddot = CS.ssym("xdot",3)  # differential state time derivative
+#    p     = CS.ssym("p",0,1)   # parameters
+#    
+#    
+#    # ODE right hand side function
+#    rhs = CS.vertcat([(1 - xd[1]*xd[1])*xd[0] - xd[1] + u, \
+#           xd[0], \
+#           xd[0]*xd[0] + xd[1]*xd[1] + u*u])
+#    # System dynamics (implicit formulation)
+#    ffcn = CS.SXFunction([t,xddot,xd,xa,u,p],[xddot - rhs])
 
-    # Objective function (meyer term)
-    mfcn = CS.SXFunction([t,xd,xa,u,p],[xd[2]])
+    u = coll.dae.uVec()
+    xd = coll.dae.xVec()
+    xa = coll.dae.zVec()
+    xddot = coll.dae.stateDotDummy
+    p  = coll.dae.pVec()
+    residual = coll.dae.odeRes
+    if hasattr(coll.dae,'algRes'):
+        residual = CS.veccat([residual, coll.dae.algRes])
+    ffcn = CS.SXFunction([t,xddot,xd,xa,u,p],[residual])
 
-    # Control bounds
-    u_min = np.array(nk*[-0.75])
-    u_max = np.array(nk*[ 1.0])
-    u_init = np.array((nk*nicp*(deg+1))*[[0.0]]) # needs to be specified for every time interval (even though it stays constant)
-    
     # Differential state bounds and initial guess
-    # general bounds
-    xD_min = np.array((nk+1)*[[-CS.inf, -CS.inf, -CS.inf]])
-    xD_max = np.array((nk+1)*[[ CS.inf,  CS.inf,  CS.inf]])
-
-    # initial bounds
-    xD_min[0,:] = np.array([    0.0,     1.0,     0.0])
-    xD_max[0,:] = np.array([    0.0,     1.0,     0.0])
-
-    # final bounds
-    xD_min[nk,:] = np.array([    0.0,     0.0, -CS.inf])
-    xD_max[nk,:] = np.array([    0.0,     0.0,  CS.inf])
-
+    xD_min = np.array([[-CS.inf]*xd.size()]*(nk+1))
+    xD_max = np.array([[ CS.inf]*xd.size()]*(nk+1))
+    for k,name in enumerate(coll.dae.xNames()):
+        for timestep in range(nk+1):
+            (xmin,xmax) = coll._xBounds[name][timestep]
+            if xmin is None or xmax is None:
+                raise ValueError('need to set bounds for \"'+name+'\" at timestep '+str(timestep))
+            xD_min[timestep,k] = xmin
+            xD_max[timestep,k] = xmax
     xD_init = np.array((nk*nicp*(deg+1))*[[ 0.0,  0.0,  0.0]]) # needs to be specified for every time interval
     
     # Algebraic state bounds and initial guess
-    xA_min =  np.array(nk*[[]])
-    xA_max =  np.array(nk*[[]])
+    xA_min = np.array([[-CS.inf]*xa.size()]*nk)
+    xA_max = np.array([[ CS.inf]*xa.size()]*nk)
+    for k,name in enumerate(coll.dae.zNames()):
+        for timestep in range(nk):
+            (zmin,zmax) = coll._zBounds[name][timestep]
+            if zmin is None or zmax is None:
+                print "WARNING: didn't set bounds for algebraic state \""+name+"\" at timestep "+str(timestep)+", using (-inf,inf)"
+#                raise ValueError('need to set bounds for \"'+name+'\" at timestep '+str(timestep))
+            xA_min[timestep,k] = zmin
+            xA_max[timestep,k] = zmax
     xA_init = np.array((nk*nicp*(deg+1))*[[]])
     
+    # Control bounds and initial guess
+    u_min = np.array([[-CS.inf]*u.size()]*nk)
+    u_max = np.array([[ CS.inf]*u.size()]*nk)
+    for k,name in enumerate(coll.dae.uNames()):
+        for timestep in range(nk):
+            (umin,umax) = coll._uBounds[name][timestep]
+            if umin is None or umax is None:
+                raise ValueError('need to set bounds for \"'+name+'\" at timestep '+str(timestep))
+            u_min[timestep,k] = umin
+            u_max[timestep,k] = umax
+    u_init = np.array((nk*nicp*(deg+1))*[[0.0]]) # needs to be specified for every time interval (even though it stays constant)
+    
     # Parameter bounds and initial guess
-    p_min = np.array([])
-    p_max = np.array([])
+    p_min = np.array([-CS.inf]*p.size())
+    p_max = np.array([ CS.inf]*p.size())
+    for k,name in enumerate(coll.dae.pNames()):
+        (pmin,pmax) = coll._pBounds[name]
+        if pmin is None or pmax is None:
+            raise ValueError('need to set bounds for \"'+name+'\"')
+        p_min[timestep,k] = pmin
+        p_max[timestep,k] = pmax
     p_init = np.array([])
     
     # Initialize functions
     ffcn.init()
-    mfcn.init()
-    
     
     # -----------------------------------------------------------------------------
     # Constraints setup
@@ -153,15 +179,79 @@ def modelSetup(nk,nicp,deg):
     fcfcn.init()
 
     return (xd,xa,u,p,p_init,p_min,p_max,xD_init,xA_init,xD_min,xA_min,xD_max,xA_max,u_min,u_max,u_init,
-            icfcn,ic_min,ic_max,ffcn,pcfcn,pc_min,pc_max,fcfcn,fc_min,fc_max,mfcn)
+            icfcn,ic_min,ic_max,ffcn,pcfcn,pc_min,pc_max,fcfcn,fc_min,fc_max)
 
 
-def nlpSetup(xd,xa,u,p,nicp,nk,deg,p_init,p_min,p_max,xD_init,xA_init,xD_min,xA_min,xD_max,xA_max,u_min,u_max,u_init,icfcn,ic_min,ic_max,C,ffcn,h,pcfcn,pc_min,pc_max,D,fcfcn,fc_min,fc_max,mfcn):
+def setupDesignVars(coll):
+    ndiff = len(coll.dae.xNames())
+    nalg = len(coll.dae.zNames())
+    nu = len(coll.dae.uNames())
+    NP = len(coll.dae.pNames())
+    nx = ndiff + nalg
+    
+    # Total number of variables
+    NXD = coll.nicp*coll.nk*(coll.deg+1)*ndiff # Collocated differential states
+    NXA = coll.nicp*coll.nk*coll.deg*nalg      # Collocated algebraic states
+    NU = coll.nk*nu                  # Parametrized controls
+    NXF = ndiff                 # Final state (only the differential states)
+    NV = NXD+NXA+NU+NXF+NP
+
+    # NLP variable vector
+    V = CS.msym("V",NV)
+    
+    offset = 0
+    
+    # Get the parameters
+    P = V[offset:offset+NP]
+    offset += NP
+    
+    # Get collocated states and parametrized control
+    XD = np.resize(np.array([],dtype=CS.MX),(coll.nk+1,coll.nicp,coll.deg+1)) # NB: same name as above
+    XA = np.resize(np.array([],dtype=CS.MX),(coll.nk,coll.nicp,coll.deg)) # NB: same name as above
+    U = np.resize(np.array([],dtype=CS.MX),coll.nk)
+    for k in range(coll.nk):
+        # Collocated states
+        for i in range(coll.nicp):
+            for j in range(coll.deg+1):
+                # Get the expression for the state vector
+                XD[k][i][j] = V[offset:offset+ndiff]
+                if j !=0:
+                    XA[k][i][j-1] = V[offset+ndiff:offset+ndiff+nalg]
+                # Add the initial condition
+                index = (coll.deg+1)*(coll.nicp*k+i) + j
+                if k==0 and j==0 and i==0:
+                    offset += ndiff
+                else:
+                    if j!=0:
+                        offset += nx
+                    else:
+                        offset += ndiff
+        
+        # Parametrized controls
+        U[k] = V[offset:offset+nu]
+        offset += nu
+    
+    # State at end time
+    XD[coll.nk][0][0] = V[offset:offset+ndiff]
+    
+    offset += ndiff
+    assert(offset==NV)
+
+    return (V,XD,XA,U,P)
+
+    
+def nlpSetup(xd,xa,u,p,nicp,nk,deg,p_init,p_min,p_max,xD_init,xA_init,xD_min,xA_min,xD_max,xA_max,u_min,u_max,u_init,icfcn,ic_min,ic_max,C,ffcn,h,pcfcn,pc_min,pc_max,D,fcfcn,fc_min,fc_max,coll):
+    XD = coll._XD
+    XA = coll._XA
+    U = coll._U
+    P = coll._P
+    V = coll._V
+    
     # -----------------------------------------------------------------------------
     # NLP setup
     # -----------------------------------------------------------------------------
     # Dimensions of the problem
-    nx = xd.size() +xa.size() # total number of states
+    nx = xd.size() + xa.size() # total number of states
     ndiff = xd.size()         # number of differential states
     nalg = xa.size()          # number of algebraic states
     nu = u.size()             # number of controls
@@ -174,9 +264,6 @@ def nlpSetup(xd,xa,u,p,nicp,nk,deg,p_init,p_min,p_max,xD_init,xA_init,xD_min,xA_
     NXF = ndiff                 # Final state (only the differential states)
     NV = NXD+NXA+NU+NXF+NP
     
-    # NLP variable vector
-    V = CS.msym("V",NV)
-    
     # All variables with bounds and initial guess
     vars_lb = np.zeros(NV)
     vars_ub = np.zeros(NV)
@@ -184,26 +271,16 @@ def nlpSetup(xd,xa,u,p,nicp,nk,deg,p_init,p_min,p_max,xD_init,xA_init,xD_min,xA_
     offset = 0
     
     # Get the parameters
-    P = V[offset:offset+NP]
     vars_init[offset:offset+NP] = p_init
     vars_lb[offset:offset+NP] = p_min
     vars_ub[offset:offset+NP] = p_max
     offset += NP
     
     # Get collocated states and parametrized control
-    XD = np.resize(np.array([],dtype=CS.MX),(nk+1,nicp,deg+1)) # NB: same name as above
-    XA = np.resize(np.array([],dtype=CS.MX),(nk,nicp,deg)) # NB: same name as above
-    U = np.resize(np.array([],dtype=CS.MX),nk)
     for k in range(nk):  
         # Collocated states
         for i in range(nicp):
-            #
             for j in range(deg+1):
-                          
-                # Get the expression for the state vector
-                XD[k][i][j] = V[offset:offset+ndiff]
-                if j !=0:
-                    XA[k][i][j-1] = V[offset+ndiff:offset+ndiff+nalg]
                 # Add the initial condition
                 index = (deg+1)*(nicp*k+i) + j
                 if k==0 and j==0 and i==0:
@@ -232,14 +309,12 @@ def nlpSetup(xd,xa,u,p,nicp,nk,deg,p_init,p_min,p_max,xD_init,xA_init,xD_min,xA_
                         offset += ndiff
         
         # Parametrized controls
-        U[k] = V[offset:offset+nu]
         vars_lb[offset:offset+nu] = u_min[k]
         vars_ub[offset:offset+nu] = u_max[k]
         vars_init[offset:offset+nu] = u_init[index,:]
         offset += nu
     
     # State at end time
-    XD[nk][0][0] = V[offset:offset+ndiff]
     vars_lb[offset:offset+ndiff] = xD_min[nk,:]
     vars_ub[offset:offset+ndiff] = xD_max[nk,:]
     vars_init[offset:offset+ndiff] = xD_init[-1,:]
@@ -265,14 +340,15 @@ def nlpSetup(xd,xa,u,p,nicp,nk,deg,p_init,p_min,p_max,xD_init,xA_init,xD_min,xA_
                 # Get an expression for the state derivative at the collocation point
                 xp_jk = 0
                 for j2 in range (deg+1):
-                    xp_jk += C[j2][j]*XD[k][i][j2]       # get the time derivative of the differential states (eq 10.19b)
+                    xp_jk += C[j2][j]*XD[k][i][j2] # get the time derivative of the differential states (eq 10.19b)
                 
                 # Add collocation equations to the NLP
                 [fk] = ffcn.call([0., xp_jk/h, XD[k][i][j], XA[k][i][j-1], U[k], P])
-                g += [fk[:ndiff]]                     # impose system dynamics (for the differential states (eq 10.19b))
+                g += [fk[:ndiff]]           # impose system dynamics (for the differential states (eq 10.19b))
                 lbg.append(np.zeros(ndiff)) # equality constraints
                 ubg.append(np.zeros(ndiff)) # equality constraints
-                g += [fk[ndiff:]]                               # impose system dynamics (for the algebraic states (eq 10.19b))
+                
+                g += [fk[ndiff:]]          # impose system dynamics (for the algebraic states (eq 10.19b))
                 lbg.append(np.zeros(nalg)) # equality constraints
                 ubg.append(np.zeros(nalg)) # equality constraints
                 
@@ -313,21 +389,9 @@ def nlpSetup(xd,xa,u,p,nicp,nk,deg,p_init,p_min,p_max,xD_init,xA_init,xD_min,xA_
     gfcn = CS.MXFunction([V],[CS.vertcat(g)])
     
     # Objective function of the NLP
-    # Regularization
-    Obj = 0
-    #for k in range(nk):
-    #    for i in range(nicp):
-    #        # For all collocation points
-    #        for j in range(1,deg+1):
-    #            [obj] = mfcn2.call([XD[k][i][j],U[k], P])
-    #            Obj += obj
-    #[obj] = mfcn2.call([XD[nk][0][0],zeros(9), P])
-    #Obj += obj
-    # Energy
-    [obj] = mfcn.call([0., XD[k][i][j], XA[k][i][j-1], U[k], P])
-    Obj += obj
-    
-    ofcn = CS.MXFunction([V], [Obj])
+    if not hasattr(coll,'_objective'):
+        raise ValueError('need to set objective function')
+    ofcn = CS.MXFunction([V],[coll._objective])
 
     return (ofcn,gfcn,vars_init,vars_lb,vars_ub,lbg,ubg,ndiff,nalg,nu,NP)
 
@@ -445,37 +509,52 @@ def retrieveSolution(ndiff,deg,nicp,nk,nalg,nu,NP,v_opt,tau,tau_root):
     return (xD_opt,xA_opt,u_opt,xA_plt)
             
 class Coll():
-    def __init__(self):
+    def __init__(self, dae, nk, nicp, deg, collPoly):
+        print "collocation init, yay"
+        self.dae = dae
+        self.nk = nk
+        self.nicp = nicp
+        self.deg = deg
+        self.collPoly = collPoly
+
+        self._xBounds = dict( [(n,[None]*(nk+1)) for n in dae.xNames()] )
+        self._zBounds = dict( [(n,[None]*nk)     for n in dae.zNames()] )
+        self._uBounds = dict( [(n,[None]*nk)     for n in dae.uNames()] )
+        self._pBounds = dict( [(n,None)          for n in dae.pNames()] )
+
+        (V,XD,XA,U,P) = setupDesignVars(self)
+        self._V  = V
+        self._XD = XD
+        self._XA = XA
+        self._U  = U
+        self._P  = P
+
+    def run(self):
         ## -----------------------------------------------------------------------------
         ## Collocation setup
         ## -----------------------------------------------------------------------------
-        nicp = 1        # Number of (intermediate) collocation points per control interval
-        nk = 10         # Control discretization
         tf = 2.5        # End time
-        deg = 4         # Degree of interpolating polynomial
-        collPoly = 'RADAU'  # use Radau collocation points
-        #collPoly = 'LEGENDRE'    # use LEGENDRE collocation points
         
         # Size of the finite elements
-        h = tf/nk/nicp
+        h = tf/self.nk/self.nicp
 
         # make coefficients for collocation/continuity equations
-        C,D,tau,tau_root = setup_coeffs(deg=deg,collPoly=collPoly,nk=nk,h=h)
+        C,D,tau,tau_root = setup_coeffs(deg=self.deg,collPoly=self.collPoly,nk=self.nk,h=h)
         
         (xd,xa,u,p,p_init,p_min,p_max,xD_init,xA_init,xD_min,xA_min,xD_max,xA_max,u_min,
          u_max,u_init,
-         icfcn,ic_min,ic_max,ffcn,pcfcn,pc_min,pc_max,fcfcn,fc_min,fc_max,mfcn) = modelSetup(nk,nicp,deg)
+         icfcn,ic_min,ic_max,ffcn,pcfcn,pc_min,pc_max,fcfcn,fc_min,fc_max) = modelSetup(self.nk,self.nicp,self.deg,self)
         
         (ofcn,gfcn,vars_init,vars_lb,vars_ub,lbg,ubg,ndiff,nalg,nu,NP) = \
-          nlpSetup(xd,xa,u,p,nicp,nk,deg,p_init,p_min,p_max,xD_init,xA_init,xD_min,xA_min,xD_max,xA_max,u_min,u_max,u_init,icfcn,ic_min,ic_max,C,ffcn,h,pcfcn,pc_min,pc_max,D,fcfcn,fc_min,fc_max,mfcn)
+          nlpSetup(xd,xa,u,p,self.nicp,self.nk,self.deg,p_init,p_min,p_max,xD_init,xA_init,xD_min,xA_min,xD_max,xA_max,u_min,u_max,u_init,icfcn,ic_min,ic_max,C,ffcn,h,pcfcn,pc_min,pc_max,D,fcfcn,fc_min,fc_max,self)
         
         v_opt = solveNlp(ofcn,gfcn,vars_init,vars_lb,vars_ub,lbg,ubg)
 
-        (xD_opt,xA_opt,u_opt,xA_plt) = retrieveSolution(ndiff,deg,nicp,nk,nalg,nu,NP,v_opt,tau,tau_root)
+        (xD_opt,xA_opt,u_opt,xA_plt) = retrieveSolution(ndiff,self.deg,self.nicp,self.nk,nalg,nu,NP,v_opt,tau,tau_root)
         
         
         tg = np.array(tau_root)*h
-        for k in range(nk*nicp):
+        for k in range(self.nk*self.nicp):
             if k == 0:
                 tgrid = tg
             else:
@@ -493,5 +572,130 @@ class Coll():
         plt.grid()
         plt.show()
 
+    def bound(self,name,val,timestep=None,quiet=False):
+        assert(isinstance(name,str))
+        assert(isinstance(val,tuple))
+        assert(len(val)==2)
+        assert(isinstance(val[0],numbers.Real))
+        assert(isinstance(val[1],numbers.Real))
+
+        # handle timestep == None
+        if timestep is None:
+            if name in self._xBounds:
+                for k in range(self.nk+1):
+                    self.bound(name,val,timestep=k,quiet=quiet)
+                return
+            if name in self._zBounds:
+                for k in range(self.nk):
+                    self.bound(name,val,timestep=k,quiet=quiet)
+                return
+            if name in self._uBounds:
+                for k in range(self.nk):
+                    self.bound(name,val,timestep=k,quiet=quiet)
+                return
+            if name in self._pBounds:
+                oldbound = self._pBounds[name]
+                if (self._pBounds[name] is not None):
+                    raise ValueError("can't change bound on \""+name+"\" once it's set (tried to change bound "+str(oldbound)+" to "+str(val))
+                self._pBounds[name] = val
+                return
+        
+        assert(isinstance(timestep,int))
+        if name in self._pBounds:
+            raise ValueError("can't set bounds on a parameter on a specific timestep")
+        if name in self._xBounds:
+            if timestep>self.nk+1:
+                raise ValueError("differential state \""+name+"\" bound index too high ("+str(timestep)+">"+str(self.nk+1))
+            oldbound = self._xBounds[name][timestep]
+            if (oldbound is not None) and (quiet is False):
+                print "WARNING: changing \"%s\" bounds at timestep %d from %s to %s" % (name,timestep,str(oldbound),str(val))
+            self._xBounds[name][timestep] = val
+            return
+        if name in self._zBounds:
+            if timestep>self.nk:
+                raise ValueError("algebraic state \""+name+"\" bound index too high ("+str(timestep)+">"+str(self.nk))
+            oldbound = self._zBounds[name][timestep]
+            if (oldbound is not None) and (quiet is False):
+                print "WARNING: changing \"%s\" bounds at timestep %d from %s to %s" % (name,timestep,str(oldbound),str(val))
+            self._zBounds[name][timestep] = val
+            return
+        if name in self._uBounds:
+            if timestep>self.nk:
+                raise ValueError("action \""+name+"\" bound index too high ("+str(timestep)+">"+str(self.nk))
+            oldbound = self._uBounds[name][timestep]
+            if (oldbound is not None) and (quiet is False):
+                print "WARNING: changing \"%s\" bounds at timestep %d from %s to %s" % (name,timestep,str(oldbound),str(val))
+            self._uBounds[name][timestep] = val
+            return
+
+    def lookup(self,name,timestep=None):
+        assert(isinstance(name,str))
+        
+        if name in self.dae.pNames():
+            if timestep is not None:
+                raise ValueError("can't lookup a parameter ("+name+")at a certain timestep")
+            k = self.dae.pNames().index(name)
+            return self._P[k]
+
+        if timestep is None:
+            return CS.veccat([self.lookup(name,k) for k in range(self.nk+1)])
+
+        assert(isinstance(timestep,int))
+        if name in self.dae.xNames():
+            k = self.dae.xNames().index(name)
+            return self._XD[timestep][0][0][k]
+        if name in self.dae.uNames():
+            k = self.dae.uNames().index(name)
+            return self._U[timestep][k]
+        if name in self.dae.zNames():
+            raise ValueError("can't lookup algebraic states at this time, bug Greg")
+
+    def setObjective(self,obj):
+        if hasattr(self,'_objective'):
+            raise ValueError("can't change objective function once it's already set")
+        self._objective = obj
+
 if __name__=='__main__':
-    coll = Coll()
+    dae_ = Dae()
+    # -----------------------------------------------------------------------------
+    # Model setup
+    # -----------------------------------------------------------------------------
+    # Declare variables (use scalar graph)
+    t  = CS.ssym("t")          # time
+    u  = dae_.addU("u")          # control
+    xd = CS.veccat(dae_.addX(["x0","x1","x2"]))  # differential state
+#    xa = CS.ssym("xa",0,1)     # algebraic state
+#    xddot = CS.ssym("xdot",3)  # differential state time derivative
+#    p     = CS.ssym("p",0,1)      # parameters
+
+    dae_.stateDotDummy = CS.veccat( [CS.ssym(name+"DotDummy") for name in dae_._xNames] )
+
+    # ODE right hand side function
+    rhs = CS.vertcat([(1 - xd[1]*xd[1])*xd[0] - xd[1] + u, \
+           xd[0], \
+           xd[0]*xd[0] + xd[1]*xd[1] + u*u])
+    dae_.odeRes = rhs - dae_.stateDotDummy
+
+    nicp_ = 1        # Number of (intermediate) collocation points per control interval
+    nk_ = 10         # Control discretization
+    deg_ = 4         # Degree of interpolating polynomial
+    collPoly_ = 'RADAU'  # use Radau collocation points
+    #collPoly = 'LEGENDRE'    # use LEGENDRE collocation points
+
+    coll = Coll(dae_, nk_, nicp_, deg_, collPoly_)
+    coll.bound('x0',(-CS.inf,CS.inf))
+    coll.bound('x1',(-CS.inf,CS.inf))
+    coll.bound('x2',(-CS.inf,CS.inf))
+
+    coll.bound('x0',(0,0),timestep=0)
+    coll.bound('x1',(1,1),timestep=0)
+    coll.bound('x2',(0,0),timestep=0)
+    
+    coll.bound('x0',(0,0),timestep=-1)
+    coll.bound('x1',(0,0),timestep=-1)
+
+    coll.bound('u',(-0.75,1))
+
+    coll.setObjective( coll.lookup('x2',timestep=-1) )
+    
+    coll.run()
