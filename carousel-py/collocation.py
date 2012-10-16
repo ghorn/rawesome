@@ -91,26 +91,28 @@ def modelSetup(nk,nicp,deg):
     mfcn = CS.SXFunction([t,xd,xa,u,p],[xd[2]])
 
     # Control bounds
-    u_min = np.array([-0.75])
-    u_max = np.array([ 1.0])
+    u_min = np.array(nk*[-0.75])
+    u_max = np.array(nk*[ 1.0])
     u_init = np.array((nk*nicp*(deg+1))*[[0.0]]) # needs to be specified for every time interval (even though it stays constant)
     
     # Differential state bounds and initial guess
-    xD_min =  np.array([-CS.inf, -CS.inf, -CS.inf])
-    xD_max =  np.array([ CS.inf,  CS.inf,  CS.inf])
-    xDi_min = np.array([    0.0,     1.0,     0.0])
-    xDi_max = np.array([    0.0,     1.0,     0.0])
-    xDf_min = np.array([    0.0,     0.0, -CS.inf])
-    xDf_max = np.array([    0.0,     0.0,  CS.inf])
+    # general bounds
+    xD_min = np.array((nk+1)*[[-CS.inf, -CS.inf, -CS.inf]])
+    xD_max = np.array((nk+1)*[[ CS.inf,  CS.inf,  CS.inf]])
+
+    # initial bounds
+    xD_min[0,:] = np.array([    0.0,     1.0,     0.0])
+    xD_max[0,:] = np.array([    0.0,     1.0,     0.0])
+
+    # final bounds
+    xD_min[nk,:] = np.array([    0.0,     0.0, -CS.inf])
+    xD_max[nk,:] = np.array([    0.0,     0.0,  CS.inf])
+
     xD_init = np.array((nk*nicp*(deg+1))*[[ 0.0,  0.0,  0.0]]) # needs to be specified for every time interval
     
     # Algebraic state bounds and initial guess
-    xA_min =  np.array([])
-    xA_max =  np.array([])
-    xAi_min = np.array([])
-    xAi_max = np.array([])
-    xAf_min = np.array([])
-    xAf_max = np.array([])
+    xA_min =  np.array(nk*[[]])
+    xA_max =  np.array(nk*[[]])
     xA_init = np.array((nk*nicp*(deg+1))*[[]])
     
     # Parameter bounds and initial guess
@@ -150,12 +152,11 @@ def modelSetup(nk,nicp,deg):
     pcfcn.init()
     fcfcn.init()
 
-    return (xd,xa,u,p,p_init,p_min,p_max,xD_init,xDi_min,xDi_max,xA_init,xD_min,xA_min,xD_max,xA_max,u_min,
-            u_max,u_init,xDf_min,xDf_max,
+    return (xd,xa,u,p,p_init,p_min,p_max,xD_init,xA_init,xD_min,xA_min,xD_max,xA_max,u_min,u_max,u_init,
             icfcn,ic_min,ic_max,ffcn,pcfcn,pc_min,pc_max,fcfcn,fc_min,fc_max,mfcn)
 
 
-def nlpSetup(xd,xa,u,p,nicp,nk,deg,p_init,p_min,p_max,xD_init,xDi_min,xDi_max,xA_init,xD_min,xA_min,xD_max,xA_max,u_min,u_max,u_init,xDf_min,xDf_max,icfcn,ic_min,ic_max,C,ffcn,h,pcfcn,pc_min,pc_max,D,fcfcn,fc_min,fc_max,mfcn):
+def nlpSetup(xd,xa,u,p,nicp,nk,deg,p_init,p_min,p_max,xD_init,xA_init,xD_min,xA_min,xD_max,xA_max,u_min,u_max,u_init,icfcn,ic_min,ic_max,C,ffcn,h,pcfcn,pc_min,pc_max,D,fcfcn,fc_min,fc_max,mfcn):
     # -----------------------------------------------------------------------------
     # NLP setup
     # -----------------------------------------------------------------------------
@@ -208,34 +209,39 @@ def nlpSetup(xd,xa,u,p,nicp,nk,deg,p_init,p_min,p_max,xD_init,xDi_min,xDi_max,xA
                 if k==0 and j==0 and i==0:
                     vars_init[offset:offset+ndiff] = xD_init[index,:]
                     
-                    vars_lb[offset:offset+ndiff] = xDi_min
-                    vars_ub[offset:offset+ndiff] = xDi_max                    
+                    vars_lb[offset:offset+ndiff] = xD_min[k,:]
+                    vars_ub[offset:offset+ndiff] = xD_max[k,:]
                     offset += ndiff
                 else:
                     if j!=0:
-                        vars_init[offset:offset+nx] = np.append(xD_init[index,:],xA_init[index,:])
-                        
-                        vars_lb[offset:offset+nx] = np.append(xD_min,xA_min)
-                        vars_ub[offset:offset+nx] = np.append(xD_max,xA_max)
+                        vars_init[offset:offset+nx] = np.concatenate((xD_init[index,:],xA_init[index,:]))
+
+                        vars_lb[offset:offset+nx] = np.concatenate((np.minimum(xD_min[k,:],xD_min[k+1,:]),xA_min[k,:]))
+                        vars_ub[offset:offset+nx] = np.concatenate((np.maximum(xD_max[k,:],xD_max[k+1,:]),xA_max[k,:]))
                         offset += nx
                     else:
                         vars_init[offset:offset+ndiff] = xD_init[index,:]
-                        
-                        vars_lb[offset:offset+ndiff] = xD_min
-                        vars_ub[offset:offset+ndiff] = xD_max
+
+                        if i==0:
+                            vars_lb[offset:offset+ndiff] = xD_min[k,:]
+                            vars_ub[offset:offset+ndiff] = xD_max[k,:]
+                        else:
+                            vars_lb[offset:offset+ndiff] = np.minimum(xD_min[k,:],xD_min[k+1,:])
+                            vars_ub[offset:offset+ndiff] = np.maximum(xD_max[k,:],xD_max[k+1,:])
+                            
                         offset += ndiff
         
         # Parametrized controls
         U[k] = V[offset:offset+nu]
-        vars_lb[offset:offset+nu] = u_min
-        vars_ub[offset:offset+nu] = u_max
+        vars_lb[offset:offset+nu] = u_min[k]
+        vars_ub[offset:offset+nu] = u_max[k]
         vars_init[offset:offset+nu] = u_init[index,:]
         offset += nu
     
     # State at end time
     XD[nk][0][0] = V[offset:offset+ndiff]
-    vars_lb[offset:offset+ndiff] = xDf_min
-    vars_ub[offset:offset+ndiff] = xDf_max
+    vars_lb[offset:offset+ndiff] = xD_min[nk,:]
+    vars_ub[offset:offset+ndiff] = xD_max[nk,:]
     vars_init[offset:offset+ndiff] = xD_init[-1,:]
     offset += ndiff
     assert(offset==NV)
@@ -456,12 +462,12 @@ class Coll():
         # make coefficients for collocation/continuity equations
         C,D,tau,tau_root = setup_coeffs(deg=deg,collPoly=collPoly,nk=nk,h=h)
         
-        (xd,xa,u,p,p_init,p_min,p_max,xD_init,xDi_min,xDi_max,xA_init,xD_min,xA_min,xD_max,xA_max,u_min,
-         u_max,u_init,xDf_min,xDf_max,
+        (xd,xa,u,p,p_init,p_min,p_max,xD_init,xA_init,xD_min,xA_min,xD_max,xA_max,u_min,
+         u_max,u_init,
          icfcn,ic_min,ic_max,ffcn,pcfcn,pc_min,pc_max,fcfcn,fc_min,fc_max,mfcn) = modelSetup(nk,nicp,deg)
         
         (ofcn,gfcn,vars_init,vars_lb,vars_ub,lbg,ubg,ndiff,nalg,nu,NP) = \
-          nlpSetup(xd,xa,u,p,nicp,nk,deg,p_init,p_min,p_max,xD_init,xDi_min,xDi_max,xA_init,xD_min,xA_min,xD_max,xA_max,u_min,u_max,u_init,xDf_min,xDf_max,icfcn,ic_min,ic_max,C,ffcn,h,pcfcn,pc_min,pc_max,D,fcfcn,fc_min,fc_max,mfcn)
+          nlpSetup(xd,xa,u,p,nicp,nk,deg,p_init,p_min,p_max,xD_init,xA_init,xD_min,xA_min,xD_max,xA_max,u_min,u_max,u_init,icfcn,ic_min,ic_max,C,ffcn,h,pcfcn,pc_min,pc_max,D,fcfcn,fc_min,fc_max,mfcn)
         
         v_opt = solveNlp(ofcn,gfcn,vars_init,vars_lb,vars_ub,lbg,ubg)
 
