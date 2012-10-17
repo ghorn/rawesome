@@ -7,6 +7,7 @@
 #include <unistd.h>
 
 #include <zmq.hpp>
+#include "zhelpers.hpp"
 
 #include "kite.pb.h"
 
@@ -50,13 +51,13 @@ int main(int argc, char **argv)
 	}
 #else
 	int i = 0;
+	zmq::context_t context(1);
+	zmq::socket_t socket(context,ZMQ_PUB);
+	socket.bind("tcp://*:5563");
 	while(1)
 	{
 		cout << "Sending message of angle i = " << i << endl;
 		// Send the kite state as a zmq message
-		zmq::context_t context(1);
-		zmq::socket_t socket(context,ZMQ_PUB);
-		socket.bind("tcp://*:5563");
 		string output;
 		float delta_deg = (float)i / 360.0 * 2.0 * 3.1415;
 		cs.set_delta(delta_deg);
@@ -64,9 +65,8 @@ int main(int argc, char **argv)
 			cerr << "Failed to serialize cs." << endl;
 			return -1;
 		}
-		zmq::message_t message(output.size());
-		memcpy((void *) message.data(), output.c_str(), output.size());
-		socket.send(message);
+		s_sendmore(socket, "carousel");
+                s_send(socket, output);
 		i += 10;
 		if (i>350) i-=360;
 		usleep(50*1000);
