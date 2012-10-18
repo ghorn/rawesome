@@ -8,7 +8,8 @@ context   = zmq.Context(1)
 publisher = context.socket(zmq.PUB)
 publisher.bind("tcp://*:5563")
 
-filename = "fullstate_mhe_mpc.dat"
+#filename = "fullstate_mhe_mpc.dat"
+filename = "fullstate_mhe_mpc_40rpm.dat"
 f = open(filename,'r')
 mhes = []
 mpcs = []
@@ -20,7 +21,6 @@ for line in f:
     mhes.append( x[:11] )
     mpcs.append( x[11:] )
 f.close()
-
 
 def toKiteProto(x,alpha=1):
     cs = kite_pb2.CarouselState()
@@ -53,13 +53,21 @@ def toKiteProto(x,alpha=1):
 for k,(mhe,mpc) in enumerate(zip(mhes,mpcs)):
 
     n = len(mhe)
+#    n = 5
     
     mheProtos = []
     mpcProtos = []
     alphas = list(numpy.linspace(0.2,1,n))
-    
-    mheProtos = [toKiteProto(x,alpha=alpha) for alpha,x in zip(alphas,mhe[:n])]
-    mpcProtos = [toKiteProto(x,alpha=alpha) for alpha,x in zip(reversed(alphas),mpc[:n])]
+
+    for alpha,x in zip(alphas,mhe[-n:]):
+        mheProtos.append( toKiteProto(x,alpha=alpha) )
+#        print "mhe delta: "+str(x[12])
+#        print alpha
+
+    for alpha,x in zip(reversed(alphas),mpc[:n]):
+        mpcProtos.append( toKiteProto(x,alpha=alpha) )
+#        print "mpc delta: "+str(x[12])
+#        print alpha
     
     mc = kite_pb2.MultiCarousel()
     mc.css.extend(list(mheProtos)+list(mpcProtos))
