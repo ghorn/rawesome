@@ -685,7 +685,7 @@ class Coll():
         # make nice dict of outputs
         vardict = {}
         for k,name in enumerate(self.dae.pNames()):
-            vardict[name] = v_opt.item(k)
+            vardict[name] = float(v_opt[k])
         for k,name in enumerate(self.dae.xNames()):
             vardict[name] = xD_opt[k,:]
         for k,name in enumerate(self.dae.zNames()):
@@ -693,7 +693,7 @@ class Coll():
         for k,name in enumerate(self.dae.uNames()):
             vardict[name] = u_opt[k,:]
             
-        return (vardict, {'tgrid':tgrid, 'xD_opt':xD_opt, 'u_opt':u_opt, 'xA_opt':xA_opt, 'xA_plt':xA_plt})
+        return (vardict, {'tgrid':tgrid, 'x':xD_opt, 'u':u_opt, 'z':xA_opt, 'zPlt':xA_plt, 'p':v_opt[:NP]})
 
 
     def bound(self,name,val,timestep=None,quiet=False):
@@ -702,6 +702,9 @@ class Coll():
         assert(len(val)==2)
         assert(isinstance(val[0],numbers.Real))
         assert(isinstance(val[1],numbers.Real))
+
+        if not any([name in d for d in [self._xBounds, self._zBounds, self._uBounds, self._pBounds]]):
+            raise KeyError("Unrecognized variable \""+name+"\"")
 
         # handle timestep == None
         if timestep is None:
@@ -755,6 +758,9 @@ class Coll():
     def guess(self,name,val,timestep=None,quiet=False):
         assert(isinstance(name,str))
         assert(isinstance(val,numbers.Real))
+
+        if not any([name in d for d in [self._xBounds, self._zBounds, self._uBounds, self._pBounds]]):
+            raise KeyError("Unrecognized variable \""+name+"\"")
 
         # handle timestep == None
         if timestep is None:
@@ -815,7 +821,7 @@ class Coll():
         assert(len(names)==length)
 
         for k,name in enumerate(names):
-            self.guess(name,val[k],**kwargs)
+            self.guess(name,float(val[k]),**kwargs)
         
     def guessX(self,val,**kwargs):
         self._guessVec(val,self.dae.xNames(),**kwargs)

@@ -397,8 +397,11 @@ def modelInteg(dae, zt):
     dae.addOutput('cdot', cdot)
     return (mm, rhs, dRexp, c, cdot)
         
-def model(zt,nSteps=None):
+def model(zt,nSteps=None,extraParams=[]):
     dae = Dae()
+    for ep in extraParams:
+        dae.addP(ep)
+        
     dae.addZ( [ "dddelta"
               , "ddx"
               , "ddy"
