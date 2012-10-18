@@ -8,8 +8,8 @@ module DrawAC ( drawAc
 import SpatialMath
 import Vis
 
-drawAc :: Xyz Double -> Quat Double -> (VisObject Double, [Xyz Double])
-drawAc pos quat = (VisObjects $ wing ++ [htail,vtail,body,axes], vtip:wingtips)
+drawAc :: Double -> Xyz Double -> Quat Double -> (VisObject Double, [Xyz Double])
+drawAc alpha pos quat = (VisObjects $ wing ++ [htail,vtail,body], vtip:wingtips)
   where
     axes = Trans pos $ RotQuat quat $ Axes (0.5, 15)
     spanW = 0.96
@@ -43,13 +43,13 @@ drawAc pos quat = (VisObjects $ wing ++ [htail,vtail,body,axes], vtip:wingtips)
              (rotateTranslate $ Xyz ( chordW/2) (-spanW/2) 0)
              (rotateTranslate $ Xyz (-chordW/2) (-spanW/2) 0)
              (rotateTranslate $ Xyz (-chordW/2) ( spanW/2) 0)
-             blue
+             $ makeColor 0 0 1 (realToFrac alpha)
            , Quad
              (rotateTranslate $ Xyz (-chordW/2) ( spanW/2) (-0.01))
              (rotateTranslate $ Xyz (-chordW/2) (-spanW/2) (-0.01))
              (rotateTranslate $ Xyz ( chordW/2) (-spanW/2) (-0.01))
              (rotateTranslate $ Xyz ( chordW/2) ( spanW/2) (-0.01))
-             yellow
+             $ makeColor 1 1 0 (realToFrac alpha)
            ]
       where
         chordW = spanW/arW
@@ -60,7 +60,7 @@ drawAc pos quat = (VisObjects $ wing ++ [htail,vtail,body,axes], vtip:wingtips)
             (rotateTranslate $ Xyz (-deltaWingTail + chordH/2) (-spanH/2) 0)
             (rotateTranslate $ Xyz (-deltaWingTail - chordH/2) (-spanH/2) 0)
             (rotateTranslate $ Xyz (-deltaWingTail - chordH/2) ( spanH/2) 0)
-            blue
+            $ makeColor 0 0 1 (realToFrac alpha)
       where
         spanH = spanW*spanHRatio
         chordH = spanH/arH
@@ -70,12 +70,12 @@ drawAc pos quat = (VisObjects $ wing ++ [htail,vtail,body,axes], vtip:wingtips)
             (rotateTranslate $ Xyz (-deltaWingTail + chordV/2) 0 (     0))
             (rotateTranslate $ Xyz (-deltaWingTail - chordV/2) 0 (     0))
             (rotateTranslate $ Xyz (-deltaWingTail - chordV/2) 0 (-spanV))
-            yellow
+            $ makeColor 0 0 1 (realToFrac alpha)
       where
         chordV = spanV/arV
             
     body = Trans (rotateTranslate (Xyz (len/2-deltaWingTail) 0 0)) $ RotQuat quat $ 
-           Ellipsoid (len/2, width/2, width/2) Solid blue
+           Ellipsoid (len/2, width/2, width/2) Solid (makeColor 0 0 1 (realToFrac alpha))
 
 drawTrails :: [[Xyz a]] -> VisObject a
 drawTrails xyzs = VisObjects $ zipWith drawTrail xyzs $ cycle [makeColor 0 0 1, makeColor 1 0 0, makeColor 0 1 0]

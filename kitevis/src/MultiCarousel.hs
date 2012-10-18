@@ -4,6 +4,7 @@
 module Main where
 
 import Data.Foldable ( toList )
+import Data.Maybe ( fromMaybe )
 import qualified System.ZMQ as ZMQ
 import Control.Concurrent ( MVar, forkIO, modifyMVar_, newMVar, readMVar)
 import Control.Monad ( forever )
@@ -72,7 +73,7 @@ drawOneKite cs = VisObjects [ac, arm, line]
     arm  = Line [Xyz 0 0 0, r'n0'a0] $ makeColor 1 1 0 1
     line = Line [r'n0'a0, r'n0't0]   $ makeColor 0 1 1 1
 
-    (ac,_) = drawAc pos quat
+    (ac,_) = drawAc (fromMaybe 1 (CS.transparency cs)) pos quat
 
 drawFun :: State -> VisObject Double
 drawFun Nothing = VisObjects []

@@ -94,7 +94,8 @@ drawFun state@(State {sCS=Just cs}) =
           zipWith (\s k -> Text2d (uToString s) (30,fromIntegral $ 30*k) TimesRoman24 (makeColor 1 1 1 1)) messages (reverse [1..length messages])
     messages = toList $ CS.messages cs
 
-    (ac,_) = drawAc pos quat
+    (ac,_) = drawAc (fromMaybe 1 (CS.transparency cs)) pos quat
+    
 
     trailLines = drawTrails (sTrails state)
 
@@ -146,7 +147,7 @@ updateState cs x0 =
     w0 = fromMaybe 0 (CS.w0 cs)
     trails0 = sTrails x0
     (pos,q,_,_) = toNice cs
-    (_,trails) = drawAc pos q
+    (_,trails) = drawAc 1 pos q
     
 sub :: MVar State -> IO ()
 sub m = ZMQ.withContext 1 $ \context -> do
