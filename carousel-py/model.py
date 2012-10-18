@@ -179,6 +179,7 @@ def forcesTorques(dae):
 
     dae.addOutput('cL', cL)
     dae.addOutput('cD', cD)
+    dae.addOutput('L/D', cL/cD)
     fL1 =  rho*cL*eLe1*vKite/2.0
     fL2 =  rho*cL*eLe2*vKite/2.0
     fL3 =  rho*cL*eLe3*vKite/2.0
@@ -444,7 +445,11 @@ def model(zt,nSteps=None):
     dae.addOutput('RPM', dae.x('ddelta')*60/(2*C.pi))
     dae.addOutput('aileron(deg)', dae.u('aileron')*180/C.pi)
     dae.addOutput('elevator(deg)', dae.u('elevator')*180/C.pi)
-    dae.addOutput('torque', dae.u('tc'))
+    dae.addOutput('motor torque', dae.u('tc'))
+    dae.addOutput('motor power', dae.u('tc')*dae.x('ddelta'))
+
+    dae.addOutput('winch force', dae.x('r')*dae.z('nu'))
+    dae.addOutput('winch power', dae.x('r')*dae.x('dr')*dae.z('nu'))
     
     (massMatrix, rhs, dRexp, c, cdot) = modelInteg(dae, zt)
 

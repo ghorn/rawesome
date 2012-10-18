@@ -139,20 +139,22 @@ if __name__=='__main__':
         
         u = C.DMatrix([tc,aileron,elevator,ddr])
         p = C.DMatrix([w0])
+
+        z = f.output(C.INTEGRATOR_ZF)
         
         f.setInput(x,C.INTEGRATOR_X0)
         f.setInput(C.veccat([u,p]),C.INTEGRATOR_P)
         f.evaluate()
 
         xNext = C.DMatrix(f.output())
-        return ((x, u, p), xNext)
+        return ((x, z, u, p), xNext)
 
     print "simulating..."
     try:
         while True:
             t0 = time.time()
             try:
-                ((x,u,p), xNext) = advanceState()
+                ((x,z,u,p), xNext) = advanceState()
                 sim.currentState.log(x,u,p)
                 sim.currentState.x = xNext
                 if len(sim._saves[sim.default]._log)==0:
@@ -161,7 +163,7 @@ if __name__=='__main__':
                 sim.loadDefault()
                 x,u,p = sim.getCurrentState()._log[-1]
                 pass
-            communicator.sendKite(sim,(x,u,p))
+            communicator.sendKite(sim,(x,z,u,p))
             
             deltaTime = (t0 + sim.tsSimStep*sim.sloMoFactor) - time.time()
             if deltaTime > 0:
