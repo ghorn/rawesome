@@ -9,7 +9,7 @@ executable kitesim
   hs-source-dirs:    src
   main-is:           KiteSim.hs
   other-modules:     DrawAC
-  build-depends:     base ==4.6.*,
+  build-depends:     base >= 4.5.0 && < 4.7,
                      random,
                      not-gloss >= 0.5.0,
                      spatial-math,
@@ -23,7 +23,7 @@ executable multicarousel
   hs-source-dirs:    src
   main-is:           MultiCarousel.hs
   other-modules:     DrawAC
-  build-depends:     base ==4.6.*,
+  build-depends:     base >= 4.5.0 && < 4.7,
                      random,
                      not-gloss >= 0.5.0,
                      spatial-math,
@@ -37,7 +37,7 @@ executable pendopt
   hs-source-dirs:    src
   main-is:           PendulumOpt.hs
   other-modules:     DrawAC
-  build-depends:     base ==4.6.*,
+  build-depends:     base >= 4.5.0 && < 4.7,
                      not-gloss >= 0.5.0,
                      spatial-math,
                      protocol-buffers,
