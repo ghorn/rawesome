@@ -10,6 +10,9 @@ import kiteproto
 import model
 import joy
 
+rArm = 1.085 #(dixit Kurt)
+zt = -0.03
+
 x0 = C.DMatrix( [ 1.154244772411
                 , -0.103540608242
                 , -0.347959211327
@@ -32,8 +35,6 @@ x0 = C.DMatrix( [ 1.154244772411
                 , 3.874600000000
                 ])
 
-zt = -0.01
-
 def setC0(x00):
     x = x00[0]
     y = x00[1]
@@ -50,7 +51,7 @@ sim = simutils.Sim(ts=0.02, sloMoFactor=4, state0=simutils.SimState(pdOn = False
 
 if __name__=='__main__':
     print "creating model"
-    dae = model.model(zt)
+    dae = model.model(zt,rArm)
     sxfun = dae.sxFun()
     sxfun.init()
 
@@ -163,7 +164,7 @@ if __name__=='__main__':
                 sim.loadDefault()
                 x,u,p = sim.getCurrentState()._log[-1]
                 pass
-            communicator.sendKite(sim,(x,z,u,p))
+            communicator.sendKite(sim,(x,z,u,p),zt,rArm,w0=p.at(0))
             
             deltaTime = (t0 + sim.tsSimStep*sim.sloMoFactor) - time.time()
             if deltaTime > 0:

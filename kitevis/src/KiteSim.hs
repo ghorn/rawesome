@@ -4,6 +4,7 @@
 module Main where
 
 import Data.Foldable ( toList )
+import Data.Maybe ( fromMaybe )
 import System.Random ( randomRs, mkStdGen)
 import qualified System.ZMQ as ZMQ
 import Control.Concurrent ( MVar, forkIO, modifyMVar_, newMVar, readMVar)
@@ -142,7 +143,7 @@ updateState cs x0 =
                  , sParticles = map (\xyz@(Xyz _ _ z) -> boundParticle $ (Xyz (ts*(windShear w0 (-z))) 0 0) + xyz) (sParticles x0)
                  }
   where
-    w0 = CS.w0 cs
+    w0 = fromMaybe 0 (CS.w0 cs)
     trails0 = sTrails x0
     (pos,q,_,_) = toNice cs
     (_,trails) = drawAc pos q

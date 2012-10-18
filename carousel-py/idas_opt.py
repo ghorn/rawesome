@@ -38,12 +38,14 @@ x0 = C.DMatrix( [ 1.154244772411
                 , 3.874600000000
                 ])
 x0=C.veccat([x0,C.sqrt(C.sumAll(x0[0:2]*x0[0:2])),0])
+rArm = 1.085 #(dixit Kurt)
+zt = -0.03
 
 def main():
     nSteps = 15
 
     print "creating model"
-    dae = model.model(-0.01,nSteps)
+    dae = model.model(zt,rArm,nSteps)
 
     print "setting up OCP"
     ocp = MultipleShootingStage(dae, nSteps)
@@ -139,16 +141,17 @@ def main():
           xOpt = f.input(C.NLP_X_OPT)
 
           xs,us,p = ocp.getTimestepsFromDvs(xOpt)
-          kiteProtos = [kiteproto.toKiteProto(xs[k],us[k],p) for k in range(0,nSteps)]
+          kiteProtos = [kiteproto.toKiteProto(xs[k],us[k],p,rArm,zt) for k in range(0,nSteps)]
 
-          ko = kite_pb2.KiteOpt()
-          ko.css.extend(list(kiteProtos))
+          mc = kite_pb2.KiteOpt()
+          mc.css.extend(list(kiteProtos))
 
           xup = ocp.devectorize(xOpt)
-          ko.endTime = xup['endTime']
-          ko.wind_x = xup['w0']
-          ko.iters = self.iter
-          publisher.send_multipart(["carousel-opt", ko.SerializeToString()])
+          mc.messages.append("endTime: "+str(xup['endTime']))
+          mc.messages.append("w0: "+str(xup['w0']))
+          mc.messages.append("iter: "+str(self.iter))
+          
+          publisher.send_multipart(["multi-carousel", mc.SerializeToString()])
     
     def makeCallback():
         nd = ocp.getDesignVars().size()

@@ -38,12 +38,14 @@ x0 = C.DMatrix( [ 1.154244772411
                 , 3.874600000000
                 ])
 x0=C.veccat([x0,C.sqrt(C.sumAll(x0[0:2]*x0[0:2])),0])
+rArm = 1.085 #(dixit Kurt)
+zt = -0.03
 
 def main():
     nk = 40
 
     print "creating model"
-    dae = model.model(-0.01,extraParams=['endTime'])
+    dae = model.model(zt,rArm,extraParams=['endTime'])
 
     print "setting up OCP"
     nicp = 1
@@ -107,10 +109,6 @@ def main():
     ocp.bound('delta',(2*pi,2*pi),timestep=-1)
 
     # make it periodic
-    states0 = ocp.xVec(0)
-    statesF = ocp.xVec(-1)
-    actions0 = ocp.uVec(0)
-    actionsF = ocp.uVec(-1)
     for name in [ #"x"   # state 0
                   "y"   # state 1
                 , "z"   # state 2
@@ -163,16 +161,16 @@ def main():
           kiteProtos = []
           for k in range(0,nk):
               j = nicp*(deg+1)*k
-              kiteProtos.append( kiteproto.toKiteProto(C.DMatrix(blah['x'][:,j]),C.DMatrix(blah['u'][:,j]),C.DMatrix(blah['p'])) )
-#          kiteProtos = [kiteproto.toKiteProto(C.DMatrix(blah['x'][:,k]),C.DMatrix(blah['u'][:,k]),C.DMatrix(blah['p'])) for k in range(blah['x'].shape[1])]
+              kiteProtos.append( kiteproto.toKiteProto(C.DMatrix(blah['x'][:,j]),C.DMatrix(blah['u'][:,j]),C.DMatrix(blah['p']), zt, rArm) )
+#          kiteProtos = [kiteproto.toKiteProto(C.DMatrix(blah['x'][:,k]),C.DMatrix(blah['u'][:,k]),C.DMatrix(blah['p']), zt, rArm) for k in range(blah['x'].shape[1])]
 
-          ko = kite_pb2.KiteOpt()
-          ko.css.extend(list(kiteProtos))
+          mc = kite_pb2.MultiCarousel()
+          mc.css.extend(list(kiteProtos))
 
-          ko.endTime = xup['endTime']
-          ko.wind_x = xup['w0']
-          ko.iters = self.iter
-          publisher.send_multipart(["carousel-opt", ko.SerializeToString()])
+          mc.messages.append("endTime: "+str(xup['endTime']))
+          mc.messages.append("w0: "+str(xup['w0']))
+          mc.messages.append("iter: "+str(self.iter))
+          publisher.send_multipart(["multi-carousel", mc.SerializeToString()])
 
 
     # solver

@@ -9,10 +9,10 @@ import Control.Concurrent ( MVar, forkIO, modifyMVar_, newMVar, readMVar)
 import Control.Monad ( forever )
 import qualified Data.ByteString.Lazy as BL
 import Data.Packed ( fromLists )
-import Text.Printf ( printf )
 import Text.ProtocolBuffers ( messageGet )
+import Text.ProtocolBuffers.Basic ( uToString )
 
-import qualified Kite.KiteOpt as KO
+import qualified Kite.MultiCarousel as MC
 import qualified Kite.CarouselState as CS
 import qualified Kite.Dcm as Dcm
 import qualified Kite.Xyz as KiteXyz
@@ -21,7 +21,7 @@ import SpatialMath
 import Vis
 import DrawAC
 
-type State = Maybe KO.KiteOpt
+type State = Maybe MC.MultiCarousel
 
 toNice :: CS.CarouselState -> (Xyz Double, Quat Double, Xyz Double, Xyz Double)
 toNice cs = (xyz, q'n'b, r'n0'a0, r'n0't0)
@@ -76,7 +76,7 @@ drawOneKite cs = VisObjects [ac, arm, line]
 
 drawFun :: State -> VisObject Double
 drawFun Nothing = VisObjects []
-drawFun (Just ko) = VisObjects $ [axes,txt,plane] ++ (map drawOneKite (toList (KO.css ko)))
+drawFun (Just ko) = VisObjects $ [axes,txt,plane] ++ (map drawOneKite (toList (MC.css ko)))
   where
 --    points = Points (sParticles state) (Just 2) $ makeColor 1 1 1 0.5
     
@@ -91,21 +91,9 @@ drawFun (Just ko) = VisObjects $ [axes,txt,plane] ++ (map drawOneKite (toList (K
 --    ddelta = CS.ddelta cs
 
 --    (u1,u2,tc,wind_x) = (CS.u1 cs, CS.u2 cs, CS.tc cs, CS.wind_x cs)
-    txt = VisObjects
---          [ Text2d (printf "x: %.3f" px) (30,90) TimesRoman24 (makeColor 1 1 1 1)
---          , Text2d (printf "y: %.3f" py) (30,60) TimesRoman24 (makeColor 1 1 1 1)
---          , Text2d (printf "z: %.3f" pz) (30,30) TimesRoman24 (makeColor 1 1 1 1)
---          , Text2d (printf "RPM: %.3f" (ddelta*60/(2*pi))) (30,120) TimesRoman24 (makeColor 1 1 1 1)
---          , Text2d (printf "c:   %.3g" c    ) (30,150) TimesRoman24 (makeColor 1 1 1 1)
---          , Text2d (printf "c':  %.3g" cdot ) (30,180) TimesRoman24 (makeColor 1 1 1 1)
---          , Text2d (printf "c'': %.3g" cddot) (30,210) TimesRoman24 (makeColor 1 1 1 1)
---          , Text2d (printf "u1: %.3g \t(*180/pi = %.3f)" u1 (u1*180/pi)) (30,300) TimesRoman24 (makeColor 1 1 1 1)
---          , Text2d (printf "u2: %.3g \t(*180/pi = %.3f)" u2 (u2*180/pi)) (30,270) TimesRoman24 (makeColor 1 1 1 1)
---          , Text2d (printf "tc: %.3g" tc)                                (30,240) TimesRoman24 (makeColor 1 1 1 1)
-          [ Text2d (printf "endTime: %.3g" (KO.endTime ko)) (30,90) TimesRoman24 (makeColor 1 1 1 1)
-          , Text2d (printf "wind_x: %.3g" (KO.wind_x ko)) (30,60) TimesRoman24 (makeColor 1 1 1 1)
-          , Text2d (printf "iters: %d" (KO.iters ko)) (30,30) TimesRoman24 (makeColor 1 1 1 1)
-          ]
+    txt = VisObjects $
+          zipWith (\s k -> Text2d (uToString s) (30,fromIntegral $ 30*k) TimesRoman24 (makeColor 1 1 1 1)) messages (reverse [1..length messages])
+    messages = toList $ MC.messages ko
 
 
 particleBox :: Double
@@ -126,14 +114,14 @@ boundParticle xyz@(Xyz x y z)
   | z < -particleBox = boundParticle (Xyz x y (z+2*particleBox))
   | otherwise = xyz
 
-updateState :: KO.KiteOpt -> State -> IO State
+updateState :: MC.MultiCarousel -> State -> IO State
 updateState ko _ = return $ Just ko
 
 sub :: MVar State -> IO ()
 sub m = ZMQ.withContext 1 $ \context -> do
   ZMQ.withSocket context ZMQ.Sub $ \subscriber -> do
     ZMQ.connect subscriber "tcp://localhost:5563"
-    ZMQ.subscribe subscriber "carousel-opt"
+    ZMQ.subscribe subscriber "multi-carousel"
     forever $ do
       addr <- ZMQ.receive subscriber []
       mre <- ZMQ.moreToReceive subscriber

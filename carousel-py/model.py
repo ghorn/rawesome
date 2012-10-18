@@ -209,7 +209,7 @@ def forcesTorques(dae):
     return (f1, f2, f3, t1, t2, t3)
     
 
-def modelInteg(dae, zt):
+def modelInteg(dae, zt, rA):
     #  PARAMETERS OF THE KITE :
     #  ##############
     m =  0.626      #  mass of the kite               #  [ kg    ]
@@ -221,9 +221,6 @@ def modelInteg(dae, zt):
     #  PARAMETERS OF THE CABLE :
     #  ##############
      
-    #CAROUSEL ARM LENGTH
-    rA = 1.085 #(dixit Kurt)
-
     #INERTIA MATRIX (Kurt's direct measurements)
     j1 = 0.0163
     j31 = 0.0006
@@ -397,7 +394,7 @@ def modelInteg(dae, zt):
     dae.addOutput('cdot', cdot)
     return (mm, rhs, dRexp, c, cdot)
         
-def model(zt,nSteps=None,extraParams=[]):
+def model(zt,rArm,nSteps=None,extraParams=[]):
     dae = Dae()
     for ep in extraParams:
         dae.addP(ep)
@@ -454,7 +451,7 @@ def model(zt,nSteps=None,extraParams=[]):
     dae.addOutput('winch force', dae.x('r')*dae.z('nu'))
     dae.addOutput('winch power', dae.x('r')*dae.x('dr')*dae.z('nu'))
     
-    (massMatrix, rhs, dRexp, c, cdot) = modelInteg(dae, zt)
+    (massMatrix, rhs, dRexp, c, cdot) = modelInteg(dae, zt, rArm)
 
     ode = C.veccat( [ C.veccat(dae.x(['dx','dy','dz']))
                     , dRexp.trans().reshape([9,1])

@@ -19,9 +19,9 @@ executable kitesim
                      zeromq-haskell
   ghc-options:       -O2 -threaded
 
-executable kiteopt
+executable multicarousel
   hs-source-dirs:    src
-  main-is:           KiteOpt.hs
+  main-is:           MultiCarousel.hs
   other-modules:     DrawAC
   build-depends:     base ==4.6.*,
                      random,

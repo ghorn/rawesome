@@ -19,9 +19,9 @@ class Communicator():
         self.fOutputs = fOutputs
         self.outputNames = outputNames
 
-    def sendKite(self,sim,(x,z,u,p),otherMessages=[]):
+    def sendKite(self,sim,(x,z,u,p),zt,rArm,w0,otherMessages=[]):
         assert(isinstance(otherMessages,list))
-        pb = kiteproto.toKiteProto(x,u,p)
+        pb = kiteproto.toKiteProto(x,u,p,zt,rArm,w0=w0)
         pb.messages.append("sloMoFactor: "+str(sim.sloMoFactor))
         pb.messages.append("-------------------------")
 
