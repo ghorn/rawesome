@@ -150,27 +150,27 @@ def main():
 
     # callback function
     class MyCallback:
-      def __init__(self):
-        self.iter = 0 
-      def __call__(self,f,*args):
-          self.iter = self.iter + 1
-          xOpt = numpy.array(f.input(C.NLP_X_OPT))
-
-          xup,blah = ocp.devectorize(xOpt)
-          
-          kiteProtos = []
-          for k in range(0,nk):
-              j = nicp*(deg+1)*k
-              kiteProtos.append( kiteproto.toKiteProto(C.DMatrix(blah['x'][:,j]),C.DMatrix(blah['u'][:,j]),C.DMatrix(blah['p']), zt, rArm) )
-#          kiteProtos = [kiteproto.toKiteProto(C.DMatrix(blah['x'][:,k]),C.DMatrix(blah['u'][:,k]),C.DMatrix(blah['p']), zt, rArm) for k in range(blah['x'].shape[1])]
-
-          mc = kite_pb2.MultiCarousel()
-          mc.css.extend(list(kiteProtos))
-
-          mc.messages.append("endTime: "+str(xup['endTime']))
-          mc.messages.append("w0: "+str(xup['w0']))
-          mc.messages.append("iter: "+str(self.iter))
-          publisher.send_multipart(["multi-carousel", mc.SerializeToString()])
+        def __init__(self):
+            self.iter = 0 
+        def __call__(self,f,*args):
+            self.iter = self.iter + 1
+            xOpt = numpy.array(f.input(C.NLP_X_OPT))
+            
+            xup,blah = ocp.devectorize(xOpt)
+            
+            kiteProtos = []
+            for k in range(0,nk):
+                j = nicp*(deg+1)*k
+                kiteProtos.append( kiteproto.toKiteProto(C.DMatrix(blah['x'][:,j]),C.DMatrix(blah['u'][:,j]),C.DMatrix(blah['p']), zt, rArm) )
+#            kiteProtos = [kiteproto.toKiteProto(C.DMatrix(blah['x'][:,k]),C.DMatrix(blah['u'][:,k]),C.DMatrix(blah['p']), zt, rArm) for k in range(blah['x'].shape[1])]
+            
+            mc = kite_pb2.MultiCarousel()
+            mc.css.extend(list(kiteProtos))
+            
+            mc.messages.append("endTime: "+str(xup['endTime']))
+            mc.messages.append("w0: "+str(xup['w0']))
+            mc.messages.append("iter: "+str(self.iter))
+            publisher.send_multipart(["multi-carousel", mc.SerializeToString()])
 
 
     # solver
