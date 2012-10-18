@@ -55,6 +55,20 @@ class Dae():
         namedict[name] = C.ssym(name)
         return namedict[name]
 
+    def setAlgRes(self,res):
+        if hasattr(self,'_algRes'):
+            raise ValueError('algebraic residual already set')
+        if isinstance(res,list):
+            res = C.veccat(res)
+        self._algRes = res
+
+    def setOdeRes(self,res):
+        if hasattr(self,'_odeRes'):
+            raise ValueError('ode residual already set')
+        if isinstance(res,list):
+            res = C.veccat(res)
+        self._odeRes = res
+
     def addX(self,name):
         return self._addVar(name,self._xNames,self._xDict)
 
@@ -119,7 +133,7 @@ class Dae():
 
     def outputsFun(self):
         self._freeze('outputsFun()')
-        inputs = [self.xVec(),self.uVec(),self.pVec()]
+        inputs = [self.xVec(), self.zVec(), self.uVec(), self.pVec()]
         outputs = [self._outputDict[n] for n in self._outputNames]
         fOutputs = C.SXFunction(inputs,outputs)
         fOutputs.setOption('name','outputsFun')
@@ -128,9 +142,9 @@ class Dae():
     def sxFun(self):
         self._freeze('sxFun()')
         algRes = None
-        if hasattr(self,'algRes'):
-            algRes = self.algRes
-        odeRes = self.odeRes
+        if hasattr(self,'_algRes'):
+            algRes = self._algRes
+        odeRes = self._odeRes
 
         if isinstance(odeRes,list):
             odeRes = C.veccat(odeRes)

@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 import zmq
 
 import numpy
@@ -111,7 +112,26 @@ def main():
     #ocp.setBounds()
 
     # solve!
-    ocp.solve()
+    opt = ocp.devectorize(ocp.solve())
+    
+    # Plot the results
+    plt.figure(1)
+    plt.clf()
+    time = numpy.linspace(0,opt['endTime'],opt['x'].size())
+    plt.plot(time, opt['x'], '--')
+    plt.plot(time, opt['z'], '-')
+    plt.plot(time, opt['dx'], '-.')
+    plt.plot(time, opt['dz'], '--')
+
+    time = numpy.linspace(0,opt['endTime'],opt['torque'].size())
+    plt.plot(time,opt['torque']/20,'--')
+
+    plt.title("pendulum swingup optimization")
+    plt.xlabel('time')
+    plt.legend(['x','z','vx','vz','torque'])
+    plt.grid()
+    plt.show()
+    
 
 if __name__=='__main__':
     main()

@@ -22,8 +22,8 @@ class MultipleShootingStage():
         assert(isinstance(nSteps, int))
 
         # make sure dae has everything
-        assert(hasattr(dae,'odeRes'))
-        assert(hasattr(dae,'algRes'))
+        assert(hasattr(dae,'_odeRes'))
+        assert(hasattr(dae,'_algRes'))
         assert(hasattr(dae,'stateDotDummy'))
         
         self.dae = dae
@@ -185,6 +185,7 @@ class MultipleShootingStage():
     def solve(self):
         self._solver.setInput(self._initialGuess.vectorize(), C.NLP_X_INIT)
         self._solver.solve()
+        return self._solver.output(C.NLP_X_OPT)
 
 
 class Constraints():
@@ -197,21 +198,30 @@ class Constraints():
         #print "\n\nadding constraint\nlhs: "+str(lhs)+"\ncomparison: "+comparison+"\nrhs: "+str(rhs)
         if comparison=="==":
             g = lhs - rhs
-            self._g.append(g)
-            self._glb.append(numpy.zeros(g.size()))
-            self._gub.append(numpy.zeros(g.size()))
+            glb = numpy.zeros(g.size())
+            gub = numpy.zeros(g.size())
+            self.addBnds(g,(glb,gub))
         elif comparison=="<=":
             g = lhs - rhs
-            self._g.append(g)
-            self._glb.append(-numpy.inf*numpy.ones(g.size()))
-            self._gub.append(numpy.zeros(g.size()))
+            glb = -numpy.inf*numpy.ones(g.size())
+            gub = numpy.zeros(g.size())
+            self.addBnds(g,(glb,gub))
         elif comparison==">=":
             g = rhs - lhs
-            self._g.append(g)
-            self._glb.append(-numpy.inf*numpy.ones(g.size()))
-            self._gub.append(numpy.zeros(g.size()))
+            glb = -numpy.inf*numpy.ones(g.size())
+            gub = numpy.zeros(g.size())
+            self.addBnds(g,(glb,gub))
         else:
             raise ValueError('Did not recognize comparison \"'+str(comparison)+'\"')
+
+    def addBnds(self,g,(glb,gub)):
+        assert(isinstance(glb,numpy.ndarray))
+        assert(isinstance(gub,numpy.ndarray))
+        assert(isinstance(g,C.SXMatrix) or isinstance(g,C.MX))
+        assert(g.size()==glb.size and g.size()==gub.size)
+        self._g.append(g)
+        self._glb.append(glb)
+        self._gub.append(gub)
 
     def getG(self):
         return C.veccat(self._g)

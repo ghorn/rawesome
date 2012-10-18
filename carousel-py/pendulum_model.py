@@ -49,9 +49,9 @@ def pendulum_model(nSteps=None):
         ]
     dae.addOutput('invariants',C.veccat(c))
 
-    dae.algRes = alg
-    dae.odeRes = ode
-    
+    dae.setAlgRes( alg )
+    dae.setOdeRes( ode )
+
     return dae
 
 if __name__=='__main__':

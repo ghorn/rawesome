@@ -463,8 +463,8 @@ def model(zt,nSteps=None):
         endTime = dae.addP('endTime')
         scaledStateDotDummy = dae.stateDotDummy/(endTime/(nSteps-1))
 
-    dae.odeRes = ode - scaledStateDotDummy
-    dae.algRes = C.mul(massMatrix, dae.zVec()) - rhs
+    dae.setOdeRes( ode - scaledStateDotDummy )
+    dae.setAlgRes( C.mul(massMatrix, dae.zVec()) - rhs )
     
     return dae
 
