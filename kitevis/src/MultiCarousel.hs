@@ -146,4 +146,4 @@ main = do
 --  threadDelay 5000000
   let simFun _ _ = return ()
       df _ = fmap drawFun (readMVar m)
-  simulateIO (Just ((1260,940),(1930,40))) "carousel optimization" ts () df simFun
+  simulateIO (Just ((1260,940),(1930,40))) "multi-carousel" ts () df simFun
