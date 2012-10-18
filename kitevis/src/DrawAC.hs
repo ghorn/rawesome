@@ -70,7 +70,7 @@ drawAc alpha pos quat = (VisObjects $ wing ++ [htail,vtail,body], vtip:wingtips)
             (rotateTranslate $ Xyz (-deltaWingTail + chordV/2) 0 (     0))
             (rotateTranslate $ Xyz (-deltaWingTail - chordV/2) 0 (     0))
             (rotateTranslate $ Xyz (-deltaWingTail - chordV/2) 0 (-spanV))
-            $ makeColor 0 0 1 (realToFrac alpha)
+            $ makeColor 1 1 0 (realToFrac alpha)
       where
         chordV = spanV/arV
             
