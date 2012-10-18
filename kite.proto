@@ -1,5 +1,7 @@
 package kite;
 
+// By default units are: KG/m/s/rad
+
 message Xyz {
   required double x = 1;
   required double y = 2;
@@ -24,7 +26,8 @@ message Dcm {
 message CarouselState {
   // position of kite relative to tip of carousel arm, in carousel arm frame
   required Xyz kiteXyz = 1;
-  // rotaton from carousel arm frame to kite frame
+  // rotaton from carousel arm frame to kite frame.
+  // positive is counter-clockwise viewed from above.
   required Dcm kiteDcm = 2;
   // carousel arm rotation angle in radians
   required double delta = 3;
@@ -34,7 +37,7 @@ message CarouselState {
   required double zt = 5;
   // list of strings you would like to display on-screen
   repeated string messages = 6;
-  // wind at 100 meters altitude in logarithmic wind shear model
+  // wind at 100 meters altitude in logarithmic wind shear model 
   required double w0 = 7;
 }
 
