@@ -201,38 +201,10 @@ def modelSetup(nk,nicp,deg,coll):
         p_init[k] = coll._pGuess[name]
     
     
-    # Initialize functions
+    # Initialize function
     ffcn.init()
     
-    # -----------------------------------------------------------------------------
-    # Constraints setup
-    # -----------------------------------------------------------------------------
-    # Initial constraint
-    ic_min = np.array([])
-    ic_max = np.array([])
-    ic = CS.SXMatrix()
-    #ic.append();       ic_min = append(ic_min, 0.);         ic_max = append(ic_max, 0.)
-    icfcn = CS.SXFunction([xd,xa,u,p],[ic])
-    # Path constraint
-    pc_min = np.array([])
-    pc_max = np.array([])
-    pc = CS.SXMatrix()
-    #pc.append();       pc_min = append(pc_min, 0.);         pc_max = append(pc_max, 0.)
-    pcfcn = CS.SXFunction([xd,xa,u,p],[pc])
-    # Final constraint
-    fc_min = np.array([])
-    fc_max = np.array([])
-    fc = CS.SXMatrix()
-    #fc.append();       fc_min = append(fc_min, 0.);         fc_max = append(fc_max, 0.)
-    fcfcn = CS.SXFunction([xd,xa,u,p],[fc])
-    
-    # Initialize the functions
-    icfcn.init()
-    pcfcn.init()
-    fcfcn.init()
-
-    return (xd,xa,u,p,p_init,p_min,p_max,xD_init,xA_init,xD_min,xA_min,xD_max,xA_max,u_min,u_max,u_init,
-            icfcn,ic_min,ic_max,ffcn,pcfcn,pc_min,pc_max,fcfcn,fc_min,fc_max)
+    return (xd,xa,u,p,p_init,p_min,p_max,xD_init,xA_init,xD_min,xA_min,xD_max,xA_max,u_min,u_max,u_init,ffcn)
 
 
 def setupDesignVars(coll):
@@ -292,7 +264,7 @@ def setupDesignVars(coll):
 
     return (V,XD,XA,U,P)
 
-def nlpSetup(xd,xa,u,p,nicp,nk,deg,p_init,p_min,p_max,xD_init,xA_init,xD_min,xA_min,xD_max,xA_max,u_min,u_max,u_init,icfcn,ic_min,ic_max,C,ffcn,h,pcfcn,pc_min,pc_max,D,fcfcn,fc_min,fc_max,coll):
+def nlpSetup(xd,xa,u,p,nicp,nk,deg,p_init,p_min,p_max,xD_init,xA_init,xD_min,xA_min,xD_max,xA_max,u_min,u_max,u_init,C,ffcn,h,D,coll):
     XD = coll._XD
     XA = coll._XA
     U = coll._U
@@ -378,12 +350,6 @@ def nlpSetup(xd,xa,u,p,nicp,nk,deg,p_init,p_min,p_max,xD_init,xA_init,xD_min,xA_
     lbg = []
     ubg = []
     
-    # Initial constraints
-    [ick] = icfcn.call([XD[0][0][0], XA[0][0][0], U[0], P])
-    g += [ick]
-    lbg.append(ic_min)
-    ubg.append(ic_max)
-    
     # For all finite elements
     for k in range(nk):
         for i in range(nicp):
@@ -404,13 +370,6 @@ def nlpSetup(xd,xa,u,p,nicp,nk,deg,p_init,p_min,p_max,xD_init,xA_init,xD_min,xA_
                 lbg.append(np.zeros(nalg)) # equality constraints
                 ubg.append(np.zeros(nalg)) # equality constraints
                 
-                #  Evaluate the path constraint function
-                [pck] = pcfcn.call([XD[k][i][j], XA[k][i][j-1], U[k], P])
-                
-                g += [pck]
-                lbg.append(pc_min)
-                ubg.append(pc_max)
-             
             # Get an expression for the state at the end of the finite element
             xf_k = 0
             for j in range(deg+1):
@@ -426,15 +385,6 @@ def nlpSetup(xd,xa,u,p,nicp,nk,deg,p_init,p_min,p_max,xD_init,xA_init,xD_min,xA_
             
             lbg.append(np.zeros(ndiff))
             ubg.append(np.zeros(ndiff))
-    
-    # Periodicity constraints 
-    
-    
-    # Final constraints (Const, dConst, ConstQ)
-    [fck] = fcfcn.call([XD[k][i][j], XA[k][i][j-1], U[k], P])
-    g += [fck]
-    lbg.append(fc_min)
-    ubg.append(fc_max)
     
     return (g,lbg,ubg,vars_init,vars_lb,vars_ub)
 
@@ -546,14 +496,13 @@ class Coll():
         self.tau = tau
         
         (xd,xa,u,p,p_init,p_min,p_max,xD_init,xA_init,xD_min,xA_min,xD_max,xA_max,u_min,
-         u_max,u_init,
-         icfcn,ic_min,ic_max,ffcn,pcfcn,pc_min,pc_max,fcfcn,fc_min,fc_max) = modelSetup(self.nk,self.nicp,self.deg,self)
+         u_max,u_init,ffcn) = modelSetup(self.nk,self.nicp,self.deg,self)
         # function to get h out
         self.hfun = CS.MXFunction([self._V],[self.h])
         self.hfun.init()
         
         (g_dynamics,lbg_dynamics,ubg_dynamics,vars_init,vars_lb,vars_ub) = \
-          nlpSetup(xd,xa,u,p,self.nicp,self.nk,self.deg,p_init,p_min,p_max,xD_init,xA_init,xD_min,xA_min,xD_max,xA_max,u_min,u_max,u_init,icfcn,ic_min,ic_max,C,ffcn,self.h,pcfcn,pc_min,pc_max,D,fcfcn,fc_min,fc_max,self)
+          nlpSetup(xd,xa,u,p,self.nicp,self.nk,self.deg,p_init,p_min,p_max,xD_init,xA_init,xD_min,xA_min,xD_max,xA_max,u_min,u_max,u_init,C,ffcn,self.h,D,self)
 
         # add dynamics constraints
         assert(len(g_dynamics)==len(lbg_dynamics) and len(g_dynamics)==len(ubg_dynamics))
