@@ -719,7 +719,7 @@ class Coll():
         return {'vardict':vardict, 'tgrid':tgrid, 'x':xD_opt, 'u':u_opt, 'z':xA_opt, 'zPlt':xA_plt, 'p':v_opt[:NP], 'X_OPT':v_opt}
 
 
-    def bound(self,name,val,timestep=None,quiet=False):
+    def bound(self,name,val,timestep=None,quiet=False,force=False):
         assert(isinstance(name,str))
         assert(isinstance(val,tuple))
         assert(len(val)==2)
@@ -745,8 +745,8 @@ class Coll():
                 return
             if name in self._pBounds:
                 oldbound = self._pBounds[name]
-                if (self._pBounds[name] is not None):
-                    raise ValueError("can't change bound on \""+name+"\" once it's set (tried to change bound "+str(oldbound)+" to "+str(val))
+                if ((self._pBounds[name] is not None) and (not force)):
+                    raise ValueError("can't change bound on \""+name+"\" once it's set unless you use force=True (tried to change bound "+str(oldbound)+" to "+str(val))
                 self._pBounds[name] = val
                 return
         

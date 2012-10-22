@@ -42,7 +42,13 @@ x0=C.veccat([x0,C.sqrt(C.sumAll(x0[0:2]*x0[0:2])),0])
 rArm = 1.085 #(dixit Kurt)
 zt = -0.03
 
-def main():
+oldKites = []
+
+context   = zmq.Context(1)
+publisher = context.socket(zmq.PUB)
+publisher.bind("tcp://*:5563")
+
+def setupOcp():
     nk = 40
 
     print "creating model"
@@ -82,7 +88,7 @@ def main():
 
     ocp.bound('x',(0.1,1000))
     ocp.bound('y',(-1000,1000))
-    ocp.bound('z',(-1,10))
+    ocp.bound('z',(-1,7))
     ocp.bound('r',(0.5,10))
     ocp.bound('dr',(-10,10))
     ocp.bound('ddr',(-1,1))
@@ -150,10 +156,6 @@ def main():
     ocp.setObjective(obj)
 
     # zero mq setup
-    context   = zmq.Context(1)
-    publisher = context.socket(zmq.PUB)
-    publisher.bind("tcp://*:5563")
-
     # callback function
     class MyCallback:
         def __init__(self):
@@ -172,7 +174,7 @@ def main():
 #            kiteProtos = [kiteproto.toKiteProto(C.DMatrix(opt['x'][:,k]),C.DMatrix(opt['u'][:,k]),C.DMatrix(opt['p']), zt, rArm) for k in range(opt['x'].shape[1])]
             
             mc = kite_pb2.MultiCarousel()
-            mc.css.extend(list(kiteProtos))
+            mc.css.extend(list(kiteProtos+oldKites))
             
             mc.messages.append("endTime: "+str(xup['endTime']))
             mc.messages.append("w0: "+str(xup['w0']))
@@ -207,13 +209,25 @@ def main():
     ocp.setupCollocation(ocp.lookup('endTime'))
     ocp.setupSolver( solverOpts=solverOptions,
                      callback=MyCallback() )
-    opt = ocp.solve()
+    return ocp
 
+if __name__=='__main__':
+    ocp = setupOcp()
+
+    xOpt = None
+    for w0 in [10]:
+        
+        ocp.bound('w0',(w0,w0),force=True)
+        opt = ocp.solve(xInit=xOpt)
+        xup = opt['vardict']
+        xOpt = opt['X_OPT']
+            
+        for k in range(0,ocp.nk):
+            j = ocp.nicp*(ocp.deg+1)*k
+            oldKites.append( kiteproto.toKiteProto(C.DMatrix(opt['x'][:,j]),C.DMatrix(opt['u'][:,j]),C.DMatrix(opt['p']), zt, rArm) )
+            
     # Plot the results
     ocp.plot(['x','y','z'],opt)
     ocp.plot(['c','cdot'],opt,title="invariants")
     ocp.plot('airspeed',opt)
     plt.show()
-
-if __name__=='__main__':
-    main()
