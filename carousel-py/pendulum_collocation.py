@@ -96,10 +96,12 @@ def main():
     ocp.guess('m',0)
     ocp.guess('endTime',0.3)
 
-    opt = ocp.run( ocp.lookup('endTime'),
-                   solverOpts=solverOptions,
-                   constraintFunOpts=constraintFunOptions,
-                   callback=MyCallback() )
+    ocp.setupCollocation( ocp.lookup('endTime') )
+    ocp.setupSolver( solverOpts=solverOptions,
+                     constraintFunOpts=constraintFunOptions,
+                     callback=MyCallback() )
+    
+    opt = ocp.solve()
 
     # Plot the results
     plt.figure(1)

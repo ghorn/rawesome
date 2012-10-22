@@ -42,7 +42,7 @@ x0=C.veccat([x0,C.sqrt(C.sumAll(x0[0:2]*x0[0:2])),0])
 rArm = 1.085 #(dixit Kurt)
 zt = -0.03
 
-def main(v_opt = None):
+def main():
     nk = 40
 
     print "creating model"
@@ -52,7 +52,7 @@ def main(v_opt = None):
     nicp = 1
     deg = 4
     ocp = Coll(dae, nk=nk,nicp=nicp,deg=deg)
-
+                   
     # make the integrator
     print "setting up dynamics constraints"
 
@@ -204,9 +204,10 @@ def main(v_opt = None):
     ocp.guess('ddr',0)
     ocp.guess('w0',5)
 
-    opt = ocp.run( ocp.lookup('endTime'),
-                   solverOpts=solverOptions,
-                   callback=MyCallback() )
+    ocp.setupCollocation(ocp.lookup('endTime'))
+    ocp.setupSolver( solverOpts=solverOptions,
+                     callback=MyCallback() )
+    opt = ocp.solve()
 
     # Plot the results
     def plotInvariants():
