@@ -215,6 +215,10 @@ class Constraints():
             raise ValueError('Did not recognize comparison \"'+str(comparison)+'\"')
 
     def addBnds(self,g,(glb,gub)):
+        if (isinstance(glb,numbers.Real) and isinstance(gub,numbers.Real)):
+            glb = numpy.array(glb)
+            gub = numpy.array(gub)
+
         assert(isinstance(glb,numpy.ndarray))
         assert(isinstance(gub,numpy.ndarray))
         assert(isinstance(g,C.SXMatrix) or isinstance(g,C.MX))
