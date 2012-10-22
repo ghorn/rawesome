@@ -453,7 +453,7 @@ def solveNlp(ofcn,gfcn,vars_init,vars_lb,vars_ub,lbg,ubg,solverOptions):
     solver.init()
       
     # Initial condition
-    solver.setInput(vars_init,CS.NLP_X_INIT)
+    solver.setInput(vars_init, CS.NLP_X_INIT)
     
     # Bounds on x
     solver.setInput(vars_lb,CS.NLP_LBX)
@@ -533,7 +533,7 @@ class Coll():
     def constrainBnds(self,g,(lbg,ubg)):
         self._constraints.addBnds(g,(lbg,ubg))
     
-    def run(self,tf,solverOpts=[],constraintFunOpts=[],callback=None):
+    def run(self,tf,solverOpts=[],constraintFunOpts=[],callback=None,xInitOverride=None):
         ## -----------------------------------------------------------------------------
         ## Collocation setup
         ## -----------------------------------------------------------------------------
@@ -585,7 +585,8 @@ class Coll():
             c.init()
             solverOpts.append( ("iteration_callback", c) )
             
-
+        if xInitOverride is not None:
+            vars_init = xInitOverride
         v_opt = solveNlp(ofcn,gfcn,vars_init,vars_lb,vars_ub,lbg,ubg,solverOpts)
 
         return self.devectorize(v_opt)
@@ -693,7 +694,7 @@ class Coll():
         for k,name in enumerate(self.dae.uNames()):
             vardict[name] = u_opt[k,:]
             
-        return (vardict, {'tgrid':tgrid, 'x':xD_opt, 'u':u_opt, 'z':xA_opt, 'zPlt':xA_plt, 'p':v_opt[:NP]})
+        return {'vardict':vardict, 'tgrid':tgrid, 'x':xD_opt, 'u':u_opt, 'z':xA_opt, 'zPlt':xA_plt, 'p':v_opt[:NP], 'X_OPT':v_opt}
 
 
     def bound(self,name,val,timestep=None,quiet=False):

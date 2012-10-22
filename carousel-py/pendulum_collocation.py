@@ -69,7 +69,7 @@ def main():
           xOpt = numpy.array(f.input(C.NLP_X_OPT))
 
           self.iter = self.iter + 1
-          (xup,blah) = ocp.devectorize(xOpt)
+          xup = ocp.devectorize(xOpt)['vardict']
           
           po = kite_pb2.PendulumOpt()
           po.x.extend(list(xup['x']))
@@ -96,10 +96,10 @@ def main():
     ocp.guess('m',0)
     ocp.guess('endTime',0.3)
 
-    (opt,blah) = ocp.run( ocp.lookup('endTime'),
-                          solverOpts=solverOptions,
-                          constraintFunOpts=constraintFunOptions,
-                          callback=MyCallback() )
+    opt = ocp.run( ocp.lookup('endTime'),
+                   solverOpts=solverOptions,
+                   constraintFunOpts=constraintFunOptions,
+                   callback=MyCallback() )
 
     # Plot the results
     plt.figure(1)
@@ -107,10 +107,10 @@ def main():
     legend = []
     for name in ocp.dae.xNames():
         legend.append(name)
-        plt.plot(blah['tgrid'],opt[name])#,'--')
+        plt.plot(opt['tgrid'],opt['vardict'][name])#,'--')
     for name in ocp.dae.uNames():
         legend.append(name)
-        plt.plot(blah['tgrid'],opt[name]/20)#,'--')
+        plt.plot(opt['tgrid'],opt['vardict'][name]/20)#,'--')
     plt.title("pendulum swingup optimization")
     plt.xlabel('time')
     plt.legend(legend)

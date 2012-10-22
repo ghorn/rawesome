@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 import zmq
 #import time
 #import os
@@ -41,7 +42,7 @@ x0=C.veccat([x0,C.sqrt(C.sumAll(x0[0:2]*x0[0:2])),0])
 rArm = 1.085 #(dixit Kurt)
 zt = -0.03
 
-def main():
+def main(v_opt = None):
     nk = 40
 
     print "creating model"
@@ -79,30 +80,27 @@ def main():
     ocp.bound('aileron',(-0.04,0.04))
     ocp.bound('elevator',(-0.1,0.1))
 
-    ocp.bound('x',(0,4))
-    ocp.bound('y',(-3,3))
-    ocp.bound('z',(-2,3))
-    ocp.bound('r',(1,2))
-    ocp.bound('dr',(-1,1))
-    ocp.bound('ddr',(0,0))
-    ocp.bound('r',(1.2,1.2),timestep=0)
+    ocp.bound('x',(0.1,1000))
+    ocp.bound('y',(-1000,1000))
+    ocp.bound('z',(-1,10))
+    ocp.bound('r',(0.5,10))
+    ocp.bound('dr',(-10,10))
+    ocp.bound('ddr',(-1,1))
 
     for e in ['e11','e21','e31','e12','e22','e32','e13','e23','e33']:
         ocp.bound(e,(-1.1,1.1))
 
     for d in ['dx','dy','dz']:
-        ocp.bound(d,(-50,50))
+        ocp.bound(d,(-70,70))
 
     for w in ['w1','w2','w3']:
-        ocp.bound(w,(-8*pi,8*pi))
+        ocp.bound(w,(-4*pi,4*pi))
 
     ocp.bound('delta',(-0.01,1.01*2*pi))
     ocp.bound('ddelta',(-pi/4,8*pi))
     ocp.bound('tc',(-200,1000))
-#    ocp.bound('tc',(389.970797939731,389.970797939731))
-    ocp.bound('endTime',(0.5,2.0))
-#    ocp.bound('endTime',(1.6336935276077966,1.6336935276077966))
-    ocp.bound('w0',(0,0))
+    ocp.bound('endTime',(0.5,5.0))
+    ocp.bound('w0',(10,10))
 
     # boundary conditions
     ocp.bound('delta',(0,0),timestep=0)
@@ -112,16 +110,16 @@ def main():
     for name in [ #"x"   # state 0
                   "y"   # state 1
                 , "z"   # state 2
-#                , "e11" # state 3
+                , "e11" # state 3
 #                , "e12" # state 4
 #                , "e13" # state 5
 #                , "e21" # state 6
-#                , "e22" # state 7
+                , "e22" # state 7
 #                , "e23" # state 8
 #                , "e31" # state 9
 #                , "e32" # state 10
-#                , "e33" # state 11
-#                , "dx"  # state 12
+                , "e33" # state 11
+                , "dx"  # state 12
                 , "dy"  # state 13
                 , "dz"  # state 14
                 , "w1"  # state 15
@@ -136,11 +134,19 @@ def main():
 
     # make the solver
     # objective function
-    tc0 = 390
     obj = 0
     for k in range(nk):
         u = ocp.uVec(k)
-        obj += (C.sumAll(u[0:2]*u[0:2]) + 1e-10*C.sumAll((u[2]-tc0)*(u[2]-tc0)))*ocp.lookup('endTime')
+        surfSigma = 1
+        torqueSigma = 1e-5
+        tc0 = 390
+        winchForceSigma = 1e-5
+        winchForce0 = 500
+        surfaces = surfSigma*surfSigma*u[0:2]*u[0:2]
+        armTorques = torqueSigma*torqueSigma*(u[2]-tc0)*(u[2]-tc0)
+        winchForces = winchForceSigma*winchForceSigma*(u[3]-winchForce0)*(u[3]-winchForce0)
+        
+        obj += C.sumAll(surfaces + armTorques + winchForces)*ocp.lookup('endTime')
     ocp.setObjective(obj)
 
     # zero mq setup
@@ -155,14 +161,15 @@ def main():
         def __call__(self,f,*args):
             self.iter = self.iter + 1
             xOpt = numpy.array(f.input(C.NLP_X_OPT))
-            
-            xup,blah = ocp.devectorize(xOpt)
+
+            opt = ocp.devectorize(xOpt)
+            xup = opt['vardict']
             
             kiteProtos = []
             for k in range(0,nk):
                 j = nicp*(deg+1)*k
-                kiteProtos.append( kiteproto.toKiteProto(C.DMatrix(blah['x'][:,j]),C.DMatrix(blah['u'][:,j]),C.DMatrix(blah['p']), zt, rArm) )
-#            kiteProtos = [kiteproto.toKiteProto(C.DMatrix(blah['x'][:,k]),C.DMatrix(blah['u'][:,k]),C.DMatrix(blah['p']), zt, rArm) for k in range(blah['x'].shape[1])]
+                kiteProtos.append( kiteproto.toKiteProto(C.DMatrix(opt['x'][:,j]),C.DMatrix(opt['u'][:,j]),C.DMatrix(opt['p']), zt, rArm) )
+#            kiteProtos = [kiteproto.toKiteProto(C.DMatrix(opt['x'][:,k]),C.DMatrix(opt['u'][:,k]),C.DMatrix(opt['p']), zt, rArm) for k in range(opt['x'].shape[1])]
             
             mc = kite_pb2.MultiCarousel()
             mc.css.extend(list(kiteProtos))
@@ -197,9 +204,70 @@ def main():
     ocp.guess('ddr',0)
     ocp.guess('w0',5)
 
-    (opt,blah) = ocp.run( ocp.lookup('endTime'),
-                          solverOpts=solverOptions,
-                          callback=MyCallback() )
+    opt = ocp.run( ocp.lookup('endTime'),
+                   solverOpts=solverOptions,
+                   callback=MyCallback() )
+
+    # Plot the results
+    def plotInvariants():
+        c = []
+        cdot = []
+        dcmErrors = []
+        invErr = invariantErrs()
+        for k,t in enumerate(opt['tgrid']):
+            invErr.setInput(opt['x'][:,k],0)
+            invErr.setInput(opt['u'][:,k],1)
+            invErr.setInput(opt['p'],2)
+            invErr.evaluate()
+            c0 = invErr.output(0)
+            cdot0 = invErr.output(1)
+            dcmError0 = invErr.output(2)
+
+            c.append(float(c0))
+            cdot.append(float(cdot0))
+            dcmErrors.append([float(e) for e in dcmError0])
+    
+        plt.figure(1)
+        plt.clf()
+        legend = []
+        plt.plot(opt['tgrid'],c,'--')
+        plt.plot(opt['tgrid'],cdot,'-.')
+        legend = ['c','cdot']
+        plt.title("invariants")
+        plt.xlabel('time')
+        plt.legend(legend)
+        plt.grid()
+    
+        plt.figure(2)
+        plt.clf()
+        legend = []
+        plt.plot(opt['tgrid'],dcmErrors)
+        legend = ['e11','e22','e33','e12','e13','e23']
+        plt.title("invariants")
+        plt.xlabel('time')
+        plt.legend(legend)
+        plt.grid()
+        plt.show()
+    
+    def plotXU():
+        plt.figure(1)
+        plt.clf()
+        legend = []
+        for name in ocp.dae.xNames():
+            legend.append(name)
+            plt.plot(opt['tgrid'],opt['vardict'][name])#,'--')
+        for name in ocp.dae.uNames():
+            legend.append(name)
+            plt.plot(opt['tgrid'],opt['vardict'][name]/20)#,'--')
+        plt.title("states/actions")
+        plt.xlabel('time')
+        plt.legend(legend)
+        plt.grid()
+        plt.show()
+    
+#    plotInvariants()
+#    plotXU()
+#    plt.show()
 
 if __name__=='__main__':
     main()
