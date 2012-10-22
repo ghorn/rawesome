@@ -210,65 +210,10 @@ def main():
     opt = ocp.solve()
 
     # Plot the results
-    def plotInvariants():
-        c = []
-        cdot = []
-        dcmErrors = []
-        invErr = invariantErrs()
-        for k,t in enumerate(opt['tgrid']):
-            invErr.setInput(opt['x'][:,k],0)
-            invErr.setInput(opt['u'][:,k],1)
-            invErr.setInput(opt['p'],2)
-            invErr.evaluate()
-            c0 = invErr.output(0)
-            cdot0 = invErr.output(1)
-            dcmError0 = invErr.output(2)
-
-            c.append(float(c0))
-            cdot.append(float(cdot0))
-            dcmErrors.append([float(e) for e in dcmError0])
-    
-        plt.figure(1)
-        plt.clf()
-        legend = []
-        plt.plot(opt['tgrid'],c,'--')
-        plt.plot(opt['tgrid'],cdot,'-.')
-        legend = ['c','cdot']
-        plt.title("invariants")
-        plt.xlabel('time')
-        plt.legend(legend)
-        plt.grid()
-    
-        plt.figure(2)
-        plt.clf()
-        legend = []
-        plt.plot(opt['tgrid'],dcmErrors)
-        legend = ['e11','e22','e33','e12','e13','e23']
-        plt.title("invariants")
-        plt.xlabel('time')
-        plt.legend(legend)
-        plt.grid()
-        plt.show()
-    
-    def plotXU():
-        plt.figure(1)
-        plt.clf()
-        legend = []
-        for name in ocp.dae.xNames():
-            legend.append(name)
-            plt.plot(opt['tgrid'],opt['vardict'][name])#,'--')
-        for name in ocp.dae.uNames():
-            legend.append(name)
-            plt.plot(opt['tgrid'],opt['vardict'][name]/20)#,'--')
-        plt.title("states/actions")
-        plt.xlabel('time')
-        plt.legend(legend)
-        plt.grid()
-        plt.show()
-    
-#    plotInvariants()
-#    plotXU()
-#    plt.show()
+    ocp.plot(['x','y','z'],opt)
+    ocp.plot(['c','cdot'],opt,title="invariants")
+    ocp.plot('airspeed',opt)
+    plt.show()
 
 if __name__=='__main__':
     main()

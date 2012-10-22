@@ -883,6 +883,41 @@ class Coll():
             raise ValueError("can't change objective function once it's already set")
         self._objective = obj
 
+    def plot(self,names,opt,title=None):
+        if isinstance(names,str):
+            names = [names]
+        assert( isinstance(names,list) )
+        plt.figure()
+        plt.clf()
+        legend = []
+        for name in names:
+            assert(isinstance(name,str))
+            legend.append(name)
+
+            # if it's a simple state or action
+            if name in self.dae.xNames()+self.dae.uNames():
+                plt.plot(opt['tgrid'],opt['vardict'][name])
+
+            # if it's a Dae output
+            elif name in self.dae._outputDict:
+                y = []
+                f = CS.SXFunction( [ self.dae.xVec(),self.dae.uVec(),self.dae.pVec()], [self.dae.output(name)] )
+                f.init()
+                for k,t in enumerate(opt['tgrid']):
+                    f.setInput(opt['x'][:,k],0)
+                    f.setInput(opt['u'][:,k],1)
+                    f.setInput(opt['p'],2)
+                    f.evaluate()
+                    y.append(CS.DMatrix(f.output(0)))
+                plt.plot(opt['tgrid'],y)
+            else:
+                raise ValueError("unrecognized name: \""+name+"\"")
+        if isinstance(title,str):
+            plt.title(title)
+        plt.xlabel('time')
+        plt.legend(legend)
+        plt.grid()
+
 if __name__=='__main__':
     dae = Dae()
     # -----------------------------------------------------------------------------
@@ -895,7 +930,7 @@ if __name__=='__main__':
 #    xa = CS.ssym("xa",0,1)     # algebraic state
 #    xddot = CS.ssym("xdot",3)  # differential state time derivative
 #    p     = CS.ssym("p",0,1)      # parameters
-
+    dae.addOutput('u^2',u*u)
     dae.stateDotDummy = CS.veccat( [CS.ssym(name+"DotDummy") for name in dae._xNames] )
 
     # ODE right hand side function
@@ -936,13 +971,6 @@ if __name__=='__main__':
     opt = coll.solve()
 
     # Plot the results
-    plt.figure(1)
-    plt.clf()
-    plt.plot(opt['tgrid'],opt['x'][0,:],'--')
-    plt.plot(opt['tgrid'],opt['x'][1,:],'-')
-    plt.plot(opt['tgrid'],opt['u'][0,:],'-.')
-    plt.title("Van der Pol optimization")
-    plt.xlabel('time')
-    plt.legend(['x0 trajectory','x1 trajectory','u trajectory'])
-    plt.grid()
+    coll.plot(['x0','x1'],opt)
+    coll.plot(['u','u^2'],opt)
     plt.show()
