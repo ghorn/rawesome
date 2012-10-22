@@ -81,8 +81,8 @@ drawFun state@(State {sCS=Just cs}) =
     xyLine = Line [Xyz x y (planeZ-0.01), Xyz 0 0 (planeZ-0.01)] $ makeColor 0.2 0.7 1 0.5
     
     axes = Axes (0.5, 15)
-    arm  = Line [Xyz 0 0 0, r'n0'a0] $ makeColor 1 1 0 1
-    line = Line [r'n0'a0, r'n0't0]   $ makeColor 0 1 1 1
+    arm  = Line [Xyz 0 0 0, r'n0'a0] $ makeColor 1 1 0 alpha
+    line = Line [r'n0'a0, r'n0't0]   $ makeColor 0 1 1 alpha
     plane = Trans (Xyz 0 0 planeZ) $ Plane (Xyz 0 0 1) (makeColor 1 1 1 1) (makeColor 0.2 0.3 0.32 (realToFrac planeAlpha))
     planeZ' = planeZ-0.5
     planeAlpha
@@ -94,8 +94,8 @@ drawFun state@(State {sCS=Just cs}) =
           zipWith (\s k -> Text2d (uToString s) (30,fromIntegral $ 30*k) TimesRoman24 (makeColor 1 1 1 1)) messages (reverse [1..length messages])
     messages = toList $ CS.messages cs
 
-    (ac,_) = drawAc (fromMaybe 1 (CS.transparency cs)) pos quat
-    
+    (ac,_) = drawAc alpha pos quat
+    alpha = realToFrac $ fromMaybe 1 (CS.transparency cs)
 
     trailLines = drawTrails (sTrails state)
 
