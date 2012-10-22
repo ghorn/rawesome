@@ -878,6 +878,8 @@ class Coll():
         if name in self.dae.zNames():
             raise ValueError("can't lookup algebraic states at this time, bug Greg")
 
+        raise ValueError("unrecognized variable \""+name+"\"")
+
     def setObjective(self,obj):
         if hasattr(self,'_objective'):
             raise ValueError("can't change objective function once it's already set")
