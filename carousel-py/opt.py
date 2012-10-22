@@ -144,13 +144,13 @@ def setupOcp():
     for k in range(nk):
         u = ocp.uVec(k)
         surfSigma = 1
-        torqueSigma = 1e-5
-        tc0 = 390
-        winchForceSigma = 1e-5
+        torque0 = 390
+        torqueSigma = 1.0e5
+        winchForceSigma = 1.0e5
         winchForce0 = 500
-        surfaces = surfSigma*surfSigma*u[0:2]*u[0:2]
-        armTorques = torqueSigma*torqueSigma*(u[2]-tc0)*(u[2]-tc0)
-        winchForces = winchForceSigma*winchForceSigma*(u[3]-winchForce0)*(u[3]-winchForce0)
+        surfaces = u[0:2]*u[0:2]/(surfSigma*surfSigma)
+        armTorques = (u[2]-torque0)*(u[2]-torque0)/(torqueSigma*torqueSigma)
+        winchForces = (u[3]-winchForce0)*(u[3]-winchForce0)/(winchForceSigma*winchForceSigma)
         
         obj += C.sumAll(surfaces + armTorques + winchForces)*ocp.lookup('endTime')
     ocp.setObjective(obj)
@@ -201,7 +201,7 @@ def setupOcp():
     ocp.guess('aileron',0)
     ocp.guess('elevator',0)
     ocp.guess('tc',389.970797939731)
-    ocp.guess('endTime',1.6336935276077966)
+    ocp.guess('endTime',2)
 
     ocp.guess('ddr',0)
     ocp.guess('w0',5)
