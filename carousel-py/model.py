@@ -1,54 +1,54 @@
 import casadi as C
 from dae import Dae
 
-def forcesTorques(dae):
-    rho =    1.23      #  density of the air             #  [ kg/m^3]
-    rA = 1.085 #(dixit Kurt)
-    alpha0 = -0*C.pi/180 
-    
-    #TAIL LENGTH
-    lT = 0.4
+def forcesTorques(dae,conf):
+    rho = conf['env']['rho']
+    rA = conf['carousel']['rArm']
+    alpha0 = conf['aero']['alpha0deg']*C.pi/180 
     
     #ROLL DAMPING
-    rD = 1e-2 
-    pD = 0*1e-3
-    yD = 0*1e-3
+    rD = conf['aero']['rD']
+    pD = conf['aero']['pD']
+    yD = conf['aero']['yD']
     
     #WIND-TUNNEL PARAMETERS
     #Lift (report p. 67)
-    cLA = 5.064
+    cLA = conf['aero']['cLA']
     
-    cLe = -1.924
-    
-    cL0 = 0.239
+    cLe = conf['aero']['cLe']
+
+    cL0 = conf['aero']['cL0']
     
     #Drag (report p. 70)
-    cDA = -0.195
-    cDA2 = 4.268
-    cDB2 = 5
+    cDA = conf['aero']['cDA']
+    cDA2 = conf['aero']['cDA2']
+    cDB2 = conf['aero']['cDB2']
 
-#    cDe = 0.044
-#    cDr = 0.111
-
-    cD0 = 0.026
+    cD0 = conf['aero']['cD0']
     
     #Roll (report p. 72)
-    cRB = -0.062
-    cRAB = -0.271 
-    cRr = -5.637e-1
+    cRB  = conf['aero']['cRB']
+    cRAB = conf['aero']['cRAB']
+    cRr  = conf['aero']['cRr']
     
     #Pitch (report p. 74)
-    cPA = 0.293
-    cPe = -4.9766e-1
+    cPA = conf['aero']['cPA']
+    cPe = conf['aero']['cPe']
     
-    cP0 = 0.03
+    cP0 = conf['aero']['cP0']
     
     #Yaw (report p. 76)
-    cYB = 0.05
-    cYAB = 0.229
+    cYB = conf['aero']['cYB']
+    cYAB = conf['aero']['cYAB']
+
+    #TAIL LENGTH
+    lT = conf['kite']['lT']
     
-    span = 0.96
-    chord = 0.1
+    AR = conf['kite']['AR']
+    area = conf['kite']['area']
+    
+    span = C.sqrt(area*AR)
+    chord = C.sqrt(area/AR)
     
     ###########     model integ ###################
     x =   dae.x('x')
@@ -86,8 +86,8 @@ def forcesTorques(dae):
                     , dx*e21 + dy*e22 + dz*e23 + ddelta*e22*rA + ddelta*e22*x - ddelta*e21*y
                     , dx*e31 + dy*e32 + dz*e33 + ddelta*e32*rA + ddelta*e32*x - ddelta*e31*y
                     ])
-    z0 = 100
-    zt_roughness = 0.1
+    z0 = conf['wind shear']['z0']
+    zt_roughness = conf['wind shear']['zt_roughness']
     zsat = 0.5*(z+C.sqrt(z*z))
     wind_x = dae.p('w0')*C.log((zsat+zt_roughness+2)/zt_roughness)/C.log(z0/zt_roughness)
     dp_carousel_frame = C.veccat( [ dx - ddelta*y
@@ -165,21 +165,18 @@ def forcesTorques(dae):
     # cP = cPA*alphaTail + cPe*u2  + cP0
     # cY = cYB*beta + cYAB*alphaTail*beta
     
-    cL_ = cLA*alpha + cLe*u2 + cL0
-    cD_ = cDA*alpha + cDA2*alpha*alpha + cDB2*beta*beta + cD0
+    cL = cLA*alpha + cLe*u2 + cL0
+    cD = cDA*alpha + cDA2*alpha*alpha + cDB2*beta*beta + cD0
     cR = -rD*w1 + cRB*betaTail + cRr*u1 + cRAB*alphaTail*betaTail
     cP = -pD*w2 + cPA*alphaTail + cPe*u2 + cP0
     cY = -yD*w3 + cYB*betaTail + cYAB*alphaTail*betaTail
-    
-    
-    # LIFT :
-    # ###############################
-    cL = 0.2*cL_
-    cD = 0.5*cD_
 
     dae.addOutput('cL', cL)
     dae.addOutput('cD', cD)
     dae.addOutput('L/D', cL/cD)
+    
+    # LIFT :
+    # ###############################
     fL1 =  rho*cL*eLe1*vKite/2.0
     fL2 =  rho*cL*eLe2*vKite/2.0
     fL3 =  rho*cL*eLe3*vKite/2.0
@@ -209,27 +206,30 @@ def forcesTorques(dae):
     return (f1, f2, f3, t1, t2, t3)
     
 
-def modelInteg(dae, zt, rA):
+def modelInteg(dae, conf):
     #  PARAMETERS OF THE KITE :
     #  ##############
-    m =  0.626      #  mass of the kite               #  [ kg    ]
+    m =  conf['kite']['mass'] #  mass of the kite               #  [ kg    ]
                  
     #   PHYSICAL CONSTANTS :
     #  ##############
-    g =    9.81      #  gravitational constant         #  [ m /s^2]
+    g = conf['env']['g'] #  gravitational constant         #  [ m /s^2]
     
     #  PARAMETERS OF THE CABLE :
     #  ##############
      
     #INERTIA MATRIX (Kurt's direct measurements)
-    j1 = 0.0163
-    j31 = 0.0006
-    j2 = 0.0078
-    j3 = 0.0229
+    j1 =  conf['kite']['j1']
+    j31 = conf['kite']['j31']
+    j2 =  conf['kite']['j2']
+    j3 =  conf['kite']['j3']
     
     #Carousel Friction & inertia
-    jCarousel = 1e2
-    cfric = 100
+    jCarousel = conf['carousel']['jCarousel']
+    cfric = conf['carousel']['cfric']
+
+    zt = conf['kite']['zt']
+    rA = conf['carousel']['rArm']
 
     ###########     model integ ###################
     x =   dae.x('x')
@@ -265,7 +265,7 @@ def modelInteg(dae, zt, rA):
     
     tc = dae.u('tc') #Carousel motor torque
 
-    (f1, f2, f3, t1, t2, t3) = forcesTorques(dae)
+    (f1, f2, f3, t1, t2, t3) = forcesTorques(dae,conf)
 
     # ATTITUDE DYNAMICS
     # #############################
@@ -345,9 +345,6 @@ def modelInteg(dae, zt, rA):
     mm[7,6] = 0 
     mm[7,7] = 0
     
-    
-
-#    rhs :: Vector (Expr Double)
     zt2 = zt*zt
     rhs = C.veccat(
           [ tc - cfric*ddelta - f1*y + f2*(rA + x) + dy*m*(dx - 2*ddelta*y) - dx*m*(dy + 2*ddelta*rA + 2*ddelta*x) 
@@ -357,10 +354,9 @@ def modelInteg(dae, zt, rA):
           , t1 - w2*(j3*w3 + j31*w1) + j2*w2*w3 
           , t2 + w1*(j3*w3 + j31*w1) - w3*(j1*w1 + j31*w3) 
           , t3 + w2*(j1*w1 + j31*w3) - j2*w1*w2
-          , dr*dr + ddr*r - (zt*w1*(e11*x + e12*y + e13*z + zt*e11*e31 + zt*e12*e32 + zt*e13*e33) + zt*w2*(e21*x + e22*y + e23*z + zt*e21*e31 + zt*e22*e32 + zt*e23*e33))*(w3 - ddelta*e33) - dx*(dx - zt*e21*(w1 - ddelta*e13) + zt*e11*(w2 - ddelta*e23)) - dy*(dy - zt*e22*(w1 - ddelta*e13) + zt*e12*(w2 - ddelta*e23)) - dz*(dz - zt*e23*(w1 - ddelta*e13) + zt*e13*(w2 - ddelta*e23)) + (w1 - ddelta*e13)*(e21*(zt*dx - zt2*e21*(w1 - ddelta*e13) + zt2*e11*(w2 - ddelta*e23)) + e22*(zt*dy - zt2*e22*(w1 - ddelta*e13) + zt2*e12*(w2 - ddelta*e23)) + zt*e23*(dz + zt*e13*w2 - zt*e23*w1) + zt*e33*(w1*z + zt*e33*w1 + ddelta*e11*x + ddelta*e12*y + zt*ddelta*e11*e31 + zt*ddelta*e12*e32) + zt*e31*(x + zt*e31)*(w1 - ddelta*e13) + zt*e32*(y + zt*e32)*(w1 - ddelta*e13)) - (w2 - ddelta*e23)*(e11*(zt*dx - zt2*e21*(w1 - ddelta*e13) + zt2*e11*(w2 - ddelta*e23)) + e12*(zt*dy - zt2*e22*(w1 - ddelta*e13) + zt2*e12*(w2 - ddelta*e23)) + zt*e13*(dz + zt*e13*w2 - zt*e23*w1) - zt*e33*(w2*z + zt*e33*w2 + ddelta*e21*x + ddelta*e22*y + zt*ddelta*e21*e31 + zt*ddelta*e22*e32) - zt*e31*(x + zt*e31)*(w2 - ddelta*e23) - zt*e32*(y + zt*e32)*(w2 - ddelta*e23))
-          ]
-          )
-    
+          , ddr*r-(zt*w1*(e11*x+e12*y+e13*z+zt*e11*e31+zt*e12*e32+zt*e13*e33)+zt*w2*(e21*x+e22*y+e23*z+zt*e21*e31+zt*e22*e32+zt*e23*e33))*(w3-ddelta*e33)-dx*(dx-zt*e21*(w1-ddelta*e13)+zt*e11*(w2-ddelta*e23))-dy*(dy-zt*e22*(w1-ddelta*e13)+zt*e12*(w2-ddelta*e23))-dz*(dz-zt*e23*(w1-ddelta*e13)+zt*e13*(w2-ddelta*e23))+dr*dr+(w1-ddelta*e13)*(e21*(zt*dx-zt2*e21*(w1-ddelta*e13)+zt2*e11*(w2-ddelta*e23))+e22*(zt*dy-zt2*e22*(w1-ddelta*e13)+zt2*e12*(w2-ddelta*e23))+zt*e23*(dz+zt*e13*w2-zt*e23*w1)+zt*e33*(w1*z+zt*e33*w1+ddelta*e11*x+ddelta*e12*y+zt*ddelta*e11*e31+zt*ddelta*e12*e32)+zt*e31*(x+zt*e31)*(w1-ddelta*e13)+zt*e32*(y+zt*e32)*(w1-ddelta*e13))-(w2-ddelta*e23)*(e11*(zt*dx-zt2*e21*(w1-ddelta*e13)+zt2*e11*(w2-ddelta*e23))+e12*(zt*dy-zt2*e22*(w1-ddelta*e13)+zt2*e12*(w2-ddelta*e23))+zt*e13*(dz+zt*e13*w2-zt*e23*w1)-zt*e33*(w2*z+zt*e33*w2+ddelta*e21*x+ddelta*e22*y+zt*ddelta*e21*e31+zt*ddelta*e22*e32)-zt*e31*(x+zt*e31)*(w2-ddelta*e23)-zt*e32*(y+zt*e32)*(w2-ddelta*e23))
+          ] )
+ 
     dRexp = C.SXMatrix(3,3)
 
     dRexp[0,0] = e21*(w3 - ddelta*e33) - e31*(w2 - ddelta*e23) 
@@ -394,7 +390,7 @@ def modelInteg(dae, zt, rA):
     dae.addOutput('cdot', cdot)
     return (mm, rhs, dRexp, c, cdot)
         
-def model(zt,rArm,nSteps=None,extraParams=[]):
+def model(conf,nSteps=None,extraParams=[]):
     dae = Dae()
     for ep in extraParams:
         dae.addP(ep)
@@ -445,13 +441,14 @@ def model(zt,rArm,nSteps=None,extraParams=[]):
     dae.addOutput('RPM', dae.x('ddelta')*60/(2*C.pi))
     dae.addOutput('aileron(deg)', dae.u('aileron')*180/C.pi)
     dae.addOutput('elevator(deg)', dae.u('elevator')*180/C.pi)
+    
     dae.addOutput('motor torque', dae.u('tc'))
     dae.addOutput('motor power', dae.u('tc')*dae.x('ddelta'))
 
     dae.addOutput('winch force', dae.x('r')*dae.z('nu'))
     dae.addOutput('winch power', dae.x('r')*dae.x('dr')*dae.z('nu'))
     
-    (massMatrix, rhs, dRexp, c, cdot) = modelInteg(dae, zt, rArm)
+    (massMatrix, rhs, dRexp, c, cdot) = modelInteg(dae, conf)
 
     ode = C.veccat( [ C.veccat(dae.x(['dx','dy','dz']))
                     , dRexp.trans().reshape([9,1])

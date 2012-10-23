@@ -1,7 +1,9 @@
+import sys
+from configobj import ConfigObj,flatten_errors
+from validate import Validator
+
 import matplotlib.pyplot as plt
 import zmq
-#import time
-#import os
 
 import numpy
 from numpy import pi
@@ -14,8 +16,6 @@ import kiteproto
 
 from collocation import Coll
 import model
-
-#tc0 = 2*389.970797939731
 
 x0 = C.DMatrix( [ 1.154244772411
                 , -0.103540608242
@@ -37,10 +37,9 @@ x0 = C.DMatrix( [ 1.154244772411
                 , -1.249768772258
                 , 0.000000000000
                 , 3.874600000000
+                , 0.0
                 ])
 x0=C.veccat([x0,C.sqrt(C.sumAll(x0[0:2]*x0[0:2])),0])
-rArm = 1.085 #(dixit Kurt)
-zt = -0.01
 
 oldKites = []
 
@@ -48,11 +47,11 @@ context   = zmq.Context(1)
 publisher = context.socket(zmq.PUB)
 publisher.bind("tcp://*:5563")
 
-def setupOcp():
+def setupOcp(conf):
     nk = 50
 
     print "creating model"
-    dae = model.model(zt,rArm,extraParams=['endTime'])
+    dae = model.model(conf,extraParams=['endTime'])
 
     print "setting up OCP"
     nicp = 1
@@ -217,8 +216,8 @@ def setupOcp():
             kiteProtos = []
             for k in range(0,nk):
                 j = nicp*(deg+1)*k
-                kiteProtos.append( kiteproto.toKiteProto(C.DMatrix(opt['x'][:,j]),C.DMatrix(opt['u'][:,j]),C.DMatrix(opt['p']), zt, rArm) )
-#            kiteProtos = [kiteproto.toKiteProto(C.DMatrix(opt['x'][:,k]),C.DMatrix(opt['u'][:,k]),C.DMatrix(opt['p']), zt, rArm) for k in range(opt['x'].shape[1])]
+                kiteProtos.append( kiteproto.toKiteProto(C.DMatrix(opt['x'][:,j]),C.DMatrix(opt['u'][:,j]),C.DMatrix(opt['p']), conf['kite']['zt'], conf['carousel']['rArm']) )
+#            kiteProtos = [kiteproto.toKiteProto(C.DMatrix(opt['x'][:,k]),C.DMatrix(opt['u'][:,k]),C.DMatrix(opt['p']), conf['kite']['zt'], conf['carousel']['rArm']) for k in range(opt['x'].shape[1])]
             
             mc = kite_pb2.MultiCarousel()
             mc.css.extend(list(kiteProtos+oldKites))
@@ -258,21 +257,41 @@ def setupOcp():
                      callback=MyCallback() )
     return ocp
 
+
+
+
 if __name__=='__main__':
-    ocp = setupOcp()
+    conf = ConfigObj('config.ini', configspec='configspec.ini')
+    results = conf.validate(Validator())
+    if results != True:
+        print 'Configuration validation error'
+        print conf
+        print results
+        def niceErr(confdict,resultsdict):
+            for (section_list, key, _) in flatten_errors(confdict, resultsdict):
+                print (section_list,key)
+                if key is not None:
+                    print 'The "%s" key in the section "%s" failed validation' % (key, ', '.join(section_list))
+                elif isinstance(confdict[key],dict):
+                    niceErr(confdict[key],resultsdict[key])
+                else:
+                    print 'The following section was missing:%s ' % key
+        niceErr(conf,results)
+        sys.exit(1)
+    
+    ocp = setupOcp(conf)
 
     xOpt = None
     for w0 in [10]:
-        
         ocp.bound('w0',(w0,w0),force=True)
         opt = ocp.solve(xInit=xOpt)
         xup = opt['vardict']
         xOpt = opt['X_OPT']
-            
+        
         for k in range(0,ocp.nk):
             j = ocp.nicp*(ocp.deg+1)*k
-            oldKites.append( kiteproto.toKiteProto(C.DMatrix(opt['x'][:,j]),C.DMatrix(opt['u'][:,j]),C.DMatrix(opt['p']), zt, rArm) )
-            
+            oldKites.append( kiteproto.toKiteProto(C.DMatrix(opt['x'][:,j]),C.DMatrix(opt['u'][:,j]),C.DMatrix(opt['p']), conf['kite']['zt'], conf['carousel']['rArm']) )
+
     # Plot the results
     ocp.plot(['x','y','z'],opt)
     ocp.plot(['aileron','elevator'],opt,title='control surface inputs')
