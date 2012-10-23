@@ -337,7 +337,7 @@ class Coll():
         self._P  = P
 
 
-    def _parseBoundsAndGuess(self):
+    def _parseBoundsAndGuess(self,warnZBounds,warnZGuess):
         nk = self.nk
         nicp = self.nicp
         deg = self.deg
@@ -384,7 +384,8 @@ class Coll():
             for timestep in range(nk):
                 zminmax = self._zBounds[name][timestep]
                 if zminmax is None:
-                    print "WARNING: didn't set bounds for algebraic state \""+name+"\" at timestep "+str(timestep)+", using (-inf,inf)"
+                    if warnZBounds:
+                        print "WARNING: didn't set bounds for algebraic state \""+name+"\" at timestep "+str(timestep)+", using (-inf,inf)"
                     zmin = -CS.inf
                     zmax =  CS.inf
                 else:
@@ -402,7 +403,8 @@ class Coll():
                     xa1 = self._zGuess[name][k]
     
                 if xa0 is None:
-                    print "WARNING: initial guess for \""+name+ "\" not set at timestep "+str(timestep)+", using guess of 0.0"
+                    if warnZGuess:
+                        print "WARNING: initial guess for \""+name+ "\" not set at timestep "+str(timestep)+", using guess of 0.0"
                     xa0 = 0.0
                 if xa1 is None:
                     # no print statement here to prevent two identical warnings
@@ -589,8 +591,8 @@ class Coll():
         self.solver.setInput(lbg,CS.NLP_LBG)
         self.solver.setInput(ubg,CS.NLP_UBG)
 
-    def solve(self,xInit=None):
-        (vars_init,vars_lb,vars_ub) = self._vectorizeBoundsAndGuess( self._parseBoundsAndGuess() )
+    def solve(self,xInit=None,warnZBounds=False,warnZGuess=False):
+        (vars_init,vars_lb,vars_ub) = self._vectorizeBoundsAndGuess( self._parseBoundsAndGuess(warnZBounds,warnZGuess) )
             
         if xInit is not None:
             vars_init = xInit
