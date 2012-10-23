@@ -1,3 +1,5 @@
+from configobj import ConfigObj,flatten_errors
+from validate import Validator
 import zmq
 import time
 import os
@@ -9,9 +11,6 @@ import casadi as C
 import kiteproto
 import model
 import joy
-
-rArm = 1.085 #(dixit Kurt)
-zt = -0.03
 
 x0 = C.DMatrix( [ 1.154244772411
                 , -0.103540608242
@@ -33,9 +32,11 @@ x0 = C.DMatrix( [ 1.154244772411
                 , -1.249768772258
                 , 0.000000000000
                 , 3.874600000000
+                , 0.0
                 ])
 
-def setC0(x00):
+def setC0(x00,conf):
+    zt = conf['kite']['zt']
     x = x00[0]
     y = x00[1]
     z = x00[2]
@@ -45,13 +46,31 @@ def setC0(x00):
     r = C.sqrt((x + zt*e31)**2 + (y + zt*e32)**2 + (z + zt*e33)**2)
     return C.veccat([x00,r,0])
     
-x0 = setC0(x0)
-
-sim = simutils.Sim(ts=0.02, sloMoFactor=4, state0=simutils.SimState(pdOn = False, x = x0))
-
 if __name__=='__main__':
+    conf = ConfigObj('config.ini', configspec='configspec.ini')
+    results = conf.validate(Validator())
+    if results != True:
+        print 'Configuration validation error'
+        print conf
+        print results
+        def niceErr(confdict,resultsdict):
+            for (section_list, key, _) in flatten_errors(confdict, resultsdict):
+                print (section_list,key)
+                if key is not None:
+                    print 'The "%s" key in the section "%s" failed validation' % (key, ', '.join(section_list))
+                elif isinstance(confdict[key],dict):
+                    niceErr(confdict[key],resultsdict[key])
+                else:
+                    print 'The following section was missing:%s ' % key
+        niceErr(conf,results)
+        sys.exit(1)
+    
     print "creating model"
-    dae = model.model(zt,rArm)
+    x0 = setC0(x0,conf)
+
+    sim = simutils.Sim(ts=0.02, sloMoFactor=4, state0=simutils.SimState(pdOn = False, x = x0))
+
+    dae = model.model(conf)
     sxfun = dae.sxFun()
     sxfun.init()
 
@@ -141,7 +160,8 @@ if __name__=='__main__':
         u = C.DMatrix([tc,aileron,elevator,ddr])
         p = C.DMatrix([w0])
 
-        z = f.output(C.INTEGRATOR_ZF)
+#        z = f.output(C.INTEGRATOR_ZF)
+        z = C.DMatrix([0])
         
         f.setInput(x,C.INTEGRATOR_X0)
         f.setInput(C.veccat([u,p]),C.INTEGRATOR_P)
@@ -164,7 +184,7 @@ if __name__=='__main__':
                 sim.loadDefault()
                 x,u,p = sim.getCurrentState()._log[-1]
                 pass
-            communicator.sendKite(sim,(x,z,u,p),zt,rArm,w0=p.at(0))
+            communicator.sendKite(sim,(x,z,u,p),conf['kite']['zt'],conf['carousel']['rArm'],w0=p.at(0))
             
             deltaTime = (t0 + sim.tsSimStep*sim.sloMoFactor) - time.time()
             if deltaTime > 0:
