@@ -122,11 +122,13 @@ def setupOcp(conf):
     ocp.bound('tc',(-1000,1000))
     ocp.bound('endTime',(0.5,4.0))
     ocp.bound('w0',(10,10))
+    ocp.bound('energy',(-1e6,1e6))
 
     # boundary conditions
     ocp.bound('delta',(0,0),timestep=0)
     ocp.bound('delta',(2*pi,2*pi),timestep=-1)
-
+    ocp.bound('energy',(0,0),timestep=0,quiet=True)
+    
     # make it periodic
     for name in [ #"x"   # state 0
                   "y"   # state 1
@@ -199,7 +201,7 @@ def setupOcp(conf):
         torqueObj = tc*tc / (torqueSigma*torqueSigma)
         
         obj += ailObj + eleObj + winchObj + torqueObj
-    ocp.setObjective( C.sumAll(obj) ) #*ocp.lookup('endTime') )
+    ocp.setObjective( C.sumAll(obj)*1e-8 + ocp.lookup('energy',timestep=-1)/ocp.lookup('endTime') )
 
     # zero mq setup
     # callback function
@@ -229,13 +231,13 @@ def setupOcp(conf):
 
 
     # solver
-    solverOptions = [ ("linear_solver","ma57")
-#                    , ("derivative_test","first-order")
-                    , ("expand_f",True)
+    solverOptions = [ ("expand_f",True)
                     , ("expand_g",True)
                     , ("generate_hessian",True)
+                    , ("linear_solver","ma57")
+#                    , ("derivative_test","first-order")
                     , ("max_iter",1000)
-                    , ("tol",1e-4)
+                    , ("tol",1e-9)
                     ]
     
     # initial conditions
@@ -247,7 +249,7 @@ def setupOcp(conf):
     ocp.guess('aileron',0)
     ocp.guess('elevator',0)
     ocp.guess('tc',0)
-    ocp.guess('endTime',2.5)
+    ocp.guess('endTime',1.5)
 
     ocp.guess('ddr',0)
     ocp.guess('w0',5)
@@ -292,6 +294,7 @@ if __name__=='__main__':
             j = ocp.nicp*(ocp.deg+1)*k
             oldKites.append( kiteproto.toKiteProto(C.DMatrix(opt['x'][:,j]),C.DMatrix(opt['u'][:,j]),C.DMatrix(opt['p']), conf['kite']['zt'], conf['carousel']['rArm']) )
 
+    print "optimal power: "+str(opt['vardict']['energy'][-1]/opt['vardict']['endTime'])
     # Plot the results
     ocp.plot(['x','y','z'],opt)
     ocp.plot(['aileron','elevator'],opt,title='control surface inputs')
@@ -303,4 +306,7 @@ if __name__=='__main__':
     ocp.plot('cL',opt)
     ocp.plot('cD',opt)
     ocp.plot('L/D',opt)
+    ocp.plot('motor power',opt)
+#    ocp.plot('winch power',opt)
+    ocp.plot('energy',opt)
     plt.show()

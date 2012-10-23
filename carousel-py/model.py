@@ -426,6 +426,7 @@ def model(conf,nSteps=None,extraParams=[]):
               , "ddelta" # state 19
               , "r" # state 20
               , "dr" # state 21
+              , "energy" # state 22
               ] )
     dae.addU( [ "tc"
               , "aileron"
@@ -434,8 +435,6 @@ def model(conf,nSteps=None,extraParams=[]):
               ] )
     dae.addP( ['w0'] )
     
-    dae.stateDotDummy = C.veccat( [C.ssym(name+"DotDummy") for name in dae._xNames] )
-
     dae.addOutput('r', dae.x('r'))
     dae.addOutput('dr', dae.x('dr'))
     dae.addOutput('RPM', dae.x('ddelta')*60/(2*C.pi))
@@ -450,6 +449,7 @@ def model(conf,nSteps=None,extraParams=[]):
     
     (massMatrix, rhs, dRexp, c, cdot) = modelInteg(dae, conf)
 
+    
     ode = C.veccat( [ C.veccat(dae.x(['dx','dy','dz']))
                     , dRexp.trans().reshape([9,1])
                     , C.veccat(dae.z(['ddx','ddy','ddz']))
@@ -457,8 +457,10 @@ def model(conf,nSteps=None,extraParams=[]):
                     , C.veccat([dae.x('ddelta'), dae.z('dddelta')])
                     , dae.x('dr')
                     , dae.u('ddr')
+                    , dae.output('winch power') + dae.output('motor power')
                     ] )
 
+    dae.stateDotDummy = C.veccat( [C.ssym(name+"DotDummy") for name in dae._xNames] )
     scaledStateDotDummy = dae.stateDotDummy
     
     if nSteps is not None:
