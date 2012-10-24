@@ -81,21 +81,22 @@ def forcesTorques(dae,conf):
     u1 = dae.u('aileron')
     u2 = dae.u('elevator')
     
-    ####### kinfile ######
-    dpE = C.veccat( [ dx*e11 + dy*e12 + dz*e13 + ddelta*e12*rA + ddelta*e12*x - ddelta*e11*y
-                    , dx*e21 + dy*e22 + dz*e23 + ddelta*e22*rA + ddelta*e22*x - ddelta*e21*y
-                    , dx*e31 + dy*e32 + dz*e33 + ddelta*e32*rA + ddelta*e32*x - ddelta*e31*y
-                    ])
+    # wind
     z0 = conf['wind shear']['z0']
     zt_roughness = conf['wind shear']['zt_roughness']
     zsat = 0.5*(z+C.sqrt(z*z))
     wind_x = dae.p('w0')*C.log((zsat+zt_roughness+2)/zt_roughness)/C.log(z0/zt_roughness)
-    dp_carousel_frame = C.veccat( [ dx - ddelta*y
-                                  , dy + ddelta*rA + ddelta*x
-                                  , dz
-                                  ]) - C.veccat([C.cos(delta)*wind_x,C.sin(delta)*wind_x,0])
     dae.addOutput('wind at altitude', wind_x)
     dae.addOutput('w0', dae.p('w0'))
+
+    dp_carousel_frame = C.veccat( [ dx - ddelta*y
+                                  , dy + ddelta*(rA + x)
+                                  , dz
+                                  ]) - C.veccat([C.cos(delta)*wind_x,C.sin(delta)*wind_x,0])
+    R_c2b = C.veccat( [e11, e12, e13,
+                       e21, e22, e23,
+                       e31, e32, e33] ).reshape((3,3))
+    dpE = C.mul( R_c2b, dp_carousel_frame )
     
     ##### more model_integ ###########
     # EFFECTIVE WIND IN THE KITE`S SYSTEM :
@@ -122,7 +123,6 @@ def forcesTorques(dae,conf):
     # ############
     
     # Relative wind speed in Airfoil's referential 'E'
-    
     wE1 = dpE[0]
     wE2 = dpE[1]
     wE3 = dpE[2]
