@@ -94,10 +94,11 @@ class Sim():
     def saveFile(self,filename='defaultSave.dat'):
         saves = copy.deepcopy(self._saves)
         for k in saves.keys():
-            saves[k].x = list(saves[k].x)
-            saves[k]._log = [(list(x),list(u),list(p)) for (x,u,p) in saves[k]._log]
+            if not k == 'default':
+                saves[k].x = list(saves[k].x)
+                saves[k]._log = [(list(x),list(u),list(p)) for (x,u,p) in saves[k]._log]
         saves['default'] = self.default
-        
+
         f=open(filename,'w')
         pickle.dump(saves,f)
         f.close()
@@ -138,7 +139,7 @@ class Sim():
             self.handleInput() # for time dialation
             percent = "( %.1f %%)" % (100*k/loglen)
             message = "============ REPLAY #"+str(self.default)+" "+percent+" ==========="
-            communicator.sendKite(self,(x,u,p),[message])
+            communicator.sendKite(self,(x,C.DMatrix([0,0,0,0,0,0,0,0]),u,p),0.0,1,0,[message])
             deltaTime = (t0 + self.tsSimStep*self.sloMoFactor) - time.time()
             if deltaTime > 0:
                 time.sleep(deltaTime)
