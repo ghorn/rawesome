@@ -96,6 +96,9 @@ def forcesTorques(dae,conf):
     R_c2b = C.veccat( [e11, e12, e13,
                        e21, e22, e23,
                        e31, e32, e33] ).reshape((3,3))
+    
+    # Aircraft velocity w.r.t. inertial frame, given in its own reference frame
+    # (needed to compute the aero forces and torques !)
     dpE = C.mul( R_c2b, dp_carousel_frame )
     
     ##### more model_integ ###########
@@ -146,13 +149,17 @@ def forcesTorques(dae,conf):
     vT3 =  lT*w2 + wE3
     
     
-    alpha = alpha0-wE3/wE1
-    
+#    alpha = alpha0-wE3/wE1
+#    beta = wE2/C.sqrt(wE1*wE1 + wE3*wE3)
+    alpha = alpha0 + C.arctan2(-wE3,wE1)
+    beta = C.arcsin(wE2/vKite)
+
     #NOTE: beta & alphaTail are compensated for the tail motion induced by
     #omega @>@>
-    betaTail = vT2/C.sqrt(vT1*vT1 + vT3*vT3)
-    beta = wE2/C.sqrt(wE1*wE1 + wE3*wE3)
-    alphaTail = alpha0-vT3/vT1
+#    alphaTail = alpha0-vT3/vT1
+#    betaTail = vT2/C.sqrt(vT1*vT1 + vT3*vT3)
+    alphaTail = alpha0 + C.arctan2(-vT3,vT1)
+    betaTail = C.arcsin(vT2/vKite)
     
     dae.addOutput('alpha(deg)', alpha*180/C.pi)
     dae.addOutput('alphaTail(deg)', alphaTail*180/C.pi)
