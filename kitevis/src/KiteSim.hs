@@ -52,10 +52,10 @@ toNice cs = (xyz, q'n'b, r'n0'a0, r'n0't0)
 
     q'n'a = Quat (cos(0.5*delta)) 0 0 (sin(-0.5*delta))
 
-    q'aNWU'bNWU = quatOfDcmB2A $ fromLists [ [e11, e21, e31]
-                                           , [e12, e22, e32]
-                                           , [e13, e23, e33]
-                                           ]
+    q'aNWU'bNWU = quatOfDcm $ fromLists [ [e11, e12, e13]
+                                        , [e21, e22, e23]
+                                        , [e31, e32, e33]
+                                        ]
     q'a'b = q'nwu'ned * q'aNWU'bNWU * q'nwu'ned
     q'n'b = q'n'a * q'a'b
     q'n'aNWU = q'n'a * q'nwu'ned
