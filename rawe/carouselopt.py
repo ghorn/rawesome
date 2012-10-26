@@ -9,7 +9,7 @@ from collocation import Coll,boundsFeedback
 from config import readConfig
 import kite_pb2
 import kiteproto
-import model
+import carouselmodel
 
 x0 = C.DMatrix( [ 1.154244772411
                 , -0.103540608242
@@ -45,7 +45,7 @@ def setupOcp(conf):
     nk = 50
 
     print "creating model"
-    dae = model.model(conf,extraParams=['endTime'])
+    dae = carouselmodel.model(conf,extraParams=['endTime'])
 
     print "setting up OCP"
     nicp = 1

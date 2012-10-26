@@ -8,7 +8,6 @@ import pickle
 import casadi as C
 
 import kiteproto
-import model
 import joy
 
 class Communicator():

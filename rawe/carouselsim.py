@@ -9,7 +9,7 @@ import simutils
 import casadi as C
 
 import kiteproto
-import model
+import carouselmodel
 import joy
 
 x0 = C.DMatrix( [ 1.154244772411
@@ -70,7 +70,7 @@ if __name__=='__main__':
 
     sim = simutils.Sim(ts=0.02, sloMoFactor=4, state0=simutils.SimState(pdOn = False, x = x0))
 
-    dae = model.model(conf)
+    dae = carouselmodel.model(conf)
     sxfun = dae.sxFun()
     sxfun.init()
 
