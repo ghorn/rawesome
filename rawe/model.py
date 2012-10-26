@@ -467,12 +467,14 @@ def model(conf,nSteps=None,extraParams=[]):
                     , dae.output('winch power') + dae.output('motor power')
                     ] )
 
-    dae.stateDotDummy = C.veccat( [C.ssym(name+"DotDummy") for name in dae._xNames] )
+    if nSteps is not None:
+        dae.addP('endTime')
+
+    dae.stateDotDummy = C.veccat( [C.ssym(name+"DotDummy") for name in dae.xNames()] )
     scaledStateDotDummy = dae.stateDotDummy
     
     if nSteps is not None:
-        endTime = dae.addP('endTime')
-        scaledStateDotDummy = dae.stateDotDummy/(endTime/(nSteps-1))
+        scaledStateDotDummy = dae.stateDotDummy/(dae.p('endTime')/(nSteps-1))
 
     dae.setOdeRes( ode - scaledStateDotDummy )
     dae.setAlgRes( C.mul(massMatrix, dae.zVec()) - rhs )
