@@ -1,219 +1,8 @@
 import casadi as C
 from dae import Dae
+from aero import aeroForcesTorques
 
-def forcesTorques(dae,conf):
-    rho = conf['env']['rho']
-    rA = conf['carousel']['rArm']
-    alpha0 = conf['aero']['alpha0deg']*C.pi/180 
-    
-    #ROLL DAMPING
-    rD = conf['aero']['rD']
-    pD = conf['aero']['pD']
-    yD = conf['aero']['yD']
-    
-    #WIND-TUNNEL PARAMETERS
-    #Lift (report p. 67)
-    cLA = conf['aero']['cLA']
-    
-    cLe = conf['aero']['cLe']
-
-    cL0 = conf['aero']['cL0']
-    
-    #Drag (report p. 70)
-    cDA = conf['aero']['cDA']
-    cDA2 = conf['aero']['cDA2']
-    cDB2 = conf['aero']['cDB2']
-
-    cD0 = conf['aero']['cD0']
-    
-    #Roll (report p. 72)
-    cRB  = conf['aero']['cRB']
-    cRAB = conf['aero']['cRAB']
-    cRr  = conf['aero']['cRr']
-    
-    #Pitch (report p. 74)
-    cPA = conf['aero']['cPA']
-    cPe = conf['aero']['cPe']
-    
-    cP0 = conf['aero']['cP0']
-    
-    #Yaw (report p. 76)
-    cYB = conf['aero']['cYB']
-    cYAB = conf['aero']['cYAB']
-
-    #TAIL LENGTH
-    lT = conf['kite']['lT']
-    
-    AR = conf['kite']['AR']
-    area = conf['kite']['area']
-    
-    span = C.sqrt(area*AR)
-    chord = C.sqrt(area/AR)
-    
-    ###########     model integ ###################
-    x =   dae.x('x')
-    y =   dae.x('y')
-    z =   dae.x('z')
-
-    e11 = dae.x('e11')
-    e12 = dae.x('e12')
-    e13 = dae.x('e13')
-
-    e21 = dae.x('e21')
-    e22 = dae.x('e22')
-    e23 = dae.x('e23')
-
-    e31 = dae.x('e31')
-    e32 = dae.x('e32')
-    e33 = dae.x('e33')
-                   
-    dx  =  dae.x('dx')
-    dy  =  dae.x('dy')
-    dz  =  dae.x('dz')
-
-    w1  =  dae.x('w1')
-    w2  =  dae.x('w2')
-    w3  =  dae.x('w3')
-
-    delta = dae.x('delta')
-    ddelta = dae.x('ddelta')
-
-    u1 = dae.u('aileron')
-    u2 = dae.u('elevator')
-    
-    # wind
-    z0 = conf['wind shear']['z0']
-    zt_roughness = conf['wind shear']['zt_roughness']
-    zsat = 0.5*(z+C.sqrt(z*z))
-    wind_x = dae.p('w0')*C.log((zsat+zt_roughness+2)/zt_roughness)/C.log(z0/zt_roughness)
-    dae.addOutput('wind at altitude', wind_x)
-    dae.addOutput('w0', dae.p('w0'))
-
-    dp_carousel_frame = C.veccat( [ dx - ddelta*y
-                                  , dy + ddelta*(rA + x)
-                                  , dz
-                                  ]) - C.veccat([C.cos(delta)*wind_x,C.sin(delta)*wind_x,0])
-    R_c2b = C.veccat( [e11, e12, e13,
-                       e21, e22, e23,
-                       e31, e32, e33] ).reshape((3,3))
-    
-    # Aircraft velocity w.r.t. inertial frame, given in its own reference frame
-    # (needed to compute the aero forces and torques !)
-    dpE = C.mul( R_c2b, dp_carousel_frame )
-    
-    ##### more model_integ ###########
-    # EFFECTIVE WIND IN THE KITE`S SYSTEM :
-    # ###############################
-    
-    #Airfoil speed in carousel frame
-    we1 = dp_carousel_frame[0]
-    we2 = dp_carousel_frame[1]
-    we3 = dp_carousel_frame[2]
-    
-    vKite2 = C.mul(dp_carousel_frame.trans(), dp_carousel_frame) #Airfoil speed^2 
-    vKite = C.sqrt(vKite2) #Airfoil speed
-    dae.addOutput('airspeed', vKite)
-    
-    # CALCULATION OF THE FORCES :
-    # ###############################
-    #
-    #   FORCE ARE COMPUTED IN THE CAROUSEL FRAME @>@>@>
-    
-    #Aero coeff.
-    
-            
-    # LIFT DIRECTION VECTOR
-    # ############
-    
-    # Relative wind speed in Airfoil's referential 'E'
-    wE1 = dpE[0]
-    wE2 = dpE[1]
-    wE3 = dpE[2]
-    
-    # Airfoil's transversal axis in carousel referential 'e'
-    eTe1 = e21
-    eTe2 = e22
-    eTe3 = e23
-    
-    
-    # Lift axis ** Normed to we @>@> **
-    eLe1 = - eTe2*we3 + eTe3*we2
-    eLe2 = - eTe3*we1 + eTe1*we3
-    eLe3 = - eTe1*we2 + eTe2*we1
-       
-    
-    # AERODYNAMIC COEEFICIENTS
-    # #################
-    vT1 =          wE1
-    vT2 = -lT*w3 + wE2
-    vT3 =  lT*w2 + wE3
-    
-    
-#    alpha = alpha0-wE3/wE1
-#    beta = wE2/C.sqrt(wE1*wE1 + wE3*wE3)
-    alpha = alpha0 + C.arctan2(-wE3,wE1)
-    beta = C.arcsin(wE2/vKite)
-
-    #NOTE: beta & alphaTail are compensated for the tail motion induced by
-    #omega @>@>
-#    alphaTail = alpha0-vT3/vT1
-#    betaTail = vT2/C.sqrt(vT1*vT1 + vT3*vT3)
-    alphaTail = alpha0 + C.arctan2(-vT3,vT1)
-    betaTail = C.arcsin(vT2/vKite)
-    
-    dae.addOutput('alpha(deg)', alpha*180/C.pi)
-    dae.addOutput('alphaTail(deg)', alphaTail*180/C.pi)
-    dae.addOutput('beta(deg)', beta*180/C.pi)
-    dae.addOutput('betaTail(deg)', betaTail*180/C.pi)
-
-    # cL = cLA*alpha + cLe*u2   + cL0
-    # cD = cDA*alpha + cDA2*alpha*alpha + cDB2*beta*beta + cDe*u2 + cDr*u1 + cD0
-    # cR = -rD*w1 + cRB*beta + cRAB*alphaTail*beta + cRr*u1
-    # cP = cPA*alphaTail + cPe*u2  + cP0
-    # cY = cYB*beta + cYAB*alphaTail*beta
-    
-    cL = cLA*alpha + cLe*u2 + cL0
-    cD = cDA*alpha + cDA2*alpha*alpha + cDB2*beta*beta + cD0
-    cR = -rD*w1 + cRB*betaTail + cRr*u1 + cRAB*alphaTail*betaTail
-    cP = -pD*w2 + cPA*alphaTail + cPe*u2 + cP0
-    cY = -yD*w3 + cYB*betaTail + cYAB*alphaTail*betaTail
-
-    dae.addOutput('cL', cL)
-    dae.addOutput('cD', cD)
-    dae.addOutput('L/D', cL/cD)
-    
-    # LIFT :
-    # ###############################
-    fL1 =  rho*cL*eLe1*vKite/2.0
-    fL2 =  rho*cL*eLe2*vKite/2.0
-    fL3 =  rho*cL*eLe3*vKite/2.0
-    
-    # DRAG :
-    # #############################
-    fD1 = -rho*vKite*cD*we1/2.0
-    fD2 = -rho*vKite*cD*we2/2.0 
-    fD3 = -rho*vKite*cD*we3/2.0 
-    
-    
-    
-    # FORCES (AERO)
-    # ###############################
-    f1 = fL1 + fD1
-    f2 = fL2 + fD2
-    f3 = fL3 + fD3
-    
-    #f = f-fT
-       
-    # TORQUES (AERO)
-    # ###############################
-     
-    t1 =  0.5*rho*vKite2*span*cR
-    t2 =  0.5*rho*vKite2*chord*cP
-    t3 =  0.5*rho*vKite2*span*cY
-    return (f1, f2, f3, t1, t2, t3)
-    
-
-def modelInteg(dae, conf):
+def setupModel(dae, conf):
     #  PARAMETERS OF THE KITE :
     #  ##############
     m =  conf['kite']['mass'] #  mass of the kite               #  [ kg    ]
@@ -239,10 +28,6 @@ def modelInteg(dae, conf):
     rA = conf['carousel']['rArm']
 
     ###########     model integ ###################
-    x =   dae.x('x')
-    y =   dae.x('y')
-    z =   dae.x('z')
-
     e11 = dae.x('e11')
     e12 = dae.x('e12')
     e13 = dae.x('e13')
@@ -255,6 +40,10 @@ def modelInteg(dae, conf):
     e32 = dae.x('e32')
     e33 = dae.x('e33')
                    
+    x =   dae.x('x')
+    y =   dae.x('y')
+    z =   dae.x('z')
+
     dx  =  dae.x('dx')
     dy  =  dae.x('dy')
     dz  =  dae.x('dz')
@@ -263,6 +52,7 @@ def modelInteg(dae, conf):
     w2  =  dae.x('w2')
     w3  =  dae.x('w3')
 
+    delta = dae.x('delta')
     ddelta = dae.x('ddelta')
 
     r = dae.x('r')
@@ -272,13 +62,33 @@ def modelInteg(dae, conf):
     
     tc = dae.u('tc') #Carousel motor torque
 
-    (f1, f2, f3, t1, t2, t3) = forcesTorques(dae,conf)
+    # wind
+    z0 = conf['wind shear']['z0']
+    zt_roughness = conf['wind shear']['zt_roughness']
+    zsat = 0.5*(z+C.sqrt(z*z))
+    wind_x = dae.p('w0')*C.log((zsat+zt_roughness+2)/zt_roughness)/C.log(z0/zt_roughness)
+    dae.addOutput('wind at altitude', wind_x)
+    dae.addOutput('w0', dae.p('w0'))
 
-    # ATTITUDE DYNAMICS
-    # #############################
-    
-    # DynFile          # Call DAE
-#    mm :: Matrix (Expr Double)
+    dp_carousel_frame = C.veccat( [ dx - ddelta*y
+                                  , dy + ddelta*(rA + x)
+                                  , dz
+                                  ]) - C.veccat([C.cos(delta)*wind_x,C.sin(delta)*wind_x,0])
+    R_c2b = C.veccat( dae.x(['e11', 'e12', 'e13',
+                             'e21', 'e22', 'e23',
+                             'e31', 'e32', 'e33']) ).reshape((3,3))
+
+    # Aircraft velocity w.r.t. inertial frame, given in its own reference frame
+    # (needed to compute the aero forces and torques !)
+    dpE = C.mul( R_c2b, dp_carousel_frame )
+
+    (f1, f2, f3, t1, t2, t3) = aeroForcesTorques(dae, conf, dp_carousel_frame, dpE,
+                                                 dae.x(('w1','w2','w3')),
+                                                 dae.x(('e21', 'e22', 'e23')),
+                                                 dae.u(('aileron','elevator'))
+                                                 )
+
+    # mass matrix
     mm = C.SXMatrix(8, 8)
     mm[0,0] = jCarousel + m*rA*rA + m*x*x + m*y*y + 2*m*rA*x 
     mm[0,1] = -m*y 
@@ -351,7 +161,8 @@ def modelInteg(dae, conf):
     mm[7,5] = zt*(e11*x + e12*y + e13*z + zt*e11*e31 + zt*e12*e32 + zt*e13*e33) 
     mm[7,6] = 0 
     mm[7,7] = 0
-    
+
+    # right hand side
     zt2 = zt*zt
     rhs = C.veccat(
           [ tc - cfric*ddelta - f1*y + f2*(rA + x) + dy*m*(dx - 2*ddelta*y) - dx*m*(dy + 2*ddelta*rA + 2*ddelta*x) 
@@ -381,7 +192,17 @@ def modelInteg(dae, conf):
     c =(x + zt*e31)**2/2 + (y + zt*e32)**2/2 + (z + zt*e33)**2/2 - r**2/2
     
     cdot =dx*(x + zt*e31) + dy*(y + zt*e32) + dz*(z + zt*e33) + zt*(w2 - ddelta*e23)*(e11*x + e12*y + e13*z + zt*e11*e31 + zt*e12*e32 + zt*e13*e33) - zt*(w1 - ddelta*e13)*(e21*x + e22*y + e23*z + zt*e21*e31 + zt*e22*e32 + zt*e23*e33) - r*dr
-#  cddot = (zt*w1*(e11*x + e12*y + e13*z + zt*e11*e31 + zt*e12*e32 + zt*e13*e33) + zt*w2*(e21*x + e22*y + e23*z + zt*e21*e31 + zt*e22*e32 + zt*e23*e33))*(w3 - ddelta*e33) + dx*(dx + zt*e11*w2 - zt*e21*w1 - zt*ddelta*e11*e23 + zt*ddelta*e13*e21) + dy*(dy + zt*e12*w2 - zt*e22*w1 - zt*ddelta*e12*e23 + zt*ddelta*e13*e22) + dz*(dz + zt*e13*w2 - zt*e23*w1) + ddx*(x + zt*e31) + ddy*(y + zt*e32) + ddz*(z + zt*e33) - (w1 - ddelta*e13)*(e21*(zt*dx - zt**2*e21*(w1 - ddelta*e13) + zt**2*e11*(w2 - ddelta*e23)) + e22*(zt*dy - zt**2*e22*(w1 - ddelta*e13) + zt**2*e12*(w2 - ddelta*e23)) + zt*e33*(z*w1 + ddelta*e11*x + ddelta*e12*y + zt*e33*w1 + zt*ddelta*e11*e31 + zt*ddelta*e12*e32) + zt*e23*(dz + zt*e13*w2 - zt*e23*w1) + zt*e31*(w1 - ddelta*e13)*(x + zt*e31) + zt*e32*(w1 - ddelta*e13)*(y + zt*e32)) + (w2 - ddelta*e23)*(e11*(zt*dx - zt**2*e21*(w1 - ddelta*e13) + zt**2*e11*(w2 - ddelta*e23)) + e12*(zt*dy - zt**2*e22*(w1 - ddelta*e13) + zt**2*e12*(w2 - ddelta*e23)) - zt*e33*(z*w2 + ddelta*e21*x + ddelta*e22*y + zt*e33*w2 + zt*ddelta*e21*e31 + zt*ddelta*e22*e32) + zt*e13*(dz + zt*e13*w2 - zt*e23*w1) - zt*e31*(w2 - ddelta*e23)*(x + zt*e31) - zt*e32*(w2 - ddelta*e23)*(y + zt*e32)) + zt*(dw2 - dddelta*e23)*(e11*x + e12*y + e13*z + zt*e11*e31 + zt*e12*e32 + zt*e13*e33) - zt*(dw1 - dddelta*e13)*(e21*x + e22*y + e23*z + zt*e21*e31 + zt*e22*e32 + zt*e23*e33) - zt*dddelta*(e11*e23*x - e13*e21*x + e12*e23*y - e13*e22*y + zt*e11*e23*e31 - zt*e13*e21*e31 + zt*e12*e23*e32 - zt*e13*e22*e32)
+
+    ddx = dae.z('ddx')
+    ddy = dae.z('ddy')
+    ddz = dae.z('ddz')
+    dw1 = dae.z('dw1')
+    dw2 = dae.z('dw2')
+    dddelta = dae.z('dddelta')
+    
+    cddot = -(w1-ddelta*e13)*(zt*e23*(dz+zt*e13*w2-zt*e23*w1)+zt*e33*(w1*z+zt*e33*w1+ddelta*e11*x+ddelta*e12*y+zt*ddelta*e11*e31+zt*ddelta*e12*e32)+zt*e21*(dx+zt*e11*w2-zt*e21*w1-zt*ddelta*e11*e23+zt*ddelta*e13*e21)+zt*e22*(dy+zt*e12*w2-zt*e22*w1-zt*ddelta*e12*e23+zt*ddelta*e13*e22)+zt*e31*(x+zt*e31)*(w1-ddelta*e13)+zt*e32*(y+zt*e32)*(w1-ddelta*e13))+(w2-ddelta*e23)*(zt*e13*(dz+zt*e13*w2-zt*e23*w1)-zt*e33*(w2*z+zt*e33*w2+ddelta*e21*x+ddelta*e22*y+zt*ddelta*e21*e31+zt*ddelta*e22*e32)+zt*e11*(dx+zt*e11*w2-zt*e21*w1-zt*ddelta*e11*e23+zt*ddelta*e13*e21)+zt*e12*(dy+zt*e12*w2-zt*e22*w1-zt*ddelta*e12*e23+zt*ddelta*e13*e22)-zt*e31*(x+zt*e31)*(w2-ddelta*e23)-zt*e32*(y+zt*e32)*(w2-ddelta*e23))-ddr*r+(zt*w1*(e11*x+e12*y+e13*z+zt*e11*e31+zt*e12*e32+zt*e13*e33)+zt*w2*(e21*x+e22*y+e23*z+zt*e21*e31+zt*e22*e32+zt*e23*e33))*(w3-ddelta*e33)+dx*(dx+zt*e11*w2-zt*e21*w1-zt*ddelta*e11*e23+zt*ddelta*e13*e21)+dy*(dy+zt*e12*w2-zt*e22*w1-zt*ddelta*e12*e23+zt*ddelta*e13*e22)+dz*(dz+zt*e13*w2-zt*e23*w1)+ddx*(x+zt*e31)+ddy*(y+zt*e32)+ddz*(z+zt*e33)-dr*dr+zt*(dw2-dddelta*e23)*(e11*x+e12*y+e13*z+zt*e11*e31+zt*e12*e32+zt*e13*e33)-zt*(dw1-dddelta*e13)*(e21*x+e22*y+e23*z+zt*e21*e31+zt*e22*e32+zt*e23*e33)-zt*dddelta*(e11*e23*x-e13*e21*x+e12*e23*y-e13*e22*y+zt*e11*e23*e31-zt*e13*e21*e31+zt*e12*e23*e32-zt*e13*e22*e32)
+
+#    cddot = (zt*w1*(e11*x + e12*y + e13*z + zt*e11*e31 + zt*e12*e32 + zt*e13*e33) + zt*w2*(e21*x + e22*y + e23*z + zt*e21*e31 + zt*e22*e32 + zt*e23*e33))*(w3 - ddelta*e33) + dx*(dx + zt*e11*w2 - zt*e21*w1 - zt*ddelta*e11*e23 + zt*ddelta*e13*e21) + dy*(dy + zt*e12*w2 - zt*e22*w1 - zt*ddelta*e12*e23 + zt*ddelta*e13*e22) + dz*(dz + zt*e13*w2 - zt*e23*w1) + ddx*(x + zt*e31) + ddy*(y + zt*e32) + ddz*(z + zt*e33) - (w1 - ddelta*e13)*(e21*(zt*dx - zt**2*e21*(w1 - ddelta*e13) + zt**2*e11*(w2 - ddelta*e23)) + e22*(zt*dy - zt**2*e22*(w1 - ddelta*e13) + zt**2*e12*(w2 - ddelta*e23)) + zt*e33*(z*w1 + ddelta*e11*x + ddelta*e12*y + zt*e33*w1 + zt*ddelta*e11*e31 + zt*ddelta*e12*e32) + zt*e23*(dz + zt*e13*w2 - zt*e23*w1) + zt*e31*(w1 - ddelta*e13)*(x + zt*e31) + zt*e32*(w1 - ddelta*e13)*(y + zt*e32)) + (w2 - ddelta*e23)*(e11*(zt*dx - zt**2*e21*(w1 - ddelta*e13) + zt**2*e11*(w2 - ddelta*e23)) + e12*(zt*dy - zt**2*e22*(w1 - ddelta*e13) + zt**2*e12*(w2 - ddelta*e23)) - zt*e33*(z*w2 + ddelta*e21*x + ddelta*e22*y + zt*e33*w2 + zt*ddelta*e21*e31 + zt*ddelta*e22*e32) + zt*e13*(dz + zt*e13*w2 - zt*e23*w1) - zt*e31*(w2 - ddelta*e23)*(x + zt*e31) - zt*e32*(w2 - ddelta*e23)*(y + zt*e32)) + zt*(dw2 - dddelta*e23)*(e11*x + e12*y + e13*z + zt*e11*e31 + zt*e12*e32 + zt*e13*e33) - zt*(dw1 - dddelta*e13)*(e21*x + e22*y + e23*z + zt*e21*e31 + zt*e22*e32 + zt*e23*e33) - zt*dddelta*(e11*e23*x - e13*e21*x + e12*e23*y - e13*e22*y + zt*e11*e23*e31 - zt*e13*e21*e31 + zt*e12*e23*e32 - zt*e13*e22*e32)
 #      where
 #        dw1 = dw @> 0
 #        dw2 = dw @> 1
@@ -395,7 +216,8 @@ def modelInteg(dae, conf):
 
     dae.addOutput('c',  c)
     dae.addOutput('cdot', cdot)
-    return (mm, rhs, dRexp, c, cdot)
+    dae.addOutput('cddot', cddot)
+    return (mm, rhs, dRexp)
         
 def model(conf,nSteps=None,extraParams=[]):
     dae = Dae()
@@ -454,7 +276,7 @@ def model(conf,nSteps=None,extraParams=[]):
     dae.addOutput('winch force', dae.x('r')*dae.z('nu'))
     dae.addOutput('winch power', dae.x('r')*dae.x('dr')*dae.z('nu'))
     
-    (massMatrix, rhs, dRexp, c, cdot) = modelInteg(dae, conf)
+    (massMatrix, rhs, dRexp) = setupModel(dae, conf)
 
     
     ode = C.veccat( [ C.veccat(dae.x(['dx','dy','dz']))
