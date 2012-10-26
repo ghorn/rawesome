@@ -21,6 +21,7 @@ import qualified Kite.Xyz as KiteXyz
 import SpatialMath
 import Vis
 import DrawAC
+import ParseArgs ( getip )
 
 type State = Maybe MC.MultiCarousel
 
@@ -127,13 +128,13 @@ boundParticle xyz@(Xyz x y z)
 updateState :: MC.MultiCarousel -> State -> IO State
 updateState ko _ = return $ Just ko
 
-sub :: MVar State -> IO ()
-sub m = ZMQ.withContext 1 $ \context -> do
+sub :: String -> MVar State -> IO ()
+sub ip m = ZMQ.withContext 1 $ \context -> do
   ZMQ.withSocket context ZMQ.Sub $ \subscriber -> do
-    ZMQ.connect subscriber "tcp://localhost:5563"
+    ZMQ.connect subscriber ip
     ZMQ.subscribe subscriber "multi-carousel"
     forever $ do
-      addr <- ZMQ.receive subscriber []
+      _ <- ZMQ.receive subscriber []
       mre <- ZMQ.moreToReceive subscriber
       if mre
       then do
@@ -149,8 +150,10 @@ ts = 0.02
 
 main :: IO ()
 main = do
+  ip <- getip "multicarousel" "tcp://localhost:5563"
+
   m <- newMVar Nothing
-  _ <- forkIO (sub m)
+  _ <- forkIO (sub ip m)
   
 --  threadDelay 5000000
   let simFun _ _ = return ()

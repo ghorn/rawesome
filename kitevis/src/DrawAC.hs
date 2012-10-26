@@ -11,7 +11,7 @@ import Vis
 drawAc :: Float -> Xyz Double -> Quat Double -> (VisObject Double, [Xyz Double])
 drawAc alpha pos quat = (VisObjects $ wing ++ [htail,vtail,body], vtip:wingtips)
   where
-    axes = Trans pos $ RotQuat quat $ Axes (0.5, 15)
+--    axes = Trans pos $ RotQuat quat $ Axes (0.5, 15)
     spanW = 0.96
     arW = 9
     

@@ -155,7 +155,7 @@ sub m = ZMQ.withContext 1 $ \context -> do
     ZMQ.connect subscriber "tcp://localhost:5563"
     ZMQ.subscribe subscriber "carousel"
     forever $ do
-      addr <- ZMQ.receive subscriber []
+      _ <- ZMQ.receive subscriber []
       mre <- ZMQ.moreToReceive subscriber
       if mre
       then do

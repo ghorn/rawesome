@@ -22,8 +22,9 @@ executable kitesim
 executable multicarousel
   hs-source-dirs:    src
   main-is:           MultiCarousel.hs
-  other-modules:     DrawAC
+  other-modules:     DrawAC, ParseArgs
   build-depends:     base >= 4.5.0 && < 4.7,
+                     cmdargs >= 0.10,
                      random,
                      not-gloss >= 0.5.0,
                      spatial-math,
