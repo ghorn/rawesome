@@ -293,7 +293,7 @@ if __name__=='__main__':
     ocp.plot(['aileron','elevator'],opt,title='control surface inputs')
     ocp.plot(['tc'],opt,title='motor inputs (tc)')
     ocp.plot(['ddr'],opt,title='winch accel (ddr)')
-    ocp.plot(['c','cdot'],opt,title="invariants")
+    ocp.plot(['c','cdot','cddot'],opt,title="invariants")
     ocp.plot('airspeed',opt)
     ocp.plot(['alpha(deg)','beta(deg)','alphaTail(deg)','betaTail(deg)'],opt)
     ocp.plot('cL',opt)

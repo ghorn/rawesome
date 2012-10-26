@@ -959,16 +959,37 @@ class Coll():
 
             # if it's a Dae output
             elif name in self.dae._outputDict:
-                y = []
-                f = CS.SXFunction( [ self.dae.xVec(),self.dae.uVec(),self.dae.pVec()], [self.dae.output(name)] )
-                f.init()
-                for k,t in enumerate(opt['tgrid']):
-                    f.setInput(opt['x'][:,k],0)
-                    f.setInput(opt['u'][:,k],1)
-                    f.setInput(opt['p'],2)
-                    f.evaluate()
-                    y.append(CS.DMatrix(f.output(0)))
-                plt.plot(opt['tgrid'],y)
+                try:
+                    # try to call the function without any algebraic states
+                    y = []
+                    f = CS.SXFunction([self.dae.xVec(),self.dae.uVec(),self.dae.pVec()],
+                                      [self.dae.output(name)]
+                                      )
+                    f.init()
+                    for k,t in enumerate(opt['tgrid']):
+                        f.setInput(opt['x'][:,k],0)
+                        f.setInput(opt['u'][:,k],1)
+                        f.setInput(opt['p'],2)
+                        f.evaluate()
+                        y.append(CS.DMatrix(f.output(0)))
+                    plt.plot(opt['tgrid'],y)
+
+                except RuntimeError:
+                    # darn, it has algebraic states
+                    # don't plot the very last timestep
+                    y = []
+                    f = CS.SXFunction([self.dae.xVec(),self.dae.zVec(),self.dae.uVec(),self.dae.pVec()],
+                                      [self.dae.output(name)]
+                                      )
+                    f.init()
+                    for k,t in enumerate(opt['tgrid'][:-1]):
+                        f.setInput(opt['x'][:,k],0)
+                        f.setInput(opt['zPlt'][:,k],1)
+                        f.setInput(opt['u'][:,k],2)
+                        f.setInput(opt['p'],3)
+                        f.evaluate()
+                        y.append(CS.DMatrix(f.output(0)))
+                    plt.plot(opt['tgrid'][:-1],y)
             else:
                 raise ValueError("unrecognized name: \""+name+"\"")
         if isinstance(title,str):
