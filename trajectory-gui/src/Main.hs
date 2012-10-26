@@ -97,7 +97,7 @@ main' publisher = do
   _ <- afterClicked button $ do
     k0 <- liftM floor $ rangeGetValue sc0
     kf <- liftM floor $ rangeGetValue sc1
-    let log'' = map (\(x,_,_) -> x) $ take (kf - k0 + 1) $ drop k0 log'
+    let log'' = map (\(x,u,_) -> x++u) $ take (kf - k0 + 1) $ drop k0 log'
     putStrLn "writing file..."
     writeFile "out.txt" $ unlines $ map show log''
     putStrLn "finished writing file"
