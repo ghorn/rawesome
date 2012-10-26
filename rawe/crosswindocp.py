@@ -134,21 +134,21 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
     # line angle constraints
     def lineAngleConstraints():
         def getCosAngle(k):
-            r11 = ocp.lookup('e11',timestep=k)
-            r21 = ocp.lookup('e21',timestep=k)
             r31 = ocp.lookup('e31',timestep=k)
+            r32 = ocp.lookup('e32',timestep=k)
+            r33 = ocp.lookup('e33',timestep=k)
 
             x = ocp.lookup('x',timestep=k)
             y = ocp.lookup('y',timestep=k)
             z = ocp.lookup('z',timestep=k)
             
-            r = ocp.lookup('r',timestep=k)
-#            r = sqrt(x*x + y*y + z*z)
+#            r = ocp.lookup('r',timestep=k)
+            r = C.sqrt(x*x + y*y + z*z)
             
-            return (r11*x + r21*y + r31*z)/r
+            return (r31*x + r32*y + r33*z)/r
 
         for k in range(0,nk+1):
-            ocp.constrain(getCosAngle(k),'<=',C.cos(80*pi/180))
+            ocp.constrain(getCosAngle(k),'>=',C.cos(80*pi/180))
     lineAngleConstraints()
 
     # euler angle periodic constraints
