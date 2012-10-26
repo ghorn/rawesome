@@ -1,20 +1,14 @@
-import sys
-from configobj import ConfigObj,flatten_errors
-from validate import Validator
-
+import copy
+import casadi as C
 import matplotlib.pyplot as plt
-import zmq
-
 import numpy
 from numpy import pi
-import copy
+import zmq
 
-import casadi as C
-
+from collocation import Coll,boundsFeedback
+from config import readConfig
 import kite_pb2
 import kiteproto
-
-from collocation import Coll
 import model
 
 x0 = C.DMatrix( [ 1.154244772411
@@ -159,13 +153,13 @@ def setupOcp(conf):
     def periodicEulers():
         def getEuler(k):
             r11 = ocp.lookup('e11',timestep=k)
-            r12 = ocp.lookup('e21',timestep=k)
-            mr13 = -ocp.lookup('e31',timestep=k)
+            r12 = ocp.lookup('e12',timestep=k)
+            mr13 = -ocp.lookup('e13',timestep=k)
 #            mr13 -- nan protect
 #              | mr13' >  1 =  1
 #              | mr13' < -1 = -1
 #              | otherwise = mr13'
-            r23 = ocp.lookup('e32',timestep=k)
+            r23 = ocp.lookup('e23',timestep=k)
             r33 = ocp.lookup('e33',timestep=k)
           
             yaw   = C.arctan2(r12,r11)
@@ -227,6 +221,16 @@ def setupOcp(conf):
             mc.messages.append("endTime: "+str(xup['endTime']))
             mc.messages.append("w0: "+str(xup['w0']))
             mc.messages.append("iter: "+str(self.iter))
+
+#            # bounds feedback
+#            lbx = ocp.solver.input(C.NLP_LBX)
+#            ubx = ocp.solver.input(C.NLP_UBX)
+#
+#            violations = boundsFeedback(xOpt,lbx,ubx,ocp.bndtags)
+#            for name in violations:
+#                print "violation!: "+name+": "+str(violations[name])
+#                mc.messages.append(name+": "+str(violations[name]))
+            
             publisher.send_multipart(["multi-carousel", mc.SerializeToString()])
 
 
@@ -234,10 +238,18 @@ def setupOcp(conf):
     solverOptions = [ ("expand_f",True)
                     , ("expand_g",True)
                     , ("generate_hessian",True)
+#                     ,("qp_solver",C.NLPQPSolver)
+#                     ,("qp_solver_options",{'nlp_solver': C.IpoptSolver, "nlp_solver_options":{"linear_solver":"ma57"}})
                     , ("linear_solver","ma57")
-#                    , ("derivative_test","first-order")
                     , ("max_iter",1000)
                     , ("tol",1e-9)
+#                    , ("Timeout", 1e6)
+#                    , ("UserHM", True)
+#                    , ("ScaleConIter",True)
+#                    , ("ScaledFD",True)
+#                    , ("ScaledKKT",True)
+#                    , ("ScaledObj",True)
+#                    , ("ScaledQP",True)
                     ]
     
     # initial conditions
@@ -260,27 +272,8 @@ def setupOcp(conf):
     return ocp
 
 
-
-
 if __name__=='__main__':
-    conf = ConfigObj('config.ini', configspec='configspec.ini')
-    results = conf.validate(Validator())
-    if results != True:
-        print 'Configuration validation error'
-        print conf
-        print results
-        def niceErr(confdict,resultsdict):
-            for (section_list, key, _) in flatten_errors(confdict, resultsdict):
-                print (section_list,key)
-                if key is not None:
-                    print 'The "%s" key in the section "%s" failed validation' % (key, ', '.join(section_list))
-                elif isinstance(confdict[key],dict):
-                    niceErr(confdict[key],resultsdict[key])
-                else:
-                    print 'The following section was missing:%s ' % key
-        niceErr(conf,results)
-        sys.exit(1)
-    
+    conf = readConfig('config.ini','configspec.ini')
     ocp = setupOcp(conf)
 
     xOpt = None
