@@ -129,13 +129,47 @@ def setupCollocationConstraints(coll,C,ffcn,h,D):
     
     return (g,lbg,ubg)
 
+def boundsFeedback(x,lbx,ubx,bndtags,tolerance=0):
+    violations = {}
+    
+    length = None
+    if hasattr(x,'size'):
+        if isinstance(x,list):
+            length = len(x)
+        elif hasattr(x,'size'):
+            if hasattr(x.size,'__call__'):
+                length = x.size()
+            else:
+                length = x.size
+    if length is None:
+        raise ValueError("couldn't determine length of x")
+
+    for k in range(0,length):
+        ubviol = x[k] - ubx[k]
+        if ubviol > tolerance:
+            (tagname,tagstep) = bndtags[k]
+            err = (tagstep,'ub',float(ubviol))
+            if tagname in violations:
+                violations[tagname].append(err)
+            else:
+                violations[tagname] = [err]
+        else:
+            lbviol = lbx[k] - x[k]
+            if lbviol > tolerance:
+                (tagname,tagstep) = bndtags[k]
+                err = (tagstep,'lb',float(lbviol))
+                if tagname in violations:
+                    violations[tagname].append(err)
+                else:
+                    violations[tagname] = [err]
+    return violations
+
 class Coll():
     collocationIsSetup = False
     def __init__(self, dae, nk=None, nicp=1, deg=4, collPoly='RADAU'):
         assert(nk is not None)
         assert(isinstance(dae, Dae))
         
-        print "collocation init, yay"
         self.dae = dae
         
         self.nk = nk
@@ -458,7 +492,6 @@ class Coll():
                  'u_init': u_init,  'u_min': u_min,  'u_max': u_max,
                  'p_init': p_init,  'p_min': p_min,  'p_max': p_max}
 
-
     def _vectorizeBoundsAndGuess(self, boundsAndGuess):
         p_init  = boundsAndGuess['p_init']
         p_min   = boundsAndGuess['p_min']
@@ -493,6 +526,9 @@ class Coll():
         NP   = self.pSize()  # number of parameters
         nx   = ndiff + nalg  # total number of states
         NV = self.getNV()
+
+        # tags for the bounds
+        bndtags = []
         
         # All variables with bounds and initial guess
         vars_lb = np.zeros(NV)
@@ -504,8 +540,10 @@ class Coll():
         vars_init[offset:offset+NP] = p_init
         vars_lb[offset:offset+NP] = p_min
         vars_ub[offset:offset+NP] = p_max
+        for name in self.dae.pNames():
+            bndtags.append((name,None))
         offset += NP
-    
+
         # Get collocated states and parametrized control
         for k in range(nk):  
             # Collocated states
@@ -518,6 +556,10 @@ class Coll():
                         
                         vars_lb[offset:offset+ndiff] = xD_min[k,:]
                         vars_ub[offset:offset+ndiff] = xD_max[k,:]
+
+                        for name in self.dae.xNames():
+                            bndtags.append((name,(k,i,j)))
+                        
                         offset += ndiff
                     else:
                         if j!=0:
@@ -525,10 +567,16 @@ class Coll():
     
                             vars_lb[offset:offset+nx] = np.concatenate((np.minimum(xD_min[k,:],xD_min[k+1,:]),xA_min[k,:]))
                             vars_ub[offset:offset+nx] = np.concatenate((np.maximum(xD_max[k,:],xD_max[k+1,:]),xA_max[k,:]))
+                            for name in self.dae.xNames()+self.dae.zNames():
+                                bndtags.append((name,(k,i,j)))
+                            
                             offset += nx
                         else:
                             vars_init[offset:offset+ndiff] = xD_init[index,:]
     
+                            for name in self.dae.xNames():
+                                bndtags.append((name,(k,i,j)))
+                            
                             if i==0:
                                 vars_lb[offset:offset+ndiff] = xD_min[k,:]
                                 vars_ub[offset:offset+ndiff] = xD_max[k,:]
@@ -542,14 +590,19 @@ class Coll():
             vars_lb[offset:offset+nu] = u_min[k]
             vars_ub[offset:offset+nu] = u_max[k]
             vars_init[offset:offset+nu] = u_init[k]
+            for name in self.dae.uNames():
+                bndtags.append((name,(k,i,j)))
             offset += nu
         
         # State at end time
         vars_lb[offset:offset+ndiff] = xD_min[nk,:]
         vars_ub[offset:offset+ndiff] = xD_max[nk,:]
         vars_init[offset:offset+ndiff] = xD_init[-1,:]
+        for name in self.dae.xNames():
+            bndtags.append((name,(nk,0,0)))
         offset += ndiff
         assert(offset==NV)
+        self.bndtags = np.array(bndtags)
         return (vars_init,vars_lb,vars_ub)
 
     def setupSolver(self,solverOpts=[],constraintFunOpts=[],callback=None):
@@ -593,7 +646,6 @@ class Coll():
 
     def solve(self,xInit=None,warnZBounds=False,warnZGuess=False):
         (vars_init,vars_lb,vars_ub) = self._vectorizeBoundsAndGuess( self._parseBoundsAndGuess(warnZBounds,warnZGuess) )
-            
         if xInit is not None:
             vars_init = xInit
 
@@ -840,7 +892,10 @@ class Coll():
         if isinstance(val,list):
             length = len(val)
         elif hasattr(val,'size'):
-            length = val.size()
+            if hasattr(val.size,'__call__'):
+                length = val.size()
+            else:
+                length = val.size
         else:
             raise ValueError("can't figure out how long "+str(val)+" is")
         assert(len(names)==length)
