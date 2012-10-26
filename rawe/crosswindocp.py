@@ -119,7 +119,7 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
             return (r31*x + r32*y + r33*z)/r
 
         for k in range(0,nk+1):
-            ocp.constrain(getCosAngle(k),'>=',C.cos(80*pi/180))
+            ocp.constrain(getCosAngle(k),'>=',C.cos(55*pi/180))
     lineAngleConstraints()
 
     # euler angle periodic constraints
