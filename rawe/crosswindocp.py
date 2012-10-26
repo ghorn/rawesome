@@ -4,38 +4,13 @@ import matplotlib.pyplot as plt
 import numpy
 from numpy import pi
 import zmq
+import pickle
 
 from collocation import Coll,boundsFeedback
 from config import readConfig
 import kite_pb2
 import kiteproto
-import carouselmodel
-
-x0 = C.DMatrix( [ 1.154244772411
-                , -0.103540608242
-                , -0.347959211327
-                , 0.124930983341
-                , 0.991534857363
-                , 0.035367725910
-                , 0.316039689643
-                , -0.073559821379
-                , 0.945889986864
-                , 0.940484536806
-                , -0.106993361072
-                , -0.322554269411
-                , 0.000000000000
-                , 0.000000000000
-                , 0.000000000000
-                , 0.137035790811
-                , 3.664945343102
-                , -1.249768772258
-                , 0.000000000000
-                , 3.874600000000
-                , 0.0
-                ])
-x0=C.veccat([x0,C.sqrt(C.sumAll(x0[0:2]*x0[0:2])),0])
-
-oldKites = []
+import crosswindmodel
 
 def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
     ocp = Coll(dae, nk=nk,nicp=nicp,deg=deg)
@@ -70,7 +45,7 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
 
         for k in range(0,nk):
             [airspeed,alphaDeg,betaDeg] = f.call([ocp.xVec(k),ocp.uVec(k),ocp.pVec()])
-            ocp.constrain(airspeed,'>=',10)
+            ocp.constrainBnds(airspeed,(10,50))
             ocp.constrainBnds(alphaDeg,(-5,10))
             ocp.constrainBnds(betaDeg,(-10,10))
     constrainAirspeedAlphaBeta()
@@ -79,7 +54,7 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
     ocp.bound('aileron',(-0.04,0.04))
     ocp.bound('elevator',(-0.1,0.1))
 
-    ocp.bound('x',(-200,200))
+    ocp.bound('x',(-2,200))
     ocp.bound('y',(-200,200))
     ocp.bound('z',(0.5,200))
     ocp.bound('r',(1,30))
@@ -95,15 +70,13 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
     for w in ['w1','w2','w3']:
         ocp.bound(w,(-4*pi,4*pi))
 
-    ocp.bound('delta',(-10*pi/180, 10*pi/180))
-    ocp.bound('ddelta',(-4*pi,4*pi))
-    ocp.bound('tc',(-100000,100000))
     ocp.bound('endTime',(0.5,5))
     ocp.bound('w0',(10,10))
-    ocp.bound('winch_energy',(-1e6,1e6))
+    ocp.bound('energy',(-1e6,1e6))
 
     # boundary conditions
-    ocp.bound('winch_energy',(0,0),timestep=0,quiet=True)
+    ocp.bound('energy',(0,0),timestep=0,quiet=True)
+    ocp.bound('y',(0,0),timestep=0,quiet=True)
     
     # make it periodic
     for name in [ #"x"   # state 0
@@ -124,8 +97,6 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
                 , "w1"  # state 15
                 , "w2"  # state 16
                 , "w3"  # state 17
-                , "delta" # state 18
-                , "ddelta" # state 19
                 , "r" # state 20
                 , "dr" # state 21
                 ]:
@@ -180,24 +151,19 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
     for k in range(nk):
         u = ocp.uVec(k)
         ddr = ocp.lookup('ddr',timestep=k)
-        tc = ocp.lookup('tc',timestep=k)
         aileron = ocp.lookup('aileron',timestep=k)
         elevator = ocp.lookup('elevator',timestep=k)
         
         aileronSigma = 0.1
         elevatorSigma = 0.1
-        torqueSigma = 1000.0
         ddrSigma = 5.0
         
-#        tc = tc - 390
-
         ailObj = aileron*aileron / (aileronSigma*aileronSigma)
         eleObj = elevator*elevator / (elevatorSigma*elevatorSigma)
         winchObj = ddr*ddr / (ddrSigma*ddrSigma)
-        torqueObj = tc*tc / (torqueSigma*torqueSigma)
         
-        obj += ailObj + eleObj + winchObj + torqueObj
-    ocp.setObjective( C.sumAll(obj)*1e-8 + ocp.lookup('winch_energy',timestep=-1)/ocp.lookup('endTime') )
+        obj += ailObj + eleObj + winchObj
+    ocp.setObjective( 1e1*C.sumAll(obj)/float(nk) + ocp.lookup('energy',timestep=-1)/ocp.lookup('endTime') )
 
     # zero mq setup
     # callback function
@@ -214,11 +180,16 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
             kiteProtos = []
             for k in range(0,nk):
                 j = nicp*(deg+1)*k
-                kiteProtos.append( kiteproto.toKiteProto(C.DMatrix(opt['x'][:,j]),C.DMatrix(opt['u'][:,j]),C.DMatrix(opt['p']), conf['kite']['zt'], conf['carousel']['rArm']) )
-#            kiteProtos = [kiteproto.toKiteProto(C.DMatrix(opt['x'][:,k]),C.DMatrix(opt['u'][:,k]),C.DMatrix(opt['p']), conf['kite']['zt'], conf['carousel']['rArm']) for k in range(opt['x'].shape[1])]
+                kiteProtos.append( kiteproto.toKiteProto(C.DMatrix(opt['x'][:,j]),
+                                                         C.DMatrix(opt['u'][:,j]),
+                                                         C.DMatrix(opt['p']),
+                                                         conf['kite']['zt'],
+                                                         conf['carousel']['rArm'],
+                                                         zeroDelta=True) )
+#            kiteProtos = [kiteproto.toKiteProto(C.DMatrix(opt['x'][:,k]),C.DMatrix(opt['u'][:,k]),C.DMatrix(opt['p']), conf['kite']['zt'], conf['carousel']['rArm'], zeroDelta=True) for k in range(opt['x'].shape[1])]
             
             mc = kite_pb2.MultiCarousel()
-            mc.css.extend(list(kiteProtos+oldKites))
+            mc.css.extend(list(kiteProtos))
             
             mc.messages.append("endTime: "+str(xup['endTime']))
             mc.messages.append("w0: "+str(xup['w0']))
@@ -284,18 +255,22 @@ if __name__=='__main__':
     conf = readConfig('config.ini','configspec.ini')
     
     print "creating model..."
-    dae = carouselmodel.model(conf,extraParams=['endTime'])
-
-    print "setting up ocp..."
-    ocp = setupOcp(dae,conf,publisher,nk=50)
+    dae = crosswindmodel.model(conf,extraParams=['endTime'])
 
     # load initial guess
+    print "loading initial guess data..."
     f = open('crosswind_guess.txt','r')
     xutraj = []
     for line in f:
         xutraj.append([float(x) for x in line.strip('[]\n').split(',')])
     f.close()
     xutraj = numpy.array(xutraj)
+    # remove delta/ddelta/tc
+    xutraj = numpy.hstack((xutraj[:,:23], xutraj[:,24:]))
+    xutraj = numpy.hstack((xutraj[:,:18], xutraj[:,20:]))
+    
+    print "setting up ocp..."
+    ocp = setupOcp(dae,conf,publisher,nk=90)
 
     print "interpolating initial guess..."
     xuguess = numpy.array([numpy.interp(numpy.linspace(0,1,ocp.nk+1), numpy.linspace(0,1,xutraj.shape[0]), xutraj[:,k]) for k in range(xutraj.shape[1])])
@@ -303,35 +278,31 @@ if __name__=='__main__':
         ocp.guessX(xuguess[:len(ocp.dae.xNames()),k],timestep=k,quiet=True)
         if k < ocp.nk:
             ocp.guessU(xuguess[len(ocp.dae.xNames()):,k],timestep=k,quiet=True)
-    ocp.guess('delta',0,quiet=True)
-    ocp.guess('ddelta',0,quiet=True)
-    ocp.guess('winch_energy',0,quiet=True)
+    ocp.guess('energy',0,quiet=True)
     
-
-    xOpt = None
-    for w0 in [10]:
-        ocp.bound('w0',(w0,w0),force=True)
-        opt = ocp.solve(xInit=xOpt)
-        xup = opt['vardict']
-        xOpt = opt['X_OPT']
+    opt = ocp.solve()
+    xup = opt['vardict']
+    xOpt = opt['X_OPT']
         
-        for k in range(0,ocp.nk):
-            j = ocp.nicp*(ocp.deg+1)*k
-            oldKites.append( kiteproto.toKiteProto(C.DMatrix(opt['x'][:,j]),C.DMatrix(opt['u'][:,j]),C.DMatrix(opt['p']), conf['kite']['zt'], conf['carousel']['rArm']) )
-
     print "optimal power: "+str(opt['vardict']['energy'][-1]/opt['vardict']['endTime'])
+    
     # Plot the results
-#    ocp.plot(['x','y','z'],opt)
-    ocp.plot(['aileron','elevator'],opt,title='control surface inputs')
-#    ocp.plot(['tc'],opt,title='motor inputs (tc)')
-    ocp.plot(['r','dr','ddr'],opt,title='winch accel (ddr)')
-    ocp.plot(['c','cdot','cddot'],opt,title="invariants")
-    ocp.plot('airspeed',opt)
-    ocp.plot(['alpha(deg)','beta(deg)','alphaTail(deg)','betaTail(deg)'],opt)
-    ocp.plot(['cL','cD'],opt)
-#    ocp.plot('cD',opt)
-    ocp.plot('L/D',opt)
-    ocp.plot(['motor power'],opt)
-    ocp.plot('winch power',opt)
-    ocp.plot('energy',opt)
-    plt.show()
+    def plotResults():
+#        ocp.plot(['x','y','z'],opt)
+        ocp.plot(['aileron','elevator'],opt,title='control surface inputs')
+        ocp.plot(['r','dr','ddr'],opt,title='winch accel (ddr)')
+        ocp.plot(['c','cdot','cddot'],opt,title="invariants")
+        ocp.plot('airspeed',opt)
+        ocp.plot(['alpha(deg)','beta(deg)','alphaTail(deg)','betaTail(deg)'],opt)
+        ocp.plot(['cL','cD'],opt)
+#        ocp.plot('cD',opt)
+        ocp.plot('L/D',opt)
+        ocp.plot('winch power',opt)
+        ocp.plot('energy',opt)
+        plt.show()
+#    plotResults()
+
+    print "saving optimal trajectory"
+    f=open("crosswind_opt.dat",'w')
+    pickle.dump(opt,f)
+    f.close()
