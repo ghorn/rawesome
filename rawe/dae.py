@@ -31,7 +31,10 @@ class Dae():
 
     def _getVar(self,name,namelist,namedict):
         if isinstance(name,list):
-            return [self._getVar(n,namelist,namedict) for n in name]
+            return map(lambda n: self._getVar(n,namelist,namedict), name)
+
+        if isinstance(name,tuple):
+            return tuple(self._getVar(list(name),namelist,namedict))
                 
         assert(isinstance(name,str))
 
