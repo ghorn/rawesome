@@ -1,10 +1,21 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
-mkdir -p carousel-cpp
-protoc --python_out=rawe --cpp_out=carousel-cpp kite.proto
-
-if [ -x hprotoc ]
+if ! builtin type -P protoc &>/dev/null; 
 then
+	echo "Can't find protoc; try something like: sudo apt-get install libprotoc5"
+	exit 1
+else
+	mkdir -p carousel-cpp
+	protoc --python_out=rawe --cpp_out=carousel-cpp kite.proto
+	echo "Successfully generated C and Python protobuf message interfaces"
+fi
+
+if ! builtin type -P hprotoc &>/dev/null; 
+then
+	echo "Not generating haskell protobuf interface since hprotoc not installed;"
+	echo 'Try running "cabal install hprotoc"'
+	exit 1
+else
 	(
 	cd kitevis
 	hprotoc -I.. --haskell_out=src kite.proto
@@ -13,7 +24,7 @@ then
 	cd trajectory-gui
 	hprotoc -I.. --haskell_out=src kite.proto
 	)
-else
-	echo "Not generating haskell protobuf interface since hprotoc not installed;"
-	echo 'Try running "cabal install hprotoc"'
+	echo "Successfully generated haskell protobuf message interface"
 fi
+
+exit 0
