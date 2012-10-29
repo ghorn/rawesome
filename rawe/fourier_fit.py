@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import pickle
 import numpy as np
+import sys
 
 import zmq
 import kite_pb2
@@ -101,13 +102,18 @@ opt['vardict']['roll']  = np.array(roll)
 fitcoeffs = {}
 fit = {}
 
+sys.stdout.write("fitting: ")
+sys.stdout.flush()
 for name in names:
     # don't fit parameters
     if not isinstance(opt['vardict'][name], float):
-        print "fitting "+name
+        sys.stdout.write(name+" ")
+        sys.stdout.flush()
         (fitcoeffs_,fit_) = fitFourier(opt['tgrid'], opt['vardict'][name])
         fitcoeffs[name] = fitcoeffs_
         fit[name] = fit_
+sys.stdout.write('\n')
+sys.stdout.flush()
 
 # send kite protos
 kiteProtos = []
