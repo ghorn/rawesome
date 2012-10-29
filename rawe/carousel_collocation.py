@@ -38,24 +38,9 @@ x0=C.veccat([x0,C.sqrt(C.sumAll(x0[0:2]*x0[0:2])),0])
 
 oldKites = []
 
-context   = zmq.Context(1)
-publisher = context.socket(zmq.PUB)
-publisher.bind("tcp://*:5563")
-
-def setupOcp(conf):
-    nk = 50
-
-    print "creating model"
-    dae = carouselmodel.model(conf,extraParams=['endTime'])
-
-    print "setting up OCP"
-    nicp = 1
-    deg = 4
+def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
     ocp = Coll(dae, nk=nk,nicp=nicp,deg=deg)
                    
-    # make the integrator
-    print "setting up dynamics constraints"
-
     # constrain invariants
     def invariantErrs():
         dcm = C.horzcat( [ C.veccat([dae.x('e11'), dae.x('e21'), dae.x('e31')])
@@ -93,41 +78,8 @@ def setupOcp(conf):
             ocp.constrain(airspeed,'>=',5)
             ocp.constrainBnds(alphaDeg,(-5,10))
             ocp.constrainBnds(betaDeg,(-10,10))
-
     constrainAirspeedAlphaBeta()
 
-    # bounds
-    ocp.bound('aileron',(-0.04,0.04))
-    ocp.bound('elevator',(-0.1,0.1))
-
-    ocp.bound('x',(0.1,1000))
-    ocp.bound('y',(-100,100))
-    ocp.bound('z',(-0.5,7))
-    ocp.bound('r',(0.5,10))
-    ocp.bound('dr',(-10,10))
-    ocp.bound('ddr',(-1.5,1.5))
-
-    for e in ['e11','e21','e31','e12','e22','e32','e13','e23','e33']:
-        ocp.bound(e,(-1.1,1.1))
-
-    for d in ['dx','dy','dz']:
-        ocp.bound(d,(-70,70))
-
-    for w in ['w1','w2','w3']:
-        ocp.bound(w,(-4*pi,4*pi))
-
-    ocp.bound('delta',(-0.01,1.01*2*pi))
-    ocp.bound('ddelta',(-pi/8,8*pi))
-    ocp.bound('tc',(-1000,1000))
-    ocp.bound('endTime',(0.5,4.0))
-    ocp.bound('w0',(10,10))
-    ocp.bound('energy',(-1e6,1e6))
-
-    # boundary conditions
-    ocp.bound('delta',(0,0),timestep=0)
-    ocp.bound('delta',(2*pi,2*pi),timestep=-1)
-    ocp.bound('energy',(0,0),timestep=0,quiet=True)
-    
     # make it periodic
     for name in [ #"x"   # state 0
                   "y"   # state 1
@@ -157,6 +109,38 @@ def setupOcp(conf):
     # periodic attitude
     kiteutils.periodicDcm(ocp)
 
+    # bounds
+    ocp.bound('aileron',(-0.04,0.04))
+    ocp.bound('elevator',(-0.1,0.1))
+
+    ocp.bound('x',(0.1,1000))
+    ocp.bound('y',(-100,100))
+    ocp.bound('z',(-0.5,7))
+    ocp.bound('r',(0.5,10))
+    ocp.bound('dr',(-10,10))
+    ocp.bound('ddr',(0,0))
+
+    for e in ['e11','e21','e31','e12','e22','e32','e13','e23','e33']:
+        ocp.bound(e,(-1.1,1.1))
+
+    for d in ['dx','dy','dz']:
+        ocp.bound(d,(-70,70))
+
+    for w in ['w1','w2','w3']:
+        ocp.bound(w,(-4*pi,4*pi))
+
+    ocp.bound('delta',(-0.01,1.01*2*pi))
+    ocp.bound('ddelta',(-pi/8,8*pi))
+    ocp.bound('tc',(-1000,1000))
+    ocp.bound('endTime',(0.5,4.0))
+    ocp.bound('w0',(10,10))
+    ocp.bound('energy',(-1e6,1e6))
+
+    # boundary conditions
+    ocp.bound('delta',(0,0),timestep=0)
+    ocp.bound('delta',(2*pi,2*pi),timestep=-1)
+    ocp.bound('energy',(0,0),timestep=0,quiet=True)
+    
     # objective function
     obj = 0
     for k in range(nk):
@@ -179,9 +163,8 @@ def setupOcp(conf):
         torqueObj = tc*tc / (torqueSigma*torqueSigma)
         
         obj += ailObj + eleObj + winchObj + torqueObj
-    ocp.setObjective( C.sumAll(obj)*1e-8 + ocp.lookup('energy',timestep=-1)/ocp.lookup('endTime') )
+    ocp.setObjective( C.sumAll(obj) )
 
-    # zero mq setup
     # callback function
     class MyCallback:
         def __init__(self):
@@ -196,7 +179,11 @@ def setupOcp(conf):
             kiteProtos = []
             for k in range(0,nk):
                 j = nicp*(deg+1)*k
-                kiteProtos.append( kiteproto.toKiteProto(C.DMatrix(opt['x'][:,j]),C.DMatrix(opt['u'][:,j]),C.DMatrix(opt['p']), conf['kite']['zt'], conf['carousel']['rArm']) )
+                kiteProtos.append( kiteproto.toKiteProto(C.DMatrix(opt['x'][:,j]),
+                                                         C.DMatrix(opt['u'][:,j]),
+                                                         C.DMatrix(opt['p']),
+                                                         conf['kite']['zt'],
+                                                         conf['carousel']['rArm']) )
 #            kiteProtos = [kiteproto.toKiteProto(C.DMatrix(opt['x'][:,k]),C.DMatrix(opt['u'][:,k]),C.DMatrix(opt['p']), conf['kite']['zt'], conf['carousel']['rArm']) for k in range(opt['x'].shape[1])]
             
             mc = kite_pb2.MultiCarousel()
@@ -236,7 +223,7 @@ def setupOcp(conf):
 #                    , ("ScaledQP",True)
                     ]
     
-    # initial conditions
+    # initial guess
     ocp.guessX(x0)
     for k in range(0,nk+1):
         val = 2.0*pi*k/nk
@@ -257,8 +244,18 @@ def setupOcp(conf):
 
 
 if __name__=='__main__':
+    context   = zmq.Context(1)
+    publisher = context.socket(zmq.PUB)
+    publisher.bind("tcp://*:5563")
+
+    print "reading config..."
     conf = readConfig('config.ini','configspec.ini')
-    ocp = setupOcp(conf)
+    
+    print "creating model..."
+    dae = carouselmodel.model(conf,extraParams=['endTime'])
+
+    print "setting up ocp..."
+    ocp = setupOcp(dae,conf,publisher,nk=50)
 
     xOpt = None
     for w0 in [10]:

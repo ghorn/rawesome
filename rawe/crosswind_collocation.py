@@ -36,6 +36,10 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
     ocp.constrain(cdot0,'==',0)
     ocp.constrain(dcmError0,'==',0)
 
+    # constrain line angle
+    for k in range(0,nk+1):
+        ocp.constrain(kiteutils.getCosLineAngle(ocp,k),'>=',C.cos(55*pi/180))
+
     # constrain airspeed
     def constrainAirspeedAlphaBeta():
         f = C.SXFunction( [dae.xVec(),dae.uVec(),dae.pVec()]
@@ -50,6 +54,33 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
             ocp.constrainBnds(alphaDeg,(-5,10))
             ocp.constrainBnds(betaDeg,(-10,10))
     constrainAirspeedAlphaBeta()
+
+    # make it periodic
+    for name in [ #"x"   # state 0
+                  "y"   # state 1
+                , "z"   # state 2
+#                , "e11" # state 3
+#                , "e12" # state 4
+#                , "e13" # state 5
+#                , "e21" # state 6
+#                , "e22" # state 7
+#                , "e23" # state 8
+#                , "e31" # state 9
+#                , "e32" # state 10
+#                , "e33" # state 11
+#                , "dx"  # state 12
+                , "dy"  # state 13
+                , "dz"  # state 14
+                , "w1"  # state 15
+                , "w2"  # state 16
+                , "w3"  # state 17
+                , "r" # state 20
+                , "dr" # state 21
+                ]:
+        ocp.constrain(ocp.lookup(name,timestep=0),'==',ocp.lookup(name,timestep=-1))
+
+    # periodic attitude
+    kiteutils.periodicDcm(ocp)
 
     # bounds
     ocp.bound('aileron',(-0.04,0.04))
@@ -79,37 +110,6 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
     ocp.bound('energy',(0,0),timestep=0,quiet=True)
     ocp.bound('y',(0,0),timestep=0,quiet=True)
     
-    # make it periodic
-    for name in [ #"x"   # state 0
-                  "y"   # state 1
-                , "z"   # state 2
-#                , "e11" # state 3
-#                , "e12" # state 4
-#                , "e13" # state 5
-#                , "e21" # state 6
-#                , "e22" # state 7
-#                , "e23" # state 8
-#                , "e31" # state 9
-#                , "e32" # state 10
-#                , "e33" # state 11
-#                , "dx"  # state 12
-                , "dy"  # state 13
-                , "dz"  # state 14
-                , "w1"  # state 15
-                , "w2"  # state 16
-                , "w3"  # state 17
-                , "r" # state 20
-                , "dr" # state 21
-                ]:
-        ocp.constrain(ocp.lookup(name,timestep=0),'==',ocp.lookup(name,timestep=-1))
-
-    # constrain line angle
-    for k in range(0,nk+1):
-        ocp.constrain(kiteutils.getCosLineAngle(ocp,k),'>=',C.cos(55*pi/180))
-
-    # periodic attitude
-    kiteutils.periodicDcm(ocp)
-
     # objective function
     obj = 0
     for k in range(nk):
@@ -129,7 +129,6 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
         obj += ailObj + eleObj + winchObj
     ocp.setObjective( 1e1*C.sumAll(obj)/float(nk) + ocp.lookup('energy',timestep=-1)/ocp.lookup('endTime') )
 
-    # zero mq setup
     # callback function
     class MyCallback:
         def __init__(self):
@@ -188,7 +187,7 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
 #                    , ("ScaledQP",True)
                     ]
     
-    # initial conditions
+    # initial guess
 #    ocp.guessX(x0)
 #    for k in range(0,nk+1):
 #        val = 2.0*pi*k/nk
