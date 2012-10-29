@@ -152,6 +152,7 @@ ts = 0.02
 main :: IO ()
 main = do
   ip <- getip "multicarousel" "tcp://localhost:5563"
+  putStrLn $ "using ip \""++ip++"\""
 
   m <- newMVar Nothing
   _ <- forkIO (sub ip m)
