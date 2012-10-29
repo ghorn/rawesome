@@ -70,15 +70,16 @@ drawOneKite :: CS.CarouselState -> (VisObject Double, Double)
 drawOneKite cs = (VisObjects [ac, arm, line], z)
   where
     (pos@(Xyz _ _ z), quat, r'n0'a0, r'n0't0) = toNice cs
-    alpha = realToFrac $ fromMaybe 1 (CS.transparency cs)
-    arm  = Line [Xyz 0 0 0, r'n0'a0] $ makeColor 1 1 0 alpha
-    line = Line [r'n0'a0, r'n0't0]   $ makeColor 0 1 1 alpha
+    lineAlpha = realToFrac $ fromMaybe 1 (CS.lineTransparency cs)
+    kiteAlpha = realToFrac $ fromMaybe 1 (CS.kiteTransparency cs)
+    arm  = Line [Xyz 0 0 0, r'n0'a0] $ makeColor 1 1 0 lineAlpha
+    line = Line [r'n0'a0, r'n0't0]   $ makeColor 0 1 1 lineAlpha
 
-    (ac,_) = drawAc alpha pos quat
+    (ac,_) = drawAc kiteAlpha pos quat
 
 drawFun :: State -> VisObject Double
 drawFun Nothing = VisObjects []
-drawFun (Just ko) = VisObjects $ [axes,txt] ++ kites ++ [plane]
+drawFun (Just ko) = VisObjects $ [axes,txt] ++ [plane] ++ kites
   where
     (kites,zs) = unzip $ map drawOneKite (toList (MC.css ko))
     z = maximum zs

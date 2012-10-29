@@ -40,7 +40,8 @@ message CarouselState {
   // wind at 100 meters altitude in logarithmic wind shear model 
   optional double w0 = 7;
   // transparency: between 0 (invisible) and 1 (fully visible)
-  optional double transparency = 8;
+  optional double kiteTransparency = 8;
+  optional double lineTransparency = 9;
 }
 
 message PendulumOpt {
