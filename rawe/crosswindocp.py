@@ -8,13 +8,14 @@ import pickle
 
 from collocation import Coll,boundsFeedback
 from config import readConfig
+import kiteutils
 import kite_pb2
 import kiteproto
 import crosswindmodel
 
 def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
     ocp = Coll(dae, nk=nk,nicp=nicp,deg=deg)
-                   
+    
     # constrain invariants
     def invariantErrs():
         dcm = C.horzcat( [ C.veccat([dae.x('e11'), dae.x('e21'), dae.x('e31')])
@@ -102,45 +103,14 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
                 ]:
         ocp.constrain(ocp.lookup(name,timestep=0),'==',ocp.lookup(name,timestep=-1))
 
-    # line angle constraints
-    def lineAngleConstraints():
-        def getCosAngle(k):
-            r31 = ocp.lookup('e31',timestep=k)
-            r32 = ocp.lookup('e32',timestep=k)
-            r33 = ocp.lookup('e33',timestep=k)
-
-            x = ocp.lookup('x',timestep=k)
-            y = ocp.lookup('y',timestep=k)
-            z = ocp.lookup('z',timestep=k)
-            
-#            r = ocp.lookup('r',timestep=k)
-            r = C.sqrt(x*x + y*y + z*z)
-            
-            return (r31*x + r32*y + r33*z)/r
-
-        for k in range(0,nk+1):
-            ocp.constrain(getCosAngle(k),'>=',C.cos(55*pi/180))
-    lineAngleConstraints()
+    # constrain line angle
+    for k in range(0,nk+1):
+        ocp.constrain(kiteutils.getCosLineAngle(ocp,k),'>=',C.cos(55*pi/180))
 
     # euler angle periodic constraints
     def periodicEulers():
-        def getEuler(k):
-            r11 = ocp.lookup('e11',timestep=k)
-            r12 = ocp.lookup('e12',timestep=k)
-            mr13 = -ocp.lookup('e13',timestep=k)
-#            mr13 -- nan protect
-#              | mr13' >  1 =  1
-#              | mr13' < -1 = -1
-#              | otherwise = mr13'
-            r23 = ocp.lookup('e23',timestep=k)
-            r33 = ocp.lookup('e33',timestep=k)
-          
-            yaw   = C.arctan2(r12,r11)
-            pitch = C.arcsin(mr13)
-            roll  = C.arctan2(r23,r33)
-            return (yaw,pitch,roll)
-        (yaw0,pitch0,roll0) = getEuler(0)
-        (yawF,pitchF,rollF) = getEuler(-1)
+        (yaw0,pitch0,roll0) = kiteutils.getEuler(ocp, 0)
+        (yawF,pitchF,rollF) = kiteutils.getEuler(ocp, -1)
         ocp.constrain(yaw0,'==',yawF)
         ocp.constrain(pitch0,'==',pitchF)
         ocp.constrain(roll0,'==',rollF)
@@ -302,7 +272,7 @@ if __name__=='__main__':
         plt.show()
 #    plotResults()
 
-    print "saving optimal trajectory"
-    f=open("crosswind_opt.dat",'w')
-    pickle.dump(opt,f)
-    f.close()
+#    print "saving optimal trajectory"
+#    f=open("crosswind_opt.dat",'w')
+#    pickle.dump(opt,f)
+#    f.close()

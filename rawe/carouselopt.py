@@ -7,6 +7,7 @@ import zmq
 
 from collocation import Coll,boundsFeedback
 from config import readConfig
+import kiteutils
 import kite_pb2
 import kiteproto
 import carouselmodel
@@ -75,6 +76,10 @@ def setupOcp(conf):
     ocp.constrain(cdot0,'==',0)
     ocp.constrain(dcmError0,'==',0)
 
+    # constraint line angle
+    for k in range(0,nk+1):
+        ocp.constrain(kiteutils.getCosLineAngle(ocp,k),'>=',C.cos(55*pi/180))
+        
     # constrain airspeed
     def constrainAirspeedAlphaBeta():
         f = C.SXFunction( [dae.xVec(),dae.uVec(),dae.pVec()]
@@ -151,23 +156,8 @@ def setupOcp(conf):
 
     # euler angle periodic constraints
     def periodicEulers():
-        def getEuler(k):
-            r11 = ocp.lookup('e11',timestep=k)
-            r12 = ocp.lookup('e12',timestep=k)
-            mr13 = -ocp.lookup('e13',timestep=k)
-#            mr13 -- nan protect
-#              | mr13' >  1 =  1
-#              | mr13' < -1 = -1
-#              | otherwise = mr13'
-            r23 = ocp.lookup('e23',timestep=k)
-            r33 = ocp.lookup('e33',timestep=k)
-          
-            yaw   = C.arctan2(r12,r11)
-            pitch = C.arcsin(mr13)
-            roll  = C.arctan2(r23,r33)
-            return (yaw,pitch,roll)
-        (yaw0,pitch0,roll0) = getEuler(0)
-        (yawF,pitchF,rollF) = getEuler(-1)
+        (yaw0,pitch0,roll0) = kiteutils.getEuler(ocp, 0)
+        (yawF,pitchF,rollF) = kiteutils.getEuler(ocp, -1)
         ocp.constrain(yaw0,'==',yawF)
         ocp.constrain(pitch0,'==',pitchF)
         ocp.constrain(roll0,'==',rollF)
