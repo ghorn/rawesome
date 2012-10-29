@@ -16,29 +16,29 @@ int main(int argc, char **argv)
 {
 	GOOGLE_PROTOBUF_VERIFY_VERSION;
 
-	kite::Xyz xyz;
-	kite::Dcm dcm;
-	kite::CarouselState cs;
+	kite::MultiCarousel mc;
+	// Just pointers into mc
+	kite::Xyz *xyz;
+	kite::Dcm *dcm;
+	kite::CarouselState *cs;
 
-	xyz.set_x(2);
-	xyz.set_y(2);
-	xyz.set_z(2);
-	dcm.set_r11(1);
-	dcm.set_r12(0);
-	dcm.set_r13(0);
-	dcm.set_r21(0);
-	dcm.set_r22(1);
-	dcm.set_r23(0);
-	dcm.set_r31(0);
-	dcm.set_r32(0);
-	dcm.set_r33(1);
-	cs.mutable_kitexyz()->CopyFrom(xyz);
-	cs.mutable_kitedcm()->CopyFrom(dcm);
-	cs.set_delta(0.1);
-	cs.set_rarm(1);
-	cs.set_zt(-0.5);
-	// To Add: Messages
-	cs.set_w0(0);
+	mc.mutable_css();
+	cs = mc.add_css();  // Combination rezize and return pointer to zeroth CarouselState (?)
+	cs = mc.mutable_css(0);
+
+	xyz = cs->mutable_kitexyz();
+	dcm = cs->mutable_kitedcm();
+
+	xyz->set_x(2);
+	xyz->set_y(-0.5);
+	xyz->set_z(0.5);
+	dcm->set_r11(0); dcm->set_r12(1); dcm->set_r13(0);
+	dcm->set_r21(-1); dcm->set_r22(0); dcm->set_r23(0);
+	dcm->set_r31(0); dcm->set_r32(0); dcm->set_r33(1);
+	cs->set_delta(0.1);
+	cs->set_rarm(1);
+	cs->set_zt(-0.05);
+	cs->set_w0(0);
 
 #if 0
 	{
@@ -60,12 +60,14 @@ int main(int argc, char **argv)
 		// Send the kite state as a zmq message
 		string output;
 		float delta_deg = (float)i / 360.0 * 2.0 * 3.1415;
-		cs.set_delta(delta_deg);
-		if (!cs.SerializeToString(&output)) {
-			cerr << "Failed to serialize cs." << endl;
+		cs->set_delta(delta_deg);
+		//mc.add_css();
+		//mc.mutable_css(0)->CopyFrom(cs); // runtime error
+		if (!mc.SerializeToString(&output)) {
+			cerr << "Failed to serialize mc." << endl;
 			return -1;
 		}
-		s_sendmore(socket, "carousel");
+		s_sendmore(socket, "multi-carousel");
                 s_send(socket, output);
 		i += 10;
 		if (i>350) i-=360;

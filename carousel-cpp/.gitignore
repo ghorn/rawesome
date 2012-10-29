@@ -3,3 +3,4 @@ sender_example
 sample_kite_message
 *.pb.cc
 *.pb.h
+*.swp
