@@ -942,12 +942,28 @@ class Coll():
             raise ValueError("can't change objective function once it's already set")
         self._objective = obj
 
+    def subplot(self,names,opt,title=None):
+        assert(isinstance(names,list))
+            
+        plt.figure()
+        plt.clf()
+        n = len(names)
+        for k,name in enumerate(names):
+            plt.subplot(n,1,k+1)
+            if k==0:
+                self._plot(name,opt,title)
+            else:
+                self._plot(name,opt)
+
     def plot(self,names,opt,title=None):
+        plt.figure()
+        plt.clf()
+        self._plot(names,opt,title)
+
+    def _plot(self,names,opt,title=None):
         if isinstance(names,str):
             names = [names]
         assert( isinstance(names,list) )
-        plt.figure()
-        plt.clf()
         legend = []
         for name in names:
             assert(isinstance(name,str))
