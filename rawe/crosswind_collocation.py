@@ -107,14 +107,8 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
     for k in range(0,nk+1):
         ocp.constrain(kiteutils.getCosLineAngle(ocp,k),'>=',C.cos(55*pi/180))
 
-    # euler angle periodic constraints
-    def periodicEulers():
-        (yaw0,pitch0,roll0) = kiteutils.getEuler(ocp, 0)
-        (yawF,pitchF,rollF) = kiteutils.getEuler(ocp, -1)
-        ocp.constrain(yaw0,'==',yawF)
-        ocp.constrain(pitch0,'==',pitchF)
-        ocp.constrain(roll0,'==',rollF)
-    periodicEulers()
+    # periodic attitude
+    kiteutils.periodicDcm(ocp)
 
     # objective function
     obj = 0
