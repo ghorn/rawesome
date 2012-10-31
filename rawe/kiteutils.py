@@ -32,8 +32,8 @@ def getEuler(ocp, k):
 
 # euler angle periodic constraints
 def periodicEulers(ocp):
-    (yaw0,pitch0,roll0) = kiteutils.getEuler(ocp, 0)
-    (yawF,pitchF,rollF) = kiteutils.getEuler(ocp, -1)
+    (yaw0,pitch0,roll0) = getEuler(ocp, 0)
+    (yawF,pitchF,rollF) = getEuler(ocp, -1)
     ocp.constrain(yaw0,'==',yawF)
     ocp.constrain(pitch0,'==',pitchF)
     ocp.constrain(roll0,'==',rollF)
@@ -55,7 +55,7 @@ def getOrthonormalizedDcm(ocp,k):
     return orthonormalizeDcm(m)
 
 # dcm periodic constraints
-def periodicDcm(ocp):
+def periodicOrthonormalizedDcm(ocp):
     dcm0 = getOrthonormalizedDcm(ocp, 0)
     dcmf = getOrthonormalizedDcm(ocp, -1)
     ocp.constrain(dcm0['e11'], '==', dcmf['e11'])

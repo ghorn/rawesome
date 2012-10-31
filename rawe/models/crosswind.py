@@ -248,6 +248,34 @@ def crosswindModel(conf,nSteps=None,extraParams=[]):
     
     dae.addOutput('winch force', dae.x('r')*dae.z('nu'))
     dae.addOutput('winch power', dae.x('r')*dae.x('dr')*dae.z('nu'))
+
+    def addOrthonormalizedDcm():
+        m = {}
+        m['e11'] = dae.x('e11')
+        m['e12'] = dae.x('e12')
+        m['e13'] = dae.x('e13')
+
+        m['e21'] = dae.x('e21')
+        m['e22'] = dae.x('e22')
+        m['e23'] = dae.x('e23')
+
+        m['e31'] = dae.x('e31')
+        m['e32'] = dae.x('e32')
+        m['e33'] = dae.x('e33')
+        import kiteutils
+        m = kiteutils.orthonormalizeDcm(m)
+        dae.addOutput('e11o', m['e11'])
+        dae.addOutput('e12o', m['e12'])
+        dae.addOutput('e13o', m['e13'])
+
+        dae.addOutput('e21o', m['e21'])
+        dae.addOutput('e22o', m['e22'])
+        dae.addOutput('e23o', m['e23'])
+
+        dae.addOutput('e31o', m['e31'])
+        dae.addOutput('e32o', m['e32'])
+        dae.addOutput('e33o', m['e33'])
+    #addOrthonormalizedDcm()
     
     (massMatrix, rhs, dRexp) = setupModel(dae, conf)
 

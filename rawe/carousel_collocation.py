@@ -82,33 +82,17 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
     constrainAirspeedAlphaBeta()
 
     # make it periodic
-    for name in [ #"x"   # state 0
-                  "y"   # state 1
-                , "z"   # state 2
-#                , "e11" # state 3
-#                , "e12" # state 4
-#                , "e13" # state 5
-#                , "e21" # state 6
-#                , "e22" # state 7
-#                , "e23" # state 8
-#                , "e31" # state 9
-#                , "e32" # state 10
-#                , "e33" # state 11
-#                , "dx"  # state 12
-                , "dy"  # state 13
-                , "dz"  # state 14
-                , "w1"  # state 15
-                , "w2"  # state 16
-                , "w3"  # state 17
-#                , "delta" # state 18
-                , "ddelta" # state 19
-                , "r" # state 20
-                , "dr" # state 21
-                ]:
+    for name in [ "y","z",
+                  "dy","dz",
+                  "w1","w2","w3",
+                  "e11","e22","e33",
+                  "ddelta",
+                  "r","dr"]:
         ocp.constrain(ocp.lookup(name,timestep=0),'==',ocp.lookup(name,timestep=-1))
 
     # periodic attitude
-    kiteutils.periodicDcm(ocp)
+#    kiteutils.periodicEulers(ocp)
+#    kiteutils.periodicOrthonormalizedDcm(ocp)
 
     # bounds
     ocp.bound('aileron',(-0.04,0.04))
@@ -236,7 +220,7 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
     ocp.guess('endTime',1.5)
 
     ocp.guess('ddr',0)
-    ocp.guess('w0',5)
+    ocp.guess('w0',10)
 
     ocp.setupCollocation(ocp.lookup('endTime'))
     ocp.setupSolver( solverOpts=solverOptions,
@@ -273,19 +257,21 @@ if __name__=='__main__':
     f=open("data/carousel_opt.dat",'w')
     pickle.dump(opt,f)
     f.close()
+
     print "optimal power: "+str(opt['vardict']['energy'][-1]/opt['vardict']['endTime'])
     # Plot the results
     ocp.plot(['x','y','z'],opt)
     ocp.plot(['aileron','elevator'],opt,title='control surface inputs')
     ocp.plot(['tc'],opt,title='motor inputs (tc)')
     ocp.plot(['ddr'],opt,title='winch accel (ddr)')
-    ocp.plot(['c','cdot','cddot'],opt,title="invariants")
+    ocp.subplot(['c','cdot','cddot'],opt,title="invariants")
     ocp.plot('airspeed',opt)
-    ocp.plot(['alpha(deg)','beta(deg)','alphaTail(deg)','betaTail(deg)'],opt)
-    ocp.plot('cL',opt)
-    ocp.plot('cD',opt)
-    ocp.plot('L/D',opt)
+    ocp.subplot([['alpha(deg)','alphaTail(deg)'],['beta(deg)','betaTail(deg)']],opt)
+    ocp.subplot(['cL','cD','L/D'],opt)
     ocp.plot('motor power',opt)
 #    ocp.plot('winch power',opt)
     ocp.plot('energy',opt)
+    ocp.subplot(['e11','e12','e13',
+                 'e21','e22','e23',
+                 'e31','e32','e33'],opt)
     plt.show()
