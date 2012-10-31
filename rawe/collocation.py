@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import numbers
 from ocputils import Constraints,setFXOptions
 
-from dae import Dae
+from models import Dae
 
 def mkCollocationPoints():
     # Legendre collocation points

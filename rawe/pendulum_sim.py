@@ -5,7 +5,7 @@ import os
 import casadi as C
 
 import kite_pb2
-import pendulum_model
+import models
 import joy
 
 ts = 0.02
@@ -42,8 +42,8 @@ def toProto(x,u):
 
 if __name__=='__main__':
     print "creating model"
-    (dae, others) = pendulum_model.pendulum_model()
-    dae.init()
+    dae = models.pendulum()
+
 
 #    # compile model code
 #    print "generating model code"

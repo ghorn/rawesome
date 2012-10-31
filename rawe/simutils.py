@@ -90,7 +90,7 @@ class Sim():
         else:
             print "can't load #"+str(k)+" because that save doesn't exist"
 
-    def saveFile(self,filename='defaultSave.dat'):
+    def saveFile(self,filename='data/defaultSave.dat'):
         saves = copy.deepcopy(self._saves)
         for k in saves.keys():
             if not k == 'default':
@@ -102,7 +102,7 @@ class Sim():
         pickle.dump(saves,f)
         f.close()
 
-    def loadFile(self,filename='defaultSave.dat'):
+    def loadFile(self,filename='data/defaultSave.dat'):
         f=open(filename,'r')
         saves = pickle.load(f)
         f.close()

@@ -219,7 +219,7 @@ def setupModel(dae, conf):
     dae.addOutput('cddot', cddot)
     return (mm, rhs, dRexp)
         
-def model(conf,nSteps=None,extraParams=[]):
+def carouselModel(conf,nSteps=None,extraParams=[]):
     dae = Dae()
     for ep in extraParams:
         dae.addP(ep)
@@ -304,4 +304,4 @@ def model(conf,nSteps=None,extraParams=[]):
     return dae
 
 if __name__=='__main__':
-    (f,others) = model()
+    (f,others) = carouselModel()

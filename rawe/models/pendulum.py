@@ -1,7 +1,7 @@
 from dae import Dae
 import casadi as C
 
-def pendulum_model(nSteps=None):
+def pendulumModel(nSteps=None):
     dae = Dae()
     dae.addZ( [ "ddx"
               , "ddz"
@@ -55,5 +55,5 @@ def pendulum_model(nSteps=None):
     return dae
 
 if __name__=='__main__':
-    pendulum_model()
-    pendulum_model(nSteps=10)
+    pendulumModel()
+    pendulumModel(nSteps=10)

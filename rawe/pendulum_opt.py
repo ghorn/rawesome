@@ -8,14 +8,14 @@ import copy
 import kite_pb2
 import casadi as C
 
-from ocputils import MultipleShootingStage
-import pendulum_model
+from multipleShooting import MultipleShootingStage
+import models
 
 def main():
     nSteps = 15
 
     print "creating model"
-    dae = pendulum_model.pendulum_model(nSteps=nSteps)
+    dae = models.pendulum(nSteps=nSteps)
 
     print "setting up OCP"
     ocp = MultipleShootingStage(dae, nSteps)

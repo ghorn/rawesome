@@ -11,8 +11,8 @@ import casadi as C
 import kite_pb2
 import kiteproto
 
-from ocputils import MultipleShootingStage
-import model
+from multipleShooting import MultipleShootingStage
+import models
 
 #tc0 = 2*389.970797939731
 
@@ -45,7 +45,7 @@ def main():
     nSteps = 15
 
     print "creating model"
-    dae = model.model(zt,rArm,nSteps)
+    dae = models.carousel(zt,rArm,nSteps)
 
     print "setting up OCP"
     ocp = MultipleShootingStage(dae, nSteps)

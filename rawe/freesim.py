@@ -6,7 +6,7 @@ import simutils
 import casadi as C
 
 import kiteproto
-import freemodel
+import models
 import joy
 
 #tc0 = 2*389.970797939731
@@ -36,7 +36,7 @@ sim = simutils.Sim(ts=ts, sloMoFactor=4, state0=simutils.SimState(pdOn = False, 
 
 if __name__=='__main__':
     print "creating model"
-    (ode, others, outputs) = freemodel.model()
+    (ode, others, outputs) = models.free()
     ode.init()
 
     print "creating outputs function"

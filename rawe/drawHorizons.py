@@ -8,10 +8,10 @@ context   = zmq.Context(1)
 publisher = context.socket(zmq.PUB)
 publisher.bind("tcp://*:5563")
 
-#filename = "fullstate_mhe_mpc.dat"
-#filename = "fullstate_mhe_mpc_40rpm.dat"
-#filename = "fullstate_mhe_mpc_45rpm_001.dat"
-filename = "fullstate_mhe_mpc_45rpm_002.dat"
+#filename = "data/fullstate_mhe_mpc.dat"
+#filename = "data/fullstate_mhe_mpc_40rpm.dat"
+#filename = "data/fullstate_mhe_mpc_45rpm_001.dat"
+filename = "data/fullstate_mhe_mpc_45rpm_002.dat"
 f = open(filename,'r')
 mhes = []
 mpcs = []

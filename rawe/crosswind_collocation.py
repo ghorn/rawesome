@@ -11,7 +11,7 @@ from config import readConfig
 import kiteutils
 import kite_pb2
 import kiteproto
-import crosswindmodel
+import models
 
 def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
     ocp = Coll(dae, nk=nk,nicp=nicp,deg=deg)
@@ -218,11 +218,11 @@ if __name__=='__main__':
     conf = readConfig('config.ini','configspec.ini')
     
     print "creating model..."
-    dae = crosswindmodel.model(conf,extraParams=['endTime'])
+    dae = models.crosswind(conf,extraParams=['endTime'])
 
     # load initial guess
     print "loading initial guess data..."
-    f = open('crosswind_guess.txt','r')
+    f = open('data/crosswind_guess.txt','r')
     xutraj = []
     for line in f:
         xutraj.append([float(x) for x in line.strip('[]\n').split(',')])
@@ -249,6 +249,11 @@ if __name__=='__main__':
         
     print "optimal power: "+str(opt['vardict']['energy'][-1]/opt['vardict']['endTime'])
     
+    print "saving optimal trajectory"
+    f=open("data/crosswind_opt.dat",'w')
+    pickle.dump(opt,f)
+    f.close()
+    
     # Plot the results
     def plotResults():
 #        ocp.plot(['x','y','z'],opt)
@@ -265,7 +270,3 @@ if __name__=='__main__':
         plt.show()
 #    plotResults()
 
-#    print "saving optimal trajectory"
-#    f=open("crosswind_opt.dat",'w')
-#    pickle.dump(opt,f)
-#    f.close()

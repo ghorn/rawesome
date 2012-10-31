@@ -8,15 +8,14 @@ import copy
 import kite_pb2
 import casadi as C
 
-from ocputils import MultipleShootingStage
-import pendulum_model
+import models
 from collocation import Coll
 
 def main():
     nk = 15
 
     print "creating model"
-    dae = pendulum_model.pendulum_model()
+    dae = models.pendulum()
     dae.addP('endTime')
 
     print "setting up OCP"

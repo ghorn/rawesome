@@ -4,13 +4,14 @@ import matplotlib.pyplot as plt
 import numpy
 from numpy import pi
 import zmq
+import pickle
 
 from collocation import Coll,boundsFeedback
 from config import readConfig
 import kiteutils
 import kite_pb2
 import kiteproto
-import carouselmodel
+import models
 
 x0 = C.DMatrix( [ 1.154244772411
                 , -0.103540608242
@@ -252,7 +253,7 @@ if __name__=='__main__':
     conf = readConfig('config.ini','configspec.ini')
     
     print "creating model..."
-    dae = carouselmodel.model(conf,extraParams=['endTime'])
+    dae = models.carousel(conf,extraParams=['endTime'])
 
     print "setting up ocp..."
     ocp = setupOcp(dae,conf,publisher,nk=50)
@@ -268,6 +269,10 @@ if __name__=='__main__':
             j = ocp.nicp*(ocp.deg+1)*k
             oldKites.append( kiteproto.toKiteProto(C.DMatrix(opt['x'][:,j]),C.DMatrix(opt['u'][:,j]),C.DMatrix(opt['p']), conf['kite']['zt'], conf['carousel']['rArm']) )
 
+    print "saving optimal trajectory"
+    f=open("data/carousel_opt.dat",'w')
+    pickle.dump(opt,f)
+    f.close()
     print "optimal power: "+str(opt['vardict']['energy'][-1]/opt['vardict']['endTime'])
     # Plot the results
     ocp.plot(['x','y','z'],opt)

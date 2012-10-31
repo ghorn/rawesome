@@ -386,7 +386,7 @@ def modelInteg(state, u, p, outputs):
 
     return (mm, rhs, dRexp)
         
-def model(endTimeSteps=None):
+def freeModel(endTimeSteps=None):
     stateNames = [ "x"   # state 0
                  , "y"   # state 1
                  , "z"   # state 2
@@ -465,4 +465,4 @@ def model(endTimeSteps=None):
                   'pVec':pVec,'pNames':pNames}, outputs)
 
 if __name__=='__main__':
-    (f,others) = model()
+    (f,others) = freeModel()
