@@ -19,14 +19,29 @@ import qualified Kite.Dcm as Dcm
 import qualified Kite.Xyz as KiteXyz
 
 import SpatialMath
+import qualified Xyz
 import Vis
 import DrawAC
 import ParseArgs ( getip )
 
 type State = Maybe MC.MultiCarousel
 
-toNice :: CS.CarouselState -> (Xyz Double, Quat Double, Xyz Double, Xyz Double)
-toNice cs = (xyz, q'n'b, r'n0'a0, r'n0't0)
+data NiceKite = NiceKite { nk_xyz :: Xyz Double
+                         , nk_q'n'b :: Quat Double
+                         , nk_r'n0'a0 :: Xyz Double
+                         , nk_r'n0't0 :: Xyz Double
+                         , nk_lineAlpha :: Float
+                         , nk_kiteAlpha :: Float
+                         }
+
+toNice :: CS.CarouselState -> NiceKite
+toNice cs = NiceKite { nk_xyz = xyz
+                     , nk_q'n'b = q'n'b
+                     , nk_r'n0'a0 = r'n0'a0
+                     , nk_r'n0't0 = r'n0't0
+                     , nk_lineAlpha = realToFrac $ fromMaybe 1 (CS.lineTransparency cs)
+                     , nk_kiteAlpha = realToFrac $ fromMaybe 1 (CS.kiteTransparency cs)
+                     }
   where
     x = KiteXyz.x $ CS.kiteXyz cs
     y = KiteXyz.y $ CS.kiteXyz cs
@@ -66,22 +81,40 @@ toNice cs = (xyz, q'n'b, r'n0'a0, r'n0't0)
     r'n0'a0 = rotVecByQuatB2A q'n'a rArm
     r'n0't0 = xyz + (rotVecByQuatB2A q'n'b $ Xyz 0 0 (-zt))
 
-drawOneKite :: CS.CarouselState -> (VisObject Double, Double)
-drawOneKite cs = (VisObjects [ac, arm, line], z)
+drawOneKite :: Double -> NiceKite -> (VisObject Double, Double)
+drawOneKite minLineLength niceKite = (VisObjects [ac, arm, line], z)
   where
-    (pos@(Xyz _ _ z), quat, r'n0'a0, r'n0't0) = toNice cs
-    lineAlpha = realToFrac $ fromMaybe 1 (CS.lineTransparency cs)
-    kiteAlpha = realToFrac $ fromMaybe 1 (CS.kiteTransparency cs)
-    arm  = Line [Xyz 0 0 0, r'n0'a0] $ makeColor 1 1 0 lineAlpha
-    line = Line [r'n0'a0, r'n0't0]   $ makeColor 0 1 1 lineAlpha
+    pos@(Xyz _ _ z) = nk_xyz niceKite
+    quat = nk_q'n'b niceKite
+    r'n0'a0 = nk_r'n0'a0 niceKite
+    r'n0't0 = nk_r'n0't0 niceKite
+    
+    arm  = Line [Xyz 0 0 0, r'n0'a0] $ makeColor 1 1 0 (nk_lineAlpha niceKite)
+    line = VisObjects [ line1 $ makeColor 1 0.2 0 (nk_lineAlpha niceKite)
+                      , line2 $ makeColor 0 1 1 (nk_lineAlpha niceKite)
+                      ]
+      where
+        line1 = Line [r'n0'a0, rMid] 
+        line2 = Line [rMid, r'n0't0] 
 
-    (ac,_) = drawAc kiteAlpha pos quat
+        rMid = r'n0'a0 + fmap (* (1 - minLineLength/normDr)) dr
+        dr = r'n0't0 - r'n0'a0
+        normDr = Xyz.norm dr
+        
+
+    (ac,_) = drawAc (nk_kiteAlpha niceKite) pos quat
 
 drawFun :: State -> VisObject Double
 drawFun Nothing = VisObjects []
 drawFun (Just ko) = VisObjects $ [axes,txt] ++ [plane] ++ kites
   where
-    (kites,zs) = unzip $ map drawOneKite (toList (MC.css ko))
+    niceKites = map toNice (toList (MC.css ko))
+
+    minLineLength = minimum $ map lineLength niceKites
+      where
+        lineLength nk = Xyz.norm (nk_r'n0't0 nk - nk_r'n0'a0 nk)
+
+    (kites,zs) = unzip $ map (drawOneKite minLineLength) niceKites
     z = maximum zs
 --    points = Points (sParticles state) (Just 2) $ makeColor 1 1 1 0.5
     
