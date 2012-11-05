@@ -50,10 +50,22 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
 
         for k in range(0,nk):
             [airspeed,alphaDeg,betaDeg] = f.call([ocp.xVec(k),ocp.uVec(k),ocp.pVec()])
-            ocp.constrainBnds(airspeed,(10,50))
+            ocp.constrain(airspeed,'>=',10)
             ocp.constrainBnds(alphaDeg,(-5,10))
             ocp.constrainBnds(betaDeg,(-10,10))
     constrainAirspeedAlphaBeta()
+
+    # constrain tether force
+    for k in range(nk):
+        degIdx = 1# in range(1,deg+1):
+        r  = ocp.lookup('r', timestep=k,degIdx=degIdx)
+        nu = ocp.lookup('nu',timestep=k,degIdx=degIdx)
+        ocp.constrain(0,'<=',r*nu)
+
+        degIdx = deg# in range(1,deg+1):
+        r  = ocp.lookup('r', timestep=k,degIdx=degIdx)
+        nu = ocp.lookup('nu',timestep=k,degIdx=degIdx)
+        ocp.constrain(0,'<=',r*nu)
 
     # make it periodic
     for name in [ "y","z",
@@ -65,6 +77,11 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
                   ]:
         ocp.constrain(ocp.lookup(name,timestep=0),'==',ocp.lookup(name,timestep=-1))
 
+    # make sure it doesn't find transposed-periodic DCM
+    # sign(eij(beginning) == sign(eij(end)) <--> eij(beginning)*eij(end) >= 0
+    for name in ['e12','e13','e23']:
+        ocp.constrain(ocp.lookup(name,timestep=0)*ocp.lookup(name,timestep=-1),'>=',0)
+
     # periodic attitude
 #    kiteutils.periodicEulers(ocp)
 #    kiteutils.periodicOrthonormalizedDcm(ocp)
@@ -75,12 +92,12 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
     ocp.bound('daileron',(-2.0,2.0))
     ocp.bound('delevator',(-2.0,2.0))
 
-    ocp.bound('x',(-2,200))
+    ocp.bound('x',(-200,200))
     ocp.bound('y',(-200,200))
     ocp.bound('z',(0.5,200))
     ocp.bound('r',(1,30))
-    ocp.bound('dr',(-10,10))
-    ocp.bound('ddr',(-1.5,1.5))
+    ocp.bound('dr',(-30,30))
+    ocp.bound('ddr',(-500,500))
 
     for e in ['e11','e21','e31','e12','e22','e32','e13','e23','e33']:
         ocp.bound(e,(-1.1,1.1))
@@ -91,7 +108,7 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
     for w in ['w1','w2','w3']:
         ocp.bound(w,(-4*pi,4*pi))
 
-    ocp.bound('endTime',(0.5,8))
+    ocp.bound('endTime',(0.5,20))
     ocp.bound('w0',(10,10))
     ocp.bound('energy',(-1e6,1e6))
 
@@ -144,9 +161,10 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
             mc = kite_pb2.MultiCarousel()
             mc.css.extend(list(kiteProtos))
             
-            mc.messages.append("endTime: "+str(xup['endTime']))
             mc.messages.append("w0: "+str(xup['w0']))
             mc.messages.append("iter: "+str(self.iter))
+            mc.messages.append("endTime: "+str(xup['endTime']))
+            mc.messages.append("average power: "+str(xup['energy'][-1]/xup['endTime'])+" W")
 
             # bounds feedback
 #            lbx = ocp.solver.input(C.NLP_LBX)
@@ -167,7 +185,7 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
 #                     ,("qp_solver_options",{'nlp_solver': C.IpoptSolver, "nlp_solver_options":{"linear_solver":"ma57"}})
                     , ("linear_solver","ma57")
                     , ("max_iter",1000)
-                    , ("tol",1e-9)
+                    , ("tol",1e-8)
 #                    , ("Timeout", 1e6)
 #                    , ("UserHM", True)
 #                    , ("ScaleConIter",True)
@@ -221,6 +239,13 @@ if __name__=='__main__':
     # remove delta/ddelta/tc
     xutraj = numpy.hstack((xutraj[:,:23], xutraj[:,24:]))
     xutraj = numpy.hstack((xutraj[:,:18], xutraj[:,20:]))
+
+    # add daileron/delevator
+    xutraj = numpy.hstack((xutraj, 0*xutraj[:,:2]))
+
+    # make it go around n times
+    nTurns = 1
+    xutraj = numpy.vstack(tuple([xutraj]*nTurns))
     
     print "setting up ocp..."
     ocp = setupOcp(dae,conf,publisher,nk=100)
@@ -233,36 +258,63 @@ if __name__=='__main__':
             ocp.guessU(xuguess[len(ocp.dae.xNames()):,k],timestep=k,quiet=True)
     ocp.guess('energy',0,quiet=True)
     
+    print "loading optimal trajectory"
+    f=open("data/crosswind_opt.dat",'r')
+    opt = pickle.load(f)
+    f.close()
+
+#    opt = ocp.solve(xInit=opt['X_OPT'])
     opt = ocp.solve()
     xup = opt['vardict']
     xOpt = opt['X_OPT']
-        
+    
     print "optimal power: "+str(opt['vardict']['energy'][-1]/opt['vardict']['endTime'])
     
     print "saving optimal trajectory"
     f=open("data/crosswind_opt.dat",'w')
     pickle.dump(opt,f)
     f.close()
-    
+
+    def printBoundsFeedback():
+#        (_,lbx,ubx) = ocp._vectorizeBoundsAndGuess( ocp._parseBoundsAndGuess(False,False) )
+        lbx = ocp.solver.input(C.NLP_LBX)
+        ubx = ocp.solver.input(C.NLP_UBX)
+        violations = boundsFeedback(opt['X_OPT'],lbx,ubx,ocp.bndtags,tolerance=0.5)
+        for name in violations:
+            print "violation!: "+name+": "+str(violations[name])
+#    printBoundsFeedback()
+
     # Plot the results
     def plotResults():
         ocp.subplot(['x','y','z'],opt)
+        ocp.subplot(['dx','dy','dz'],opt)
         ocp.subplot([['aileron','elevator'],['daileron','delevator']],opt,title='control surfaces')
         ocp.subplot(['r','dr','ddr'],opt)
+        ocp.subplot(['wind at altitude','dr','dx'],opt)
         ocp.subplot(['c','cdot','cddot'],opt,title="invariants")
         ocp.plot('airspeed',opt)
         ocp.subplot([['alpha(deg)','alphaTail(deg)'],['beta(deg)','betaTail(deg)']],opt)
         ocp.subplot(['cL','cD','L/D'],opt)
-        ocp.plot('winch power',opt)
+        ocp.subplot(['winch power', 'tether tension'],opt)
         ocp.plot('energy',opt)
-        ocp.subplot([['e11','e11o'],
-                    ['e12','e12o'],
-                    ['e13','e13o'],
-                    ['e21','e21o'],
-                    ['e22','e22o'],
-                    ['e23','e23o'],
-                    ['e31','e31o'],
-                    ['e32','e32o'],
-                    ['e33','e33o']],opt)
+        ocp.subplot(['w1','w2','w3'],opt)
+#        ocp.subplot(['e11',
+#                     'e12',
+#                     'e13',
+#                     'e21',
+#                     'e22',
+#                     'e23',
+#                     'e31',
+#                     'e32',
+#                     'e33'],opt)
+#        ocp.subplot([['e11','e11o'],
+#                    ['e12','e12o'],
+#                    ['e13','e13o'],
+#                    ['e21','e21o'],
+#                    ['e22','e22o'],
+#                    ['e23','e23o'],
+#                    ['e31','e31o'],
+#                    ['e32','e32o'],
+#                    ['e33','e33o']],opt)
         plt.show()
     plotResults()

@@ -81,6 +81,18 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
             ocp.constrainBnds(betaDeg,(-10,10))
     constrainAirspeedAlphaBeta()
 
+    # constrain tether force
+    for k in range(nk):
+        degIdx = 1# in range(1,deg+1):
+        r  = ocp.lookup('r', timestep=k,degIdx=degIdx)
+        nu = ocp.lookup('nu',timestep=k,degIdx=degIdx)
+        ocp.constrain(0,'<=',r*nu)
+
+        degIdx = deg# in range(1,deg+1):
+        r  = ocp.lookup('r', timestep=k,degIdx=degIdx)
+        nu = ocp.lookup('nu',timestep=k,degIdx=degIdx)
+        ocp.constrain(0,'<=',r*nu)
+
     # make it periodic
     for name in [ "y","z",
                   "dy","dz",
@@ -91,6 +103,11 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
                   "r","dr"]:
         ocp.constrain(ocp.lookup(name,timestep=0),'==',ocp.lookup(name,timestep=-1))
 
+    # make sure it doesn't find transposed-periodic DCM
+    # sign(eij(beginning) == sign(eij(end)) <--> eij(beginning)*eij(end) >= 0
+    for name in ['e12','e13','e23']:
+        ocp.constrain(ocp.lookup(name,timestep=0)*ocp.lookup(name,timestep=-1),'>=',0)
+
     # periodic attitude
 #    kiteutils.periodicEulers(ocp)
 #    kiteutils.periodicOrthonormalizedDcm(ocp)
@@ -98,16 +115,15 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
     # bounds
     ocp.bound('aileron',(-0.04,0.04))
     ocp.bound('elevator',(-0.1,0.1))
-
     ocp.bound('daileron',(-2,2))
     ocp.bound('delevator',(-2,2))
 
     ocp.bound('x',(0.1,1000))
     ocp.bound('y',(-100,100))
     ocp.bound('z',(-0.5,7))
-    ocp.bound('r',(0.5,10))
+    ocp.bound('r',(2.0,2.0))
     ocp.bound('dr',(-10,10))
-    ocp.bound('ddr',(0,0))
+    ocp.bound('ddr',(-2.5,2.5))
 
     for e in ['e11','e21','e31','e12','e22','e32','e13','e23','e33']:
         ocp.bound(e,(-1.1,1.1))
@@ -133,26 +149,26 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
     # objective function
     obj = 0
     for k in range(nk):
-        u = ocp.uVec(k)
+        # control regularization
         ddr = ocp.lookup('ddr',timestep=k)
         tc = ocp.lookup('tc',timestep=k)
-        aileron = ocp.lookup('aileron',timestep=k)
-        elevator = ocp.lookup('elevator',timestep=k)
+        daileron = ocp.lookup('daileron',timestep=k)
+        delevator = ocp.lookup('delevator',timestep=k)
         
-        aileronSigma = 0.1
-        elevatorSigma = 0.1
+        daileronSigma = 0.1
+        delevatorSigma = 0.1
+        ddrSigma = 1.0
         torqueSigma = 1000.0
-        ddrSigma = 5.0
         
 #        tc = tc - 390
 
-        ailObj = aileron*aileron / (aileronSigma*aileronSigma)
-        eleObj = elevator*elevator / (elevatorSigma*elevatorSigma)
+        ailObj = daileron*daileron / (daileronSigma*daileronSigma)
+        eleObj = delevator*delevator / (delevatorSigma*delevatorSigma)
         winchObj = ddr*ddr / (ddrSigma*ddrSigma)
         torqueObj = tc*tc / (torqueSigma*torqueSigma)
         
         obj += ailObj + eleObj + winchObj + torqueObj
-    ocp.setObjective( C.sumAll(obj) )
+    ocp.setObjective( obj/nk )
 
     # callback function
     class MyCallback:
