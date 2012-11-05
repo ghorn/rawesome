@@ -273,8 +273,8 @@ def carouselModel(conf,nSteps=None,extraParams=[]):
     dae.addOutput('motor torque', dae.u('tc'))
     dae.addOutput('motor power', dae.u('tc')*dae.x('ddelta'))
 
-    dae.addOutput('winch force', dae.x('r')*dae.z('nu'))
-    dae.addOutput('winch power', dae.x('r')*dae.x('dr')*dae.z('nu'))
+    dae.addOutput('tether tension', dae.x('r')*dae.z('nu'))
+    dae.addOutput('winch power', -dae.output('tether tension')*dae.x('dr'))
     
     (massMatrix, rhs, dRexp) = setupModel(dae, conf)
 

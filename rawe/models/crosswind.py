@@ -246,8 +246,8 @@ def crosswindModel(conf,nSteps=None,extraParams=[]):
     dae.addOutput('aileron(deg)', dae.u('aileron')*180/C.pi)
     dae.addOutput('elevator(deg)', dae.u('elevator')*180/C.pi)
     
-    dae.addOutput('winch force', dae.x('r')*dae.z('nu'))
-    dae.addOutput('winch power', dae.x('r')*dae.x('dr')*dae.z('nu'))
+    dae.addOutput('tether tension', dae.x('r')*dae.z('nu'))
+    dae.addOutput('winch power', -dae.output('tether tension')*dae.x('dr'))
 
     def addOrthonormalizedDcm():
         m = {}
