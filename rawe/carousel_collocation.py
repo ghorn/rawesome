@@ -35,7 +35,7 @@ x0 = C.DMatrix( [ 1.154244772411
                 , 3.874600000000
                 , 0.0
                 ])
-x0=C.veccat([x0,C.sqrt(C.sumAll(x0[0:2]*x0[0:2])),0])
+x0=C.veccat([x0,C.sqrt(C.sumAll(x0[0:2]*x0[0:2])),0,0,0])
 
 oldKites = []
 
@@ -87,6 +87,7 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
                   "w1","w2","w3",
                   "e11","e22","e33",
                   "ddelta",
+                  "aileron","elevator",
                   "r","dr"]:
         ocp.constrain(ocp.lookup(name,timestep=0),'==',ocp.lookup(name,timestep=-1))
 
@@ -97,6 +98,9 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
     # bounds
     ocp.bound('aileron',(-0.04,0.04))
     ocp.bound('elevator',(-0.1,0.1))
+
+    ocp.bound('daileron',(-2,2))
+    ocp.bound('delevator',(-2,2))
 
     ocp.bound('x',(0.1,1000))
     ocp.bound('y',(-100,100))
@@ -214,10 +218,10 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
         val = 2.0*pi*k/nk
         ocp.guess('delta',val,timestep=k,quiet=True)
 
-    ocp.guess('aileron',0)
-    ocp.guess('elevator',0)
     ocp.guess('tc',0)
     ocp.guess('endTime',1.5)
+    ocp.guess('daileron',0)
+    ocp.guess('delevator',0)
 
     ocp.guess('ddr',0)
     ocp.guess('w0',10)

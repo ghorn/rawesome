@@ -83,7 +83,7 @@ def setupModel(dae, conf):
     (f1, f2, f3, t1, t2, t3) = aeroForcesTorques(dae, conf, dp_carousel_frame, dpE,
                                                  dae.x(('w1','w2','w3')),
                                                  dae.x(('e21', 'e22', 'e23')),
-                                                 dae.u(('aileron','elevator'))
+                                                 dae.x(('aileron','elevator'))
                                                  )
 
     # mass matrix
@@ -234,17 +234,21 @@ def crosswindModel(conf,nSteps=None,extraParams=[]):
               , "r" # state 20
               , "dr" # state 21
               , "energy" # state 22
-              ] )
-    dae.addU( [ "aileron"
+              , "aileron"
               , "elevator"
+              ] )
+    dae.addU( [ "daileron"
+              , "delevator"
               , 'ddr'
               ] )
     dae.addP( ['w0'] )
     
     dae.addOutput('r', dae.x('r'))
     dae.addOutput('dr', dae.x('dr'))
-    dae.addOutput('aileron(deg)', dae.u('aileron')*180/C.pi)
-    dae.addOutput('elevator(deg)', dae.u('elevator')*180/C.pi)
+    dae.addOutput('aileron(deg)', dae.x('aileron')*180/C.pi)
+    dae.addOutput('elevator(deg)', dae.x('elevator')*180/C.pi)
+    dae.addOutput('daileron(deg/s)', dae.u('daileron')*180/C.pi)
+    dae.addOutput('delevator(deg/s)', dae.u('delevator')*180/C.pi)
     
     dae.addOutput('tether tension', dae.x('r')*dae.z('nu'))
     dae.addOutput('winch power', -dae.output('tether tension')*dae.x('dr'))
@@ -287,6 +291,8 @@ def crosswindModel(conf,nSteps=None,extraParams=[]):
                     , dae.x('dr')
                     , dae.u('ddr')
                     , dae.output('winch power')
+                    , dae.u('daileron')
+                    , dae.u('delevator')
                     ] )
 
     if nSteps is not None:

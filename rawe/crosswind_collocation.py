@@ -60,7 +60,9 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
                   "dy","dz",
                   "w1","w2","w3",
                   "e11","e22","e33",
-                  "r","dr"]:
+                  "r","dr",
+                  'aileron','elevator'
+                  ]:
         ocp.constrain(ocp.lookup(name,timestep=0),'==',ocp.lookup(name,timestep=-1))
 
     # periodic attitude
@@ -70,6 +72,8 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
     # bounds
     ocp.bound('aileron',(-0.04,0.04))
     ocp.bound('elevator',(-0.1,0.1))
+    ocp.bound('daileron',(-2.0,2.0))
+    ocp.bound('delevator',(-2.0,2.0))
 
     ocp.bound('x',(-2,200))
     ocp.bound('y',(-200,200))
@@ -98,21 +102,21 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
     # objective function
     obj = 0
     for k in range(nk):
-        u = ocp.uVec(k)
+        # control regularization
         ddr = ocp.lookup('ddr',timestep=k)
-        aileron = ocp.lookup('aileron',timestep=k)
-        elevator = ocp.lookup('elevator',timestep=k)
+        daileron = ocp.lookup('daileron',timestep=k)
+        delevator = ocp.lookup('delevator',timestep=k)
         
-        aileronSigma = 0.1
-        elevatorSigma = 0.1
-        ddrSigma = 5.0
+        daileronSigma = 0.1
+        delevatorSigma = 0.1
+        ddrSigma = 1.0
         
-        ailObj = aileron*aileron / (aileronSigma*aileronSigma)
-        eleObj = elevator*elevator / (elevatorSigma*elevatorSigma)
+        ailObj = daileron*daileron / (daileronSigma*daileronSigma)
+        eleObj = delevator*delevator / (delevatorSigma*delevatorSigma)
         winchObj = ddr*ddr / (ddrSigma*ddrSigma)
         
         obj += ailObj + eleObj + winchObj
-    ocp.setObjective( 1e1*C.sumAll(obj)/float(nk) + ocp.lookup('energy',timestep=-1)/ocp.lookup('endTime') )
+    ocp.setObjective( 1e0*obj/nk + ocp.lookup('energy',timestep=-1)/ocp.lookup('endTime') )
 
     # callback function
     class MyCallback:
@@ -243,7 +247,7 @@ if __name__=='__main__':
     # Plot the results
     def plotResults():
         ocp.subplot(['x','y','z'],opt)
-        ocp.plot(['aileron','elevator'],opt,title='control surface inputs')
+        ocp.subplot([['aileron','elevator'],['daileron','delevator']],opt,title='control surfaces')
         ocp.subplot(['r','dr','ddr'],opt)
         ocp.subplot(['c','cdot','cddot'],opt,title="invariants")
         ocp.plot('airspeed',opt)
