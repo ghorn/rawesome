@@ -22,4 +22,5 @@ def readConfig(filename,specfilename):
                     print 'The following section was missing:%s ' % key
         niceErr(conf,results)
         raise ValueError('error loading config file "'+filename+'" with specfile "'+specfilename+'"')
+
     return conf

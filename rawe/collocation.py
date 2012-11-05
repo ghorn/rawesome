@@ -898,7 +898,7 @@ class Coll():
                 length = val.size
         else:
             raise ValueError("can't figure out how long "+str(val)+" is")
-        assert(len(names)==length)
+        assert(len(names)==length,'guess{X,Z,U,P} got wrong length for guess')
 
         for k,name in enumerate(names):
             self.guess(name,float(val[k]),**kwargs)
@@ -913,8 +913,11 @@ class Coll():
         self._guessVec(val,self.dae.pNames(),**kwargs)
         
 
-    def lookup(self,name,timestep=None):
+    def lookup(self,name,timestep=None,nicpIdx=0,degIdx=0):
         assert(isinstance(name,str))
+        assert(nicpIdx<self.nicp,'nicpIdx must be < nicp')
+        assert(degIdx<self.deg+1,'degIdx must be < deg+1')
+        assert(degIdx>=0,'degIdx must be positive')
         
         if name in self.dae.pNames():
             if timestep is not None:
@@ -923,17 +926,24 @@ class Coll():
             return self._P[k]
 
         if timestep is None:
-            return CS.veccat([self.lookup(name,k) for k in range(self.nk+1)])
+            if name in self.dae.xNames()+self.dae.zNames():
+                return CS.veccat([self.lookup(name,k,nicpIdx,degIdx) for k in range(self.nk+1)])
+            elif name in self.dae.uNames():
+                return CS.veccat([self.lookup(name,k,nicpIdx,degIdx) for k in range(self.nk)])
+            else:
+                raise ValueError("unrecognized key \""+name+"\"")
 
         assert(isinstance(timestep,int))
         if name in self.dae.xNames():
             k = self.dae.xNames().index(name)
-            return self._XD[timestep][0][0][k]
+            return self._XD[timestep][nicpIdx][degIdx][k]
+        if name in self.dae.zNames():
+            assert(degIdx!=0,'there is no algebraic state at degIdx=0')
+            k = self.dae.zNames().index(name)
+            return self._XA[timestep][nicpIdx][degIdx-1][k]
         if name in self.dae.uNames():
             k = self.dae.uNames().index(name)
             return self._U[timestep][k]
-        if name in self.dae.zNames():
-            raise ValueError("can't lookup algebraic states at this time, bug Greg")
 
         raise ValueError("unrecognized variable \""+name+"\"")
 
