@@ -432,9 +432,9 @@ class Coll():
             for timestep in range(nk):
                 xa0 = self._zGuess[name][timestep]
                 if timestep<nk-1:
-                    xa1 = self._zGuess[name][k+1]
+                    xa1 = self._zGuess[name][timestep+1]
                 else:
-                    xa1 = self._zGuess[name][k]
+                    xa1 = self._zGuess[name][timestep]
     
                 if xa0 is None:
                     if warnZGuess:
