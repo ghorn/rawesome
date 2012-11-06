@@ -85,22 +85,36 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
 
         for k in range(0,nk):
             [airspeed,alphaDeg,betaDeg] = f.call([ocp.xVec(k),ocp.uVec(k),ocp.pVec()])
-            ocp.constrainBnds(airspeed,(5,50))
+            ocp.constrain(airspeed,'>=',5)
             ocp.constrainBnds(alphaDeg,(-5,10))
             ocp.constrainBnds(betaDeg,(-10,10))
     constrainAirspeedAlphaBeta()
 
+    # constrain tether force
+    for k in range(nk):
+        degIdx = 1# in range(1,deg+1):
+        r  = ocp.lookup('r', timestep=k,degIdx=degIdx)
+        nu = ocp.lookup('nu',timestep=k,degIdx=degIdx)
+        ocp.constrain(0,'<=',r*nu)
+
+        degIdx = deg# in range(1,deg+1):
+        r  = ocp.lookup('r', timestep=k,degIdx=degIdx)
+        nu = ocp.lookup('nu',timestep=k,degIdx=degIdx)
+        ocp.constrain(0,'<=',r*nu)
+
     # bounds
     ocp.bound('aileron',(-0.04,0.04))
     ocp.bound('elevator',(-0.1,0.1))
+    ocp.bound('daileron',(-2.0,2.0))
+    ocp.bound('delevator',(-2.0,2.0))
     ocp.bound('tc',(-10000,10000))
 
-    ocp.bound('x',(-2,200))
+    ocp.bound('x',(-200,200))
     ocp.bound('y',(-200,200))
     ocp.bound('z',(-0.5,200))
     ocp.bound('r',(1,31))
-    ocp.bound('dr',(-20,20))
-    ocp.bound('ddr',(-5.5,5.5))
+    ocp.bound('dr',(-30,30))
+    ocp.bound('ddr',(-500,500))
 
     for e in ['e11','e21','e31','e12','e22','e32','e13','e23','e33']:
         ocp.bound(e,(-1.1,1.1))
@@ -113,7 +127,7 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
 
     ocp.bound('delta',(-12*pi,12*pi))
     ocp.bound('ddelta',(-12*pi,12*pi))
-    ocp.bound('endTime',(1.5,25))
+    ocp.bound('endTime',(1.5,15))
     ocp.bound('w0',(10,10))
 
     ocp.bound('phase0',(-12*pi,12*pi))
@@ -172,9 +186,15 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
     for name in ['e11','e22','e33','y','z','dy','dz','r','dr']:
         ocp.constrain(ocp.lookup(name,timestep=-1), '==', crosswind[name])
 
+    # make sure it doesn't find transposed-periodic DCM
+    # sign(eij(beginning) == sign(eij(end)) <--> eij(beginning)*eij(end) >= 0
+    for name in ['e12','e13','e23']:
+        ocp.constrain(ocp.lookup(name,timestep=0) *  startup[name],'>=',0)
+        ocp.constrain(ocp.lookup(name,timestep=-1)*crosswind[name],'>=',0)
+
     # initial guess
-    phase0Guess = -6.0*pi
-    phaseFGuess = -0.1*2*pi
+    phase0Guess = -4.0*pi
+    phaseFGuess = -0.4*2*pi
     
     namesF = ['x','y','z','dx','dy','dz','r','dr','w1','w2','w3','e11','e12','e13','e21','e22','e23','e31','e32','e33']
     names0 = namesF+['delta','ddelta']
@@ -244,7 +264,7 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
         
         obj += ailObj + eleObj + winchObj + torqueObj
         
-    ocp.setObjective( C.sumAll(obj)*1e-4 + ocp.lookup('endTime') )
+    ocp.setObjective( 1e1*obj/nk + ocp.lookup('endTime') )
 
     oldKiteProtos = []
     for k in range(0,startupfits['x'].Mx.size):
@@ -340,18 +360,17 @@ if __name__=='__main__':
         xutraj.append([float(x) for x in line.strip('[]\n').split(',')])
     f.close()
     xutraj = numpy.array(xutraj)
-    # remove delta/ddelta/tc
+    xutraj = xutraj[220:-10,:]
     xutraj[:,18] = xutraj[:,18] - 6*pi
+    # remove delta/ddelta/tc
 #    xutraj = numpy.hstack((xutraj[:,:23], xutraj[:,24:]))
 #    xutraj = numpy.hstack((xutraj[:,:18], xutraj[:,20:]))
+    # add aileron/elevator
+#    xutraj = numpy.hstack((xutraj[:,:23], xutraj[:,23:]))
+    xutraj = numpy.hstack((xutraj[:,:23], 0*xutraj[:,:2], xutraj[:,23:]))
 
     print "setting up ocp..."
     ocp = setupOcp(dae,conf,publisher,nk=80)
-
-    # load old initial guess
-    f=open("data/transition_working_guess.dat",'r')
-    workingGuess = pickle.load(f)
-    f.close()
 
     print "interpolating initial guess..."
     xuguess = numpy.array([numpy.interp(numpy.linspace(0,1,ocp.nk+1), numpy.linspace(0,1,xutraj.shape[0]), xutraj[:,k]) for k in range(xutraj.shape[1])])
@@ -361,7 +380,13 @@ if __name__=='__main__':
             ocp.guessU(xuguess[len(ocp.dae.xNames()):,k],timestep=k,quiet=True)
     ocp.guess('energy',0,quiet=True)
 
+    # load old initial guess
+    f=open("data/transition_working_guess.dat",'r')
+    workingGuess = pickle.load(f)
+    f.close()
     opt = ocp.solve(xInit=workingGuess['X_OPT'])
+
+#    opt = ocp.solve()
     xup = opt['vardict']
     xOpt = opt['X_OPT']
     
@@ -375,22 +400,15 @@ if __name__=='__main__':
     # Plot the results
     def plotResults():
 ##        ocp.plot(['x','y','z'],opt)
-        ocp.plot(['aileron','elevator'],opt,title='control surface inputs')
+        ocp.subplot([['aileron','elevator'],['daileron','delevator']],opt,title='control surfaces')
         ocp.subplot(['r','dr','ddr'],opt)
         ocp.subplot(['c','cdot','cddot'],opt,title="invariants")
         ocp.plot('airspeed',opt)
         ocp.subplot([['alpha(deg)','alphaTail(deg)'],['beta(deg)','betaTail(deg)']],opt)
         ocp.subplot(['cL','cD','L/D'],opt)
-        ocp.plot('winch power',opt)
+        ocp.subplot(['winch power', 'tether tension'],opt)
+        ocp.plot('tc',opt)
         ocp.plot('energy',opt)
-        ocp.subplot([['e11'],
-                     ['e12'],
-                     ['e13'],
-                     ['e21'],
-                     ['e22'],
-                     ['e23'],
-                     ['e31'],
-                     ['e32'],
-                     ['e33']],opt)
+#        ocp.subplot(['e11','e12','e13','e21','e22','e23','e31','e32','e33'],opt)
         plt.show()
     plotResults()
