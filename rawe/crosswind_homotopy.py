@@ -1,3 +1,4 @@
+import copy
 import casadi as C
 import matplotlib.pyplot as plt
 import numpy
@@ -5,6 +6,7 @@ from numpy import pi
 import zmq
 import pickle
 
+import crosswind_collocation
 from collocation import Coll,boundsFeedback
 from config import readConfig
 import kiteutils
@@ -49,7 +51,7 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
 
         for k in range(0,nk):
             [airspeed,alphaDeg,betaDeg] = f.call([ocp.xVec(k),ocp.uVec(k),ocp.pVec()])
-            ocp.constrain(airspeed,'>=',10)
+            ocp.constrain(airspeed,'>=',1)
             ocp.constrainBnds(alphaDeg,(-5,10))
             ocp.constrainBnds(betaDeg,(-10,10))
     constrainAirspeedAlphaBeta()
@@ -110,33 +112,105 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
     for w in ['w1','w2','w3']:
         ocp.bound(w,(-4*pi,4*pi))
 
-    ocp.bound('endTime',(0.5,20))
+    ocp.bound('endTime',(1.8,1.8))
+    ocp.guess('endTime',1.8)
     ocp.bound('w0',(10,10))
     ocp.bound('energy',(-1e6,1e6))
 
     # boundary conditions
     ocp.bound('energy',(0,0),timestep=0,quiet=True)
-#    ocp.bound('y',(0,0),timestep=0,quiet=True)
+    ocp.bound('y',(0,0),timestep=0,quiet=True)
     
-    
-    # initial guess
-#    ocp.guessX(x0)
-#    for k in range(0,nk+1):
-#        val = 2.0*pi*k/nk
-#        ocp.guess('delta',val,timestep=k,quiet=True)
-#
-#    ocp.guess('aileron',0)
-#    ocp.guess('elevator',0)
-#    ocp.guess('tc',0)
-    ocp.guess('endTime',5.4)
-#
-#    ocp.guess('ddr',0)
-    ocp.guess('w0',10)
+    return ocp
 
+
+if __name__=='__main__':
+    context   = zmq.Context(1)
+    publisher = context.socket(zmq.PUB)
+    publisher.bind("tcp://*:5563")
+
+    print "reading config..."
+    conf = readConfig('config.ini','configspec.ini')
+    conf['runHomotopy'] = True
+    conf['minAltitude'] = 0.5
+    
+    print "creating model..."
+    dae = models.crosswind(conf,extraParams=['endTime'])
+
+    print "setting up ocp..."
+    ocp = setupOcp(dae,conf,publisher,nk=80)
+
+    lineRadiusGuess = 40.0
+    circleRadiusGuess = 10.0
+
+    # trajectory for homotopy
+    homotopyTraj = {'x':[],'y':[],'z':[]}
+    for k in range(ocp.nk+1):
+        r = circleRadiusGuess
+        h = numpy.sqrt(lineRadiusGuess**2 - r**2)
+        nTurns = 1
+        
+        # path following
+        theta = nTurns*2*pi*k/float(ocp.nk)
+        thetaDot = nTurns*2*pi/(float(ocp.nk)*ocp._pGuess['endTime'])
+        xyzCircleFrame    = numpy.array([h, r*numpy.sin(theta),          -r*numpy.cos(theta)])
+        xyzDotCircleFrame = numpy.array([0, r*numpy.cos(theta)*thetaDot,  r*numpy.sin(theta)*thetaDot])
+
+        phi = numpy.arcsin(r/lineRadiusGuess) # rotate so it's above ground
+        phi += numpy.arcsin((conf['minAltitude']+0.3)/lineRadiusGuess)
+        R_c2n = numpy.matrix([[ numpy.cos(phi), 0, -numpy.sin(phi)],
+                              [              0, 1,               0],
+                              [ numpy.sin(phi), 0,  numpy.cos(phi)]])
+        xyz    = numpy.dot(R_c2n, xyzCircleFrame)
+        xyzDot = numpy.dot(R_c2n, xyzDotCircleFrame)
+
+        homotopyTraj['x'].append(float(xyz[0,0]))
+        homotopyTraj['y'].append(float(xyz[0,1]))
+        homotopyTraj['z'].append(float(xyz[0,2]))
+
+        x = float(xyz[0,0])
+        y = float(xyz[0,1])
+        z = float(xyz[0,2])
+        
+        dx = float(xyzDot[0,0])
+        dy = float(xyzDot[0,1])
+        dz = float(xyzDot[0,2])
+        
+        ocp.guess('x',x,timestep=k)
+        ocp.guess('y',y,timestep=k)
+        ocp.guess('z',z,timestep=k)
+        ocp.guess('dx',dx,timestep=k)
+        ocp.guess('dy',dy,timestep=k)
+        ocp.guess('dz',dz,timestep=k)
+
+        p0 = numpy.array([x,y,z])
+        dp0 = numpy.array([dx,dy,dz])
+        e1 = dp0/numpy.linalg.norm(dp0)
+        e3 = p0/lineRadiusGuess
+        e2 = numpy.cross(e3,e1)
+
+        ocp.guess('e11',e1[0],timestep=k)
+        ocp.guess('e12',e1[1],timestep=k)
+        ocp.guess('e13',e1[2],timestep=k)
+        
+        ocp.guess('e21',e2[0],timestep=k)
+        ocp.guess('e22',e2[1],timestep=k)
+        ocp.guess('e23',e2[2],timestep=k)
+
+        ocp.guess('e31',e3[0],timestep=k)
+        ocp.guess('e32',e3[1],timestep=k)
+        ocp.guess('e33',e3[2],timestep=k)
+        
+    
     # objective function
-    obj = 0
-    for k in range(nk):
-        # control regularization
+    obj = 1e6*(ocp.lookup('gamma_homotopy')-1)**2
+    for k in range(ocp.nk+1):
+        obj += (homotopyTraj['x'][k] - ocp.lookup('x',timestep=k))**2
+        obj += (homotopyTraj['y'][k] - ocp.lookup('y',timestep=k))**2
+        obj += (homotopyTraj['z'][k] - ocp.lookup('z',timestep=k))**2
+
+    # control regularization
+    for k in range(ocp.nk):
         ddr = ocp.lookup('ddr',timestep=k)
         daileron = ocp.lookup('daileron',timestep=k)
         delevator = ocp.lookup('delevator',timestep=k)
@@ -149,45 +223,40 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
         eleObj = delevator*delevator / (delevatorSigma*delevatorSigma)
         winchObj = ddr*ddr / (ddrSigma*ddrSigma)
         
-        obj += ailObj + eleObj + winchObj
-    ocp.setObjective( 1e0*obj/nk + ocp.lookup('energy',timestep=-1)/ocp.lookup('endTime') )
+        obj += 1e-2*(ailObj + eleObj + winchObj)/float(ocp.nk)
 
-    return ocp
+    # homotopy forces/torques regularization
+    homoReg = 0
+    for k in range(ocp.nk):
+        homoReg += ocp.lookup('f1_homotopy',timestep=k)**2
+        homoReg += ocp.lookup('f2_homotopy',timestep=k)**2
+        homoReg += ocp.lookup('f3_homotopy',timestep=k)**2
+        homoReg += ocp.lookup('t1_homotopy',timestep=k)**2
+        homoReg += ocp.lookup('t2_homotopy',timestep=k)**2
+        homoReg += ocp.lookup('t3_homotopy',timestep=k)**2
+    obj += 1e-2*homoReg/float(ocp.nk)
 
+    ocp.setObjective( obj )
 
-if __name__=='__main__':
-    context   = zmq.Context(1)
-    publisher = context.socket(zmq.PUB)
-    publisher.bind("tcp://*:5563")
-
-    print "reading config..."
-    conf = readConfig('config.ini','configspec.ini')
+    # initial guesses
+    ocp.guess('w0',10)
+    ocp.guess('r',lineRadiusGuess)
     
-    print "creating model..."
-    dae = models.crosswind(conf,extraParams=['endTime'])
+    for name in ['w1','w2','w3','dr','ddr','aileron','elevator','daileron','delevator']:
+        ocp.guess(name,0)
 
-    # load initial guess
-    print "loading initial guess data..."
-    f = open('data/crosswind_guess.txt','r')
-    xutraj = []
-    for line in f:
-        xutraj.append([float(x) for x in line.strip('[]\n').split(',')])
-    f.close()
-    xutraj = numpy.array(xutraj)
-    # remove delta/ddelta/tc
-    xutraj = numpy.hstack((xutraj[:,:23], xutraj[:,24:]))
-    xutraj = numpy.hstack((xutraj[:,:18], xutraj[:,20:]))
+    # homotopy forces/torques bounds/guess
+    for k in [1,2,3]:
+        f = 'f'+str(k)+'_homotopy'
+        t = 't'+str(k)+'_homotopy'
+        ocp.guess(f,0)
+        ocp.guess(t,0)
 
-    # add daileron/delevator
-    xutraj = numpy.hstack((xutraj, 0*xutraj[:,:2]))
-
-    # make it go around n times
-    nTurns = 1
-    xutraj = numpy.vstack(tuple([xutraj]*nTurns))
-    
-    print "setting up ocp..."
-    ocp = setupOcp(dae,conf,publisher,nk=100)
-
+        ocp.bound(f,(-1e4,1e4))
+        ocp.bound(t,(-1e4,1e4))
+        
+    ocp.guess('gamma_homotopy',0)
+        
     # callback function
     class MyCallback:
         def __init__(self):
@@ -218,6 +287,7 @@ if __name__=='__main__':
             mc.messages.append("iter: "+str(self.iter))
             mc.messages.append("endTime: "+str(xup['endTime']))
             mc.messages.append("average power: "+str(xup['energy'][-1]/xup['endTime'])+" W")
+            mc.messages.append("homotopy gamma: "+str(xup['gamma_homotopy']))
 
             # bounds feedback
 #            lbx = ocp.solver.input(C.NLP_LBX)
@@ -229,7 +299,6 @@ if __name__=='__main__':
             
             publisher.send_multipart(["multi-carousel", mc.SerializeToString()])
 
-
     # solver
     solverOptions = [ ("expand_f",True)
                     , ("expand_g",True)
@@ -238,7 +307,8 @@ if __name__=='__main__':
 #                     ,("qp_solver_options",{'nlp_solver': C.IpoptSolver, "nlp_solver_options":{"linear_solver":"ma57"}})
                     , ("linear_solver","ma57")
                     , ("max_iter",1000)
-                    , ("tol",1e-8)
+                    , ("tol",1e-4)
+#                    , ('monitor',['eval_g'])
 #                    , ("Timeout", 1e6)
 #                    , ("UserHM", True)
 #                    , ("ScaleConIter",True)
@@ -253,30 +323,34 @@ if __name__=='__main__':
     print "setting up solver..."
     ocp.setupSolver( solverOpts=solverOptions,
                      callback=MyCallback() )
+    ocp.guess('energy',0)
 
+    xInit = None
+    ocp.bound('gamma_homotopy',(1e-4,1e-4),force=True)
+    opt = ocp.solve(xInit=xInit)
+    xInit = opt['X_OPT']
 
-    print "interpolating initial guess..."
-    xuguess = numpy.array([numpy.interp(numpy.linspace(0,1,ocp.nk+1), numpy.linspace(0,1,xutraj.shape[0]), xutraj[:,k]) for k in range(xutraj.shape[1])])
-    for k in range(ocp.nk+1):
-        ocp.guessX(xuguess[:len(ocp.dae.xNames()),k],timestep=k,quiet=True)
-        if k < ocp.nk:
-            ocp.guessU(xuguess[len(ocp.dae.xNames()):,k],timestep=k,quiet=True)
-    ocp.guess('energy',0,quiet=True)
+    ocp.bound('gamma_homotopy',(0,1),force=True)
+    opt = ocp.solve(xInit=xInit)
+    xInit = opt['X_OPT']
     
-    print "loading optimal trajectory"
-    f=open("data/crosswind_opt.dat",'r')
-    opt = pickle.load(f)
-    f.close()
+    ocp.bound('gamma_homotopy',(1,1),force=True)
+    ocp.bound('endTime',(0.5,3.0),force=True)
+    opt = ocp.solve(xInit=xInit)
+    
+#    xInit = None
+#    for gamma in [0,0.1,0.3,0.5,0.75,0.9,0.95,0.98,1.0]:
+#        ocp.bound('gamma_homotopy',(gamma,gamma),force=True)
+#        opt = ocp.solve(xInit=xInit)
+#        xInit = opt['X_OPT']
 
-#    opt = ocp.solve(xInit=opt['X_OPT'])
-    opt = ocp.solve()
     xup = opt['vardict']
     xOpt = opt['X_OPT']
     
     print "optimal power: "+str(opt['vardict']['energy'][-1]/opt['vardict']['endTime'])
     
     print "saving optimal trajectory"
-    f=open("data/crosswind_opt.dat",'w')
+    f=open("data/crosswind_homotopy.dat",'w')
     pickle.dump(opt,f)
     f.close()
 
@@ -291,6 +365,8 @@ if __name__=='__main__':
 
     # Plot the results
     def plotResults():
+        ocp.subplot(['f1_homotopy','f2_homotopy','f3_homotopy'],opt)
+        ocp.subplot(['t1_homotopy','t2_homotopy','t3_homotopy'],opt)
         ocp.subplot(['x','y','z'],opt)
         ocp.subplot(['dx','dy','dz'],opt)
         ocp.subplot([['aileron','elevator'],['daileron','delevator']],opt,title='control surfaces')
@@ -303,23 +379,6 @@ if __name__=='__main__':
         ocp.subplot(['winch power', 'tether tension'],opt)
         ocp.plot('energy',opt)
         ocp.subplot(['w1','w2','w3'],opt)
-#        ocp.subplot(['e11',
-#                     'e12',
-#                     'e13',
-#                     'e21',
-#                     'e22',
-#                     'e23',
-#                     'e31',
-#                     'e32',
-#                     'e33'],opt)
-#        ocp.subplot([['e11','e11o'],
-#                    ['e12','e12o'],
-#                    ['e13','e13o'],
-#                    ['e21','e21o'],
-#                    ['e22','e22o'],
-#                    ['e23','e23o'],
-#                    ['e31','e31o'],
-#                    ['e32','e32o'],
-#                    ['e33','e33o']],opt)
+        ocp.subplot(['e11','e12','e13','e21','e22','e23','e31','e32','e33'],opt)
         plt.show()
     plotResults()
