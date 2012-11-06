@@ -82,7 +82,9 @@ toNice cs = NiceKite { nk_xyz = xyz
     r'n0't0 = xyz + (rotVecByQuatB2A q'n'b $ Xyz 0 0 (-zt))
 
 drawOneKite :: Double -> NiceKite -> (VisObject Double, Double)
-drawOneKite minLineLength niceKite = (VisObjects [ac, arm, line], z)
+drawOneKite minLineLength niceKite
+  | nk_lineAlpha niceKite > 0 = (VisObjects [ac, arm, line], z)
+  | otherwise = (ac, z)
   where
     pos@(Xyz _ _ z) = nk_xyz niceKite
     quat = nk_q'n'b niceKite
