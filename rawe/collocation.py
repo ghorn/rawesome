@@ -248,11 +248,11 @@ class Coll():
         assert(timestep>0)
         return self._XA[timestep-1][-1][-1]
 
-    def constrain(self,lhs,comparison,rhs):
-        self._constraints.add(lhs,comparison,rhs)
+    def constrain(self,lhs,comparison,rhs,tag='unnamed_constraint'):
+        self._constraints.add(lhs,comparison,rhs,tag)
 
-    def constrainBnds(self,g,(lbg,ubg)):
-        self._constraints.addBnds(g,(lbg,ubg))
+    def constrainBnds(self,g,(lbg,ubg),tag='unnamed_constraint'):
+        self._constraints.addBnds(g,(lbg,ubg),tag)
 
     def xSize(self):
         return len(self.dae.xNames())

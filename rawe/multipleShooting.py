@@ -74,10 +74,10 @@ class MultipleShootingStage():
             self.addConstraint(self.integrator.call([xk,upk])[C.INTEGRATOR_XF],'==',xkp1)
 
     # constraints
-    def addConstraint(self,lhs,comparison,rhs):
+    def addConstraint(self,lhs,comparison,rhs,tag='unnamed_constraint'):
         if hasattr(self, '_solver'):
             raise ValueError("Can't add a constraint once the solver has been set")
-        self._constraints.add(lhs,comparison,rhs)
+        self._constraints.add(lhs,comparison,rhs,tag)
 
     # bounds
     def setBound(self,name,val,**kwargs):

@@ -18,31 +18,33 @@ def setFXOptions(fun, options):
 
 class Constraints():
     def __init__(self):
+        self._tags = []
         self._g = []
         self._glb = []
         self._gub = []
         
-    def add(self,lhs,comparison,rhs):
+    def add(self,lhs,comparison,rhs,tag):
         #print "\n\nadding constraint\nlhs: "+str(lhs)+"\ncomparison: "+comparison+"\nrhs: "+str(rhs)
         if comparison=="==":
             g = lhs - rhs
             glb = numpy.zeros(g.size())
             gub = numpy.zeros(g.size())
-            self.addBnds(g,(glb,gub))
+            self.addBnds(g,(glb,gub),tag)
         elif comparison=="<=":
             g = lhs - rhs
             glb = -numpy.inf*numpy.ones(g.size())
             gub = numpy.zeros(g.size())
-            self.addBnds(g,(glb,gub))
+            self.addBnds(g,(glb,gub),tag)
         elif comparison==">=":
             g = rhs - lhs
             glb = -numpy.inf*numpy.ones(g.size())
             gub = numpy.zeros(g.size())
-            self.addBnds(g,(glb,gub))
+            self.addBnds(g,(glb,gub),tag)
         else:
             raise ValueError('Did not recognize comparison \"'+str(comparison)+'\"')
 
-    def addBnds(self,g,(glb,gub)):
+    def addBnds(self,g,(glb,gub),tag):
+        assert(isinstance(tag,str),'constraint tag must be a string')
         if (isinstance(glb,numbers.Real) and isinstance(gub,numbers.Real)):
             glb = numpy.array(glb)
             gub = numpy.array(gub)
@@ -54,6 +56,8 @@ class Constraints():
         self._g.append(g)
         self._glb.append(glb)
         self._gub.append(gub)
+        for k in range(g.size()):
+            self._tags.append( (tag,k) )
 
     def getG(self):
         return C.veccat(self._g)
