@@ -6,7 +6,7 @@ from trajectoryData import TrajectoryData
 
 # non-pickleable thing which can turn design variables into x/z/u/p/outputs for TrajectoryData to use
 class Trajectory(object):
-    def __init__(self,ocp):
+    def __init__(self,ocp,dvs=None):
         assert isinstance(ocp,Coll)
 
         self.trajData = TrajectoryData()
@@ -18,6 +18,8 @@ class Trajectory(object):
         self.trajData.nv = ocp.getNV()
         
         self._setupOutputFuns(ocp)
+        if dvs is not None:
+            self.setDvs(ocp,dvs)
         
     def _setupOutputFuns(self,ocp):
         # if it's a Dae output
@@ -83,11 +85,11 @@ class Trajectory(object):
             self.trajData.outputsZ[name] = numpy.array(y)
         return self.trajData
 
-    def plot(self,*args,**kwargs):
-        self.trajData.plot(*args,**kwargs)
+    def plot(self,names,**kwargs):
+        self.trajData.plot(names,**kwargs)
         
-    def subplot(self,*args,**kwargs):
-        self.trajData.subplot(*args,**kwargs)
+    def subplot(self,names,**kwargs):
+        self.trajData.subplot(names,**kwargs)
 
     def save(self,filename):
         assert isinstance(filename,str), "filename must be a string"

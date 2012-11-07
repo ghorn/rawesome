@@ -156,4 +156,3 @@ def aeroForcesTorques(dae, conf, we, wE, (w1,w2,w3), (eTe1, eTe2, eTe3), (ailero
     t2 =  0.5*rho*vKite2*chord*cP
     t3 =  0.5*rho*vKite2*span*cY
     return (f1, f2, f3, t1, t2, t3)
-

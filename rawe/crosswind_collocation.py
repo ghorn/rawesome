@@ -4,6 +4,7 @@ import numpy
 from numpy import pi
 import zmq
 import pickle
+from trajectory import Trajectory
 
 from collocation import Coll,boundsFeedback
 from config import readConfig
@@ -254,7 +255,6 @@ if __name__=='__main__':
     ocp.setupSolver( solverOpts=solverOptions,
                      callback=MyCallback() )
 
-
     print "interpolating initial guess..."
     xuguess = numpy.array([numpy.interp(numpy.linspace(0,1,ocp.nk+1), numpy.linspace(0,1,xutraj.shape[0]), xutraj[:,k]) for k in range(xutraj.shape[1])])
     for k in range(ocp.nk+1):
@@ -270,15 +270,12 @@ if __name__=='__main__':
 
 #    opt = ocp.solve(xInit=opt['X_OPT'])
     opt = ocp.solve()
-    xup = opt['vardict']
-    xOpt = opt['X_OPT']
+    traj = Trajectory(ocp,dvs=opt['X_OPT'])
     
     print "optimal power: "+str(opt['vardict']['energy'][-1]/opt['vardict']['endTime'])
     
     print "saving optimal trajectory"
-    f=open("data/crosswind_opt.dat",'w')
-    pickle.dump(opt,f)
-    f.close()
+    traj.save("data/crosswind_opt.dat")
 
     def printBoundsFeedback():
 #        (_,lbx,ubx) = ocp._vectorizeBoundsAndGuess( ocp._parseBoundsAndGuess(False,False) )
@@ -291,35 +288,18 @@ if __name__=='__main__':
 
     # Plot the results
     def plotResults():
-        ocp.subplot(['x','y','z'],opt)
-        ocp.subplot(['dx','dy','dz'],opt)
-        ocp.subplot([['aileron','elevator'],['daileron','delevator']],opt,title='control surfaces')
-        ocp.subplot(['r','dr','ddr'],opt)
-        ocp.subplot(['wind at altitude','dr','dx'],opt)
-        ocp.subplot(['c','cdot','cddot'],opt,title="invariants")
-        ocp.plot('airspeed',opt)
-        ocp.subplot([['alpha(deg)','alphaTail(deg)'],['beta(deg)','betaTail(deg)']],opt)
-        ocp.subplot(['cL','cD','L/D'],opt)
-        ocp.subplot(['winch power', 'tether tension'],opt)
-        ocp.plot('energy',opt)
-        ocp.subplot(['w1','w2','w3'],opt)
-#        ocp.subplot(['e11',
-#                     'e12',
-#                     'e13',
-#                     'e21',
-#                     'e22',
-#                     'e23',
-#                     'e31',
-#                     'e32',
-#                     'e33'],opt)
-#        ocp.subplot([['e11','e11o'],
-#                    ['e12','e12o'],
-#                    ['e13','e13o'],
-#                    ['e21','e21o'],
-#                    ['e22','e22o'],
-#                    ['e23','e23o'],
-#                    ['e31','e31o'],
-#                    ['e32','e32o'],
-#                    ['e33','e33o']],opt)
+        traj.subplot(['x','y','z'])
+        traj.subplot(['dx','dy','dz'])
+        traj.subplot([['aileron','elevator'],['daileron','delevator']],title='control surfaces')
+        traj.subplot(['r','dr','ddr'])
+        traj.subplot(['wind at altitude','dr','dx'])
+        traj.subplot(['c','cdot','cddot'],title="invariants")
+        traj.plot('airspeed')
+        traj.subplot([['alpha(deg)','alphaTail(deg)'],['beta(deg)','betaTail(deg)']])
+        traj.subplot(['cL','cD','L/D'])
+        traj.subplot(['winch power', 'tether tension'])
+        traj.plot('energy')
+        traj.subplot(['w1','w2','w3'])
+        traj.subplot(['e11','e12','e13','e21','e22','e23','e31','e32','e33'])
         plt.show()
     plotResults()

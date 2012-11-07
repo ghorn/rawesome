@@ -6,7 +6,7 @@ from numpy import pi
 import zmq
 from fourier_fit import FourierFit
 import pickle
-import sys
+from trajectory import Trajectory
 
 from collocation import Coll,boundsFeedback
 from config import readConfig
@@ -385,30 +385,24 @@ if __name__=='__main__':
     workingGuess = pickle.load(f)
     f.close()
     opt = ocp.solve(xInit=workingGuess['X_OPT'])
-
-#    opt = ocp.solve()
-    xup = opt['vardict']
-    xOpt = opt['X_OPT']
-    
     print "optimal power: "+str(opt['vardict']['energy'][-1]/opt['vardict']['endTime'])
     
+    traj = Trajectory(ocp,dvs=opt['X_OPT'])
     print "saving optimal trajectory"
-    f=open("data/transition_opt.dat",'w')
-    pickle.dump(opt,f)
-    f.close()
+    traj.save("data/transition_opt.dat")
     
     # Plot the results
     def plotResults():
-##        ocp.plot(['x','y','z'],opt)
-        ocp.subplot([['aileron','elevator'],['daileron','delevator']],opt,title='control surfaces')
-        ocp.subplot(['r','dr','ddr'],opt)
-        ocp.subplot(['c','cdot','cddot'],opt,title="invariants")
-        ocp.plot('airspeed',opt)
-        ocp.subplot([['alpha(deg)','alphaTail(deg)'],['beta(deg)','betaTail(deg)']],opt)
-        ocp.subplot(['cL','cD','L/D'],opt)
-        ocp.subplot(['winch power', 'tether tension'],opt)
-        ocp.plot('tc',opt)
-        ocp.plot('energy',opt)
-#        ocp.subplot(['e11','e12','e13','e21','e22','e23','e31','e32','e33'],opt)
+##        traj.plot(['x','y','z'])
+        traj.subplot([['aileron','elevator'],['daileron','delevator']],title='control surfaces')
+        traj.subplot(['r','dr','ddr'])
+        traj.subplot(['c','cdot','cddot'],title="invariants")
+        traj.plot('airspeed')
+        traj.subplot([['alpha(deg)','alphaTail(deg)'],['beta(deg)','betaTail(deg)']])
+        traj.subplot(['cL','cD','L/D'])
+        traj.subplot(['winch power', 'tether tension'])
+        traj.plot('motor torque')
+        traj.plot('energy')
+#        traj.subplot(['e11','e12','e13','e21','e22','e23','e31','e32','e33'])
         plt.show()
     plotResults()

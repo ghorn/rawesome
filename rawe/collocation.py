@@ -1,6 +1,5 @@
 import casadi as CS
 import numpy as np
-import matplotlib.pyplot as plt
 import numbers
 from ocputils import Constraints,setFXOptions
 
@@ -952,77 +951,6 @@ class Coll():
             raise ValueError("can't change objective function once it's already set")
         self._objective = obj
 
-    def subplot(self,names,opt,title=None):
-        assert isinstance(names,list)
-            
-        plt.figure()
-        plt.clf()
-        n = len(names)
-        for k,name in enumerate(names):
-            plt.subplot(n,1,k+1)
-            if k==0:
-                self._plot(name,opt,title)
-            else:
-                self._plot(name,opt)
-
-    def plot(self,names,opt,title=None):
-        plt.figure()
-        plt.clf()
-        self._plot(names,opt,title)
-
-    def _plot(self,names,opt,title=None):
-        if isinstance(names,str):
-            names = [names]
-        assert isinstance(names,list)
-        legend = []
-        for name in names:
-            assert isinstance(name,str)
-            legend.append(name)
-
-            # if it's a simple state or action
-            if name in self.dae.xNames()+self.dae.uNames():
-                plt.plot(opt['tgrid'],opt['vardict'][name])
-
-            # if it's a Dae output
-            elif name in self.dae._outputDict:
-                try:
-                    # try to call the function without any algebraic states
-                    y = []
-                    f = CS.SXFunction([self.dae.xVec(),self.dae.uVec(),self.dae.pVec()],
-                                      [self.dae.output(name)]
-                                      )
-                    f.init()
-                    for k,t in enumerate(opt['tgrid']):
-                        f.setInput(opt['x'][:,k],0)
-                        f.setInput(opt['u'][:,k],1)
-                        f.setInput(opt['p'],2)
-                        f.evaluate()
-                        y.append(CS.DMatrix(f.output(0)))
-                    plt.plot(opt['tgrid'],y)
-
-                except RuntimeError:
-                    # darn, it has algebraic states
-                    # don't plot the very last timestep
-                    y = []
-                    f = CS.SXFunction([self.dae.xVec(),self.dae.zVec(),self.dae.uVec(),self.dae.pVec()],
-                                      [self.dae.output(name)]
-                                      )
-                    f.init()
-                    for k,t in enumerate(opt['tgrid'][:-1]):
-                        f.setInput(opt['x'][:,k],0)
-                        f.setInput(opt['zPlt'][:,k],1)
-                        f.setInput(opt['u'][:,k],2)
-                        f.setInput(opt['p'],3)
-                        f.evaluate()
-                        y.append(CS.DMatrix(f.output(0)))
-                    plt.plot(opt['tgrid'][:-1],y)
-            else:
-                raise ValueError("unrecognized name: \""+name+"\"")
-        if isinstance(title,str):
-            plt.title(title)
-        plt.xlabel('time')
-        plt.legend(legend)
-        plt.grid()
 
 if __name__=='__main__':
     dae = Dae()

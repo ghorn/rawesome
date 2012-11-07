@@ -337,22 +337,11 @@ if __name__=='__main__':
     ocp.bound('gamma_homotopy',(1,1),force=True)
     ocp.bound('endTime',(0.5,3.0),force=True)
     opt = ocp.solve(xInit=xInit)
-    
-#    xInit = None
-#    for gamma in [0,0.1,0.3,0.5,0.75,0.9,0.95,0.98,1.0]:
-#        ocp.bound('gamma_homotopy',(gamma,gamma),force=True)
-#        opt = ocp.solve(xInit=xInit)
-#        xInit = opt['X_OPT']
 
-    xup = opt['vardict']
-    xOpt = opt['X_OPT']
-    
-    print "optimal power: "+str(opt['vardict']['energy'][-1]/opt['vardict']['endTime'])
-    
+    traj = Trajectory(opt)
+    traj.setDvs(opt['X_OPT'])
     print "saving optimal trajectory"
-    f=open("data/crosswind_homotopy.dat",'w')
-    pickle.dump(opt,f)
-    f.close()
+    traj.save("data/crosswind_homotopy.dat")
 
     def printBoundsFeedback():
 #        (_,lbx,ubx) = ocp._vectorizeBoundsAndGuess( ocp._parseBoundsAndGuess(False,False) )
@@ -365,20 +354,20 @@ if __name__=='__main__':
 
     # Plot the results
     def plotResults():
-        ocp.subplot(['f1_homotopy','f2_homotopy','f3_homotopy'],opt)
-        ocp.subplot(['t1_homotopy','t2_homotopy','t3_homotopy'],opt)
-        ocp.subplot(['x','y','z'],opt)
-        ocp.subplot(['dx','dy','dz'],opt)
-        ocp.subplot([['aileron','elevator'],['daileron','delevator']],opt,title='control surfaces')
-        ocp.subplot(['r','dr','ddr'],opt)
-        ocp.subplot(['wind at altitude','dr','dx'],opt)
-        ocp.subplot(['c','cdot','cddot'],opt,title="invariants")
-        ocp.plot('airspeed',opt)
-        ocp.subplot([['alpha(deg)','alphaTail(deg)'],['beta(deg)','betaTail(deg)']],opt)
-        ocp.subplot(['cL','cD','L/D'],opt)
-        ocp.subplot(['winch power', 'tether tension'],opt)
-        ocp.plot('energy',opt)
-        ocp.subplot(['w1','w2','w3'],opt)
-        ocp.subplot(['e11','e12','e13','e21','e22','e23','e31','e32','e33'],opt)
+        traj.subplot(['f1_homotopy','f2_homotopy','f3_homotopy'])
+        traj.subplot(['t1_homotopy','t2_homotopy','t3_homotopy'])
+        traj.subplot(['x','y','z'])
+        traj.subplot(['dx','dy','dz'])
+        traj.subplot([['aileron','elevator'],['daileron','delevator']],title='control surfaces')
+        traj.subplot(['r','dr','ddr'])
+        traj.subplot(['wind at altitude','dr','dx'])
+        traj.subplot(['c','cdot','cddot'],title="invariants")
+        traj.plot('airspeed')
+        traj.subplot([['alpha(deg)','alphaTail(deg)'],['beta(deg)','betaTail(deg)']])
+        traj.subplot(['cL','cD','L/D'])
+        traj.subplot(['winch power', 'tether tension'])
+        traj.plot('energy')
+        traj.subplot(['w1','w2','w3'])
+        traj.subplot(['e11','e12','e13','e21','e22','e23','e31','e32','e33'])
         plt.show()
     plotResults()

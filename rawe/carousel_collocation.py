@@ -5,6 +5,7 @@ import numpy
 from numpy import pi
 import zmq
 import pickle
+from trajectory import Trajectory
 
 from collocation import Coll,boundsFeedback
 from config import readConfig
@@ -262,36 +263,33 @@ if __name__=='__main__':
     print "setting up ocp..."
     ocp = setupOcp(dae,conf,publisher,nk=50)
 
-    xOpt = None
     for w0 in [10]:
         ocp.bound('w0',(w0,w0),force=True)
-        opt = ocp.solve(xInit=xOpt)
-        xup = opt['vardict']
+        opt = ocp.solve()
         xOpt = opt['X_OPT']
         
         for k in range(0,ocp.nk):
             j = ocp.nicp*(ocp.deg+1)*k
             oldKites.append( kiteproto.toKiteProto(C.DMatrix(opt['x'][:,j]),C.DMatrix(opt['u'][:,j]),C.DMatrix(opt['p']), conf['kite']['zt'], conf['carousel']['rArm']) )
 
+    traj = Trajectory(ocp,dvs=opt['X_OPT'])
     print "saving optimal trajectory"
-    f=open("data/carousel_opt.dat",'w')
-    pickle.dump(opt,f)
-    f.close()
+    traj.save("data/carousel_opt.dat")
 
     print "optimal power: "+str(opt['vardict']['energy'][-1]/opt['vardict']['endTime'])
+    
     # Plot the results
-    ocp.plot(['x','y','z'],opt)
-    ocp.plot(['aileron','elevator'],opt,title='control surface inputs')
-    ocp.plot(['tc'],opt,title='motor inputs (tc)')
-    ocp.plot(['ddr'],opt,title='winch accel (ddr)')
-    ocp.subplot(['c','cdot','cddot'],opt,title="invariants")
-    ocp.plot('airspeed',opt)
-    ocp.subplot([['alpha(deg)','alphaTail(deg)'],['beta(deg)','betaTail(deg)']],opt)
-    ocp.subplot(['cL','cD','L/D'],opt)
-    ocp.plot('motor power',opt)
-#    ocp.plot('winch power',opt)
-    ocp.plot('energy',opt)
-    ocp.subplot(['e11','e12','e13',
-                 'e21','e22','e23',
-                 'e31','e32','e33'],opt)
-    plt.show()
+    def plotResults():
+        traj.plot(['x','y','z'])
+        traj.plot(['aileron','elevator'],title='control surface inputs')
+        traj.plot(['ddr'],title='winch accel (ddr)')
+        traj.subplot(['c','cdot','cddot'],title="invariants")
+        traj.plot('airspeed')
+        traj.subplot([['alpha(deg)','alphaTail(deg)'],['beta(deg)','betaTail(deg)']])
+        traj.subplot(['cL','cD','L/D'])
+        traj.subplot(['motor torque','motor power'])
+        traj.subplot(['winch power','tether tension'])
+        traj.plot('energy')
+        traj.subplot(['e11','e12','e13','e21','e22','e23','e31','e32','e33'])
+        plt.show()
+    plotResults()
