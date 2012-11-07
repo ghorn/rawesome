@@ -124,13 +124,16 @@ class Dae():
     def pNames(self):
         self._freeze('pNames()')
         return self._pNames
+    def outputNames(self):
+        self._freeze('outputNames()')
+        return self._outputNames
 
     def addOutput(self,name,val):
-#        print "adding output name: \""+name+"\", val: "+str(val)
+        self.assertNotFrozen()
         assert( isinstance(name, str) )
         assert( isinstance(val, C.SXMatrix) )
-        if name in self._outputNames:
-            raise ValueError('output name "'+name+'" is not unique')
+        self.assertUniqueName(name)
+        
         self._outputNames.append(name)
         self._outputDict[name] = val
 

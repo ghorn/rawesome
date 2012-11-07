@@ -66,7 +66,6 @@ def setupModel(dae, conf):
     zsat = 0.5*(z+C.sqrt(z*z))
     wind_x = dae.p('w0')*C.log((zsat+zt_roughness+2)/zt_roughness)/C.log(z0/zt_roughness)
     dae.addOutput('wind at altitude', wind_x)
-    dae.addOutput('w0', dae.p('w0'))
 
     dp_carousel_frame = C.veccat( [ dx - ddelta*y
                                   , dy + ddelta*(rA + x)
@@ -251,8 +250,6 @@ def crosswindModel(conf,nSteps=None,extraParams=[]):
               ] )
     dae.addP( ['w0'] )
     
-    dae.addOutput('r', dae.x('r'))
-    dae.addOutput('dr', dae.x('dr'))
     dae.addOutput('aileron(deg)', dae.x('aileron')*180/C.pi)
     dae.addOutput('elevator(deg)', dae.x('elevator')*180/C.pi)
     dae.addOutput('daileron(deg/s)', dae.u('daileron')*180/C.pi)

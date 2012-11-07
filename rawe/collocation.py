@@ -1003,8 +1003,3 @@ if __name__=='__main__':
     coll.setupCollocation(2.5)
     coll.setupSolver()
     opt = coll.solve()
-
-    # Plot the results
-    coll.plot(['x0','x1'],opt)
-    coll.plot(['u','u^2'],opt)
-    plt.show()

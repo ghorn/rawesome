@@ -122,7 +122,7 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
     ocp.bound('x',(0.1,1000))
     ocp.bound('y',(-100,100))
     ocp.bound('z',(-0.5,7))
-    ocp.bound('r',(2.0,2.0))
+    ocp.bound('r',(4,4))
     ocp.bound('dr',(-10,10))
     ocp.bound('ddr',(-2.5,2.5))
 
@@ -137,8 +137,8 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
 
     ocp.bound('delta',(-0.01,1.01*2*pi))
     ocp.bound('ddelta',(-pi/8,8*pi))
-    ocp.bound('tc',(-1000,1000))
-    ocp.bound('endTime',(0.5,4.0))
+    ocp.bound('motor torque',(-1000,1000))
+    ocp.bound('endTime',(0.5,7.0))
     ocp.bound('w0',(10,10))
     ocp.bound('energy',(-1e6,1e6))
 
@@ -152,14 +152,14 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
     for k in range(nk):
         # control regularization
         ddr = ocp.lookup('ddr',timestep=k)
-        tc = ocp.lookup('tc',timestep=k)
+        tc = ocp.lookup('motor torque',timestep=k)
         daileron = ocp.lookup('daileron',timestep=k)
         delevator = ocp.lookup('delevator',timestep=k)
         
         daileronSigma = 0.1
         delevatorSigma = 0.1
-        ddrSigma = 1.0
-        torqueSigma = 1000.0
+        ddrSigma = 5.0
+        torqueSigma = 1.0
         
 #        tc = tc - 390
 
@@ -235,7 +235,7 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
         val = 2.0*pi*k/nk
         ocp.guess('delta',val,timestep=k,quiet=True)
 
-    ocp.guess('tc',0)
+    ocp.guess('motor torque',0)
     ocp.guess('endTime',1.5)
     ocp.guess('daileron',0)
     ocp.guess('delevator',0)

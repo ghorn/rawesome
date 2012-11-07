@@ -107,7 +107,7 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
     ocp.bound('elevator',(-0.1,0.1))
     ocp.bound('daileron',(-2.0,2.0))
     ocp.bound('delevator',(-2.0,2.0))
-    ocp.bound('tc',(-10000,10000))
+    ocp.bound('motor torque',(-10000,10000))
 
     ocp.bound('x',(-200,200))
     ocp.bound('y',(-200,200))
@@ -233,7 +233,7 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
 #            ocp.guess(name,(1-alpha)*initvals[name] + alpha*finalvals[name], timestep=k)
     
     ocp.guess('energy',0)
-    ocp.guess('tc',0)
+    ocp.guess('motor torque',0)
     ocp.guess('aileron',0)
     ocp.guess('elevator',0)
     ocp.guess('ddr',0)
@@ -247,7 +247,7 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
     for k in range(nk):
         u = ocp.uVec(k)
         ddr = ocp.lookup('ddr',timestep=k)
-        tc = ocp.lookup('tc',timestep=k)
+        tc = ocp.lookup('motor torque',timestep=k)
         torqueSigma = 1000.0
         aileron = ocp.lookup('aileron',timestep=k)
         elevator = ocp.lookup('elevator',timestep=k)

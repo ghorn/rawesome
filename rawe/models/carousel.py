@@ -60,7 +60,7 @@ def setupModel(dae, conf):
     
     ddr = dae.u('ddr')
     
-    tc = dae.u('tc') #Carousel motor torque
+    tc = dae.u('motor torque') #Carousel motor torque
 
     # wind
     z0 = conf['wind shear']['z0']
@@ -68,7 +68,6 @@ def setupModel(dae, conf):
     zsat = 0.5*(z+C.sqrt(z*z))
     wind_x = dae.p('w0')*C.log((zsat+zt_roughness+2)/zt_roughness)/C.log(z0/zt_roughness)
     dae.addOutput('wind at altitude', wind_x)
-    dae.addOutput('w0', dae.p('w0'))
 
     dp_carousel_frame = C.veccat( [ dx - ddelta*y
                                   , dy + ddelta*(rA + x)
@@ -261,21 +260,18 @@ def carouselModel(conf,nSteps=None,extraParams=[]):
               ] )
     dae.addU( [ "daileron"
               , "delevator"
-              , "tc"
+              , "motor torque"
               , 'ddr'
               ] )
     dae.addP( ['w0'] )
     
-    dae.addOutput('r', dae.x('r'))
-    dae.addOutput('dr', dae.x('dr'))
     dae.addOutput('RPM', dae.x('ddelta')*60/(2*C.pi))
     dae.addOutput('aileron(deg)', dae.x('aileron')*180/C.pi)
     dae.addOutput('elevator(deg)', dae.x('elevator')*180/C.pi)
     dae.addOutput('daileron(deg/s)', dae.u('daileron')*180/C.pi)
     dae.addOutput('delevator(deg/s)', dae.u('delevator')*180/C.pi)
     
-    dae.addOutput('motor torque', dae.u('tc'))
-    dae.addOutput('motor power', dae.u('tc')*dae.x('ddelta'))
+    dae.addOutput('motor power', dae.u('motor torque')*dae.x('ddelta'))
 
     dae.addOutput('tether tension', dae.x('r')*dae.z('nu'))
     dae.addOutput('winch power', -dae.output('tether tension')*dae.x('dr'))
