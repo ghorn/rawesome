@@ -2,8 +2,8 @@ from configobj import ConfigObj,flatten_errors
 from validate import Validator
 
 def readConfig(filename,specfilename):
-    assert(isinstance(filename,str))
-    assert(isinstance(specfilename,str))
+    assert isinstance(filename,str)
+    assert isinstance(specfilename,str)
     
     conf = ConfigObj(filename, configspec=specfilename)
     results = conf.validate(Validator())

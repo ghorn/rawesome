@@ -7,11 +7,11 @@ from dvmap import DesignVarMap
 import casadi as C
 
 def setFXOptions(fun, options):
-    assert(isinstance(options,list))
+    assert isinstance(options,list)
     for intOpt in options:
-        assert(isinstance(intOpt,tuple))
-        assert(len(intOpt)==2)
-        assert(isinstance(intOpt[0],str))
+        assert isinstance(intOpt,tuple)
+        assert len(intOpt)==2
+        assert isinstance(intOpt[0],str)
         optName,optVal = intOpt
         fun.setOption(optName, optVal)
 
@@ -44,15 +44,15 @@ class Constraints():
             raise ValueError('Did not recognize comparison \"'+str(comparison)+'\"')
 
     def addBnds(self,g,(glb,gub),tag):
-        assert(isinstance(tag,str),'constraint tag must be a string')
+        assert isinstance(tag,str),'constraint tag must be a string'
         if (isinstance(glb,numbers.Real) and isinstance(gub,numbers.Real)):
             glb = numpy.array(glb)
             gub = numpy.array(gub)
 
-        assert(isinstance(glb,numpy.ndarray))
-        assert(isinstance(gub,numpy.ndarray))
-        assert(isinstance(g,C.SXMatrix) or isinstance(g,C.MX))
-        assert(g.size()==glb.size and g.size()==gub.size)
+        assert isinstance(glb,numpy.ndarray)
+        assert isinstance(gub,numpy.ndarray)
+        assert isinstance(g,C.SXMatrix) or isinstance(g,C.MX)
+        assert g.size()==glb.size and g.size()==gub.size
         self._g.append(g)
         self._glb.append(glb)
         self._gub.append(gub)
@@ -71,11 +71,11 @@ class Bounds(DesignVarMap):
     descriptor = "bound"
         
     def setBound(self,name,val,**kwargs):
-        assert(isinstance(name,str))
-        assert(isinstance(val,tuple))
-        assert(len(val)==2)
-        assert(isinstance(val[0],numbers.Real))
-        assert(isinstance(val[1],numbers.Real))
+        assert isinstance(name,str)
+        assert isinstance(val,tuple)
+        assert len(val)==2
+        assert isinstance(val[0],numbers.Real)
+        assert isinstance(val[1],numbers.Real)
         self.dvmapSet(name,val,**kwargs)
 
     def get(self):
@@ -85,8 +85,8 @@ class InitialGuess(DesignVarMap):
     descriptor = "initial guess"
 
     def setGuess(self,name,val,**kwargs):
-        assert(isinstance(name,str))
-        assert(isinstance(val,numbers.Real))
+        assert isinstance(name,str)
+        assert isinstance(val,numbers.Real)
         self.dvmapSet(name,val,**kwargs)
 
 class DesignVars(DesignVarMap):

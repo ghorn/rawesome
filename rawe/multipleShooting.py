@@ -5,13 +5,13 @@ from ocputils import Constraints,Bounds,InitialGuess,DesignVars,setFXOptions
 class MultipleShootingStage():
     def __init__(self, dae, nSteps):
         # check inputs
-        assert(isinstance(dae, Dae))
-        assert(isinstance(nSteps, int))
+        assert isinstance(dae, Dae)
+        assert isinstance(nSteps, int)
 
         # make sure dae has everything
-        assert(hasattr(dae,'_odeRes'))
-        assert(hasattr(dae,'_algRes'))
-        assert(hasattr(dae,'stateDotDummy'))
+        assert hasattr(dae,'_odeRes')
+        assert hasattr(dae,'_algRes')
+        assert hasattr(dae,'stateDotDummy')
         
         self.dae = dae
         self.dae._freeze('MultipleShootingStage(dae)')
@@ -32,9 +32,9 @@ class MultipleShootingStage():
 #        self.actions = C.reshape(self._dvs[numXVars:numXVars+numUVars], [self.nActions(), self.nSteps])
 #        self.params = self._dvs[numXVars+numUVars:]
 #
-#        assert( self.states.size() == numXVars )
-#        assert( self.actions.size() == numUVars )
-#        assert( self.params.size() == numPVars )
+#        assert self.states.size() == numXVars
+#        assert self.actions.size() == numUVars
+#        assert self.params.size() == numPVars
 
         # set up interface
         self._constraints = Constraints()
@@ -55,8 +55,8 @@ class MultipleShootingStage():
     def setIdasIntegrator(self, integratorOptions=[]):
         # make dae input fun
         daeSXFun = self.dae.sxFun()
-        assert(self.nStates()==daeSXFun.inputSX(C.DAE_X).size())
-        assert(self.nActions()+self.nParams()==daeSXFun.inputSX(C.DAE_P).size())
+        assert self.nStates()==daeSXFun.inputSX(C.DAE_X).size()
+        assert self.nActions()+self.nParams()==daeSXFun.inputSX(C.DAE_P).size()
 
         # make integrator
         self.integrator = C.IdasIntegrator(daeSXFun)
@@ -173,4 +173,3 @@ class MultipleShootingStage():
         self._solver.setInput(self._initialGuess.vectorize(), C.NLP_X_INIT)
         self._solver.solve()
         return self._solver.output(C.NLP_X_OPT)
-

@@ -40,7 +40,7 @@ class DesignVarMap():
             length = val.size()
         else:
             raise ValueError("can't figure out how long "+str(val)+" is")
-        assert(len(names)==length)
+        assert len(names)==length
         for k,name in enumerate(names):
             self.dvmapSet(name,val[k],**kwargs)
         

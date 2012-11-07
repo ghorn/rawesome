@@ -27,13 +27,13 @@ def mkCollocationPoints():
     return {'LEGENDRE':legendre_points, 'RADAU':radau_points}
 
 def setupCoeffs(deg=None,collPoly=None,nk=None,h=None):
-    assert(deg is not None)
-    assert(collPoly is not None)
-    assert(nk is not None)
-    assert(h is not None)
+    assert deg is not None
+    assert collPoly is not None
+    assert nk is not None
+    assert h is not None
     
     collocation_points = mkCollocationPoints()
-    assert( collPoly in collocation_points )
+    assert collPoly in collocation_points
   
     # Coefficients of the collocation equation
     C = np.zeros((deg+1,deg+1))
@@ -167,8 +167,8 @@ def boundsFeedback(x,lbx,ubx,bndtags,tolerance=0):
 class Coll():
     collocationIsSetup = False
     def __init__(self, dae, nk=None, nicp=1, deg=4, collPoly='RADAU'):
-        assert(nk is not None)
-        assert(isinstance(dae, Dae))
+        assert nk is not None
+        assert isinstance(dae, Dae)
         
         self.dae = dae
         
@@ -218,11 +218,11 @@ class Coll():
         # add collocaiton constraints
         (g_coll,lbg_coll,ubg_coll) = setupCollocationConstraints(self,C,ffcn,self.h,D)
 
-        assert(len(g_coll)==len(lbg_coll) and len(g_coll)==len(ubg_coll))
+        assert len(g_coll)==len(lbg_coll) and len(g_coll)==len(ubg_coll)
         for k in range(len(g_coll)):
-            assert(lbg_coll[k].size == ubg_coll[k].size)
+            assert lbg_coll[k].size == ubg_coll[k].size
             if lbg_coll[k].size>0:
-                assert(g_coll[k].size()==lbg_coll[k].size)
+                assert g_coll[k].size()==lbg_coll[k].size
                 self.constrainBnds(g_coll[k],(lbg_coll[k],ubg_coll[k]))
         
 
@@ -245,7 +245,7 @@ class Coll():
             raise ValueError("timestep needs to be an int")
         if timestep==0:
             raise ValueError("there is no algebraic state at timestep 0")
-        assert(timestep>0)
+        assert timestep>0
         return self._XA[timestep-1][-1][-1]
 
     def constrain(self,lhs,comparison,rhs,tag='unnamed_constraint'):
@@ -362,7 +362,7 @@ class Coll():
         XD[self.nk][0][0] = V[offset:offset+ndiff]
         
         offset += ndiff
-        assert(offset==NV)
+        assert offset==NV
     
         self._V  = V
         self._XD = XD
@@ -601,7 +601,7 @@ class Coll():
         for name in self.dae.xNames():
             bndtags.append((name,(nk,0,0)))
         offset += ndiff
-        assert(offset==NV)
+        assert offset==NV
         self.bndtags = np.array(bndtags)
         return (vars_init,vars_lb,vars_ub)
 
@@ -774,11 +774,11 @@ class Coll():
 
 
     def bound(self,name,val,timestep=None,quiet=False,force=False):
-        assert(isinstance(name,str))
-        assert(isinstance(val,tuple))
-        assert(len(val)==2)
-        assert(isinstance(val[0],numbers.Real))
-        assert(isinstance(val[1],numbers.Real))
+        assert isinstance(name,str)
+        assert isinstance(val,tuple)
+        assert len(val)==2
+        assert isinstance(val[0],numbers.Real)
+        assert isinstance(val[1],numbers.Real)
 
         if not any([name in d for d in [self._xBounds, self._zBounds, self._uBounds, self._pBounds]]):
             raise KeyError("Unrecognized variable \""+name+"\"")
@@ -804,7 +804,7 @@ class Coll():
                 self._pBounds[name] = val
                 return
         
-        assert(isinstance(timestep,int))
+        assert isinstance(timestep,int)
         if name in self._pBounds:
             raise ValueError("can't set bounds on a parameter on a specific timestep")
         if name in self._xBounds:
@@ -833,8 +833,8 @@ class Coll():
             return
 
     def guess(self,name,val,timestep=None,quiet=False):
-        assert(isinstance(name,str))
-        assert(isinstance(val,numbers.Real))
+        assert isinstance(name,str)
+        assert isinstance(val,numbers.Real)
 
         if not any([name in d for d in [self._xBounds, self._zBounds, self._uBounds, self._pBounds]]):
             raise KeyError("Unrecognized variable \""+name+"\"")
@@ -860,7 +860,7 @@ class Coll():
                 self._pGuess[name] = val
                 return
         
-        assert(isinstance(timestep,int))
+        assert isinstance(timestep,int)
         if name in self._pGuess:
             raise ValueError("can't set guess on a parameter on a specific timestep")
         if name in self._xGuess:
@@ -898,7 +898,7 @@ class Coll():
                 length = val.size
         else:
             raise ValueError("can't figure out how long "+str(val)+" is")
-        assert(len(names)==length,'guess{X,Z,U,P} got wrong length for guess')
+        assert len(names)==length,'guess{X,Z,U,P} got wrong length for guess'
 
         for k,name in enumerate(names):
             self.guess(name,float(val[k]),**kwargs)
@@ -914,10 +914,10 @@ class Coll():
         
 
     def lookup(self,name,timestep=None,nicpIdx=0,degIdx=0):
-        assert(isinstance(name,str))
-        assert(nicpIdx<self.nicp,'nicpIdx must be < nicp')
-        assert(degIdx<self.deg+1,'degIdx must be < deg+1')
-        assert(degIdx>=0,'degIdx must be positive')
+        assert isinstance(name,str)
+        assert nicpIdx<self.nicp,'nicpIdx must be < nicp'
+        assert degIdx<self.deg+1,'degIdx must be < deg+1'
+        assert degIdx>=0,'degIdx must be positive'
         
         if name in self.dae.pNames():
             if timestep is not None:
@@ -933,12 +933,12 @@ class Coll():
             else:
                 raise ValueError("unrecognized key \""+name+"\"")
 
-        assert(isinstance(timestep,int))
+        assert isinstance(timestep,int)
         if name in self.dae.xNames():
             k = self.dae.xNames().index(name)
             return self._XD[timestep][nicpIdx][degIdx][k]
         if name in self.dae.zNames():
-            assert(degIdx!=0,'there is no algebraic state at degIdx=0')
+            assert degIdx!=0,'there is no algebraic state at degIdx=0'
             k = self.dae.zNames().index(name)
             return self._XA[timestep][nicpIdx][degIdx-1][k]
         if name in self.dae.uNames():
@@ -953,7 +953,7 @@ class Coll():
         self._objective = obj
 
     def subplot(self,names,opt,title=None):
-        assert(isinstance(names,list))
+        assert isinstance(names,list)
             
         plt.figure()
         plt.clf()
@@ -973,10 +973,10 @@ class Coll():
     def _plot(self,names,opt,title=None):
         if isinstance(names,str):
             names = [names]
-        assert( isinstance(names,list) )
+        assert isinstance(names,list)
         legend = []
         for name in names:
-            assert(isinstance(name,str))
+            assert isinstance(name,str)
             legend.append(name)
 
             # if it's a simple state or action

@@ -19,7 +19,7 @@ class Communicator():
         self.outputNames = outputNames
 
     def sendKite(self,sim,(x,z,u,p),zt,rArm,w0,otherMessages=[]):
-        assert(isinstance(otherMessages,list))
+        assert isinstance(otherMessages,list)
         pb = kiteproto.toKiteProto(x,u,p,zt,rArm,w0=w0)
         pb.messages.append("sloMoFactor: "+str(sim.sloMoFactor))
         pb.messages.append("-------------------------")
@@ -34,7 +34,7 @@ class Communicator():
         if len(otherMessages)>0:
             pb.messages.append("-------------------------")
             for om in otherMessages:
-                assert(isinstance(om,str))
+                assert isinstance(om,str)
                 pb.messages.append(om)
 
         self.publisher.send_multipart(["carousel", pb.SerializeToString()])
@@ -42,8 +42,8 @@ class Communicator():
 
 class SimState():
     def __init__(self,pdOn=None, x=None):
-        assert( isinstance(pdOn, bool) )
-        assert( x is not None )
+        assert isinstance(pdOn, bool)
+        assert x is not None
         
         self.pdOn=pdOn
         self.x = x
@@ -55,9 +55,9 @@ class SimState():
 
 class Sim():
     def __init__(self,ts=None, sloMoFactor=None, state0=None):
-        assert(ts is not None)
-        assert(sloMoFactor is not None)
-        assert(isinstance(state0, SimState))
+        assert ts is not None
+        assert sloMoFactor is not None
+        assert isinstance(state0, SimState)
 
         self.ts = ts
         self.sloMoFactor=sloMoFactor
@@ -73,14 +73,14 @@ class Sim():
         return self.currentState
 
     def save(self,k):
-        assert(isinstance(k,int))
+        assert isinstance(k,int)
         self._saves[k] = copy.deepcopy(self.getCurrentState())
 #        print "log: "+str(self._saves[k]._log)
 #        print "pdOn: "+str(self._saves[k].pdOn)
 #        print "x: "+str(self._saves[k].x)
 
     def load(self,k):
-        assert(isinstance(k,int))
+        assert isinstance(k,int)
         if k in self._saves:
             self.currentState = copy.deepcopy(self._saves[k])
 #            print "log: "+str(self.currentState._log)
