@@ -89,6 +89,7 @@ def setupCollocationConstraints(coll,C,ffcn,h,D):
     g = []
     lbg = []
     ubg = []
+    tags = []
     
     # For all finite elements
     for k in range(nk):
@@ -105,10 +106,12 @@ def setupCollocationConstraints(coll,C,ffcn,h,D):
                 g += [fk[:ndiff]]           # impose system dynamics (for the differential states (eq 10.19b))
                 lbg.append(np.zeros(ndiff)) # equality constraints
                 ubg.append(np.zeros(ndiff)) # equality constraints
+                tags.append("system dynamics, differential states, kIdx: %d,nicpIdx: %d, degIdx: %d" % (k,i,j))
                 
                 g += [fk[ndiff:]]          # impose system dynamics (for the algebraic states (eq 10.19b))
                 lbg.append(np.zeros(nalg)) # equality constraints
                 ubg.append(np.zeros(nalg)) # equality constraints
+                tags.append("system dynamics, algebraic states, kIdx: %d,nicpIdx: %d, degIdx: %d" % (k,i,j))
                 
             # Get an expression for the state at the end of the finite element
             xf_k = 0
@@ -125,8 +128,9 @@ def setupCollocationConstraints(coll,C,ffcn,h,D):
             
             lbg.append(np.zeros(ndiff))
             ubg.append(np.zeros(ndiff))
+            tags.append("continuity, kIdx: %d,nicpIdx: %d" % (k,i))
     
-    return (g,lbg,ubg)
+    return (g,lbg,ubg,tags)
 
 def boundsFeedback(x,lbx,ubx,bndtags,tolerance=0):
     violations = {}
@@ -208,21 +212,21 @@ class Coll():
         self.tau_root = tau_root
         self.tau = tau
         
-        ffcn = self.makeResidualFun()
+        ffcn = self._makeResidualFun()
 
         # function to get h out
         self.hfun = CS.MXFunction([self._V],[self.h])
         self.hfun.init()
         
-        # add collocaiton constraints
-        (g_coll,lbg_coll,ubg_coll) = setupCollocationConstraints(self,C,ffcn,self.h,D)
+        # add collocation constraints
+        (g_coll,lbg_coll,ubg_coll,collTags) = setupCollocationConstraints(self,C,ffcn,self.h,D)
 
-        assert len(g_coll)==len(lbg_coll) and len(g_coll)==len(ubg_coll)
+        assert len(g_coll)==len(lbg_coll) and len(g_coll)==len(ubg_coll) and len(g_coll)==len(collTags)
         for k in range(len(g_coll)):
             assert lbg_coll[k].size == ubg_coll[k].size
             if lbg_coll[k].size>0:
                 assert g_coll[k].size()==lbg_coll[k].size
-                self.constrainBnds(g_coll[k],(lbg_coll[k],ubg_coll[k]))
+                self.constrainBnds(g_coll[k],(lbg_coll[k],ubg_coll[k]),tag=collTags[k])
         
 
     def xVec(self,timestep=None):
@@ -275,7 +279,7 @@ class Coll():
         NP = self.pSize()
         return NXD+NXA+NU+NXF+NP
 
-    def makeResidualFun(self):
+    def _makeResidualFun(self):
         if not hasattr(self.dae, 'stateDotDummy'):
             raise ValueError("need to set stateDotDummy")
         if not hasattr(self.dae, '_odeRes'):
