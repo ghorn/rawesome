@@ -2,6 +2,7 @@ import casadi as CS
 import numpy as np
 import numbers
 from ocputils import Constraints,setFXOptions
+from collmap import CollMap
 
 from models import Dae
 
@@ -180,15 +181,8 @@ class Coll():
         self.deg = deg
         self.collPoly = collPoly
 
-        self._xBounds = dict( [(name,[None]*(nk+1)) for name in dae.xNames()] )
-        self._zBounds = dict( [(name,[None]*nk)     for name in dae.zNames()] )
-        self._uBounds = dict( [(name,[None]*nk)     for name in dae.uNames()] )
-        self._pBounds = dict( [(name,None)          for name in dae.pNames()] )
-
-        self._xGuess = dict( [(name,[None]*(nk+1)) for name in dae.xNames()] )
-        self._zGuess = dict( [(name,[None]*nk)     for name in dae.zNames()] )
-        self._uGuess = dict( [(name,[None]*nk)     for name in dae.uNames()] )
-        self._pGuess = dict( [(name,None)          for name in dae.pNames()] )
+        self._bounds = CollMap(self,"bounds")
+        self._guess = CollMap(self,"guess")
 
         self._constraints = Constraints()
 
@@ -385,7 +379,7 @@ class Coll():
         xD_init = np.array((nk*nicp*(deg+1)+1)*[[None]*self.xSize()]) # needs to be specified for every time interval
         for k,name in enumerate(self.dae.xNames()):
             for timestep in range(nk+1):
-                xminmax = self._xBounds[name][timestep]
+                xminmax=self._bounds.lookup(name,timestep=timestep)
                 if xminmax is None:
                     raise ValueError('need to set bounds for \"'+name+'\" at timestep '+str(timestep))
                 (xmin,xmax) = xminmax
@@ -394,8 +388,8 @@ class Coll():
     
             # linearly interpolate initial guess
             for timestep in range(nk):
-                xd0 = self._xGuess[name][timestep]
-                xd1 = self._xGuess[name][timestep+1]
+                xd0=self._guess.lookup(name,timestep=timestep)
+                xd1=self._guess.lookup(name,timestep=timestep+1)
                 if xd0 is None:
                     raise ValueError("need to set initial guess for \""+name+ "\" at timestep "+str(timestep))
                 if xd1 is None:
@@ -409,9 +403,9 @@ class Coll():
                         alpha = alphaIndex/( (deg+1)*nicp - 1.0 )
                         xD_init[index,k] = xd0 + (xd1-xd0)*alpha
                         alphaIndex += 1
-            if self._xGuess[name][-1] is None:
+            if self._guess.lookup(name,timestep=-1) is None:
                 raise ValueError("need to set initial guess for \""+name+ "\" at last timestep")
-            xD_init[-1,k] = self._xGuess[name][-1]
+            xD_init[-1,k] = self._guess.lookup(name,timestep=-1)
         
         # Algebraic state bounds and initial guess
         xA_min = np.array([[-CS.inf]*self.zSize()]*nk)
@@ -419,7 +413,7 @@ class Coll():
         xA_init = np.array((nk*nicp*(deg+1))*[[None]*self.zSize()])
         for k,name in enumerate(self.dae.zNames()):
             for timestep in range(nk):
-                zminmax = self._zBounds[name][timestep]
+                zminmax=self._bounds.lookup(name,timestep=timestep,degIdx=1)
                 if zminmax is None:
                     if warnZBounds:
                         print "WARNING: didn't set bounds for algebraic state \""+name+"\" at timestep "+str(timestep)+", using (-inf,inf)"
@@ -433,11 +427,11 @@ class Coll():
                 
             # linearly interpolate initial guess
             for timestep in range(nk):
-                xa0 = self._zGuess[name][timestep]
+                xa0 = self._guess.lookup(name, timestep=timestep, degIdx=1)
                 if timestep<nk-1:
-                    xa1 = self._zGuess[name][timestep+1]
+                    xa1 = self._guess.lookup(name, timestep=timestep+1, degIdx=1)
                 else:
-                    xa1 = self._zGuess[name][timestep]
+                    xa1 = self._guess.lookup(name, timestep=timestep, degIdx=1)
     
                 if xa0 is None:
                     if warnZGuess:
@@ -462,7 +456,7 @@ class Coll():
         u_init = np.array([[None]*self.uSize()]*nk) # needs to be specified for every time interval (even though it stays constant)
         for k,name in enumerate(self.dae.uNames()):
             for timestep in range(nk):
-                uminmax = self._uBounds[name][timestep]
+                uminmax = self._bounds.lookup(name,timestep=timestep)
                 if uminmax is None:
                     raise ValueError('need to set bounds for \"'+name+'\" at timestep '+str(timestep))
                 (umin,umax) = uminmax
@@ -470,25 +464,25 @@ class Coll():
                 u_max[timestep,k] = umax
     
                 # initial guess
-                if self._uGuess[name][timestep] is None:
+                if self._guess.lookup(name,timestep=timestep) is None:
                     raise ValueError("need to set initial guess for \""+name+ "\" at timestep "+str(timestep))
-                u_init[timestep,k] = self._uGuess[name][timestep]
+                u_init[timestep,k] = self._guess.lookup(name,timestep=timestep)
         
         # Parameter bounds and initial guess
         p_min = np.array([-CS.inf]*self.pSize())
         p_max = np.array([ CS.inf]*self.pSize())
         p_init = np.array([None]*self.pSize())
         for k,name in enumerate(self.dae.pNames()):
-            pminmax = self._pBounds[name]
+            pminmax = self._bounds.lookup(name)
             if pminmax is None:
                 raise ValueError('need to set bounds for \"'+name+'\"')
             (pmin,pmax) = pminmax
             p_min[k] = pmin
             p_max[k] = pmax
         for k,name in enumerate(self.dae.pNames()):
-            if self._pGuess[name] is None:
+            if self._guess.lookup(name) is None:
                 raise ValueError("need to set initial guess for \""+name+ "\"")
-            p_init[k] = self._pGuess[name]
+            p_init[k] = self._guess.lookup(name)
     
         return {'xD_init':xD_init, 'xD_min':xD_min, 'xD_max':xD_max,
                 'xA_init':xA_init, 'xA_min':xA_min, 'xA_max':xA_max,
@@ -783,113 +777,51 @@ class Coll():
         assert isinstance(val[0],numbers.Real)
         assert isinstance(val[1],numbers.Real)
 
-        if not any([name in d for d in [self._xBounds, self._zBounds, self._uBounds, self._pBounds]]):
-            raise KeyError("Unrecognized variable \""+name+"\"")
-
         # handle timestep == None
         if timestep is None:
-            if name in self._xBounds:
+            if name in self._bounds._xMap:
                 for k in range(self.nk+1):
                     self.bound(name,val,timestep=k,quiet=quiet)
                 return
-            if name in self._zBounds:
+            if name in self._bounds._zMap:
                 for k in range(self.nk):
                     self.bound(name,val,timestep=k,quiet=quiet)
                 return
-            if name in self._uBounds:
+            if name in self._bounds._uMap:
                 for k in range(self.nk):
                     self.bound(name,val,timestep=k,quiet=quiet)
                 return
-            if name in self._pBounds:
-                oldbound = self._pBounds[name]
-                if ((self._pBounds[name] is not None) and (not force)):
-                    raise ValueError("can't change bound on \""+name+"\" once it's set unless you use force=True (tried to change bound "+str(oldbound)+" to "+str(val))
-                self._pBounds[name] = val
+            if name in self._bounds._pMap:
+                self._bounds.setVal(name,val,force=force)
                 return
         
         assert isinstance(timestep,int)
-        if name in self._pBounds:
-            raise ValueError("can't set bounds on a parameter on a specific timestep")
-        if name in self._xBounds:
-            if timestep>self.nk+1:
-                raise ValueError("differential state \""+name+"\" bound timestep too high ("+str(timestep)+">"+str(self.nk+1))
-            oldbound = self._xBounds[name][timestep]
-            if (oldbound is not None) and (quiet is False):
-                print "WARNING: changing \"%s\" bounds at timestep %d from %s to %s" % (name,timestep,str(oldbound),str(val))
-            self._xBounds[name][timestep] = val
-            return
-        if name in self._zBounds:
-            if timestep>self.nk:
-                raise ValueError("algebraic state \""+name+"\" bound timestep too high ("+str(timestep)+">"+str(self.nk))
-            oldbound = self._zBounds[name][timestep]
-            if (oldbound is not None) and (quiet is False):
-                print "WARNING: changing \"%s\" bounds at timestep %d from %s to %s" % (name,timestep,str(oldbound),str(val))
-            self._zBounds[name][timestep] = val
-            return
-        if name in self._uBounds:
-            if timestep>self.nk:
-                raise ValueError("action \""+name+"\" bound timestep too high ("+str(timestep)+">"+str(self.nk))
-            oldbound = self._uBounds[name][timestep]
-            if (oldbound is not None) and (quiet is False):
-                print "WARNING: changing \"%s\" bounds at timestep %d from %s to %s" % (name,timestep,str(oldbound),str(val))
-            self._uBounds[name][timestep] = val
-            return
+        self._bounds.setVal(name,val,timestep=timestep,quiet=quiet)
 
-    def guess(self,name,val,timestep=None,quiet=False):
+    def guess(self,name,val,timestep=None,quiet=False,force=False):
         assert isinstance(name,str)
         assert isinstance(val,numbers.Real)
 
-        if not any([name in d for d in [self._xBounds, self._zBounds, self._uBounds, self._pBounds]]):
-            raise KeyError("Unrecognized variable \""+name+"\"")
-
         # handle timestep == None
         if timestep is None:
-            if name in self._xGuess:
+            if name in self._guess._xMap:
                 for k in range(self.nk+1):
                     self.guess(name,val,timestep=k,quiet=quiet)
                 return
-            if name in self._zGuess:
+            if name in self._guess._zMap:
                 for k in range(self.nk):
                     self.guess(name,val,timestep=k,quiet=quiet)
                 return
-            if name in self._uGuess:
+            if name in self._guess._uMap:
                 for k in range(self.nk):
                     self.guess(name,val,timestep=k,quiet=quiet)
                 return
-            if name in self._pGuess:
-                oldguess = self._pGuess[name]
-                if (self._pGuess[name] is not None):
-                    raise ValueError("can't change guess on \""+name+"\" once it's set (tried to change guess "+str(oldguess)+" to "+str(val))
-                self._pGuess[name] = val
+            if name in self._guess._pMap:
+                self._guess.setVal(name,val,force=force)
                 return
         
         assert isinstance(timestep,int)
-        if name in self._pGuess:
-            raise ValueError("can't set guess on a parameter on a specific timestep")
-        if name in self._xGuess:
-            if timestep>self.nk+1:
-                raise ValueError("differential state \""+name+"\" guess timestep too high ("+str(timestep)+">"+str(self.nk+1))
-            oldguess = self._xGuess[name][timestep]
-            if (oldguess is not None) and (quiet is False):
-                print "WARNING: changing \"%s\" guess at timestep %d from %s to %s" % (name,timestep,str(oldguess),str(val))
-            self._xGuess[name][timestep] = val
-            return
-        if name in self._zGuess:
-            if timestep>self.nk:
-                raise ValueError("algebraic state \""+name+"\" guess timestep too high ("+str(timestep)+">"+str(self.nk))
-            oldguess = self._zGuess[name][timestep]
-            if (oldguess is not None) and (quiet is False):
-                print "WARNING: changing \"%s\" guess at timestep %d from %s to %s" % (name,timestep,str(oldguess),str(val))
-            self._zGuess[name][timestep] = val
-            return
-        if name in self._uGuess:
-            if timestep>self.nk:
-                raise ValueError("action \""+name+"\" guess timestep too high ("+str(timestep)+">"+str(self.nk))
-            oldguess = self._uGuess[name][timestep]
-            if (oldguess is not None) and (quiet is False):
-                print "WARNING: changing \"%s\" guess at timestep %d from %s to %s" % (name,timestep,str(oldguess),str(val))
-            self._uGuess[name][timestep] = val
-            return
+        self._guess.setVal(name,val,timestep=timestep,quiet=quiet)
 
     def _guessVec(self,val,names,**kwargs):
         if isinstance(val,list):
