@@ -223,10 +223,12 @@ class Coll():
                 self.constrainBnds(g_coll[k],(lbg_coll[k],ubg_coll[k]),tag=collTags[k])
         
 
-    def xVec(self,timestep=None):
+    def xVec(self,timestep=None,nicpIdx=0,degIdx=0):
         if not isinstance(timestep, int):
             raise ValueError("timestep needs to be an int")
-        return self._XD[timestep][0][0]
+        if timestep is self.nk:
+            assert nicpIdx==0 and degIdx==0,"last timestep is only defined at nicpIdx=0,degIdx=0"
+        return self._XD[timestep][nicpIdx][degIdx]
     
     def uVec(self,timestep=None):
         if not isinstance(timestep, int):
@@ -298,7 +300,6 @@ class Coll():
         ffcn.init()
         return ffcn
 
-
     def _setupDesignVars(self):
         ## set these:
         # self._V  = V
@@ -307,10 +308,10 @@ class Coll():
         # self._U  = U
         # self._P  = P
         
-        ndiff = len(self.dae.xNames())
-        nalg = len(self.dae.zNames())
-        nu = len(self.dae.uNames())
-        NP = len(self.dae.pNames())
+        ndiff = self.xSize()
+        nalg = self.zSize()
+        nu = self.uSize()
+        NP = self.pSize()
         nx = ndiff + nalg
         
         # Total number of variables
@@ -322,11 +323,18 @@ class Coll():
     
         # NLP variable vector
         V = CS.msym("V",NV)
+
+        # index map
+        self._indexMap = CollMap(self,"index map")
+        self._dvMap = CollMap(self,"design var map")
         
         offset = 0
         
         # Get the parameters
         P = V[offset:offset+NP]
+        for k,name in enumerate(self.dae.pNames()):
+            self._indexMap.setVal(name,k)
+            self._dvMap.setVal(name,V[offset+k])
         offset += NP
         
         # Get collocated states and parametrized control
@@ -339,9 +347,16 @@ class Coll():
                 for j in range(self.deg+1):
                     # Get the expression for the state vector
                     XD[k][i][j] = V[offset:offset+ndiff]
+                    for m,name in enumerate(self.dae.xNames()):
+                        self._indexMap.setVal(name,offset+m,timestep=k,nicpIdx=i,degIdx=j)
+                        self._dvMap.setVal(name,V[offset+m],timestep=k,nicpIdx=i,degIdx=j)
+                        
                     if j !=0:
                         XA[k][i][j-1] = V[offset+ndiff:offset+ndiff+nalg]
-                    # Add the initial condition
+                        for m,name in enumerate(self.dae.zNames()):
+                            self._indexMap.setVal(name,offset+ndiff+m,timestep=k,nicpIdx=i,degIdx=j)
+                            self._dvMap.setVal(name,V[offset+ndiff+m],timestep=k,nicpIdx=i,degIdx=j)
+
                     index = (self.deg+1)*(self.nicp*k+i) + j
                     if k==0 and j==0 and i==0:
                         offset += ndiff
@@ -353,10 +368,16 @@ class Coll():
             
             # Parametrized controls
             U[k] = V[offset:offset+nu]
+            for m,name in enumerate(self.dae.uNames()):
+                self._indexMap.setVal(name,offset+m,timestep=k)
+                self._dvMap.setVal(name,V[offset+m],timestep=k)
             offset += nu
         
         # State at end time
         XD[self.nk][0][0] = V[offset:offset+ndiff]
+        for m,name in enumerate(self.dae.xNames()):
+            self._indexMap.setVal(name,offset+m,timestep=self.nk,degIdx=0,nicpIdx=0)
+            self._dvMap.setVal(name,V[offset+m],timestep=self.nk,degIdx=0,nicpIdx=0)
         
         offset += ndiff
         assert offset==NV
@@ -670,10 +691,10 @@ class Coll():
         nicp = self.nicp
         nk = self.nk
 
-        ndiff = len(self.dae.xNames())
-        nalg = len(self.dae.zNames())
-        nu = len(self.dae.uNames())
-        NP = len(self.dae.pNames())
+        ndiff = self.xSize()
+        nalg = self.zSize()
+        nu = self.uSize()
+        NP = self.pSize()
         
         ## ----
         ## RETRIEVE THE SOLUTION
@@ -768,7 +789,6 @@ class Coll():
             vardict[name] = u_opt[k,:]
             
         return {'vardict':vardict, 'tgrid':tgrid, 'x':xD_opt, 'u':u_opt, 'z':xA_opt, 'zPlt':xA_plt, 'p':v_opt[:NP], 'X_OPT':v_opt}
-
 
     def bound(self,name,val,timestep=None,quiet=False,force=False):
         assert isinstance(name,str)

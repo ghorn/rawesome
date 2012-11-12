@@ -49,6 +49,8 @@ class CollMap(object):
                    "timestep: "+str(timestep)+" out of range in "+self._name+" map (nk: "+str(nk)+")"
             assert degIdx >=0 and degIdx < (self._deg+1), \
                    "degIdx: "+str(deg)+" out of range in "+self._name+" map (deg: "+str(self._deg)+")"
+            if timestep is self._nk:
+                assert nicpIdx==0 and degIdx==0,"last timestep is only defined at nicpIdx=0,degIdx=0"
             if setVal is None:
                 return self._xMap[name][timestep][nicpIdx][degIdx]
             else:
