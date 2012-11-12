@@ -749,10 +749,10 @@ class Coll():
         xA_plt = np.resize(np.array([]),(nalg,(deg+1)*nicp*(nk)+1))
         offset4=0
         offset5=0
-        for k in range(nk):  
+        for k in range(nk):
             for i in range(nicp):
                 for j in range(deg+1):
-                    if j!=0:         
+                    if j!=0:
                         xA_plt[:,offset5] = xA_opt[:,offset4]
                         offset4 += 1
                         offset5 += 1
@@ -764,7 +764,7 @@ class Coll():
                         #xA_plt[:,offset5] = xA_opt[:,offset4]
                         offset5 += 1
         
-        xA_plt[:,-1] = xA_plt[:,-2]    
+        xA_plt[:,-1] = xA_plt[:,-2]
 
         self.hfun.setInput(v_opt)
         self.hfun.evaluate()
