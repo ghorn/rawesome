@@ -8,7 +8,7 @@ class CollMap(object):
         self._uNames = ocp.dae.uNames()
         self._pNames = ocp.dae.pNames()
         self._nk = ocp.nk
-        self._nicp = ocp.deg
+        self._nicp = ocp.nicp
         self._deg = ocp.deg
         self._collPoly = ocp.collPoly
 
