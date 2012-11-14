@@ -45,6 +45,7 @@ class Trajectory(object):
     def setDvs(self,ocp,dvs):
         opt = ocp.devectorize(dvs)
 
+        self.trajData.dvs = dvs
         self.trajData.xzu = {}
         self.trajData.parameters = {}
         self.trajData.outputs = {}

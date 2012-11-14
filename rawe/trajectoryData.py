@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 
 # pickleable thing which stores x/z/u/p/outputs and can plot them
 class TrajectoryData(object):
+    dvs = None
     xNames = None
     zNames = None
     uNames = None
