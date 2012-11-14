@@ -3,28 +3,10 @@ import numpy as np
 import numbers
 from ocputils import Constraints,setFXOptions
 from collmap import CollMap
+from collutils import mkCollocationPoints
 
 from models import Dae
 
-def mkCollocationPoints():
-    # Legendre collocation points
-    legendre_points1 = [0,0.500000]
-    legendre_points2 = [0,0.211325,0.788675]
-    legendre_points3 = [0,0.112702,0.500000,0.887298]
-    legendre_points4 = [0,0.069432,0.330009,0.669991,0.930568]
-    legendre_points5 = [0,0.046910,0.230765,0.500000,0.769235,0.953090]
-    legendre_points = [0,legendre_points1,legendre_points2,legendre_points3,legendre_points4,legendre_points5]
-    
-    # Radau collocation points
-    radau_points1 = [0,1.000000]
-    radau_points2 = [0,0.333333,1.000000]
-    radau_points3 = [0,0.155051,0.644949,1.000000]
-    radau_points4 = [0,0.088588,0.409467,0.787659,1.000000]
-    radau_points5 = [0,0.057104,0.276843,0.583590,0.860240,1.000000]
-    radau_points = [0,radau_points1,radau_points2,radau_points3,radau_points4,radau_points5]
-    
-    # Type of collocation points
-    return {'LEGENDRE':legendre_points, 'RADAU':radau_points}
 
 def setupCoeffs(deg=None,collPoly=None,nk=None,h=None):
     assert deg is not None
@@ -54,84 +36,25 @@ def setupCoeffs(deg=None,collPoly=None,nk=None,h=None):
     # Construct Lagrange polynomials to get the polynomial basis at the collocation point
     for j in range(deg+1):
         L = 1
-        for j2 in range(deg+1):
-            if j2 != j:
-                L *= (tau-tau_root[j2])/(tau_root[j]-tau_root[j2])
+        for k in range(deg+1):
+            if k != j:
+                L *= (tau-tau_root[k])/(tau_root[j]-tau_root[k])
         lfcn = CS.SXFunction([tau],[L])
         lfcn.init()
         # Evaluate the polynomial at the final time to get the coefficients of the continuity equation
         lfcn.setInput(1.0)
         lfcn.evaluate()
         D[j] = lfcn.output()
-        # Evaluate the time derivative of the polynomial at all collocation points to get the coefficients of the continuity equation
-        for j2 in range(deg+1):
-            lfcn.setInput(tau_root[j2])
+        # Evaluate the time derivative of the polynomial at all collocation points to get the coefficients of the collocation equation
+        for k in range(deg+1):
+            lfcn.setInput(tau_root[k])
             lfcn.setFwdSeed(1.0)
             lfcn.evaluate(1,0)
-            C[j][j2] = lfcn.fwdSens()
+            C[j][k] = lfcn.fwdSens()
   
     return (C,D,tau,tau_root)
 
 
-def setupCollocationConstraints(coll,C,ffcn,h,D):
-    nicp = coll.nicp
-    nk = coll.nk
-    deg = coll.deg
-    
-    XD = coll._XD
-    XA = coll._XA
-    U = coll._U
-    P = coll._P
-
-    ndiff = coll.xSize()
-    nalg = coll.zSize()
-    
-    # Constraint function for the NLP
-    g = []
-    lbg = []
-    ubg = []
-    tags = []
-    
-    # For all finite elements
-    for k in range(nk):
-        for i in range(nicp):
-            # For all collocation points
-            for j in range(1,deg+1):   		
-                # Get an expression for the state derivative at the collocation point
-                xp_jk = 0
-                for j2 in range (deg+1):
-                    xp_jk += C[j2][j]*XD[k][i][j2] # get the time derivative of the differential states (eq 10.19b)
-                
-                # Add collocation equations to the NLP
-                [fk] = ffcn.call([xp_jk/h, XD[k][i][j], XA[k][i][j-1], U[k], P])
-                g += [fk[:ndiff]]           # impose system dynamics (for the differential states (eq 10.19b))
-                lbg.append(np.zeros(ndiff)) # equality constraints
-                ubg.append(np.zeros(ndiff)) # equality constraints
-                tags.append("system dynamics, differential states, kIdx: %d,nicpIdx: %d, degIdx: %d" % (k,i,j))
-                
-                g += [fk[ndiff:]]          # impose system dynamics (for the algebraic states (eq 10.19b))
-                lbg.append(np.zeros(nalg)) # equality constraints
-                ubg.append(np.zeros(nalg)) # equality constraints
-                tags.append("system dynamics, algebraic states, kIdx: %d,nicpIdx: %d, degIdx: %d" % (k,i,j))
-                
-            # Get an expression for the state at the end of the finite element
-            xf_k = 0
-            for j in range(deg+1):
-                xf_k += D[j]*XD[k][i][j]
-                
-            # Add continuity equation to NLP
-            if i==nicp-1:
-    #            print "a ", k, i
-                g += [XD[k+1][0][0] - xf_k]
-            else:
-    #            print "b ", k, i
-                g += [XD[k][i+1][0] - xf_k]
-            
-            lbg.append(np.zeros(ndiff))
-            ubg.append(np.zeros(ndiff))
-            tags.append("continuity, kIdx: %d,nicpIdx: %d" % (k,i))
-    
-    return (g,lbg,ubg,tags)
 
 def boundsFeedback(x,lbx,ubx,bndtags,tolerance=0):
     violations = {}
@@ -213,15 +136,52 @@ class Coll():
         self.hfun.init()
         
         # add collocation constraints
-        (g_coll,lbg_coll,ubg_coll,collTags) = setupCollocationConstraints(self,C,ffcn,self.h,D)
-
-        assert len(g_coll)==len(lbg_coll) and len(g_coll)==len(ubg_coll) and len(g_coll)==len(collTags)
-        for k in range(len(g_coll)):
-            assert lbg_coll[k].size == ubg_coll[k].size
-            if lbg_coll[k].size>0:
-                assert g_coll[k].size()==lbg_coll[k].size
-                self.constrainBnds(g_coll[k],(lbg_coll[k],ubg_coll[k]),tag=collTags[k])
+        self._addCollocationConstraints(C,ffcn,self.h,D)
         
+    def _addCollocationConstraints(self,C,ffcn,h,D):
+        nicp = self.nicp
+        nk = self.nk
+        deg = self.deg
+        
+        XD = self._XD
+        XA = self._XA
+        U = self._U
+        P = self._P
+    
+        ndiff = self.xSize()
+        nalg = self.zSize()
+        
+        # For all finite elements
+        for k in range(nk):
+            for i in range(nicp):
+                # For all collocation points
+                for j in range(1,deg+1):   		
+                    # Get an expression for the state derivative at the collocation point
+                    xp_jk = 0
+                    for j2 in range (deg+1):
+                        xp_jk += C[j2][j]*XD[k][i][j2] # get the time derivative of the differential states (eq 10.19b)
+                    # Add collocation equations to the NLP
+                    [fk] = ffcn.call([xp_jk/h, XD[k][i][j], XA[k][i][j-1], U[k], P])
+                    
+                    # impose system dynamics (for the differential states (eq 10.19b))
+                    self.constrain(fk[:ndiff],'==',0,tag=
+                                   "system dynamics, differential states, kIdx: %d,nicpIdx: %d, degIdx: %d" % (k,i,j))
+                    
+                    # impose system dynamics (for the algebraic states (eq 10.19b))
+                    self.constrain(fk[ndiff:],'==',0,tag=
+                                   "system dynamics, algebraic states, kIdx: %d,nicpIdx: %d, degIdx: %d" % (k,i,j))
+                    
+                # Get an expression for the state at the end of the finite element
+                xf_k = 0
+                for j in range(deg+1):
+                    xf_k += D[j]*XD[k][i][j]
+                    
+                # Add continuity equation to NLP
+                if i==nicp-1:
+                    self.constrain(XD[k+1][0][0], '==', xf_k, tag="continuity, kIdx: %d,nicpIdx: %d" % (k,i))
+                else:
+                    self.constrain(XD[k][i+1][0], '==', xf_k, tag="continuity, kIdx: %d,nicpIdx: %d" % (k,i))
+                    
 
     def xVec(self,timestep=None,nicpIdx=0,degIdx=0):
         if not isinstance(timestep, int):
@@ -474,7 +434,7 @@ class Coll():
         # Control bounds and initial guess
         u_min = np.array([[-CS.inf]*self.uSize()]*nk)
         u_max = np.array([[ CS.inf]*self.uSize()]*nk)
-        u_init = np.array([[None]*self.uSize()]*nk) # needs to be specified for every time interval (even though it stays constant)
+        u_init = np.array([[None]*self.uSize()]*nk)
         for k,name in enumerate(self.dae.uNames()):
             for timestep in range(nk):
                 uminmax = self._bounds.lookup(name,timestep=timestep)
