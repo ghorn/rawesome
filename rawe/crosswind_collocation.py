@@ -118,20 +118,9 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
     # boundary conditions
     ocp.bound('energy',(0,0),timestep=0,quiet=True)
 #    ocp.bound('y',(0,0),timestep=0,quiet=True)
-    
-    
-    # initial guess
-#    ocp.guessX(x0)
-#    for k in range(0,nk+1):
-#        val = 2.0*pi*k/nk
-#        ocp.guess('delta',val,timestep=k,quiet=True)
-#
-#    ocp.guess('aileron',0)
-#    ocp.guess('elevator',0)
-#    ocp.guess('tc',0)
+
+    # guesses
     ocp.guess('endTime',5.4)
-#
-#    ocp.guess('ddr',0)
     ocp.guess('w0',10)
 
     # objective function
