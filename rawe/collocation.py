@@ -7,16 +7,12 @@ from collutils import mkCollocationPoints
 
 from models import Dae
 
-
 def setupCoeffs(deg=None,collPoly=None,nk=None,h=None):
     assert deg is not None
     assert collPoly is not None
     assert nk is not None
     assert h is not None
     
-    collocation_points = mkCollocationPoints()
-    assert collPoly in collocation_points
-  
     # Coefficients of the collocation equation
     C = np.zeros((deg+1,deg+1))
     # Coefficients of the continuity equation
@@ -26,7 +22,7 @@ def setupCoeffs(deg=None,collPoly=None,nk=None,h=None):
     tau = CS.ssym("__collocation_tau__")
       
     # All collocation time points
-    tau_root = collocation_points[collPoly][deg]
+    tau_root = mkCollocationPoints(collPoly,deg)
 #    T = np.zeros((nk,deg+1))
 #    for i in range(nk):
 #      for j in range(deg+1):

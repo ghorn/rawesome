@@ -13,8 +13,8 @@ import kite_pb2
 import kiteproto
 import models
 
-def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
-    ocp = Coll(dae, nk=nk,nicp=nicp,deg=deg)
+def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4,collPoly='RADAU'):
+    ocp = Coll(dae, nk=nk,nicp=nicp,deg=deg,collPoly=collPoly)
     
     # constrain invariants
     def invariantErrs():
