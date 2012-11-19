@@ -13,6 +13,7 @@ import kiteutils
 import kite_pb2
 import kiteproto
 import models
+from trajectory import Trajectory
 
 def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
     ocp = Coll(dae, nk=nk,nicp=nicp,deg=deg)
@@ -138,7 +139,7 @@ if __name__=='__main__':
     dae = models.crosswind(conf,extraParams=['endTime'])
 
     print "setting up ocp..."
-    ocp = setupOcp(dae,conf,publisher,nk=80)
+    ocp = setupOcp(dae,conf,publisher,nk=40)
 
     lineRadiusGuess = 40.0
     circleRadiusGuess = 10.0
@@ -152,7 +153,7 @@ if __name__=='__main__':
         
         # path following
         theta = nTurns*2*pi*k/float(ocp.nk)
-        thetaDot = nTurns*2*pi/(float(ocp.nk)*ocp._pGuess['endTime'])
+        thetaDot = nTurns*2*pi/(float(ocp.nk)*ocp._guess.lookup('endTime'))
         xyzCircleFrame    = numpy.array([h, r*numpy.sin(theta),          -r*numpy.cos(theta)])
         xyzDotCircleFrame = numpy.array([0, r*numpy.cos(theta)*thetaDot,  r*numpy.sin(theta)*thetaDot])
 
@@ -203,7 +204,7 @@ if __name__=='__main__':
         
     
     # objective function
-    obj = 1e6*(ocp.lookup('gamma_homotopy')-1)**2
+    obj = -1e6*ocp.lookup('gamma_homotopy')
     for k in range(ocp.nk+1):
         obj += (homotopyTraj['x'][k] - ocp.lookup('x',timestep=k))**2
         obj += (homotopyTraj['y'][k] - ocp.lookup('y',timestep=k))**2
@@ -266,28 +267,27 @@ if __name__=='__main__':
             xOpt = numpy.array(f.input(C.NLP_X_OPT))
 
             opt = ocp.devectorize(xOpt)
-            xup = opt['vardict']
             
             kiteProtos = []
             for k in range(0,ocp.nk):
-                j = ocp.nicp*(ocp.deg+1)*k
-                kiteProtos.append( kiteproto.toKiteProto(C.DMatrix(opt['x'][:,j]),
-                                                         C.DMatrix(opt['u'][:,j]),
-                                                         C.DMatrix(opt['p']),
-                                                         conf['kite']['zt'],
-                                                         conf['carousel']['rArm'],
-                                                         lineAlpha=0.2,
-                                                         zeroDelta=True) )
-#            kiteProtos = [kiteproto.toKiteProto(C.DMatrix(opt['x'][:,k]),C.DMatrix(opt['u'][:,k]),C.DMatrix(opt['p']), conf['kite']['zt'], conf['carousel']['rArm'], zeroDelta=True) for k in range(opt['x'].shape[1])]
-            
+                for nicpIdx in range(0,ocp.nicp):
+                    for j in [0]:
+#                    for j in range(ocp.deg+1):
+                        kiteProtos.append( kiteproto.toKiteProto(C.DMatrix(opt.xVec(k,nicpIdx=nicpIdx,degIdx=j)),
+                                                                 C.DMatrix(opt.uVec(k)),
+                                                                 C.DMatrix(opt.pVec()),
+                                                                 conf['kite']['zt'],
+                                                                 conf['carousel']['rArm'],
+                                                                 lineAlpha=0.2,
+                                                                 zeroDelta=True) )
             mc = kite_pb2.MultiCarousel()
             mc.css.extend(list(kiteProtos))
             
-            mc.messages.append("w0: "+str(xup['w0']))
+            mc.messages.append("w0: "+str(opt.lookup('w0')))
             mc.messages.append("iter: "+str(self.iter))
-            mc.messages.append("endTime: "+str(xup['endTime']))
-            mc.messages.append("average power: "+str(xup['energy'][-1]/xup['endTime'])+" W")
-            mc.messages.append("homotopy gamma: "+str(xup['gamma_homotopy']))
+            mc.messages.append("endTime: "+str(opt.lookup('endTime')))
+            mc.messages.append("average power: "+str(opt.lookup('energy',timestep=-1)/opt.lookup('endTime'))+" W")
+            mc.messages.append("homotopy gamma: "+str(opt.lookup('gamma_homotopy')))
 
             # bounds feedback
 #            lbx = ocp.solver.input(C.NLP_LBX)
@@ -328,18 +328,15 @@ if __name__=='__main__':
     xInit = None
     ocp.bound('gamma_homotopy',(1e-4,1e-4),force=True)
     opt = ocp.solve(xInit=xInit)
-    xInit = opt['X_OPT']
 
     ocp.bound('gamma_homotopy',(0,1),force=True)
-    opt = ocp.solve(xInit=xInit)
-    xInit = opt['X_OPT']
+    opt = ocp.solve(xInit=opt.vec)
     
     ocp.bound('gamma_homotopy',(1,1),force=True)
     ocp.bound('endTime',(0.5,3.0),force=True)
-    opt = ocp.solve(xInit=xInit)
+    opt = ocp.solve(xInit=opt.vec)
 
-    traj = Trajectory(opt)
-    traj.setDvs(opt['X_OPT'])
+    traj = Trajectory(ocp,dvs=opt.vec)
     print "saving optimal trajectory"
     traj.save("data/crosswind_homotopy.dat")
 

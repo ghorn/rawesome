@@ -2,25 +2,21 @@ import matplotlib.pyplot as plt
 
 # pickleable thing which stores x/z/u/p/outputs and can plot them
 class TrajectoryData(object):
-    dvs = None
-    xNames = None
-    zNames = None
-    uNames = None
-    pNames = None
-    outputNames = None
-    nv = None
-    
-    tgrid = None
-    tgridZOutput = None
-    xzu = None
-    parameters = None
-    outputs = None
-    outputsZ = None
-
     def subplot(self,names,title=None):
         assert isinstance(names,list)
         
-        plt.figure()
+        fig = plt.figure()
+        if title is None:
+            if isinstance(names,str):
+                title = names
+            else:
+                assert isinstance(names,list)
+                if len(names) == 1:
+                    title = names[0]
+                else:
+                    title = str(names)
+        fig.canvas.set_window_title(str(title))
+                    
         plt.clf()
         n = len(names)
         for k,name in enumerate(names):
@@ -31,7 +27,18 @@ class TrajectoryData(object):
                 self._plot(name,None)
 
     def plot(self,names,title=None):
-        plt.figure()
+        fig = plt.figure()
+        if title is None:
+            if isinstance(names,str):
+                title = names
+            else:
+                assert isinstance(names,list)
+                if len(names) == 1:
+                    title = names[0]
+                else:
+                    title = str(names)
+        
+        fig.canvas.set_window_title(str(title))
         plt.clf()
         self._plot(names,title)
 
@@ -39,22 +46,27 @@ class TrajectoryData(object):
         if isinstance(names,str):
             names = [names]
         assert isinstance(names,list)
+        
         legend = []
         for name in names:
             assert isinstance(name,str)
             legend.append(name)
 
             # if it's a simple state or action
-            if name in self.xzu:
-                plt.plot(self.tgrid,self.xzu[name])
+            if name in self.x:
+                plt.plot(self.tgridX,self.x[name])
+            elif name in self.z:
+                plt.plot(self.tgridZ,self.z[name])
+            elif name in self.u:
+                plt.plot(self.tgridU,self.u[name],drawstyle='steps-pre')
 
             # if it's a dae output with NO algebraic states
             elif name in self.outputs:
-                plt.plot(self.tgrid,self.outputs[name])
+                plt.plot(self.tgridX[:-1],self.outputs[name])
 
             # if it's a dae output WITH algebraic states
             elif name in self.outputsZ:
-                plt.plot(self.tgridZOutput,self.outputsZ[name])
+                plt.plot(self.tgridZ,self.outputsZ[name])
 
             # throw error on parameter
             elif name in self.parameters:

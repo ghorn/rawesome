@@ -1,56 +1,68 @@
 import casadi as CS
 import numpy as np
 import numbers
+import pickle
+from scipy.interpolate import PiecewisePolynomial
+
 from ocputils import Constraints,setFXOptions
 from collmap import CollMap
 from collutils import mkCollocationPoints
-
 from models import Dae
+from trajectoryData import TrajectoryData
 
-def setupCoeffs(deg=None,collPoly=None,nk=None,h=None):
-    assert deg is not None
-    assert collPoly is not None
-    assert nk is not None
-    assert h is not None
-    
-    # Coefficients of the collocation equation
-    C = np.zeros((deg+1,deg+1))
-    # Coefficients of the continuity equation
-    D = np.zeros(deg+1)
-    
-    # Collocation point
-    tau = CS.ssym("__collocation_tau__")
-      
-    # All collocation time points
-    tau_root = mkCollocationPoints(collPoly,deg)
-#    T = np.zeros((nk,deg+1))
-#    for i in range(nk):
-#      for j in range(deg+1):
-#    	T[i][j] = h*(i + tau_root[j])
-    
-    # For all collocation points: eq 10.4 or 10.17 in Biegler's book
-    # Construct Lagrange polynomials to get the polynomial basis at the collocation point
-    for j in range(deg+1):
-        L = 1
-        for k in range(deg+1):
-            if k != j:
-                L *= (tau-tau_root[k])/(tau_root[j]-tau_root[k])
-        lfcn = CS.SXFunction([tau],[L])
-        lfcn.init()
-        # Evaluate the polynomial at the final time to get the coefficients of the continuity equation
-        lfcn.setInput(1.0)
-        lfcn.evaluate()
-        D[j] = lfcn.output()
-        # Evaluate the time derivative of the polynomial at all collocation points to get the coefficients of the collocation equation
-        for k in range(deg+1):
-            lfcn.setInput(tau_root[k])
-            lfcn.setFwdSeed(1.0)
-            lfcn.evaluate(1,0)
-            C[j][k] = lfcn.fwdSens()
-  
-    return (C,D,tau,tau_root)
+class LagrangePoly(object):
+    def __init__(self,deg=None,collPoly=None):
+        assert deg is not None
+        assert collPoly is not None
 
+        self.deg = deg
+        self.collPoly = collPoly
+        self.tau_root = mkCollocationPoints(self.collPoly,self.deg)
 
+        self._mkLagrangePolynomials()
+
+    def _mkLagrangePolynomials(self):
+        # Collocation point
+        tau = CS.ssym("tau")
+          
+        # lagrange polynomials
+        self.lfcns = []
+
+        # lagrange polynomials evaluated at collocation points
+        self.lAtOne = np.zeros(self.deg+1)
+        
+        # derivative of lagrange polynomials evaluated at collocation points
+        self.lDotAtTauRoot = np.zeros((self.deg+1,self.deg+1))
+        
+        # For all collocation points: eq 10.4 or 10.17 in Biegler's book
+        # Construct Lagrange polynomials to get the polynomial basis at the collocation point
+        for j in range(self.deg+1):
+            L = 1
+            for k in range(self.deg+1):
+                if k != j:
+                    L *= (tau-self.tau_root[k])/(self.tau_root[j]-self.tau_root[k])
+            lfcn = CS.SXFunction([tau],[L])
+            lfcn.init()
+            self.lfcns.append(lfcn)
+            # Evaluate the polynomial at the final time to get the coefficients of the continuity equation
+            lfcn.setInput(1.0)
+            lfcn.evaluate()
+            self.lAtOne[j] = lfcn.output()
+            # Evaluate the time derivative of the polynomial at all collocation points to get the coefficients of the collocation equation
+            for k in range(self.deg+1):
+                lfcn.setInput(self.tau_root[k])
+                lfcn.setFwdSeed(1.0)
+                lfcn.evaluate(1,0)
+                self.lDotAtTauRoot[j,k] = lfcn.fwdSens()
+
+    def interp(self,tau,zs):
+        ret = 0.0
+        for j in range(deg+1):
+            self.lfcns[j].setInput(tau)
+            self.lfcns[j].evaluate()
+            ret += self.lfcn.output()*zs[j]
+            
+        return ret
 
 def boundsFeedback(x,lbx,ubx,bndtags,tolerance=0):
     violations = {}
@@ -121,43 +133,42 @@ class Coll():
         self.h = tf/self.nk/self.nicp
 
         # make coefficients for collocation/continuity equations
-        C,D,tau,tau_root = setupCoeffs(deg=self.deg,collPoly=self.collPoly,nk=self.nk,h=self.h)
-        self.tau_root = tau_root
-        self.tau = tau
+        self.lagrangePoly = LagrangePoly(deg=self.deg,collPoly=self.collPoly)
         
-        ffcn = self._makeResidualFun()
-
         # function to get h out
         self.hfun = CS.MXFunction([self._V],[self.h])
         self.hfun.init()
         
         # add collocation constraints
-        self._addCollocationConstraints(C,ffcn,self.h,D)
+        self._addCollocationConstraints()
         
-    def _addCollocationConstraints(self,C,ffcn,h,D):
-        nicp = self.nicp
-        nk = self.nk
-        deg = self.deg
+    def _addCollocationConstraints(self):
+        assert hasattr(self,'h')
+        assert hasattr(self,'nicp')
+        assert hasattr(self,'nk')
+        assert hasattr(self,'deg')
         
-        XD = self._XD
-        XA = self._XA
-        U = self._U
-        P = self._P
-    
+        assert hasattr(self,'_XD')
+        assert hasattr(self,'_XA')
+        assert hasattr(self,'_U')
+        assert hasattr(self,'_P')
+
+        ffcn = self._makeResidualFun()
+ 
         ndiff = self.xSize()
         nalg = self.zSize()
         
         # For all finite elements
-        for k in range(nk):
-            for i in range(nicp):
+        for k in range(self.nk):
+            for i in range(self.nicp):
                 # For all collocation points
-                for j in range(1,deg+1):   		
+                for j in range(1,self.deg+1):
                     # Get an expression for the state derivative at the collocation point
                     xp_jk = 0
-                    for j2 in range (deg+1):
-                        xp_jk += C[j2][j]*XD[k][i][j2] # get the time derivative of the differential states (eq 10.19b)
+                    for j2 in range (self.deg+1):
+                        xp_jk += self.lagrangePoly.lDotAtTauRoot[j2][j]*self._XD[k][i][j2] # get the time derivative of the differential states (eq 10.19b)
                     # Add collocation equations to the NLP
-                    [fk] = ffcn.call([xp_jk/h, XD[k][i][j], XA[k][i][j-1], U[k], P])
+                    [fk] = ffcn.call([xp_jk/self.h, self._XD[k][i][j], self._XA[k][i][j-1], self._U[k], self._P])
                     
                     # impose system dynamics (for the differential states (eq 10.19b))
                     self.constrain(fk[:ndiff],'==',0,tag=
@@ -169,14 +180,14 @@ class Coll():
                     
                 # Get an expression for the state at the end of the finite element
                 xf_k = 0
-                for j in range(deg+1):
-                    xf_k += D[j]*XD[k][i][j]
-                    
+                for j in range(self.deg+1):
+                    xf_k += self.lagrangePoly.lAtOne[j]*self._XD[k][i][j]
+
                 # Add continuity equation to NLP
-                if i==nicp-1:
-                    self.constrain(XD[k+1][0][0], '==', xf_k, tag="continuity, kIdx: %d,nicpIdx: %d" % (k,i))
+                if i==self.nicp-1:
+                    self.constrain(self._XD[k+1][0][0], '==', xf_k, tag="continuity, kIdx: %d,nicpIdx: %d" % (k,i))
                 else:
-                    self.constrain(XD[k][i+1][0], '==', xf_k, tag="continuity, kIdx: %d,nicpIdx: %d" % (k,i))
+                    self.constrain(self._XD[k][i+1][0], '==', xf_k, tag="continuity, kIdx: %d,nicpIdx: %d" % (k,i))
                     
 
     def xVec(self,timestep=None,nicpIdx=0,degIdx=0):
@@ -579,6 +590,116 @@ class Coll():
         self.bndtags = np.array(bndtags)
         return (vars_init,vars_lb,vars_ub)
 
+    def interpolateInitialGuess(self,filename,force=False,quiet=False):
+        print "interpolating initial guess..."
+        f=open(filename,'r')
+        traj = pickle.load(f)
+        f.close()
+
+        assert isinstance(traj,TrajectoryData), "the file \""+filename+"\" doean't have a pickled TrajectoryData"
+
+        if traj.collMap._nicp == 1:
+            h = traj.tgrid[1][0][0] - traj.tgrid[0][0][0]
+        else:
+            h = traj.tgrid[0][1][0] - traj.tgrid[0][0][0]
+        h *= (traj.collMap._nk-1)*traj.collMap._nicp/float((self.nk-1)*self.nicp)
+            
+        missing = set(self.dae.xNames()+self.dae.zNames()+self.dae.uNames()+self.dae.pNames())
+
+        # interpolate differential states
+        for name in traj.collMap._xNames:
+            if name not in missing:
+                continue
+            missing.remove(name)
+
+            # make piecewise poly
+            pp = None
+            for timestepIdx in range(traj.collMap._nk):
+                for nicpIdx in range(traj.collMap._nicp):
+                    ts = []
+                    ys = []
+                    for degIdx in range(traj.collMap._deg+1):
+                        ts.append(traj.tgrid[timestepIdx,nicpIdx,degIdx])
+                        ys.append([traj.collMap.lookup(name,timestep=timestepIdx,nicpIdx=nicpIdx,degIdx=degIdx)])
+                    if pp is None:
+                        pp = PiecewisePolynomial(ts,ys)
+                    else:
+                        pp.extend(ts,ys)
+            pp.extend([traj.tgrid[-1,0,0]],[[traj.collMap.lookup(name,timestep=-1,nicpIdx=0,degIdx=0)]])
+
+            # evaluate piecewise poly to set initial guess
+            t0 = 0.0
+            for timestepIdx in range(self.nk):
+                for nicpIdx in range(self.nicp):
+                    for degIdx in range(self.deg+1):
+                        time = t0 + h*self.lagrangePoly.tau_root[degIdx]
+                        self.guess(name,pp(time),timestep=timestepIdx,nicpIdx=nicpIdx,degIdx=degIdx,force=force,quiet=quiet)
+                    t0 += h
+            self.guess(name,pp(t0),timestep=-1,nicpIdx=0,degIdx=0,force=force,quiet=quiet)
+
+        # interpolate algebraic variables
+        for name in traj.collMap._zNames:
+            if name not in missing:
+                continue
+            missing.remove(name)
+
+            # make piecewise poly
+            pp = None
+            for timestepIdx in range(traj.collMap._nk):
+                for nicpIdx in range(traj.collMap._nicp):
+                    ts = []
+                    ys = []
+                    for degIdx in range(1,traj.collMap._deg+1):
+                        ts.append(traj.tgrid[timestepIdx,nicpIdx,degIdx])
+                        ys.append([traj.collMap.lookup(name,timestep=timestepIdx,nicpIdx=nicpIdx,degIdx=degIdx)])
+                    if pp is None:
+                        pp = PiecewisePolynomial(ts,ys)
+                    else:
+                        pp.extend(ts,ys)
+
+            # evaluate piecewise poly to set initial guess
+            t0 = 0.0
+            for timestepIdx in range(self.nk):
+                for nicpIdx in range(self.nicp):
+                    for degIdx in range(1,self.deg+1):
+                        time = t0 + h*self.lagrangePoly.tau_root[degIdx]
+                        self.guess(name,pp(time),timestep=timestepIdx,nicpIdx=nicpIdx,degIdx=degIdx,force=force,quiet=quiet)
+                    t0 += h
+                
+        # interpolate controls
+        for name in traj.collMap._uNames:
+            if name not in missing:
+                continue
+            missing.remove(name)
+
+            # make piecewise poly
+            ts = []
+            ys = []
+            for timestepIdx in range(traj.collMap._nk):
+                ts.append(traj.tgrid[timestepIdx,0,0])
+                ys.append([traj.collMap.lookup(name,timestep=timestepIdx)])
+            pp = PiecewisePolynomial(ts,ys)
+
+            # evaluate piecewise poly to set initial guess
+            t0 = 0.0
+            for timestepIdx in range(self.nk):
+                self.guess(name,pp(t0),timestep=timestepIdx,force=force,quiet=quiet)
+                t0 += h
+        
+        # set parameters
+        for name in traj.collMap._pNames:
+            if name not in missing:
+                continue
+            missing.remove(name)
+            self.guess(name,traj.collMap.lookup(name),force=force,quiet=quiet)
+
+        msg = "finished interpolating initial guess"
+        if len(missing) > 0:
+            msg += ", couldn't find fields: "+str(list(missing))
+        else:
+            msg += ", all fields found"
+        print msg
+
     def setupSolver(self,solverOpts=[],constraintFunOpts=[],callback=None):
         if not self.collocationIsSetup:
             raise ValueError("you forgot to call setupCollocation")
@@ -638,113 +759,39 @@ class Coll():
         
         # Retrieve the solution
         v_opt = np.array(self.solver.output(CS.NLP_X_OPT))
-
+        
         return self.devectorize(v_opt)
     
 
     def devectorize(self,v_opt):
-        deg = self.deg
-        nicp = self.nicp
-        nk = self.nk
+        return CollMap(self,'devectorized design vars',devectorize=v_opt)
 
-        ndiff = self.xSize()
-        nalg = self.zSize()
-        nu = self.uSize()
-        NP = self.pSize()
-        
-        ## ----
-        ## RETRIEVE THE SOLUTION
-        ## ----
-        xD_opt = np.resize(np.array([]),(ndiff,(deg+1)*nicp*(nk)+1))
-        xA_opt = np.resize(np.array([]),(nalg,(deg)*nicp*(nk)))
-        u_opt = np.resize(np.array([]),(nu,(deg+1)*nicp*(nk)+1))
-        offset = 0
-        offset2 = 0
-        offset3 = 0
-        offset4 = 0
-    
-        p_opt = v_opt[offset:offset+NP]
-        offset += NP
-        
-        for k in range(nk):  
-            for i in range(nicp):
-                for j in range(deg+1):
-                    xD_opt[:,offset2] = v_opt[offset:offset+ndiff][:,0]
-                    offset2 += 1
-                    offset += ndiff
-                    if j!=0:
-                        xA_opt[:,offset4] = v_opt[offset:offset+nalg][:,0]
-                        offset4 += 1
-                        offset += nalg
-            utemp = v_opt[offset:offset+nu][:,0]
-            for i in range(nicp):
-                for j in range(deg+1):
-                    u_opt[:,offset3] = utemp
-                    offset3 += 1
-            #    u_opt += v_opt[offset:offset+nu]
-            offset += nu
-            
-        xD_opt[:,-1] = v_opt[offset:offset+ndiff][:,0]
-    
-    
-        # The algebraic states are not defined at the first collocation point of the finite elements:
-        # with the polynomials we compute them at that point
-        Da = np.zeros(deg)
-        for j in range(1,deg+1):
-            # Lagrange polynomials for the algebraic states: exclude the first point
-            La = 1
-            for j2 in range(1,deg+1):
-                if j2 != j:
-                    La *= (self.tau-self.tau_root[j2])/(self.tau_root[j]-self.tau_root[j2])
-            lafcn = CS.SXFunction([self.tau],[La])
-            lafcn.init()
-            lafcn.setInput(self.tau_root[0])
-            lafcn.evaluate()
-            Da[j-1] = lafcn.output()
-        
-        xA_plt = np.resize(np.array([]),(nalg,(deg+1)*nicp*(nk)+1))
-        offset4=0
-        offset5=0
-        for k in range(nk):
-            for i in range(nicp):
-                for j in range(deg+1):
-                    if j!=0:
-                        xA_plt[:,offset5] = xA_opt[:,offset4]
-                        offset4 += 1
-                        offset5 += 1
-                    else:
-                        xa0 = 0
-                        for j in range(deg):
-                            xa0 += Da[j]*xA_opt[:,offset4+j]
-                        xA_plt[:,offset5] = xa0
-                        #xA_plt[:,offset5] = xA_opt[:,offset4]
-                        offset5 += 1
-        
-        xA_plt[:,-1] = xA_plt[:,-2]
-
+    def mkTimeGrid(self,v_opt):
         self.hfun.setInput(v_opt)
         self.hfun.evaluate()
         h = float(self.hfun.output())
-        tg = np.array(self.tau_root)*h
+
+        tgrid = np.resize([],(self.nk+1,self.nicp,self.deg+1))
+        tf = 0.0
+        for k in range(self.nk):
+            for i in range(self.nicp):
+                tgrid[k,i,:] = tf + h*np.array(self.lagrangePoly.tau_root)
+                tf += h
+        tgrid[self.nk,0,0] = tf
+        return tgrid
+
+    def mkTimeGridVec(self,v_opt):
+        self.hfun.setInput(v_opt)
+        self.hfun.evaluate()
+        h = float(self.hfun.output())
+        tg = np.array(self.lagrangePoly.tau_root)*h
         for k in range(self.nk*self.nicp):
             if k == 0:
                 tgrid = tg
             else:
                 tgrid = np.append(tgrid,tgrid[-1]+tg)
         tgrid = np.append(tgrid,tgrid[-1])
-
-        # make nice dict of outputs
-        vardict = {}
-        for k,name in enumerate(self.dae.pNames()):
-            vardict[name] = float(v_opt[k])
-        for k,name in enumerate(self.dae.xNames()):
-            vardict[name] = xD_opt[k,:]
-        for k,name in enumerate(self.dae.zNames()):
-            vardict[name] = xA_plt[k,:]
-        for k,name in enumerate(self.dae.uNames()):
-            vardict[name] = u_opt[k,:]
-            
-        return {'vardict':vardict, 'tgrid':tgrid, 'x':xD_opt, 'u':u_opt, 'z':xA_opt, 'zPlt':xA_plt, 'p':v_opt[:NP], 'X_OPT':v_opt}
+        return tgrid
 
     def bound(self,name,val,timestep=None,quiet=False,force=False):
         assert isinstance(name,str)
@@ -774,12 +821,14 @@ class Coll():
         assert isinstance(timestep,int)
         self._bounds.setVal(name,val,timestep=timestep,quiet=quiet)
 
-    def guess(self,name,val,timestep=None,quiet=False,force=False):
+    def guess(self,name,val,timestep=None,nicpIdx=None,degIdx=None,quiet=False,force=False):
         assert isinstance(name,str)
         assert isinstance(val,numbers.Real)
 
         # handle timestep == None
         if timestep is None:
+            assert (nicpIdx is None)
+            assert (degIdx is None)
             if name in self._guess._xMap:
                 for k in range(self.nk+1):
                     self.guess(name,val,timestep=k,quiet=quiet)
@@ -797,7 +846,11 @@ class Coll():
                 return
         
         assert isinstance(timestep,int)
-        self._guess.setVal(name,val,timestep=timestep,quiet=quiet)
+        if nicpIdx is not None:
+            assert isinstance(nicpIdx,int)
+        if degIdx is not None:
+            assert isinstance(degIdx,int)
+        self._guess.setVal(name,val,timestep=timestep,nicpIdx=nicpIdx,degIdx=degIdx,quiet=quiet)
 
     def _guessVec(self,val,names,**kwargs):
         if isinstance(val,list):

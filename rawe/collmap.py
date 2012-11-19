@@ -1,7 +1,8 @@
 import numpy as np
+from collutils import mkCollocationPoints
 
 class CollMap(object):
-    def __init__(self,ocp,name):
+    def __init__(self,ocp,name,devectorize=None):
         # grab everything needed from the ocp
         self._xNames = ocp.dae.xNames()
         self._zNames = ocp.dae.zNames()
@@ -15,6 +16,89 @@ class CollMap(object):
         assert isinstance(name,str)
         self._name = name
         self._initMap()
+
+        if devectorize is not None:
+            self._devectorize(devectorize)
+
+    def _devectorize(self,V):
+        self.vec = V
+        ndiff = len(self._xNames)
+        nalg = len(self._zNames)
+        nu = len(self._uNames)
+        NP = len(self._pNames)
+        nx = ndiff + nalg
+        
+        # Total number of variables
+        NXD = self._nicp*self._nk*(self._deg+1)*ndiff # Collocated differential states
+        NXA = self._nicp*self._nk*self._deg*nalg      # Collocated algebraic states
+        NU = self._nk*nu                  # Parametrized controls
+        NXF = ndiff                 # Final state (only the differential states)
+        NV = NXD+NXA+NU+NXF+NP
+        
+        offset = 0
+        
+        # Get the parameters
+        P = V[offset:offset+NP]
+        for k,name in enumerate(self._pNames):
+#            self._indexMap.setVal(name,k)
+#            self._dvMap.setVal(name,V[offset+k])
+            self.setVal(name,V[offset+k])
+        offset += NP
+        
+        # Get collocated states and parametrized control
+        XD = np.resize(np.array([],dtype=type(V)),(self._nk+1,self._nicp,self._deg+1)) # NB: same name as above
+        XA = np.resize(np.array([],dtype=type(V)),(self._nk,self._nicp,self._deg+1)) # NB: same name as above
+        U = np.resize(np.array([],dtype=type(V)),self._nk)
+        
+        for k in range(self._nk):
+            # Collocated states
+            for i in range(self._nicp):
+                for j in range(self._deg+1):
+                    # Get the expression for the state vector
+                    XD[k][i][j] = V[offset:offset+ndiff]
+                    for m,name in enumerate(self._xNames):
+#                        self._indexMap.setVal(name,offset+m,timestep=k,nicpIdx=i,degIdx=j)
+#                        self._dvMap.setVal(name,V[offset+m],timestep=k,nicpIdx=i,degIdx=j)
+                        self.setVal(name,V[offset+m],timestep=k,nicpIdx=i,degIdx=j)
+                        
+                    if j !=0:
+                        XA[k][i][j] = V[offset+ndiff:offset+ndiff+nalg]
+                        for m,name in enumerate(self._zNames):
+#                            self._indexMap.setVal(name,offset+ndiff+m,timestep=k,nicpIdx=i,degIdx=j)
+#                            self._dvMap.setVal(name,V[offset+ndiff+m],timestep=k,nicpIdx=i,degIdx=j)
+                            self.setVal(name,V[offset+ndiff+m],timestep=k,nicpIdx=i,degIdx=j)
+
+                    index = (self._deg+1)*(self._nicp*k+i) + j
+                    if k==0 and j==0 and i==0:
+                        offset += ndiff
+                    else:
+                        if j!=0:
+                            offset += nx
+                        else:
+                            offset += ndiff
+            
+            # Parametrized controls
+            U[k] = V[offset:offset+nu]
+            for m,name in enumerate(self._uNames):
+#                self._indexMap.setVal(name,offset+m,timestep=k)
+#                self._dvMap.setVal(name,V[offset+m],timestep=k)
+                self.setVal(name,V[offset+m],timestep=k)
+            offset += nu
+        
+        # State at end time
+        XD[self._nk][0][0] = V[offset:offset+ndiff]
+        for m,name in enumerate(self._xNames):
+#            self._indexMap.setVal(name,offset+m,timestep=self.nk,degIdx=0,nicpIdx=0)
+#            self._dvMap.setVal(name,V[offset+m],timestep=self.nk,degIdx=0,nicpIdx=0)
+            self.setVal(name,V[offset+m],timestep=self._nk,degIdx=0,nicpIdx=0)
+        
+        offset += ndiff
+        assert offset==NV
+
+        self._xVec = XD
+        self._zVec = XA
+        self._uVec = U
+        self._pVec = P
 
     def _initMap(self):
         self._xMap = {}
@@ -30,8 +114,33 @@ class CollMap(object):
         for name in self._pNames:
             self._pMap[name] = None
 
+    def xVec(self,timestep,nicpIdx=None,degIdx=None):
+        assert hasattr(self,'_xVec')
+        if nicpIdx is None:
+            nicpIdx = 0
+        if degIdx is None:
+            degIdx = 0
+        return self._xVec[timestep][nicpIdx][degIdx]
+    def zVec(self,timestep,nicpIdx=None,degIdx=None):
+        assert hasattr(self,'_zVec')
+        if nicpIdx is None:
+            nicpIdx = 0
+        assert (degIdx is not None), "must set degIdx in zVec"
+        assert (degIdx != 0), "algebraic variables not defined at tau=0"
+        return self._zVec[timestep][nicpIdx][degIdx]
+    def uVec(self,timestep):
+        assert hasattr(self,'_uVec')
+        return self._uVec[timestep]
+    def pVec(self):
+        assert hasattr(self,'_pVec')
+        return self._pVec
+
     def lookup(self,name,timestep=None,nicpIdx=None,degIdx=None):
-        return self._lookupOrSet(name,timestep,nicpIdx,degIdx)
+        ret = self._lookupOrSet(name,timestep,nicpIdx,degIdx)
+        if type(ret) is np.ndarray:
+            return float(ret)
+        else:
+            return ret
         
     def setVal(self,name,val,timestep=None,nicpIdx=None,degIdx=None,quiet=False,force=False):
         self._lookupOrSet(name,timestep,nicpIdx,degIdx,setVal=val,quiet=quiet,force=force)

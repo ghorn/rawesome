@@ -10,6 +10,7 @@ import casadi as C
 
 import models
 from collocation import Coll
+from trajectory import Trajectory
 
 def main():
     nk = 15
@@ -24,7 +25,7 @@ def main():
     # constrain invariants
     def invariantErrs():
         f = C.SXFunction( [dae.xVec(),dae.uVec(),dae.pVec()]
-                        , [dae.output('invariants')]
+                        , [C.veccat([dae.output('c'),dae.output('cdot')])]
                         )
         f.setOption('name','invariant errors')
         f.init()
@@ -68,12 +69,12 @@ def main():
           xOpt = numpy.array(f.input(C.NLP_X_OPT))
 
           self.iter = self.iter + 1
-          xup = ocp.devectorize(xOpt)['vardict']
+          opt = ocp.devectorize(xOpt)
           
           po = kite_pb2.PendulumOpt()
-          po.x.extend(list(xup['x']))
-          po.z.extend(list(xup['z']))
-          po.endTime = xup['endTime']
+          po.x.extend(list([opt.lookup('x',timestep=k) for k in range(ocp.nk+1)]))
+          po.z.extend(list([opt.lookup('z',timestep=k) for k in range(ocp.nk+1)]))
+          po.endTime = opt.lookup('endTime')
           po.iters = self.iter
           publisher.send_multipart(["pendulum-opt", po.SerializeToString()])
         
@@ -101,21 +102,13 @@ def main():
                      callback=MyCallback() )
     
     opt = ocp.solve()
+    traj = Trajectory(ocp,dvs=opt.vec)
 
     # Plot the results
-    plt.figure(1)
-    plt.clf()
-    legend = []
     for name in ocp.dae.xNames():
-        legend.append(name)
-        plt.plot(opt['tgrid'],opt['vardict'][name])#,'--')
+        traj.plot(name)
     for name in ocp.dae.uNames():
-        legend.append(name)
-        plt.plot(opt['tgrid'],opt['vardict'][name]/20)#,'--')
-    plt.title("pendulum swingup optimization")
-    plt.xlabel('time')
-    plt.legend(legend)
-    plt.grid()
+        traj.plot(name)
     plt.show()
 
 if __name__=='__main__':

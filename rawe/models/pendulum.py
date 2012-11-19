@@ -47,7 +47,8 @@ def pendulumModel(nSteps=None):
     c = [ dae.x('x')*dae.x('x') + dae.x('z')*dae.x('z') - r*r
         , dae.x('dx')*dae.x('x')* + dae.x('dz')*dae.x('z')
         ]
-    dae.addOutput('invariants',C.veccat(c))
+    dae.addOutput('c',c[0])
+    dae.addOutput('cdot',c[1])
 
     dae.setAlgRes( alg )
     dae.setOdeRes( ode )

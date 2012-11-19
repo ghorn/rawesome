@@ -156,27 +156,8 @@ if __name__=='__main__':
     print "creating model..."
     dae = models.crosswind(conf,extraParams=['endTime'])
 
-    # load initial guess
-    print "loading initial guess data..."
-    f = open('data/crosswind_guess.txt','r')
-    xutraj = []
-    for line in f:
-        xutraj.append([float(x) for x in line.strip('[]\n').split(',')])
-    f.close()
-    xutraj = numpy.array(xutraj)
-    # remove delta/ddelta/tc
-    xutraj = numpy.hstack((xutraj[:,:23], xutraj[:,24:]))
-    xutraj = numpy.hstack((xutraj[:,:18], xutraj[:,20:]))
-
-    # add daileron/delevator
-    xutraj = numpy.hstack((xutraj, 0*xutraj[:,:2]))
-
-    # make it go around n times
-    nTurns = 1
-    xutraj = numpy.vstack(tuple([xutraj]*nTurns))
-    
     print "setting up ocp..."
-    ocp = setupOcp(dae,conf,publisher,nk=100)
+    ocp = setupOcp(dae,conf,publisher,nk=50)
 
     # callback function
     class MyCallback:
@@ -187,27 +168,26 @@ if __name__=='__main__':
             xOpt = numpy.array(f.input(C.NLP_X_OPT))
 
             opt = ocp.devectorize(xOpt)
-            xup = opt['vardict']
             
             kiteProtos = []
             for k in range(0,ocp.nk):
-                j = ocp.nicp*(ocp.deg+1)*k
-                kiteProtos.append( kiteproto.toKiteProto(C.DMatrix(opt['x'][:,j]),
-                                                         C.DMatrix(opt['u'][:,j]),
-                                                         C.DMatrix(opt['p']),
-                                                         conf['kite']['zt'],
-                                                         conf['carousel']['rArm'],
-                                                         lineAlpha=0.2,
-                                                         zeroDelta=True) )
-#            kiteProtos = [kiteproto.toKiteProto(C.DMatrix(opt['x'][:,k]),C.DMatrix(opt['u'][:,k]),C.DMatrix(opt['p']), conf['kite']['zt'], conf['carousel']['rArm'], zeroDelta=True) for k in range(opt['x'].shape[1])]
-            
+                for nicpIdx in range(0,ocp.nicp):
+                    for j in [0]:
+#                    for j in range(ocp.deg+1):
+                        kiteProtos.append( kiteproto.toKiteProto(C.DMatrix(opt.xVec(k,nicpIdx=nicpIdx,degIdx=j)),
+                                                                 C.DMatrix(opt.uVec(k)),
+                                                                 C.DMatrix(opt.pVec()),
+                                                                 conf['kite']['zt'],
+                                                                 conf['carousel']['rArm'],
+                                                                 lineAlpha=0.2,
+                                                                 zeroDelta=True) )
             mc = kite_pb2.MultiCarousel()
             mc.css.extend(list(kiteProtos))
-            
-            mc.messages.append("w0: "+str(xup['w0']))
+
+            mc.messages.append("w0: "+str(opt.lookup('w0')))
             mc.messages.append("iter: "+str(self.iter))
-            mc.messages.append("endTime: "+str(xup['endTime']))
-            mc.messages.append("average power: "+str(xup['energy'][-1]/xup['endTime'])+" W")
+            mc.messages.append("endTime: "+str(opt.lookup('endTime')))
+            mc.messages.append("average power: "+str(opt.lookup('energy',timestep=-1)/opt.lookup('endTime'))+" W")
 
             # bounds feedback
 #            lbx = ocp.solver.input(C.NLP_LBX)
@@ -244,24 +224,12 @@ if __name__=='__main__':
     ocp.setupSolver( solverOpts=solverOptions,
                      callback=MyCallback() )
 
-    print "interpolating initial guess..."
-    xuguess = numpy.array([numpy.interp(numpy.linspace(0,1,ocp.nk+1), numpy.linspace(0,1,xutraj.shape[0]), xutraj[:,k]) for k in range(xutraj.shape[1])])
-    for k in range(ocp.nk+1):
-        ocp.guessX(xuguess[:len(ocp.dae.xNames()),k],timestep=k,quiet=True)
-        if k < ocp.nk:
-            ocp.guessU(xuguess[len(ocp.dae.xNames()):,k],timestep=k,quiet=True)
-    ocp.guess('energy',0,quiet=True)
-    
-    print "loading optimal trajectory"
-    f=open("data/crosswind_opt.dat",'r')
-    opt = pickle.load(f)
-    f.close()
+    ocp.interpolateInitialGuess("data/crosswind_homotopy.dat",force=True,quiet=True)
 
-#    opt = ocp.solve(xInit=opt['X_OPT'])
     opt = ocp.solve()
-    traj = Trajectory(ocp,dvs=opt['X_OPT'])
+    traj = Trajectory(ocp,dvs=opt.vec)
     
-    print "optimal power: "+str(opt['vardict']['energy'][-1]/opt['vardict']['endTime'])
+    print "optimal power: "+str(opt.lookup('energy',-1)/opt.lookup('endTime'))
     
     print "saving optimal trajectory"
     traj.save("data/crosswind_opt.dat")
@@ -283,12 +251,13 @@ if __name__=='__main__':
         traj.subplot(['r','dr','ddr'])
         traj.subplot(['wind at altitude','dr','dx'])
         traj.subplot(['c','cdot','cddot'],title="invariants")
-        traj.plot('airspeed')
+        traj.plot('airspeed',title='airspeed')
         traj.subplot([['alpha(deg)','alphaTail(deg)'],['beta(deg)','betaTail(deg)']])
         traj.subplot(['cL','cD','L/D'])
         traj.subplot(['winch power', 'tether tension'])
         traj.plot('energy')
         traj.subplot(['w1','w2','w3'])
         traj.subplot(['e11','e12','e13','e21','e22','e23','e31','e32','e33'])
+        
         plt.show()
     plotResults()

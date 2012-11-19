@@ -46,43 +46,88 @@ class Trajectory(object):
         opt = ocp.devectorize(dvs)
 
         self.trajData.dvs = dvs
-        self.trajData.xzu = {}
+        self.trajData.collMap = opt
+        self.trajData.x = {}
+        self.trajData.z = {}
+        self.trajData.u = {}
         self.trajData.parameters = {}
         self.trajData.outputs = {}
         self.trajData.outputsZ = {}
-        
-        self.trajData.tgrid = opt['tgrid']
-        self.trajData.tgridZOutput = opt['tgrid'][:-1]
 
-        # get x/u/z
-        for name in self.trajData.xNames+self.trajData.uNames+self.trajData.zNames:
-            self.trajData.xzu[name] = opt['vardict'][name]
+        # make time grids
+        tgrid = ocp.mkTimeGrid(dvs)
+        self.trajData.tgridX = []
+        self.trajData.tgridZ = []
+        self.trajData.tgridU = []
+        for timestepIdx in range(opt._nk):
+            self.trajData.tgridU.append(tgrid[timestepIdx][0][0])
+            for nicpIdx in range(opt._nicp):
+                for degIdx in range(opt._deg+1):
+                    self.trajData.tgridX.append(tgrid[timestepIdx][nicpIdx][degIdx])
+                    if degIdx > 0:
+                        self.trajData.tgridZ.append(tgrid[timestepIdx][nicpIdx][degIdx])
+                self.trajData.tgridX.append(numpy.nan)
+                self.trajData.tgridZ.append(numpy.nan)
+        self.trajData.tgridX.append(tgrid[opt._nk][0][0])
+        self.trajData.tgrid = tgrid
 
-        # get parameters
+        # get x/z/u/p
+        # x
+        for name in self.trajData.xNames:
+            self.trajData.x[name] = []
+            for timestepIdx in range(opt._nk):
+                for nicpIdx in range(opt._nicp):
+                    for degIdx in range(opt._deg+1):
+                        self.trajData.x[name].append(opt.lookup(name,timestepIdx,nicpIdx=nicpIdx,degIdx=degIdx))
+                    self.trajData.x[name].append(numpy.nan)
+            self.trajData.x[name].append(opt.lookup(name,-1,nicpIdx=0,degIdx=0))
+
+        # z
+        for name in self.trajData.zNames:
+            self.trajData.z[name] = []
+            for timestepIdx in range(opt._nk):
+                for nicpIdx in range(opt._nicp):
+                    for degIdx in range(1,opt._deg+1):
+                        self.trajData.z[name].append(opt.lookup(name,timestepIdx,nicpIdx=nicpIdx,degIdx=degIdx))
+                    self.trajData.z[name].append(numpy.nan)
+
+        # u
+        for name in self.trajData.uNames:
+            self.trajData.u[name] = []
+            for timestepIdx in range(opt._nk):
+                self.trajData.u[name].append(opt.lookup(name,timestepIdx))
+
+        # p
         for name in self.trajData.pNames:
-            self.trajData.parameters[name] = opt['vardict'][name]
+            self.trajData.parameters[name] = opt.lookup(name)
 
         # get outputs with no algebraic states
         for name,f in self._outputFuns.items():
             y = []
-            for k,t in enumerate(self.trajData.tgrid):
-                f.setInput(opt['x'][:,k],0)
-                f.setInput(opt['u'][:,k],1)
-                f.setInput(opt['p'],2)
-                f.evaluate()
-                y.append(float(f.output(0))) # doesn't allow for vector/matrix outputs
+            for timestepIdx in range(opt._nk):
+                for nicpIdx in range(opt._nicp):
+                    for degIdx in range(opt._deg+1):
+                        f.setInput(opt.xVec(timestepIdx,nicpIdx=nicpIdx,degIdx=degIdx),0)
+                        f.setInput(opt.uVec(timestepIdx),1)
+                        f.setInput(opt.pVec(),2)
+                        f.evaluate()
+                        y.append(float(f.output(0))) # doesn't allow for vector/matrix outputs
+                    y.append(numpy.nan)
             self.trajData.outputs[name] = numpy.array(y)
 
         # get outputs with algebraic states
         for name,f in self._outputFunsZ.items():
             y = []
-            for k,t in enumerate(self.trajData.tgridZOutput):
-                f.setInput(opt['x'][:,k],0)
-                f.setInput(opt['zPlt'][:,k],1)
-                f.setInput(opt['u'][:,k],2)
-                f.setInput(opt['p'],3)
-                f.evaluate()
-                y.append(float(f.output(0))) # doesn't allow for vector/matrix outputs
+            for timestepIdx in range(opt._nk):
+                for nicpIdx in range(opt._nicp):
+                    for degIdx in range(1,opt._deg+1):
+                        f.setInput(opt.xVec(timestepIdx,nicpIdx=nicpIdx,degIdx=degIdx),0)
+                        f.setInput(opt.zVec(timestepIdx,nicpIdx=nicpIdx,degIdx=degIdx),1)
+                        f.setInput(opt.uVec(timestepIdx),2)
+                        f.setInput(opt.pVec(),3)
+                        f.evaluate()
+                        y.append(float(f.output(0))) # doesn't allow for vector/matrix outputs
+                    y.append(numpy.nan)
             self.trajData.outputsZ[name] = numpy.array(y)
         return self.trajData
 

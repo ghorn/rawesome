@@ -180,23 +180,23 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
             xOpt = numpy.array(f.input(C.NLP_X_OPT))
 
             opt = ocp.devectorize(xOpt)
-            xup = opt['vardict']
             
             kiteProtos = []
-            for k in range(0,nk):
-                j = nicp*(deg+1)*k
-                kiteProtos.append( kiteproto.toKiteProto(C.DMatrix(opt['x'][:,j]),
-                                                         C.DMatrix(opt['u'][:,j]),
-                                                         C.DMatrix(opt['p']),
-                                                         conf['kite']['zt'],
-                                                         conf['carousel']['rArm']) )
-#            kiteProtos = [kiteproto.toKiteProto(C.DMatrix(opt['x'][:,k]),C.DMatrix(opt['u'][:,k]),C.DMatrix(opt['p']), conf['kite']['zt'], conf['carousel']['rArm']) for k in range(opt['x'].shape[1])]
-            
+            for k in range(0,ocp.nk):
+                for nicpIdx in range(0,ocp.nicp):
+                    for j in [0]:
+#                    for j in range(ocp.deg+1):
+                        kiteProtos.append( kiteproto.toKiteProto(C.DMatrix(opt.xVec(k,nicpIdx=nicpIdx,degIdx=j)),
+                                                                 C.DMatrix(opt.uVec(k)),
+                                                                 C.DMatrix(opt.pVec()),
+                                                                 conf['kite']['zt'],
+                                                                 conf['carousel']['rArm'],
+                                                                 lineAlpha=0.2) )
             mc = kite_pb2.MultiCarousel()
             mc.css.extend(list(kiteProtos+oldKites))
             
-            mc.messages.append("endTime: "+str(xup['endTime']))
-            mc.messages.append("w0: "+str(xup['w0']))
+            mc.messages.append("w0: "+str(opt.lookup('w0')))
+            mc.messages.append("endTime: "+str(opt.lookup('endTime')))
             mc.messages.append("iter: "+str(self.iter))
 
 #            # bounds feedback
@@ -261,7 +261,7 @@ if __name__=='__main__':
     dae = models.carousel(conf,extraParams=['endTime'])
 
     print "setting up ocp..."
-    ocp = setupOcp(dae,conf,publisher,nk=50)
+    ocp = setupOcp(dae,conf,publisher,nk=30)
 
     for w0 in [10]:
         ocp.bound('w0',(w0,w0),force=True)
