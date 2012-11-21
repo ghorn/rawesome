@@ -120,6 +120,36 @@ class Coll():
         # setup NLP variables
         self._dvMap = CollMap(self,"design var map",devectorize=CS.msym("V",self.getNV()))
 
+        # add outputs with no algebraic states
+        self._setupOutputs()
+
+    def _setupOutputs(self):
+        (fAll,(fNoZ,outputNamesNoZ)) = self.dae.outputsFun()
+        
+        self._outputs = {}
+        self._outputsNoZ = {}
+        for name in self.dae.outputNames():
+            self._outputsNoZ[name] = np.resize(np.array([None],dtype=CS.MX),(self.nk,self.nicp))
+        for name in self.dae.outputNames():
+            self._outputs[name] = np.resize(np.array([None],dtype=CS.MX),(self.nk,self.nicp,self.deg+1))
+            
+        for timestepIdx in range(self.nk):
+            for nicpIdx in range(self.nicp):
+                # outputs with no algebraic states
+                outs = fNoZ.call([self.xVec(timestepIdx,nicpIdx=nicpIdx,degIdx=0),
+                                  self.uVec(timestepIdx),
+                                  self.pVec()])
+                for name,val in zip(outputNamesNoZ,outs):
+                    self._outputsNoZ[name][timestepIdx][nicpIdx] = val
+                
+                for degIdx in range(1,self.deg+1):
+                    outs = fAll.call([self.xVec(timestepIdx,nicpIdx=nicpIdx,degIdx=degIdx),
+                                      self.zVec(timestepIdx,nicpIdx=nicpIdx,degIdx=degIdx),
+                                      self.uVec(timestepIdx),
+                                      self.pVec()])
+                    for name,val in zip(self.dae.outputNames(),outs):
+                        self._outputs[name][timestepIdx][nicpIdx][degIdx] = val
+
     def setupCollocation(self,tf):
         if self.collocationIsSetup:
             raise ValueError("you can't setup collocation twice")
@@ -756,8 +786,31 @@ class Coll():
     def guessP(self,val,**kwargs):
         self._guessVec(val,self.dae.pNames(),**kwargs)
         
-    def lookup(self,*args,**kwargs):
-        return self._dvMap.lookup(*args,**kwargs)
+    def lookup(self,name,timestep=None,nicpIdx=None,degIdx=None):
+        # handle outputs specially
+        if name in self._outputsNoZ or name in self._outputs:
+            #assert (timestep is not None), "please specify timestep at which you want to look up output \""+name+"\""
+            if nicpIdx is None:
+                nicpIdx = 0
+            if degIdx is None:
+                degIdx = 0
+            
+            # if degIdx == 0, return value with no algebraic inputs
+            if degIdx == 0:
+                assert (name in self._outputsNoZ), "output \""+name+"\" is a function of algebraic variables and is not defined at the beginning of the collocation interval, specify degIdx > 0"
+                if timestep is None:
+                    return [self._outputsNoZ[name][k][nicpIdx] for k in range(self.nk)]
+                else:
+                    return self._outputsNoZ[name][timestep][nicpIdx]
+                    
+            # if degIdx != 0, return value which may or may not have algebraic inputs
+            if timestep is None:
+                return [self._outputs[name][k][nicpIdx][0] for k in range(self.nk)]
+            else:
+                return self._outputs[name][timestep][nicpIdx][degIdx]
+
+        # if it's not an output, perform a design variable lookup
+        return self._dvMap.lookup(name,timestep=timestep,nicpIdx=nicpIdx,degIdx=degIdx)
 
     def setObjective(self,obj):
         if hasattr(self,'_objective'):

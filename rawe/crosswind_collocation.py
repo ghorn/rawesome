@@ -17,24 +17,13 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4,collPoly='RADAU'):
     ocp = Coll(dae, nk=nk,nicp=nicp,deg=deg,collPoly=collPoly)
     
     # constrain invariants
-    def invariantErrs():
-        dcm = C.horzcat( [ C.veccat([dae.x('e11'), dae.x('e21'), dae.x('e31')])
-                         , C.veccat([dae.x('e12'), dae.x('e22'), dae.x('e32')])
-                         , C.veccat([dae.x('e13'), dae.x('e23'), dae.x('e33')])
-                         ] ).trans()
-        err = C.mul(dcm.trans(), dcm)
-        dcmErr = C.veccat([ err[0,0]-1, err[1,1]-1, err[2,2]-1, err[0,1], err[0,2], err[1,2] ])
-        f = C.SXFunction( [dae.xVec(),dae.uVec(),dae.pVec()]
-                        , [dae.output('c'),dae.output('cdot'),dcmErr]
-                        )
-        f.setOption('name','invariant errors')
-        f.init()
-        return f
-
-    [c0,cdot0,dcmError0] = invariantErrs().call([ocp.xVec(0),ocp.uVec(0),ocp.pVec()])
-    ocp.constrain(c0,'==',0)
-    ocp.constrain(cdot0,'==',0)
-    ocp.constrain(dcmError0,'==',0)
+    def constrainInvariantErrs():
+        dcm = ocp.lookup('dcm',timestep=0)
+        err = C.mul(dcm.T,dcm)
+        ocp.constrain( C.veccat([err[0,0] - 1, err[1,1]-1, err[2,2] - 1, err[0,1], err[0,2], err[1,2]]), '==', 0)
+        ocp.constrain(ocp.lookup('c',timestep=0), '==', 0)
+        ocp.constrain(ocp.lookup('cdot',timestep=0), '==', 0)
+    constrainInvariantErrs()
 
     # constrain line angle
     for k in range(0,nk+1):
@@ -42,30 +31,16 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4,collPoly='RADAU'):
 
     # constrain airspeed
     def constrainAirspeedAlphaBeta():
-        f = C.SXFunction( [dae.xVec(),dae.uVec(),dae.pVec()]
-                        , [dae.output('airspeed'),dae.output('alpha(deg)'),dae.output('beta(deg)')]
-                        )
-        f.setOption('name','airspeed/alpha/beta')
-        f.init()
-
         for k in range(0,nk):
-            [airspeed,alphaDeg,betaDeg] = f.call([ocp.xVec(k),ocp.uVec(k),ocp.pVec()])
-            ocp.constrain(airspeed,'>=',10)
-            ocp.constrainBnds(alphaDeg,(-5,10))
-            ocp.constrainBnds(betaDeg,(-10,10))
+            ocp.constrain(ocp.lookup('airspeed',timestep=k), '>=', 10)
+            ocp.constrainBnds(ocp.lookup('alpha(deg)',timestep=k), (-5,10))
+            ocp.constrainBnds(ocp.lookup('beta(deg)', timestep=k), (-10,10))
     constrainAirspeedAlphaBeta()
 
     # constrain tether force
     for k in range(nk):
-        degIdx = 1# in range(1,deg+1):
-        r  = ocp.lookup('r', timestep=k,degIdx=degIdx)
-        nu = ocp.lookup('nu',timestep=k,degIdx=degIdx)
-        ocp.constrain(0,'<=',r*nu)
-
-        degIdx = deg# in range(1,deg+1):
-        r  = ocp.lookup('r', timestep=k,degIdx=degIdx)
-        nu = ocp.lookup('nu',timestep=k,degIdx=degIdx)
-        ocp.constrain(0,'<=',r*nu)
+        ocp.constrain( ocp.lookup('tether tension',timestep=k,degIdx=1), '>=', 0)
+        ocp.constrain( ocp.lookup('tether tension',timestep=k,degIdx=ocp.deg), '>=', 0)
 
     # make it periodic
     for name in [ "y","z",

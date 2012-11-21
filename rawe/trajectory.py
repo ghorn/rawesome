@@ -111,7 +111,7 @@ class Trajectory(object):
                         f.setInput(opt.uVec(timestepIdx),1)
                         f.setInput(opt.pVec(),2)
                         f.evaluate()
-                        y.append(float(f.output(0))) # doesn't allow for vector/matrix outputs
+                        y.append(numpy.array(f.output(0))) # doesn't allow for vector/matrix outputs
                     y.append(numpy.nan)
             self.trajData.outputs[name] = numpy.array(y)
 
@@ -126,7 +126,7 @@ class Trajectory(object):
                         f.setInput(opt.uVec(timestepIdx),2)
                         f.setInput(opt.pVec(),3)
                         f.evaluate()
-                        y.append(float(f.output(0))) # doesn't allow for vector/matrix outputs
+                        y.append(numpy.array(f.output(0))) # doesn't allow for vector/matrix outputs
                     y.append(numpy.nan)
             self.trajData.outputsZ[name] = numpy.array(y)
         return self.trajData

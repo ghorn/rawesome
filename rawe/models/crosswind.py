@@ -258,6 +258,9 @@ def crosswindModel(conf,nSteps=None,extraParams=[]):
     dae.addOutput('tether tension', dae.x('r')*dae.z('nu'))
     dae.addOutput('winch power', -dae.output('tether tension')*dae.x('dr'))
 
+    dae.addOutput('dcm',C.vertcat([C.horzcat([dae.x('e11'),dae.x('e12'),dae.x('e13')]),
+                                   C.horzcat([dae.x('e21'),dae.x('e22'),dae.x('e23')]),
+                                   C.horzcat([dae.x('e31'),dae.x('e32'),dae.x('e33')])]))
     def addOrthonormalizedDcm():
         m = {}
         m['e11'] = dae.x('e11')

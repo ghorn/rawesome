@@ -52,24 +52,13 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
     ocp = Coll(dae, nk=nk,nicp=nicp,deg=deg)
     
     # constrain invariants
-    def invariantErrs():
-        dcm = C.horzcat( [ C.veccat([dae.x('e11'), dae.x('e21'), dae.x('e31')])
-                         , C.veccat([dae.x('e12'), dae.x('e22'), dae.x('e32')])
-                         , C.veccat([dae.x('e13'), dae.x('e23'), dae.x('e33')])
-                         ] ).trans()
-        err = C.mul(dcm.trans(), dcm)
-        dcmErr = C.veccat([ err[0,0]-1, err[1,1]-1, err[2,2]-1, err[0,1], err[0,2], err[1,2] ])
-        f = C.SXFunction( [dae.xVec(),dae.uVec(),dae.pVec()]
-                        , [dae.output('c'),dae.output('cdot'),dcmErr]
-                        )
-        f.setOption('name','invariant errors')
-        f.init()
-        return f
-
-    [c0,cdot0,dcmError0] = invariantErrs().call([ocp.xVec(0),ocp.uVec(0),ocp.pVec()])
-    ocp.constrain(c0,'==',0)
-    ocp.constrain(cdot0,'==',0)
-    ocp.constrain(dcmError0,'==',0)
+    def constrainInvariantErrs():
+        dcm = ocp.lookup('dcm',timestep=0)
+        err = C.mul(dcm.T,dcm)
+        ocp.constrain( C.veccat([err[0,0] - 1, err[1,1]-1, err[2,2] - 1, err[0,1], err[0,2], err[1,2]]), '==', 0)
+        ocp.constrain(ocp.lookup('c',timestep=0), '==', 0)
+        ocp.constrain(ocp.lookup('cdot',timestep=0), '==', 0)
+    constrainInvariantErrs()
 
     # constrain line angle
     for k in range(0,nk+1):
@@ -77,30 +66,16 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
 
     # constrain airspeed
     def constrainAirspeedAlphaBeta():
-        f = C.SXFunction( [dae.xVec(),dae.uVec(),dae.pVec()]
-                        , [dae.output('airspeed'),dae.output('alpha(deg)'),dae.output('beta(deg)')]
-                        )
-        f.setOption('name','airspeed/alpha/beta')
-        f.init()
-
         for k in range(0,nk):
-            [airspeed,alphaDeg,betaDeg] = f.call([ocp.xVec(k),ocp.uVec(k),ocp.pVec()])
-            ocp.constrain(airspeed,'>=',5)
-            ocp.constrainBnds(alphaDeg,(-5,10))
-            ocp.constrainBnds(betaDeg,(-10,10))
+            ocp.constrain(ocp.lookup('airspeed',timestep=k), '>=', 5)
+            ocp.constrainBnds(ocp.lookup('alpha(deg)',timestep=k), (-5,10))
+            ocp.constrainBnds(ocp.lookup('beta(deg)', timestep=k), (-10,10))
     constrainAirspeedAlphaBeta()
 
     # constrain tether force
     for k in range(nk):
-        degIdx = 1# in range(1,deg+1):
-        r  = ocp.lookup('r', timestep=k,degIdx=degIdx)
-        nu = ocp.lookup('nu',timestep=k,degIdx=degIdx)
-        ocp.constrain(0,'<=',r*nu)
-
-        degIdx = deg# in range(1,deg+1):
-        r  = ocp.lookup('r', timestep=k,degIdx=degIdx)
-        nu = ocp.lookup('nu',timestep=k,degIdx=degIdx)
-        ocp.constrain(0,'<=',r*nu)
+        ocp.constrain( ocp.lookup('tether tension',timestep=k,degIdx=1), '>=', 0)
+        ocp.constrain( ocp.lookup('tether tension',timestep=k,degIdx=ocp.deg), '>=', 0)
 
     # bounds
     ocp.bound('aileron',(-0.04,0.04))
@@ -281,28 +256,37 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
             xOpt = numpy.array(f.input(C.NLP_X_OPT))
 
             opt = ocp.devectorize(xOpt)
-            xup = opt['vardict']
             
+#            kiteProtos = []
+#            for k in range(0,nk):
+#                j = nicp*(deg+1)*k
+#                kiteProtos.append( kiteproto.toKiteProto(C.DMatrix(opt['x'][:,j]),
+#                                                         C.DMatrix(opt['u'][:,j]),
+#                                                         C.DMatrix(opt['p']),
+#                                                         conf['kite']['zt'],
+#                                                         conf['carousel']['rArm'],
+#                                                         lineAlpha=0.2)
             kiteProtos = []
-            for k in range(0,nk):
-                j = nicp*(deg+1)*k
-                kiteProtos.append( kiteproto.toKiteProto(C.DMatrix(opt['x'][:,j]),
-                                                         C.DMatrix(opt['u'][:,j]),
-                                                         C.DMatrix(opt['p']),
-                                                         conf['kite']['zt'],
-                                                         conf['carousel']['rArm'],
-                                                         lineAlpha=0.2)
-                                   )
-#            kiteProtos = [kiteproto.toKiteProto(C.DMatrix(opt['x'][:,k]),C.DMatrix(opt['u'][:,k]),C.DMatrix(opt['p']), conf['kite']['zt'], conf['carousel']['rArm'], zeroDelta=True) for k in range(opt['x'].shape[1])]
+            for k in range(0,ocp.nk):
+                for nicpIdx in range(0,ocp.nicp):
+                    for j in [0]:
+#                    for j in range(ocp.deg+1):
+                        kiteProtos.append( kiteproto.toKiteProto(C.DMatrix(opt.xVec(k,nicpIdx=nicpIdx,degIdx=j)),
+                                                                 C.DMatrix(opt.uVec(k)),
+                                                                 C.DMatrix(opt.pVec()),
+                                                                 conf['kite']['zt'],
+                                                                 conf['carousel']['rArm'],
+                                                                 lineAlpha=0.2) )
             kiteProtos += oldKiteProtos
             mc = kite_pb2.MultiCarousel()
             mc.css.extend(list(kiteProtos))
             
-            mc.messages.append("endTime: "+str(xup['endTime']))
-            mc.messages.append("phase0: "+str(xup['phase0']/pi)+" * pi")
-            mc.messages.append("phaseF: "+str(xup['phaseF']/pi)+" * pi")
-            mc.messages.append("w0: "+str(xup['w0']))
+            mc.messages.append("w0: "+str(opt.lookup('w0')))
             mc.messages.append("iter: "+str(self.iter))
+            mc.messages.append("endTime: "+str(opt.lookup('endTime')))
+            mc.messages.append("average power: "+str(opt.lookup('energy',timestep=-1)/opt.lookup('endTime'))+" W")
+            mc.messages.append("phase0: "+str(opt.lookup('phase0')/pi)+" * pi")
+            mc.messages.append("phaseF: "+str(opt.lookup('phaseF')/pi)+" * pi")
 
 #            # bounds feedback
 #            lbx = ocp.solver.input(C.NLP_LBX)

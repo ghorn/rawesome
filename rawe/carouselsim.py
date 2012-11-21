@@ -75,7 +75,7 @@ if __name__=='__main__':
     sxfun.init()
 
     print "creating outputs function"
-    fOutputs = dae.outputsFun()
+    (fOutputs,_) = dae.outputsFun()
     fOutputs.init()
 
     print "creating communicator"

@@ -139,11 +139,33 @@ class Dae():
 
     def outputsFun(self):
         self._freeze('outputsFun()')
-        inputs = [self.xVec(), self.zVec(), self.uVec(), self.pVec()]
-        outputs = [self._outputDict[n] for n in self._outputNames]
-        fOutputs = C.SXFunction(inputs,outputs)
-        fOutputs.setOption('name','outputsFun')
-        return fOutputs
+
+        outputsNoZ = [] # only outputs with no algebraic variables
+
+        # which outputs have no algebraic vars
+        for name in self.outputNames():
+            # try to make a function without any algebraic variables
+            f = C.SXFunction([self.xVec(),self.uVec(),self.pVec()],
+                             [self.output(name)]
+                             )
+            f.init()
+            if len(f.getFree()) == 0:
+                # only add if there are no algebraic variables
+                outputsNoZ.append(name)
+            
+        # function with only outputs no algebraic vars
+        fNoZ = C.SXFunction([self.xVec(), self.uVec(), self.pVec()],
+                            [self.output(n) for n in outputsNoZ])
+        fNoZ.setOption('name','outputs with no algebraic vars')
+        fNoZ.init()
+
+        # function which outputs everything
+        fAll = C.SXFunction([self.xVec(), self.zVec(), self.uVec(), self.pVec()],
+                            [self.output(n) for n in self.outputNames()])
+        fAll.init()
+        fNoZ.setOption('name','all outputs')
+
+        return (fAll,(fNoZ,outputsNoZ))
 
     def sxFun(self):
         self._freeze('sxFun()')
