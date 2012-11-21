@@ -117,9 +117,8 @@ class Coll():
 
         self._constraints = Constraints()
 
-        # set (V,XD,XA,U,P)
-        self._setupDesignVars()
-
+        # setup NLP variables
+        self._dvMap = CollMap(self,"design var map",devectorize=CS.msym("V",self.getNV()))
 
     def setupCollocation(self,tf):
         if self.collocationIsSetup:
@@ -136,23 +135,10 @@ class Coll():
         self.lagrangePoly = LagrangePoly(deg=self.deg,collPoly=self.collPoly)
         
         # function to get h out
-        self.hfun = CS.MXFunction([self._V],[self.h])
+        self.hfun = CS.MXFunction([self._dvMap.vec],[self.h])
         self.hfun.init()
         
         # add collocation constraints
-        self._addCollocationConstraints()
-        
-    def _addCollocationConstraints(self):
-        assert hasattr(self,'h')
-        assert hasattr(self,'nicp')
-        assert hasattr(self,'nk')
-        assert hasattr(self,'deg')
-        
-        assert hasattr(self,'_XD')
-        assert hasattr(self,'_XA')
-        assert hasattr(self,'_U')
-        assert hasattr(self,'_P')
-
         ffcn = self._makeResidualFun()
  
         ndiff = self.xSize()
@@ -166,9 +152,14 @@ class Coll():
                     # Get an expression for the state derivative at the collocation point
                     xp_jk = 0
                     for j2 in range (self.deg+1):
-                        xp_jk += self.lagrangePoly.lDotAtTauRoot[j2][j]*self._XD[k][i][j2] # get the time derivative of the differential states (eq 10.19b)
+                        # get the time derivative of the differential states (eq 10.19b)
+                        xp_jk += self.lagrangePoly.lDotAtTauRoot[j2][j]*self.xVec(k,nicpIdx=i,degIdx=j2)
                     # Add collocation equations to the NLP
-                    [fk] = ffcn.call([xp_jk/self.h, self._XD[k][i][j], self._XA[k][i][j-1], self._U[k], self._P])
+                    [fk] = ffcn.call([xp_jk/self.h,
+                                      self.xVec(k,nicpIdx=i,degIdx=j),
+                                      self.zVec(k,nicpIdx=i,degIdx=j),
+                                      self.uVec(k),
+                                      self.pVec()])
                     
                     # impose system dynamics (for the differential states (eq 10.19b))
                     self.constrain(fk[:ndiff],'==',0,tag=
@@ -181,38 +172,25 @@ class Coll():
                 # Get an expression for the state at the end of the finite element
                 xf_k = 0
                 for j in range(self.deg+1):
-                    xf_k += self.lagrangePoly.lAtOne[j]*self._XD[k][i][j]
+                    xf_k += self.lagrangePoly.lAtOne[j]*self.xVec(k,nicpIdx=i,degIdx=j)
 
                 # Add continuity equation to NLP
                 if i==self.nicp-1:
-                    self.constrain(self._XD[k+1][0][0], '==', xf_k, tag="continuity, kIdx: %d,nicpIdx: %d" % (k,i))
+                    self.constrain(self.xVec(k+1,nicpIdx=0,degIdx=0), '==', xf_k,
+                                   tag="continuity, kIdx: %d,nicpIdx: %d" % (k,i))
                 else:
-                    self.constrain(self._XD[k][i+1][0], '==', xf_k, tag="continuity, kIdx: %d,nicpIdx: %d" % (k,i))
+                    self.constrain(self.xVec(k,nicpIdx=i+1,degIdx=0), '==', xf_k,
+                                   tag="continuity, kIdx: %d,nicpIdx: %d" % (k,i))
                     
 
-    def xVec(self,timestep=None,nicpIdx=0,degIdx=0):
-        if not isinstance(timestep, int):
-            raise ValueError("timestep needs to be an int")
-        if timestep is self.nk:
-            assert nicpIdx==0 and degIdx==0,"last timestep is only defined at nicpIdx=0,degIdx=0"
-        return self._XD[timestep][nicpIdx][degIdx]
-    
-    def uVec(self,timestep=None):
-        if not isinstance(timestep, int):
-            raise ValueError("timestep needs to be an int")
-        return self._U[timestep]
-    
-    def pVec(self):
-        return self._P
-    
-    def zVec(self,timestep=None):
-        raise ValueError("zVec not yet safe to use cause it's not defined at the beginning of the interval, need to implement moar inputs to zVec")
-        if not isinstance(timestep, int):
-            raise ValueError("timestep needs to be an int")
-        if timestep==0:
-            raise ValueError("there is no algebraic state at timestep 0")
-        assert timestep>0
-        return self._XA[timestep-1][-1][-1]
+    def xVec(self,*args,**kwargs):
+        return self._dvMap.xVec(*args,**kwargs)
+    def zVec(self,*args,**kwargs):
+        return self._dvMap.zVec(*args,**kwargs)
+    def uVec(self,*args,**kwargs):
+        return self._dvMap.uVec(*args,**kwargs)
+    def pVec(self,*args,**kwargs):
+        return self._dvMap.pVec(*args,**kwargs)
 
     def constrain(self,lhs,comparison,rhs,tag='unnamed_constraint'):
         self._constraints.add(lhs,comparison,rhs,tag)
@@ -222,16 +200,12 @@ class Coll():
 
     def xSize(self):
         return len(self.dae.xNames())
-        #return self.dae.xVec().size()
     def zSize(self):
         return len(self.dae.zNames())
-#        return self.dae.zVec().size()
     def uSize(self):
         return len(self.dae.uNames())
-#        return self.dae.uVec().size()
     def pSize(self):
         return len(self.dae.pNames())
-#        return self.dae.pVec().size()
 
     # Total number of variables
     def getNV(self):
@@ -266,94 +240,6 @@ class Coll():
         ffcn = CS.SXFunction([xddot,xd,xa,u,p],[residual])
         ffcn.init()
         return ffcn
-
-    def _setupDesignVars(self):
-        ## set these:
-        # self._V  = V
-        # self._XD = XD
-        # self._XA = XA
-        # self._U  = U
-        # self._P  = P
-        
-        ndiff = self.xSize()
-        nalg = self.zSize()
-        nu = self.uSize()
-        NP = self.pSize()
-        nx = ndiff + nalg
-        
-        # Total number of variables
-        NXD = self.nicp*self.nk*(self.deg+1)*ndiff # Collocated differential states
-        NXA = self.nicp*self.nk*self.deg*nalg      # Collocated algebraic states
-        NU = self.nk*nu                  # Parametrized controls
-        NXF = ndiff                 # Final state (only the differential states)
-        NV = NXD+NXA+NU+NXF+NP
-    
-        # NLP variable vector
-        V = CS.msym("V",NV)
-
-        # index map
-        self._indexMap = CollMap(self,"index map")
-        self._dvMap = CollMap(self,"design var map")
-        
-        offset = 0
-        
-        # Get the parameters
-        P = V[offset:offset+NP]
-        for k,name in enumerate(self.dae.pNames()):
-            self._indexMap.setVal(name,k)
-            self._dvMap.setVal(name,V[offset+k])
-        offset += NP
-        
-        # Get collocated states and parametrized control
-        XD = np.resize(np.array([],dtype=CS.MX),(self.nk+1,self.nicp,self.deg+1)) # NB: same name as above
-        XA = np.resize(np.array([],dtype=CS.MX),(self.nk,self.nicp,self.deg)) # NB: same name as above
-        U = np.resize(np.array([],dtype=CS.MX),self.nk)
-        for k in range(self.nk):
-            # Collocated states
-            for i in range(self.nicp):
-                for j in range(self.deg+1):
-                    # Get the expression for the state vector
-                    XD[k][i][j] = V[offset:offset+ndiff]
-                    for m,name in enumerate(self.dae.xNames()):
-                        self._indexMap.setVal(name,offset+m,timestep=k,nicpIdx=i,degIdx=j)
-                        self._dvMap.setVal(name,V[offset+m],timestep=k,nicpIdx=i,degIdx=j)
-                        
-                    if j !=0:
-                        XA[k][i][j-1] = V[offset+ndiff:offset+ndiff+nalg]
-                        for m,name in enumerate(self.dae.zNames()):
-                            self._indexMap.setVal(name,offset+ndiff+m,timestep=k,nicpIdx=i,degIdx=j)
-                            self._dvMap.setVal(name,V[offset+ndiff+m],timestep=k,nicpIdx=i,degIdx=j)
-
-                    index = (self.deg+1)*(self.nicp*k+i) + j
-                    if k==0 and j==0 and i==0:
-                        offset += ndiff
-                    else:
-                        if j!=0:
-                            offset += nx
-                        else:
-                            offset += ndiff
-            
-            # Parametrized controls
-            U[k] = V[offset:offset+nu]
-            for m,name in enumerate(self.dae.uNames()):
-                self._indexMap.setVal(name,offset+m,timestep=k)
-                self._dvMap.setVal(name,V[offset+m],timestep=k)
-            offset += nu
-        
-        # State at end time
-        XD[self.nk][0][0] = V[offset:offset+ndiff]
-        for m,name in enumerate(self.dae.xNames()):
-            self._indexMap.setVal(name,offset+m,timestep=self.nk,degIdx=0,nicpIdx=0)
-            self._dvMap.setVal(name,V[offset+m],timestep=self.nk,degIdx=0,nicpIdx=0)
-        
-        offset += ndiff
-        assert offset==NV
-    
-        self._V  = V
-        self._XD = XD
-        self._XA = XA
-        self._U  = U
-        self._P  = P
 
 
     def _parseBoundsAndGuess(self,warnZBounds,warnZGuess):
@@ -494,12 +380,6 @@ class Coll():
         nicp = self.nicp
         nk = self.nk
         deg = self.deg
-        
-        XD = self._XD
-        XA = self._XA
-        U = self._U
-        P = self._P
-        V = self._V
         
         # -----------------------------------------------------------------------------
         # NLP setup
@@ -709,17 +589,17 @@ class Coll():
         ubg = self._constraints.getUb()
 
         # Nonlinear constraint function
-        gfcn = CS.MXFunction([self._V],[g])
+        gfcn = CS.MXFunction([self._dvMap.vec],[g])
         setFXOptions(gfcn,constraintFunOpts)
         
         # Objective function of the NLP
         if not hasattr(self,'_objective'):
             raise ValueError('need to set objective function')
-        ofcn = CS.MXFunction([self._V],[self._objective])
+        ofcn = CS.MXFunction([self._dvMap.vec],[self._objective])
 
         # solver callback (optional)
         if callback is not None:
-            nd = self._V.size()
+            nd = self._dvMap.vec.size()
             nc = self._constraints.getG().size()
     
             c = CS.PyFunction( callback, CS.nlpsolverOut(x_opt=CS.sp_dense(nd,1), cost=CS.sp_dense(1,1), lambda_x=CS.sp_dense(nd,1), lambda_g = CS.sp_dense(nc,1), g = CS.sp_dense(nc,1) ), [CS.sp_dense(1,1)] )
@@ -876,40 +756,8 @@ class Coll():
     def guessP(self,val,**kwargs):
         self._guessVec(val,self.dae.pNames(),**kwargs)
         
-
-    def lookup(self,name,timestep=None,nicpIdx=0,degIdx=0):
-        assert isinstance(name,str)
-        assert nicpIdx<self.nicp,'nicpIdx must be < nicp'
-        assert degIdx<self.deg+1,'degIdx must be < deg+1'
-        assert degIdx>=0,'degIdx must be positive'
-        
-        if name in self.dae.pNames():
-            if timestep is not None:
-                raise ValueError("can't lookup a parameter ("+name+")at a certain timestep")
-            k = self.dae.pNames().index(name)
-            return self._P[k]
-
-        if timestep is None:
-            if name in self.dae.xNames()+self.dae.zNames():
-                return CS.veccat([self.lookup(name,k,nicpIdx,degIdx) for k in range(self.nk+1)])
-            elif name in self.dae.uNames():
-                return CS.veccat([self.lookup(name,k,nicpIdx,degIdx) for k in range(self.nk)])
-            else:
-                raise ValueError("unrecognized key \""+name+"\"")
-
-        assert isinstance(timestep,int)
-        if name in self.dae.xNames():
-            k = self.dae.xNames().index(name)
-            return self._XD[timestep][nicpIdx][degIdx][k]
-        if name in self.dae.zNames():
-            assert degIdx!=0,'there is no algebraic state at degIdx=0'
-            k = self.dae.zNames().index(name)
-            return self._XA[timestep][nicpIdx][degIdx-1][k]
-        if name in self.dae.uNames():
-            k = self.dae.uNames().index(name)
-            return self._U[timestep][k]
-
-        raise ValueError("unrecognized variable \""+name+"\"")
+    def lookup(self,*args,**kwargs):
+        return self._dvMap.lookup(*args,**kwargs)
 
     def setObjective(self,obj):
         if hasattr(self,'_objective'):
