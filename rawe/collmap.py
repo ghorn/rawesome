@@ -114,6 +114,52 @@ class CollMap(object):
         for name in self._pNames:
             self._pMap[name] = None
 
+    def fillInMissing(self,mapName,interpFun):
+        assert(isinstance(mapName, str))
+        import collutils
+        tau_root = mkCollocationPoints(self._collPoly,self._deg)
+
+        # all parameters should be set
+        for name in self._pNames:
+            val = self.lookup(name)
+            if val is None:
+                raise ValueError(mapName+" for parameter \""+name+"\" is not set")
+        
+        # all controls should be set
+        for name in self._uNames:
+            for k in range(self._nk):
+                if self.lookup(name,timestep=k) is None:
+                    raise ValueError(mapName+" for control \""+name+"\" is not set at timestep "+str(k))
+
+        # all algebraic variables should be set
+        for name in self._zNames:
+            for k in range(self._nk):
+                for j in range(self._nicp):
+                    for d in range(1,self._deg+1):
+                        if self.lookup(name,timestep=k,nicpIdx=j,degIdx=d) is None:
+                            raise ValueError(mapName+" for algebraic variable \""+name+"\" is not set at timestep "+str(k)+", nicpIdx: "+str(j)+", degIdx: "+str(d))
+
+        # states should all be set at degIdx=0, nicpIdx=0
+        # if not set in between, call interpFun
+        for name in self._xNames:
+            for k in range(self._nk):
+                # Collocated states
+                val0 = self.lookup(name,timestep=k,nicpIdx=0,degIdx=0)
+                val1 = self.lookup(name,timestep=k+1,nicpIdx=0,degIdx=0)
+                if val0 is None:
+                    raise ValueError(mapName+" for state \""+name+"\" is not set at timestep "+str(k))
+                if val1 is None:
+                    raise ValueError(mapName+" for state \""+name+"\" is not set at timestep "+str(k+1))
+                alpha = 0
+                alphaIndex = 0
+                for j in range(self._nicp):
+                    for d in range(self._deg+1):
+                        val = self.lookup(name,timestep=k,nicpIdx=j,degIdx=d)
+                        if val is None:
+                            tau = j + tau_root[d]/float(self._nicp)
+                            self.setVal(name,interpFun(tau,val0,val1),timestep=k,nicpIdx=j,degIdx=d)
+                        alphaIndex += 1
+
     def vectorize(self):
         if all([hasattr(self,attr) for attr in ['_xVec','_zVec','uVec','pVec']]):
             V = [self._pVec()]

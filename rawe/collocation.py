@@ -123,6 +123,30 @@ class Coll():
         # add outputs with no algebraic states
         self._setupOutputs()
 
+        # tags for the bounds
+        bndtags = []
+        for name in self.dae.pNames():
+            bndtags.append((name,None))
+        for k in range(nk):  
+            for i in range(nicp):
+                for j in range(deg+1):
+                    if k==0 and j==0 and i==0:
+                        for name in self.dae.xNames():
+                            bndtags.append((name,(k,i,j)))
+                    else:
+                        if j!=0:
+                            for name in self.dae.xNames()+self.dae.zNames():
+                                bndtags.append((name,(k,i,j)))
+                        else:
+                            for name in self.dae.xNames():
+                                bndtags.append((name,(k,i,j)))
+            for name in self.dae.uNames():
+                bndtags.append((name,(k,i,j)))
+        for name in self.dae.xNames():
+            bndtags.append((name,(nk,0,0)))
+        self.bndtags = np.array(bndtags)
+
+
     def _setupOutputs(self):
         (fAll,(fNoZ,outputNamesNoZ)) = self.dae.outputsFun()
         
@@ -271,235 +295,6 @@ class Coll():
         ffcn.init()
         return ffcn
 
-
-    def _parseBoundsAndGuess(self,warnZBounds,warnZGuess):
-        nk = self.nk
-        nicp = self.nicp
-        deg = self.deg
-        
-        # Differential state bounds and initial guess
-        xD_min = np.array([[-CS.inf]*self.xSize()]*(nk+1))
-        xD_max = np.array([[ CS.inf]*self.xSize()]*(nk+1))
-        xD_init = np.array((nk*nicp*(deg+1)+1)*[[None]*self.xSize()]) # needs to be specified for every time interval
-        for k,name in enumerate(self.dae.xNames()):
-            for timestep in range(nk+1):
-                xminmax=self._bounds.lookup(name,timestep=timestep)
-                if xminmax is None:
-                    raise ValueError('need to set bounds for \"'+name+'\" at timestep '+str(timestep))
-                (xmin,xmax) = xminmax
-                xD_min[timestep,k] = xmin
-                xD_max[timestep,k] = xmax
-    
-            # linearly interpolate initial guess
-            for timestep in range(nk):
-                xd0=self._guess.lookup(name,timestep=timestep)
-                xd1=self._guess.lookup(name,timestep=timestep+1)
-                if xd0 is None:
-                    raise ValueError("need to set initial guess for \""+name+ "\" at timestep "+str(timestep))
-                if xd1 is None:
-                    raise ValueError("need to set initial guess for \""+name+ "\" at timestep "+str(timestep+1))
-    
-                alpha = 0
-                alphaIndex = 0
-                for j in range(nicp):
-                    for d in range(deg+1):
-                        index = (deg+1)*(nicp*timestep+j) + d
-                        alpha = alphaIndex/( (deg+1)*nicp - 1.0 )
-                        xD_init[index,k] = xd0 + (xd1-xd0)*alpha
-                        alphaIndex += 1
-            if self._guess.lookup(name,timestep=-1) is None:
-                raise ValueError("need to set initial guess for \""+name+ "\" at last timestep")
-            xD_init[-1,k] = self._guess.lookup(name,timestep=-1)
-        
-        # Algebraic state bounds and initial guess
-        xA_min = np.array([[-CS.inf]*self.zSize()]*nk)
-        xA_max = np.array([[ CS.inf]*self.zSize()]*nk)
-        xA_init = np.array((nk*nicp*(deg+1))*[[None]*self.zSize()])
-        for k,name in enumerate(self.dae.zNames()):
-            for timestep in range(nk):
-                zminmax=self._bounds.lookup(name,timestep=timestep,degIdx=1)
-                if zminmax is None:
-                    if warnZBounds:
-                        print "WARNING: didn't set bounds for algebraic state \""+name+"\" at timestep "+str(timestep)+", using (-inf,inf)"
-                    zmin = -CS.inf
-                    zmax =  CS.inf
-                else:
-                    (zmin,zmax) = zminmax
-    
-                xA_min[timestep,k] = zmin
-                xA_max[timestep,k] = zmax
-                
-            # linearly interpolate initial guess
-            for timestep in range(nk):
-                xa0 = self._guess.lookup(name, timestep=timestep, degIdx=1)
-                if timestep<nk-1:
-                    xa1 = self._guess.lookup(name, timestep=timestep+1, degIdx=1)
-                else:
-                    xa1 = self._guess.lookup(name, timestep=timestep, degIdx=1)
-    
-                if xa0 is None:
-                    if warnZGuess:
-                        print "WARNING: initial guess for \""+name+ "\" not set at timestep "+str(timestep)+", using guess of 0.0"
-                    xa0 = 0.0
-                if xa1 is None:
-                    # no print statement here to prevent two identical warnings
-                    xa1 = 0.0
-    
-                alpha = 0
-                alphaIndex = 0
-                for j in range(nicp):
-                    for d in range(deg):
-                        index = (deg+1)*(nicp*timestep+j) + d
-                        alpha = alphaIndex/( deg*nicp - 1.0 )
-                        xA_init[index,k] = xa0 + (xa1-xa0)*alpha
-                        alphaIndex += 1
-        
-        # Control bounds and initial guess
-        u_min = np.array([[-CS.inf]*self.uSize()]*nk)
-        u_max = np.array([[ CS.inf]*self.uSize()]*nk)
-        u_init = np.array([[None]*self.uSize()]*nk)
-        for k,name in enumerate(self.dae.uNames()):
-            for timestep in range(nk):
-                uminmax = self._bounds.lookup(name,timestep=timestep)
-                if uminmax is None:
-                    raise ValueError('need to set bounds for \"'+name+'\" at timestep '+str(timestep))
-                (umin,umax) = uminmax
-                u_min[timestep,k] = umin
-                u_max[timestep,k] = umax
-    
-                # initial guess
-                if self._guess.lookup(name,timestep=timestep) is None:
-                    raise ValueError("need to set initial guess for \""+name+ "\" at timestep "+str(timestep))
-                u_init[timestep,k] = self._guess.lookup(name,timestep=timestep)
-        
-        # Parameter bounds and initial guess
-        p_min = np.array([-CS.inf]*self.pSize())
-        p_max = np.array([ CS.inf]*self.pSize())
-        p_init = np.array([None]*self.pSize())
-        for k,name in enumerate(self.dae.pNames()):
-            pminmax = self._bounds.lookup(name)
-            if pminmax is None:
-                raise ValueError('need to set bounds for \"'+name+'\"')
-            (pmin,pmax) = pminmax
-            p_min[k] = pmin
-            p_max[k] = pmax
-        for k,name in enumerate(self.dae.pNames()):
-            if self._guess.lookup(name) is None:
-                raise ValueError("need to set initial guess for \""+name+ "\"")
-            p_init[k] = self._guess.lookup(name)
-    
-        return {'xD_init':xD_init, 'xD_min':xD_min, 'xD_max':xD_max,
-                'xA_init':xA_init, 'xA_min':xA_min, 'xA_max':xA_max,
-                 'u_init': u_init,  'u_min': u_min,  'u_max': u_max,
-                 'p_init': p_init,  'p_min': p_min,  'p_max': p_max}
-
-    def _vectorizeBoundsAndGuess(self, boundsAndGuess):
-        p_init  = boundsAndGuess['p_init']
-        p_min   = boundsAndGuess['p_min']
-        p_max   = boundsAndGuess['p_max']
-        xD_init = boundsAndGuess['xD_init']
-        xD_min  = boundsAndGuess['xD_min']
-        xD_max  = boundsAndGuess['xD_max']
-        xA_init = boundsAndGuess['xA_init']
-        xA_min  = boundsAndGuess['xA_min']
-        xA_max  = boundsAndGuess['xA_max']
-        u_init  = boundsAndGuess['u_init']
-        u_min   = boundsAndGuess['u_min']
-        u_max   = boundsAndGuess['u_max']
-        
-        nicp = self.nicp
-        nk = self.nk
-        deg = self.deg
-        
-        # -----------------------------------------------------------------------------
-        # NLP setup
-        # -----------------------------------------------------------------------------
-        # Dimensions of the problem
-        ndiff = self.xSize() # number of differential states
-        nalg = self.zSize()  # number of algebraic states
-        nu   = self.uSize()  # number of controls
-        NP   = self.pSize()  # number of parameters
-        nx   = ndiff + nalg  # total number of states
-        NV = self.getNV()
-
-        # tags for the bounds
-        bndtags = []
-        
-        # All variables with bounds and initial guess
-        vars_lb = np.zeros(NV)
-        vars_ub = np.zeros(NV)
-        vars_init = np.zeros(NV)
-        offset = 0
-        
-        # Get the parameters
-        vars_init[offset:offset+NP] = p_init
-        vars_lb[offset:offset+NP] = p_min
-        vars_ub[offset:offset+NP] = p_max
-        for name in self.dae.pNames():
-            bndtags.append((name,None))
-        offset += NP
-
-        # Get collocated states and parametrized control
-        for k in range(nk):  
-            # Collocated states
-            for i in range(nicp):
-                for j in range(deg+1):
-                    # Add the initial condition
-                    index = (deg+1)*(nicp*k+i) + j
-                    if k==0 and j==0 and i==0:
-                        vars_init[offset:offset+ndiff] = xD_init[index,:]
-                        
-                        vars_lb[offset:offset+ndiff] = xD_min[k,:]
-                        vars_ub[offset:offset+ndiff] = xD_max[k,:]
-
-                        for name in self.dae.xNames():
-                            bndtags.append((name,(k,i,j)))
-                        
-                        offset += ndiff
-                    else:
-                        if j!=0:
-                            vars_init[offset:offset+nx] = np.concatenate((xD_init[index,:],xA_init[index-1,:]))
-    
-                            vars_lb[offset:offset+nx] = np.concatenate((np.minimum(xD_min[k,:],xD_min[k+1,:]),xA_min[k,:]))
-                            vars_ub[offset:offset+nx] = np.concatenate((np.maximum(xD_max[k,:],xD_max[k+1,:]),xA_max[k,:]))
-                            for name in self.dae.xNames()+self.dae.zNames():
-                                bndtags.append((name,(k,i,j)))
-                            
-                            offset += nx
-                        else:
-                            vars_init[offset:offset+ndiff] = xD_init[index,:]
-    
-                            for name in self.dae.xNames():
-                                bndtags.append((name,(k,i,j)))
-                            
-                            if i==0:
-                                vars_lb[offset:offset+ndiff] = xD_min[k,:]
-                                vars_ub[offset:offset+ndiff] = xD_max[k,:]
-                            else:
-                                vars_lb[offset:offset+ndiff] = np.minimum(xD_min[k,:],xD_min[k+1,:])
-                                vars_ub[offset:offset+ndiff] = np.maximum(xD_max[k,:],xD_max[k+1,:])
-                                
-                            offset += ndiff
-            
-            # Parametrized controls
-            vars_lb[offset:offset+nu] = u_min[k]
-            vars_ub[offset:offset+nu] = u_max[k]
-            vars_init[offset:offset+nu] = u_init[k]
-            for name in self.dae.uNames():
-                bndtags.append((name,(k,i,j)))
-            offset += nu
-        
-        # State at end time
-        vars_lb[offset:offset+ndiff] = xD_min[nk,:]
-        vars_ub[offset:offset+ndiff] = xD_max[nk,:]
-        vars_init[offset:offset+ndiff] = xD_init[-1,:]
-        for name in self.dae.xNames():
-            bndtags.append((name,(nk,0,0)))
-        offset += ndiff
-        assert offset==NV
-        self.bndtags = np.array(bndtags)
-        return (vars_init,vars_lb,vars_ub)
-
     def interpolateInitialGuess(self,filename,force=False,quiet=False):
         print "interpolating initial guess..."
         f=open(filename,'r')
@@ -647,8 +442,34 @@ class Coll():
         self.solver.setInput(ubg,CS.NLP_UBG)
 
     def solve(self,xInit=None,warnZBounds=False,warnZGuess=False):
-        (vars_init,vars_lb,vars_ub) = self._vectorizeBoundsAndGuess( self._parseBoundsAndGuess(warnZBounds,warnZGuess) )
+        for name in self.dae.zNames():
+            for k in range(self.nk):
+                for j in range(self.nicp):
+                    for d in range(1,self.deg+1):
+                        # if algebraic states are missing from bounds, set to (-inf,inf)
+                        if self._bounds.lookup(name,timestep=k,nicpIdx=j,degIdx=d) is None:
+                            self._bounds.setVal(name,(-np.inf,np.inf),timestep=k,nicpIdx=j,degIdx=d)
+                        # if algebraic states are missing from guess, set to 0
+                        if self._guess.lookup(name,timestep=k,nicpIdx=j,degIdx=d) is None:
+                            self._guess.setVal(name,0.0,timestep=k,nicpIdx=j,degIdx=d)
+
+        # fill in missing differential states and make sure everything required is set
+        def linearInterpMissing(tau,val0,val1):
+            return val0*(1-tau) + val1*tau
+        self._guess.fillInMissing("initial guess",linearInterpMissing)
+        
+        def ceilMissing(tau,val0,val1):
+            (lb0,ub0) = val0
+            (lb1,ub1) = val1
+            lb = min(lb0,lb1)
+            ub = max(ub0,ub1)
+            return (lb,ub)
+        self._bounds.fillInMissing("bounds",ceilMissing)
+
         vars_init = self._guess.vectorize()
+        vars_lbub = self._bounds.vectorize()
+        vars_lb = [lbub[0] for lbub in vars_lbub]
+        vars_ub = [lbub[1] for lbub in vars_lbub]
         
         if xInit is not None:
             vars_init = xInit
@@ -728,7 +549,12 @@ class Coll():
                 return
         
         assert isinstance(timestep,int)
-        self._bounds.setVal(name,val,timestep=timestep,quiet=quiet)
+        if name in self._bounds._zMap:
+            for nicpIdx in range(self.nicp):
+                for degIdx in range(1,self.deg+1):
+                    self._bounds.setVal(name,val,timestep=timestep,nicpIdx=nicpIdx,degIdx=degIdx,quiet=quiet)
+        else:
+            self._bounds.setVal(name,val,timestep=timestep,quiet=quiet)
 
     def guess(self,name,val,timestep=None,nicpIdx=None,degIdx=None,quiet=False,force=False):
         assert isinstance(name,str)
