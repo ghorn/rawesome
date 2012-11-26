@@ -15,7 +15,19 @@ class CollMap(object):
 
         assert isinstance(name,str)
         self._name = name
-        self._initMap()
+        
+        self._xMap = {}
+        self._zMap = {}
+        self._uMap = {}
+        self._pMap = {}
+        for name in self._xNames:
+            self._xMap[name] = np.resize(np.array([None]),(self._nk+1,self._nicp,self._deg+1))
+        for name in self._zNames:
+            self._zMap[name] = np.resize(np.array([None]),(self._nk,self._nicp,self._deg+1))
+        for name in self._uNames:
+            self._uMap[name] = np.resize(np.array([None]),(self._nk))
+        for name in self._pNames:
+            self._pMap[name] = None
 
         if devectorize is not None:
             self._devectorize(devectorize)
@@ -99,20 +111,6 @@ class CollMap(object):
         self._zVec = XA
         self._uVec = U
         self._pVec = P
-
-    def _initMap(self):
-        self._xMap = {}
-        self._zMap = {}
-        self._uMap = {}
-        self._pMap = {}
-        for name in self._xNames:
-            self._xMap[name] = np.resize(np.array([None]),(self._nk+1,self._nicp,self._deg+1))
-        for name in self._zNames:
-            self._zMap[name] = np.resize(np.array([None]),(self._nk,self._nicp,self._deg+1))
-        for name in self._uNames:
-            self._uMap[name] = np.resize(np.array([None]),(self._nk))
-        for name in self._pNames:
-            self._pMap[name] = None
 
     def fillInMissing(self,mapName,interpFun):
         assert(isinstance(mapName, str))
