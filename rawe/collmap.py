@@ -114,6 +114,48 @@ class CollMap(object):
         for name in self._pNames:
             self._pMap[name] = None
 
+    def vectorize(self):
+        if all([hasattr(self,attr) for attr in ['_xVec','_zVec','uVec','pVec']]):
+            V = [self._pVec()]
+            for k in range(self._nk):
+                # Collocated states
+                for i in range(self._nicp):
+                    for j in range(self._deg+1):
+                        V.append(self.xVec(k,nicpIdx=i,degIdx=j))
+                        
+                        if j !=0:
+                            V.append(self.zVec(k,nicpIdx=i,degIdx=j))
+                
+                # Parametrized controls
+                V.append(self.uVec(k))
+        
+            # State at end time
+            V.append(self.xVec(self._nk),nicpIdx=0,degIdx=0)
+
+            if isinstance(V[0],np.array):
+                return np.concatenate(V)
+            else:
+                import casadi
+                return casadi.veccat(V)
+        else:
+            V = [self.lookup(name) for name in self._pNames]
+            
+            for k in range(self._nk):
+                # Collocated states
+                for i in range(self._nicp):
+                    for j in range(self._deg+1):
+                        V.extend([self.lookup(name,timestep=k,nicpIdx=i,degIdx=j) for name in self._xNames])
+                        
+                        if j !=0:
+                            V.extend([self.lookup(name,timestep=k,nicpIdx=i,degIdx=j) for name in self._zNames])
+                
+                # Parametrized controls
+                V.extend([self.lookup(name,timestep=k) for name in self._uNames])
+        
+            # State at end time
+            V.extend([self.lookup(name,timestep=self._nk,nicpIdx=0,degIdx=0) for name in self._xNames])
+            return V
+            
     def xVec(self,timestep,nicpIdx=None,degIdx=None):
         assert hasattr(self,'_xVec')
         if nicpIdx is None:

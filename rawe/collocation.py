@@ -159,7 +159,7 @@ class Coll():
         ## Collocation setup
         ## -----------------------------------------------------------------------------
         # Size of the finite elements
-        self.h = tf/self.nk/self.nicp
+        self.h = tf/(self.nk*self.nicp)
 
         # make coefficients for collocation/continuity equations
         self.lagrangePoly = LagrangePoly(deg=self.deg,collPoly=self.collPoly)
@@ -508,11 +508,8 @@ class Coll():
 
         assert isinstance(traj,TrajectoryData), "the file \""+filename+"\" doean't have a pickled TrajectoryData"
 
-        if traj.collMap._nicp == 1:
-            h = traj.tgrid[1][0][0] - traj.tgrid[0][0][0]
-        else:
-            h = traj.tgrid[0][1][0] - traj.tgrid[0][0][0]
-        h *= (traj.collMap._nk-1)*traj.collMap._nicp/float((self.nk-1)*self.nicp)
+        h = (traj.tgrid[-1,0,0] - traj.tgrid[0,0,0])/float(traj.collMap._nk*traj.collMap._nicp)
+        h *= traj.collMap._nk*traj.collMap._nicp/float(self.nk*self.nicp)
             
         missing = set(self.dae.xNames()+self.dae.zNames()+self.dae.uNames()+self.dae.pNames())
 
@@ -575,7 +572,7 @@ class Coll():
                         time = t0 + h*self.lagrangePoly.tau_root[degIdx]
                         self.guess(name,pp(time),timestep=timestepIdx,nicpIdx=nicpIdx,degIdx=degIdx,force=force,quiet=quiet)
                     t0 += h
-                
+
         # interpolate controls
         for name in traj.collMap._uNames:
             if name not in missing:
@@ -651,6 +648,8 @@ class Coll():
 
     def solve(self,xInit=None,warnZBounds=False,warnZGuess=False):
         (vars_init,vars_lb,vars_ub) = self._vectorizeBoundsAndGuess( self._parseBoundsAndGuess(warnZBounds,warnZGuess) )
+        vars_init = self._guess.vectorize()
+        
         if xInit is not None:
             vars_init = xInit
 
