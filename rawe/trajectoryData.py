@@ -82,3 +82,82 @@ class TrajectoryData(object):
         plt.xlabel('time')
         plt.legend(legend)
         plt.grid()
+
+    def toMatlab(self):
+        import numpy as np
+
+        def sanitizeName(n):
+            for char in ['\'','\"',' ','(',')','-','/','\\']:
+                n = n.replace(char,"_")
+            if not (n[0].isalpha()):
+                n = "BADNAME_"+n
+            return n
+
+        def matlabName(n):
+            return n.replace("'","''")
+        
+        ret = ["traj = struct();"]
+        
+        for name in self.x:
+            n = sanitizeName(name)
+            ret.append("traj."+n+".name = '"+matlabName(name)+"';")
+            ret.append("traj."+n+".time = "+str(self.tgridX)+";")
+            ret.append("traj."+n+".data = "+str(self.x[name])+";")
+    
+        for name in self.u:
+            n = sanitizeName(name)
+            ret.append("traj."+n+".name = '"+matlabName(name)+"';")
+            ret.append("traj."+n+".time = "+str(self.tgridU)+";")
+            ret.append("traj."+n+".data = "+str(self.u[name])+";")
+
+        for name in self.z:
+            n = sanitizeName(name)
+            ret.append("traj."+n+".name = '"+matlabName(name)+"';")
+            ret.append("traj."+n+".time = "+str(self.tgridZ)+";")
+            ret.append("traj."+n+".data = "+str(self.z[name])+";")
+
+        for name in self.outputs:
+            out = self.outputs[name]
+            for k in range(out.size):
+                try:
+                    out[k] = out[k][0][0]
+                except TypeError:
+                    pass
+            n = sanitizeName(name)
+            ret.append("traj."+n+".name = '"+matlabName(name)+"';")
+            ret.append("traj."+n+".time = "+str(self.tgridX[:-1])+";")
+#            ret.append("traj."+n+".data = "+str(self.outputs[name].flatten())+";")
+            ret.append("traj."+n+".data = "+str(out.tolist())+";")
+
+        for name in self.outputsZ:
+            out = self.outputsZ[name]
+            for k in range(out.size):
+                try:
+                    out[k] = out[k][0][0]
+                except TypeError:
+                    pass
+            n = sanitizeName(name)
+            ret.append("traj."+n+".name = '"+matlabName(name)+"';")
+            ret.append("traj."+n+".time = "+str(self.tgridZ)+";")
+#            ret.append("traj."+n+".data = "+str(self.outputsZ[name].flatten())+";")
+            ret.append("traj."+n+".data = "+str(out.tolist())+";")
+
+        return "\n".join(ret)
+                       
+    def saveAsMatlab(self,filename):
+        out = self.toMatlab()
+        f=open(filename,'w')
+        f.write(out)
+        f.close()
+        
+    
+if __name__=='__main__':
+    import pickle
+    
+    filename = "data/crosswind_opt.dat"
+    print "loading "+filename
+    f=open(filename,'r')
+    traj = pickle.load(f)
+    f.close()
+
+    traj.saveAsMatlab('data/crosswind_opt.m')
