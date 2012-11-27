@@ -116,23 +116,41 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
     ocp.bound('ddelta',(0,0),timestep=-1,quiet=True)
 
     def getFourierFit(filename,phase):
+        # load the fourier fit
         f=open(filename,'r')
-        fits0 = pickle.load(f)
+        fits = pickle.load(f)
         f.close()
 
-        fourierBases = []
-        for po in fits0['x'].polyOrder:
-            fourierBases.append(phase**po)
-        for co in fits0['x'].cosOrder:
-            fourierBases.append(C.cos(co*phase))
-        for so in fits0['x'].sinOrder:
-            fourierBases.append(C.sin(so*phase))
+        # make all bases for polynomial/cos/sin
+        polyBases = {}
+        cosBases = {}
+        sinBases = {}
+            
+        for name in fits:
+            fit = fits[name]
+            assert isinstance(fit, FourierFit)
+            for po in fit.polyOrder:
+                if po not in polyBases:
+                    polyBases[po] = phase**po
+            for co in fit.cosOrder:
+                if co not in cosBases:
+                    cosBases[co] = C.cos(co*phase)
+            for so in fit.sinOrder:
+                if so not in sinBases:
+                    sinBases[so] = C.sin(so*phase)
+        
+        # construct the output functions
         fourierFit = {}
-        for name in fits0:
-            fitCoeffs = fits0[name].fitcoeffs
-            fourierFit[name] = sum([fc*fb for fc,fb in zip(fitCoeffs,fourierBases)])
+        for name in fits:
+            fit = fits[name]
+            
+            polys = [coeff*polyBases[order] for coeff,order in zip(fit.polyCoeffs, fit.polyOrder)]
+            coses = [coeff*cosBases[order]  for coeff,order in zip(fit.cosCoeffs,  fit.cosOrder)]
+            sins  = [coeff*sinBases[order]  for coeff,order in zip(fit.sinCoeffs,  fit.sinOrder)]
 
-        return (fourierFit,fits0)
+            fourierFit[name] = sum(polys+coses+sins)
+
+        return (fourierFit,fits)
         
     (startup,startupfits) = getFourierFit("data/carousel_opt_fourier.dat",ocp.lookup('phase0'))
     (crosswind,crosswindfits) = getFourierFit("data/crosswind_opt_fourier.dat",ocp.lookup('phaseF'))
