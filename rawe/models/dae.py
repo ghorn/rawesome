@@ -2,20 +2,22 @@
 import casadi as C
 
 class Dae():
+    """
+    Class to hold represent a differential-algebraic or ordinary differential equation
+    """
     def __init__(self):
+        # set of reasons (strings) why the Dae cannot be modified (add new x/z/u/p/output)
         self._frozen = set()
-        
+
+        # lists of names (strings)
         self._xNames = []
         self._zNames = []
         self._uNames = []
         self._pNames = []
         self._outputNames = []
 
-        self._xDict = {}
-        self._zDict = {}
-        self._uDict = {}
-        self._pDict = {}
-        self._outputDict = {}
+        # dictionaries of SXMatrix symbols
+        self._syms = {}
 
     def _freeze(self,msg):
         self._frozen.add(msg)
@@ -29,34 +31,19 @@ class Dae():
         if name in allNames:
             raise ValueError('name "'+name+'" is not unique')
 
-    def _getVar(self,name,namelist,namedict):
-        if isinstance(name,list):
-            return map(lambda n: self._getVar(n,namelist,namedict), name)
-
-        if isinstance(name,tuple):
-            return tuple(self._getVar(list(name),namelist,namedict))
-                
-        assert(isinstance(name,str))
-
-        if name not in namedict:
-            raise KeyError(name+' is not in '+str(namelist))
-        
-        return namedict[name]
-
-    def _addVar(self,name,namelist,namedict):
+    def _addVar(self,name,namelist):
         self.assertNotFrozen()
         if isinstance(name,list):
-            return [self._addVar(n,namelist,namedict) for n in name]
+            return [self._addVar(n,namelist) for n in name]
 
         assert(isinstance(name,str))
-        
-        if name in namedict:
-            raise KeyError(name+' is already in in '+str(namelist))
         
         self.assertUniqueName(name)
         namelist.append(name)
-        namedict[name] = C.ssym(name)
-        return namedict[name]
+
+        ret = C.ssym(name)
+        self._syms[name] = ret
+        return ret
 
     def setAlgRes(self,res):
         if hasattr(self,'_algRes'):
@@ -73,44 +60,41 @@ class Dae():
         self._odeRes = res
 
     def addX(self,name):
-        return self._addVar(name,self._xNames,self._xDict)
+        """
+        Add a differential state
+        """
+        return self._addVar(name,self._xNames)
 
     def addZ(self,name):
-        return self._addVar(name,self._zNames,self._zDict)
+        """
+        Add an algebraic variable
+        """
+        return self._addVar(name,self._zNames)
 
     def addU(self,name):
-        return self._addVar(name,self._uNames,self._uDict)
+        """
+        Add a control input
+        """
+        return self._addVar(name,self._uNames)
 
     def addP(self,name):
-        return self._addVar(name,self._pNames,self._pDict)
+        """
+        Add a parameter
+        """
+        return self._addVar(name,self._pNames)
     
-    def x(self,name):
-        return self._getVar(name,self._xNames,self._xDict)
-
-    def z(self,name):
-        return self._getVar(name,self._zNames,self._zDict)
-
-    def u(self,name):
-        return self._getVar(name,self._uNames,self._uDict)
-
-    def p(self,name):
-        return self._getVar(name,self._pNames,self._pDict)
-
-    def output(self,name):
-        return self._getVar(name,self._outputNames,self._outputDict)
-
     def xVec(self):
         self._freeze('xVec()')
-        return C.veccat([self._xDict[n] for n in self._xNames])
+        return C.veccat([self._syms[n] for n in self._xNames])
     def zVec(self):
         self._freeze('zVec()')
-        return C.veccat([self._zDict[n] for n in self._zNames])
+        return C.veccat([self._syms[n] for n in self._zNames])
     def uVec(self):
         self._freeze('uVec()')
-        return C.veccat([self._uDict[n] for n in self._uNames])
+        return C.veccat([self._syms[n] for n in self._uNames])
     def pVec(self):
         self._freeze('pVec()')
-        return C.veccat([self._pDict[n] for n in self._pNames])
+        return C.veccat([self._syms[n] for n in self._pNames])
 
     def xNames(self):
         self._freeze('xNames()')
@@ -128,14 +112,31 @@ class Dae():
         self._freeze('outputNames()')
         return self._outputNames
 
-    def addOutput(self,name,val):
-        self.assertNotFrozen()
-        assert( isinstance(name, str) )
-        assert( isinstance(val, C.SXMatrix) )
-        self.assertUniqueName(name)
+    def __getitem__(self,name):
+        """
+        Get a differential state, algebraic var, control, param, or output
+        """
+        if not isinstance(name,str):
+            raise KeyError('Dae key must be a string')
+
+        try:
+            return self._syms[name]
+        except KeyError:
+            raise KeyError(name+' is not a symbol in Dae')
         
+    def __setitem__(self,name,val):
+        """
+        Add an output
+        """
+        self.assertNotFrozen()
+        if not isinstance(name,str):
+            raise KeyError('Output name must be a string')
+
+#        assert( isinstance(val, C.SXMatrix) )
+
+        self.assertUniqueName(name)
         self._outputNames.append(name)
-        self._outputDict[name] = val
+        self._syms[name] = val
 
     def outputsFun(self):
         self._freeze('outputsFun()')
@@ -146,7 +147,7 @@ class Dae():
         for name in self.outputNames():
             # try to make a function without any algebraic variables
             f = C.SXFunction([self.xVec(),self.uVec(),self.pVec()],
-                             [self.output(name)]
+                             [self[name]]
                              )
             f.init()
             if len(f.getFree()) == 0:
@@ -156,7 +157,7 @@ class Dae():
         # function with only outputs with no algebraic vars
         if len(outputsNoZ)>0:
             fNoZ = C.SXFunction([self.xVec(), self.uVec(), self.pVec()],
-                                [self.output(n) for n in outputsNoZ])
+                                [self[name] for name in outputsNoZ])
             fNoZ.setOption('name','outputs with no algebraic vars')
             fNoZ.init()
         else:
@@ -165,7 +166,7 @@ class Dae():
         # function which outputs everything
         if len(self.outputNames())>0:
             fAll = C.SXFunction([self.xVec(), self.zVec(), self.uVec(), self.pVec()],
-                                [self.output(n) for n in self.outputNames()])
+                                [self[name] for name in self.outputNames()])
             fAll.init()
             fAll.setOption('name','all outputs')
         else:
@@ -190,11 +191,12 @@ class Dae():
 
 if __name__=='__main__':
     dae = Dae()
-    print dae.xNames
-    print dae.xDict
-    dae.x('x')
-    print dae.xNames
-    print dae.xDict
-    dae.x('y')
-    print dae.xNames
-    print dae.xDict
+
+    [pos,vel,mass] = dae.addX( ["pos","vel","mass"] )
+    [zdummy] = dae.addZ( ["zdummy"] )
+    thrust = dae.addU( "thrust" )
+    
+    dae['pos*vel'] = pos*vel
+
+    dae.setOdeRhs([vel, (thrust - 0.05*vel*vel)/mass, -0.1*thrust*thrust])
+    dae.setAlgRes([zdummy])

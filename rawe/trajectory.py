@@ -29,7 +29,7 @@ class Trajectory(object):
         for name in self.trajData.outputNames:
             # try to make a function without any algebraic states
             f = C.SXFunction([ocp.dae.xVec(),ocp.dae.uVec(),ocp.dae.pVec()],
-                             [ocp.dae.output(name)]
+                             [ocp.dae[name]]
                              )
             f.init()
             if len(f.getFree()) == 0:
@@ -37,7 +37,7 @@ class Trajectory(object):
             else:
                 # darn, it has algebraic states
                 f = C.SXFunction([ocp.dae.xVec(),ocp.dae.zVec(),ocp.dae.uVec(),ocp.dae.pVec()],
-                                 [ocp.dae.output(name)]
+                                 [ocp.dae[name]]
                                  )
                 f.init()
                 self._outputFunsZ[name] = f
