@@ -32,23 +32,23 @@ def pendulumModel(nSteps=None):
     dxDotDummy = scaledStateDotDummy[2]
     dzDotDummy = scaledStateDotDummy[3]
 
-    ode = [ dae.x('dx') - xDotDummy
-          , dae.x('dz') - zDotDummy
-          , dae.z('ddx') - dxDotDummy
-          , dae.z('ddz') - dzDotDummy
+    ode = [ dae['dx'] - xDotDummy
+          , dae['dz'] - zDotDummy
+          , dae['ddx'] - dxDotDummy
+          , dae['ddz'] - dzDotDummy
           ]
 
-    fx =  dae.u('torque')*dae.x('z')
-    fz = -dae.u('torque')*dae.x('x') + dae.p('m')*9.8
-    alg = [ dae.p('m')*dae.z('ddx') + dae.x('x')*dae.z('tau') - fx
-          , dae.p('m')*dae.z('ddz') + dae.x('z')*dae.z('tau') - fz
-          , dae.x('x')*dae.z('ddx') + dae.x('z')*dae.z('ddz') + (dae.x('dx')*dae.x('dx') + dae.x('dz')*dae.x('dz')) ]
+    fx =  dae['torque']*dae['z']
+    fz = -dae['torque']*dae['x'] + dae['m']*9.8
+    alg = [ dae['m']*dae['ddx'] + dae['x']*dae['tau'] - fx
+          , dae['m']*dae['ddz'] + dae['z']*dae['tau'] - fz
+          , dae['x']*dae['ddx'] + dae['z']*dae['ddz'] + (dae['dx']*dae['dx'] + dae['dz']*dae['dz']) ]
 
-    c = [ dae.x('x')*dae.x('x') + dae.x('z')*dae.x('z') - r*r
-        , dae.x('dx')*dae.x('x')* + dae.x('dz')*dae.x('z')
+    c = [ dae['x']*dae['x'] + dae['z']*dae['z'] - r*r
+        , dae['dx']*dae['x'] + dae['dz']*dae['z']
         ]
-    dae.addOutput('c',c[0])
-    dae.addOutput('cdot',c[1])
+    dae['c'] = c[0]
+    dae['cdot'] = c[1]
 
     dae.setAlgRes( alg )
     dae.setOdeRes( ode )

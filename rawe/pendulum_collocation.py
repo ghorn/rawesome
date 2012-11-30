@@ -23,16 +23,8 @@ def main():
     ocp = Coll(dae, nk=nk,nicp=1,deg=4)
     
     # constrain invariants
-    def invariantErrs():
-        f = C.SXFunction( [dae.xVec(),dae.uVec(),dae.pVec()]
-                        , [C.veccat([dae.output('c'),dae.output('cdot')])]
-                        )
-        f.setOption('name','invariant errors')
-        f.init()
-        return f
-    
-    [c0] = invariantErrs().call([ocp.xVec(0),ocp.uVec(0),ocp.pVec()])
-    ocp.constrain(c0,'==',0)
+    ocp.constrain(ocp.lookup('c',timestep=0),'==',0)
+    ocp.constrain(ocp.lookup('cdot',timestep=0),'==',0)
 
     # bounds
     r = 0.3

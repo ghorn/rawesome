@@ -28,63 +28,64 @@ def setupModel(dae, conf):
     rA = conf['carousel']['rArm']
 
     ###########     model integ ###################
-    e11 = dae.x('e11')
-    e12 = dae.x('e12')
-    e13 = dae.x('e13')
+    e11 = dae['e11']
+    e12 = dae['e12']
+    e13 = dae['e13']
 
-    e21 = dae.x('e21')
-    e22 = dae.x('e22')
-    e23 = dae.x('e23')
+    e21 = dae['e21']
+    e22 = dae['e22']
+    e23 = dae['e23']
 
-    e31 = dae.x('e31')
-    e32 = dae.x('e32')
-    e33 = dae.x('e33')
+    e31 = dae['e31']
+    e32 = dae['e32']
+    e33 = dae['e33']
                    
-    x =   dae.x('x')
-    y =   dae.x('y')
-    z =   dae.x('z')
+    x =   dae['x']
+    y =   dae['y']
+    z =   dae['z']
 
-    dx  =  dae.x('dx')
-    dy  =  dae.x('dy')
-    dz  =  dae.x('dz')
+    dx  =  dae['dx']
+    dy  =  dae['dy']
+    dz  =  dae['dz']
 
-    w1  =  dae.x('w1')
-    w2  =  dae.x('w2')
-    w3  =  dae.x('w3')
+    w1  =  dae['w1']
+    w2  =  dae['w2']
+    w3  =  dae['w3']
 
-    delta = dae.x('delta')
-    ddelta = dae.x('ddelta')
+    delta = dae['delta']
+    ddelta = dae['ddelta']
 
-    r = dae.x('r')
-    dr = dae.x('dr')
+    r = dae['r']
+    dr = dae['dr']
     
-    ddr = dae.u('ddr')
+    ddr = dae['ddr']
     
-    tc = dae.u('motor torque') #Carousel motor torque
+    tc = dae['motor torque'] #Carousel motor torque
 
     # wind
     z0 = conf['wind shear']['z0']
     zt_roughness = conf['wind shear']['zt_roughness']
     zsat = 0.5*(z+C.sqrt(z*z))
-    wind_x = dae.p('w0')*C.log((zsat+zt_roughness+2)/zt_roughness)/C.log(z0/zt_roughness)
-    dae.addOutput('wind at altitude', wind_x)
+    wind_x = dae['w0']*C.log((zsat+zt_roughness+2)/zt_roughness)/C.log(z0/zt_roughness)
+    dae['wind at altitude'] = wind_x
 
     dp_carousel_frame = C.veccat( [ dx - ddelta*y
                                   , dy + ddelta*(rA + x)
                                   , dz
                                   ]) - C.veccat([C.cos(delta)*wind_x,C.sin(delta)*wind_x,0])
-    R_c2b = C.veccat( dae.x(['e11', 'e12', 'e13',
-                             'e21', 'e22', 'e23',
-                             'e31', 'e32', 'e33']) ).reshape((3,3))
+    R_c2b = C.veccat( [dae[n] for n in ['e11', 'e12', 'e13',
+                                        'e21', 'e22', 'e23',
+                                        'e31', 'e32', 'e33']]
+                      ).reshape((3,3))
 
     # Aircraft velocity w.r.t. inertial frame, given in its own reference frame
     # (needed to compute the aero forces and torques !)
     dpE = C.mul( R_c2b, dp_carousel_frame )
 
     (f1, f2, f3, t1, t2, t3) = aeroForcesTorques(dae, conf, dp_carousel_frame, dpE,
-                                                 dae.x(('w1','w2','w3')),
-                                                 dae.x(('e21', 'e22', 'e23')),
-                                                 dae.x(('aileron','elevator'))
+                                                 (dae['w1'], dae['w2'], dae['w3']),
+                                                 (dae['e21'], dae['e22'], dae['e23']),
+                                                 (dae['aileron'],dae['elevator'])
                                                  )
 
     # mass matrix
@@ -192,12 +193,12 @@ def setupModel(dae, conf):
     
     cdot =dx*(x + zt*e31) + dy*(y + zt*e32) + dz*(z + zt*e33) + zt*(w2 - ddelta*e23)*(e11*x + e12*y + e13*z + zt*e11*e31 + zt*e12*e32 + zt*e13*e33) - zt*(w1 - ddelta*e13)*(e21*x + e22*y + e23*z + zt*e21*e31 + zt*e22*e32 + zt*e23*e33) - r*dr
 
-    ddx = dae.z('ddx')
-    ddy = dae.z('ddy')
-    ddz = dae.z('ddz')
-    dw1 = dae.z('dw1')
-    dw2 = dae.z('dw2')
-    dddelta = dae.z('dddelta')
+    ddx = dae['ddx']
+    ddy = dae['ddy']
+    ddz = dae['ddz']
+    dw1 = dae['dw1']
+    dw2 = dae['dw2']
+    dddelta = dae['dddelta']
     
     cddot = -(w1-ddelta*e13)*(zt*e23*(dz+zt*e13*w2-zt*e23*w1)+zt*e33*(w1*z+zt*e33*w1+ddelta*e11*x+ddelta*e12*y+zt*ddelta*e11*e31+zt*ddelta*e12*e32)+zt*e21*(dx+zt*e11*w2-zt*e21*w1-zt*ddelta*e11*e23+zt*ddelta*e13*e21)+zt*e22*(dy+zt*e12*w2-zt*e22*w1-zt*ddelta*e12*e23+zt*ddelta*e13*e22)+zt*e31*(x+zt*e31)*(w1-ddelta*e13)+zt*e32*(y+zt*e32)*(w1-ddelta*e13))+(w2-ddelta*e23)*(zt*e13*(dz+zt*e13*w2-zt*e23*w1)-zt*e33*(w2*z+zt*e33*w2+ddelta*e21*x+ddelta*e22*y+zt*ddelta*e21*e31+zt*ddelta*e22*e32)+zt*e11*(dx+zt*e11*w2-zt*e21*w1-zt*ddelta*e11*e23+zt*ddelta*e13*e21)+zt*e12*(dy+zt*e12*w2-zt*e22*w1-zt*ddelta*e12*e23+zt*ddelta*e13*e22)-zt*e31*(x+zt*e31)*(w2-ddelta*e23)-zt*e32*(y+zt*e32)*(w2-ddelta*e23))-ddr*r+(zt*w1*(e11*x+e12*y+e13*z+zt*e11*e31+zt*e12*e32+zt*e13*e33)+zt*w2*(e21*x+e22*y+e23*z+zt*e21*e31+zt*e22*e32+zt*e23*e33))*(w3-ddelta*e33)+dx*(dx+zt*e11*w2-zt*e21*w1-zt*ddelta*e11*e23+zt*ddelta*e13*e21)+dy*(dy+zt*e12*w2-zt*e22*w1-zt*ddelta*e12*e23+zt*ddelta*e13*e22)+dz*(dz+zt*e13*w2-zt*e23*w1)+ddx*(x+zt*e31)+ddy*(y+zt*e32)+ddz*(z+zt*e33)-dr*dr+zt*(dw2-dddelta*e23)*(e11*x+e12*y+e13*z+zt*e11*e31+zt*e12*e32+zt*e13*e33)-zt*(dw1-dddelta*e13)*(e21*x+e22*y+e23*z+zt*e21*e31+zt*e22*e32+zt*e23*e33)-zt*dddelta*(e11*e23*x-e13*e21*x+e12*e23*y-e13*e22*y+zt*e11*e23*e31-zt*e13*e21*e31+zt*e12*e23*e32-zt*e13*e22*e32)
 
@@ -213,9 +214,9 @@ def setupModel(dae, conf):
 #        ddz = ddX @> 2
 #        dddelta = dddelta' @> 0
 
-    dae.addOutput('c',  c)
-    dae.addOutput('cdot', cdot)
-    dae.addOutput('cddot', cddot)
+    dae['c'] =  c
+    dae['cdot'] = cdot
+    dae['cddot'] = cddot
     return (mm, rhs, dRexp)
         
 def carouselModel(conf,nSteps=None,extraParams=[]):
@@ -265,34 +266,34 @@ def carouselModel(conf,nSteps=None,extraParams=[]):
               ] )
     dae.addP( ['w0'] )
     
-    dae.addOutput('RPM', dae.x('ddelta')*60/(2*C.pi))
-    dae.addOutput('aileron(deg)', dae.x('aileron')*180/C.pi)
-    dae.addOutput('elevator(deg)', dae.x('elevator')*180/C.pi)
-    dae.addOutput('daileron(deg/s)', dae.u('daileron')*180/C.pi)
-    dae.addOutput('delevator(deg/s)', dae.u('delevator')*180/C.pi)
+    dae['RPM'] = dae['ddelta']*60/(2*C.pi)
+    dae['aileron(deg)'] = dae['aileron']*180/C.pi
+    dae['elevator(deg)'] = dae['elevator']*180/C.pi
+    dae['daileron(deg/s)'] = dae['daileron']*180/C.pi
+    dae['delevator(deg/s)'] = dae['delevator']*180/C.pi
     
-    dae.addOutput('motor power', dae.u('motor torque')*dae.x('ddelta'))
+    dae['motor power'] = dae['motor torque']*dae['ddelta']
 
-    dae.addOutput('tether tension', dae.x('r')*dae.z('nu'))
-    dae.addOutput('winch power', -dae.output('tether tension')*dae.x('dr'))
+    dae['tether tension'] = dae['r']*dae['nu']
+    dae['winch power'] = -dae['tether tension']*dae['dr']
     
-    dae.addOutput('dcm',C.vertcat([C.horzcat([dae.x('e11'),dae.x('e12'),dae.x('e13')]),
-                                   C.horzcat([dae.x('e21'),dae.x('e22'),dae.x('e23')]),
-                                   C.horzcat([dae.x('e31'),dae.x('e32'),dae.x('e33')])]))
+    dae['dcm'] = C.vertcat([C.horzcat([dae['e11'],dae['e12'],dae['e13']]),
+                            C.horzcat([dae['e21'],dae['e22'],dae['e23']]),
+                            C.horzcat([dae['e31'],dae['e32'],dae['e33']])])
     
     (massMatrix, rhs, dRexp) = setupModel(dae, conf)
 
     
-    ode = C.veccat( [ C.veccat(dae.x(['dx','dy','dz']))
+    ode = C.veccat( [ C.veccat([dae['dx'],dae['dy'],dae['dz']])
                     , dRexp.trans().reshape([9,1])
-                    , C.veccat(dae.z(['ddx','ddy','ddz']))
-                    , C.veccat(dae.z(['dw1','dw2','dw3']))
-                    , C.veccat([dae.x('ddelta'), dae.z('dddelta')])
-                    , dae.x('dr')
-                    , dae.u('ddr')
-                    , dae.output('winch power') + dae.output('motor power')
-                    , dae.u('daileron')
-                    , dae.u('delevator')
+                    , C.veccat([dae['ddx'],dae['ddy'],dae['ddz']])
+                    , C.veccat([dae['dw1'],dae['dw2'],dae['dw3']])
+                    , C.veccat([dae['ddelta'], dae['dddelta']])
+                    , dae['dr']
+                    , dae['ddr']
+                    , dae['winch power'] + dae['motor power']
+                    , dae['daileron']
+                    , dae['delevator']
                     ] )
 
     if nSteps is not None:
@@ -302,7 +303,7 @@ def carouselModel(conf,nSteps=None,extraParams=[]):
     scaledStateDotDummy = dae.stateDotDummy
     
     if nSteps is not None:
-        scaledStateDotDummy = dae.stateDotDummy/(dae.p('endTime')/(nSteps-1))
+        scaledStateDotDummy = dae.stateDotDummy/(dae['endTime']/(nSteps-1))
 
     dae.setOdeRes( ode - scaledStateDotDummy )
     dae.setAlgRes( C.mul(massMatrix, dae.zVec()) - rhs )

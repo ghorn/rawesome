@@ -60,7 +60,7 @@ def aeroForcesTorques(dae, conf, we, wE, (w1,w2,w3), (eTe1, eTe2, eTe3), (ailero
     
     vKite2 = C.mul(we.trans(), we) #Airfoil speed^2 
     vKite = C.sqrt(vKite2) #Airfoil speed
-    dae.addOutput('airspeed', vKite)
+    dae['airspeed'] = vKite
     
     # CALCULATION OF THE FORCES :
     # ###############################
@@ -106,10 +106,10 @@ def aeroForcesTorques(dae, conf, we, wE, (w1,w2,w3), (eTe1, eTe2, eTe3), (ailero
     alphaTail = alpha0 + C.arctan2(-vT3,vT1)
     betaTail = C.arcsin(vT2/vKite)
     
-    dae.addOutput('alpha(deg)', alpha*180/C.pi)
-    dae.addOutput('alphaTail(deg)', alphaTail*180/C.pi)
-    dae.addOutput('beta(deg)', beta*180/C.pi)
-    dae.addOutput('betaTail(deg)', betaTail*180/C.pi)
+    dae['alpha(deg)'] = alpha*180/C.pi
+    dae['alphaTail(deg)'] = alphaTail*180/C.pi
+    dae['beta(deg)'] = beta*180/C.pi
+    dae['betaTail(deg)'] = betaTail*180/C.pi
 
     # cL = cLA*alpha + cLe*elevator   + cL0
     # cD = cDA*alpha + cDA2*alpha*alpha + cDB2*beta*beta + cDe*elevator + cDr*aileron + cD0
@@ -123,9 +123,9 @@ def aeroForcesTorques(dae, conf, we, wE, (w1,w2,w3), (eTe1, eTe2, eTe3), (ailero
     cP = -pD*w2 + cPA*alphaTail + cPe*elevator + cP0
     cY = -yD*w3 + cYB*betaTail + cYAB*alphaTail*betaTail
 
-    dae.addOutput('cL', cL)
-    dae.addOutput('cD', cD)
-    dae.addOutput('L/D', cL/cD)
+    dae['cL'] = cL
+    dae['cD'] = cD
+    dae['L/D'] = cL/cD
     
     # LIFT :
     # ###############################
