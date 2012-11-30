@@ -153,17 +153,23 @@ class Dae():
                 # only add if there are no algebraic variables
                 outputsNoZ.append(name)
             
-        # function with only outputs no algebraic vars
-        fNoZ = C.SXFunction([self.xVec(), self.uVec(), self.pVec()],
-                            [self.output(n) for n in outputsNoZ])
-        fNoZ.setOption('name','outputs with no algebraic vars')
-        fNoZ.init()
+        # function with only outputs with no algebraic vars
+        if len(outputsNoZ)>0:
+            fNoZ = C.SXFunction([self.xVec(), self.uVec(), self.pVec()],
+                                [self.output(n) for n in outputsNoZ])
+            fNoZ.setOption('name','outputs with no algebraic vars')
+            fNoZ.init()
+        else:
+            fNoZ = None
 
         # function which outputs everything
-        fAll = C.SXFunction([self.xVec(), self.zVec(), self.uVec(), self.pVec()],
-                            [self.output(n) for n in self.outputNames()])
-        fAll.init()
-        fNoZ.setOption('name','all outputs')
+        if len(self.outputNames())>0:
+            fAll = C.SXFunction([self.xVec(), self.zVec(), self.uVec(), self.pVec()],
+                                [self.output(n) for n in self.outputNames()])
+            fAll.init()
+            fAll.setOption('name','all outputs')
+        else:
+            fAll = None
 
         return (fAll,(fNoZ,outputsNoZ))
 

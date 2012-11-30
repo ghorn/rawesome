@@ -152,7 +152,7 @@ class Coll():
         
         self._outputs = {}
         self._outputsNoZ = {}
-        for name in self.dae.outputNames():
+        for name in outputNamesNoZ:
             self._outputsNoZ[name] = np.resize(np.array([None],dtype=CS.MX),(self.nk,self.nicp))
         for name in self.dae.outputNames():
             self._outputs[name] = np.resize(np.array([None],dtype=CS.MX),(self.nk,self.nicp,self.deg+1))
@@ -160,17 +160,24 @@ class Coll():
         for timestepIdx in range(self.nk):
             for nicpIdx in range(self.nicp):
                 # outputs with no algebraic states
-                outs = fNoZ.call([self.xVec(timestepIdx,nicpIdx=nicpIdx,degIdx=0),
-                                  self.uVec(timestepIdx),
-                                  self.pVec()])
+                if fNoZ is not None:
+                    outs = fNoZ.call([self.xVec(timestepIdx,nicpIdx=nicpIdx,degIdx=0),
+                                      self.uVec(timestepIdx),
+                                      self.pVec()])
+                else:
+                    outs = []
                 for name,val in zip(outputNamesNoZ,outs):
                     self._outputsNoZ[name][timestepIdx][nicpIdx] = val
                 
+                # all outputs
                 for degIdx in range(1,self.deg+1):
-                    outs = fAll.call([self.xVec(timestepIdx,nicpIdx=nicpIdx,degIdx=degIdx),
-                                      self.zVec(timestepIdx,nicpIdx=nicpIdx,degIdx=degIdx),
-                                      self.uVec(timestepIdx),
-                                      self.pVec()])
+                    if fAll is not None:
+                        outs = fAll.call([self.xVec(timestepIdx,nicpIdx=nicpIdx,degIdx=degIdx),
+                                          self.zVec(timestepIdx,nicpIdx=nicpIdx,degIdx=degIdx),
+                                          self.uVec(timestepIdx),
+                                          self.pVec()])
+                    else:
+                        outs = []
                     for name,val in zip(self.dae.outputNames(),outs):
                         self._outputs[name][timestepIdx][nicpIdx][degIdx] = val
 
