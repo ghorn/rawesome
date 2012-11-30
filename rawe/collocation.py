@@ -190,7 +190,7 @@ class Coll():
         ## Collocation setup
         ## -----------------------------------------------------------------------------
         # Size of the finite elements
-        self.h = tf/(self.nk*self.nicp)
+        self.h = tf/float(self.nk*self.nicp)
 
         # make coefficients for collocation/continuity equations
         self.lagrangePoly = LagrangePoly(deg=self.deg,collPoly=self.collPoly)
