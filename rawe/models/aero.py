@@ -123,6 +123,8 @@ def aeroForcesTorques(dae, conf, we, wE, (w1,w2,w3), (eTe1, eTe2, eTe3), (ailero
     cP = -pD*w2 + cPA*alphaTail + cPe*elevator + cP0
     cY = -yD*w3 + cYB*betaTail + cYAB*alphaTail*betaTail
 
+    cD += 0.25*dae['r']*0.004/area
+
     dae['cL'] = cL
     dae['cD'] = cD
     dae['L/D'] = cL/cD
