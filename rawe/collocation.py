@@ -555,6 +555,7 @@ class Coll():
             if name in self._bounds._pMap:
                 self._bounds.setVal(name,val,force=force)
                 return
+            raise ValueError("can't bound \""+name+"\" because it's not x/z/u/p")
         
         assert isinstance(timestep,int)
         if name in self._bounds._zMap:
