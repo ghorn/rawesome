@@ -18,19 +18,19 @@ class Communicator():
         self.fOutputs = fOutputs
         self.outputNames = outputNames
 
-    def sendKite(self,sim,(x,z,u,p),zt,rArm,w0,otherMessages=[]):
+    def sendKite(self,sim,(x,u,p),zt,rArm,w0,otherMessages=[]):
         assert isinstance(otherMessages,list)
-        pb = kiteproto.toKiteProto(x,u,p,zt,rArm,w0=w0)
+        pb = kiteproto.toKiteProto(x,u,p,zt,rArm,w0=w0,zeroDelta=True)
         pb.messages.append("sloMoFactor: "+str(sim.sloMoFactor))
         pb.messages.append("-------------------------")
 
         self.fOutputs.setInput(x,0)
-        self.fOutputs.setInput(z,1)
-        self.fOutputs.setInput(u,2)
-        self.fOutputs.setInput(p,3)
+        self.fOutputs.setInput(u,1)
+        self.fOutputs.setInput(p,2)
         self.fOutputs.evaluate()
         for k,n in enumerate(self.outputNames):
-            pb.messages.append(n+": "+str(self.fOutputs.output(k)))
+            if n != "dcm":
+                pb.messages.append(n+": "+str(self.fOutputs.output(k)))
         if len(otherMessages)>0:
             pb.messages.append("-------------------------")
             for om in otherMessages:
