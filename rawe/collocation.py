@@ -300,6 +300,7 @@ class Coll():
         
         ffcn = CS.SXFunction([xddot,xd,xa,u,p],[residual])
         ffcn.init()
+
         return ffcn
 
     def interpolateInitialGuess(self,filename,force=False,quiet=False):

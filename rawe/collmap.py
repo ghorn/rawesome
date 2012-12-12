@@ -298,4 +298,4 @@ class CollMap(object):
                 self._pMap[name] = setVal
 
         else:
-            raise KeyError("couldn't find \""+name+"\" in "+self._name+" map")
+            raise ValueError("couldn't find \""+name+"\" in "+self._name+" map")
