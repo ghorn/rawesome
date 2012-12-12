@@ -44,11 +44,8 @@ def pendulumModel(nSteps=None):
           , dae['m']*dae['ddz'] + dae['z']*dae['tau'] - fz
           , dae['x']*dae['ddx'] + dae['z']*dae['ddz'] + (dae['dx']*dae['dx'] + dae['dz']*dae['dz']) ]
 
-    c = [ dae['x']*dae['x'] + dae['z']*dae['z'] - r*r
-        , dae['dx']*dae['x'] + dae['dz']*dae['z']
-        ]
-    dae['c'] = c[0]
-    dae['cdot'] = c[1]
+    dae['c']    = dae['x']*dae['x'] + dae['z']*dae['z'] - r*r
+    dae['cdot'] = dae['dx']*dae['x'] + dae['dz']*dae['z']
 
     dae.setAlgRes( alg )
     dae.setOdeRes( ode )
