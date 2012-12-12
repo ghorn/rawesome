@@ -53,7 +53,7 @@ class LagrangePoly(object):
                 lfcn.setInput(self.tau_root[k])
                 lfcn.setFwdSeed(1.0)
                 lfcn.evaluate(1,0)
-                self.lDotAtTauRoot[j,k] = lfcn.fwdSens()
+                self.lDotAtTauRoot[k,j] = lfcn.fwdSens()
 
     def interp(self,tau,zs):
         ret = 0.0
@@ -214,7 +214,7 @@ class Coll():
                     xp_jk = 0
                     for j2 in range (self.deg+1):
                         # get the time derivative of the differential states (eq 10.19b)
-                        xp_jk += self.lagrangePoly.lDotAtTauRoot[j2][j]*self.xVec(k,nicpIdx=i,degIdx=j2)
+                        xp_jk += self.lagrangePoly.lDotAtTauRoot[j,j2]*self.xVec(k,nicpIdx=i,degIdx=j2)
                     # Add collocation equations to the NLP
                     [fk] = ffcn.call([xp_jk/self.h,
                                       self.xVec(k,nicpIdx=i,degIdx=j),
