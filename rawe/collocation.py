@@ -303,7 +303,7 @@ class Coll():
 
         return ffcn
 
-    def interpolateInitialGuess(self,filename,force=False,quiet=False):
+    def interpolateInitialGuess(self,filename,force=False,quiet=False,numLoops=1):
         print "interpolating initial guess..."
         f=open(filename,'r')
         traj = pickle.load(f)
@@ -313,6 +313,7 @@ class Coll():
 
         h = (traj.tgrid[-1,0,0] - traj.tgrid[0,0,0])/float(traj.collMap._nk*traj.collMap._nicp)
         h *= traj.collMap._nk*traj.collMap._nicp/float(self.nk*self.nicp)
+        h *= numLoops
             
         missing = set(self.dae.xNames()+self.dae.zNames()+self.dae.uNames()+self.dae.pNames())
 
@@ -345,6 +346,8 @@ class Coll():
                         time = t0 + h*self.lagrangePoly.tau_root[degIdx]
                         self.guess(name,pp(time),timestep=timestepIdx,nicpIdx=nicpIdx,degIdx=degIdx,force=force,quiet=quiet)
                     t0 += h
+                    if t0 > traj.tgrid[-1,0,0]:
+                        t0 -= traj.tgrid[-1,0,0]
             self.guess(name,pp(t0),timestep=-1,nicpIdx=0,degIdx=0,force=force,quiet=quiet)
 
         # interpolate algebraic variables
@@ -401,7 +404,10 @@ class Coll():
             if name not in missing:
                 continue
             missing.remove(name)
-            self.guess(name,traj.collMap.lookup(name),force=force,quiet=quiet)
+            if name=='endTime':
+                self.guess(name,traj.collMap.lookup(name)*numLoops,force=force,quiet=quiet)
+            else:
+                self.guess(name,traj.collMap.lookup(name),force=force,quiet=quiet)
 
         msg = "finished interpolating initial guess"
         if len(missing) > 0:
