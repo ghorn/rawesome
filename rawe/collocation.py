@@ -619,6 +619,9 @@ class Coll():
         self._guessVec(val,self.dae.uNames(),**kwargs)
     def guessP(self,val,**kwargs):
         self._guessVec(val,self.dae.pNames(),**kwargs)
+
+    def __call__(self,*args,**kwargs):
+        return self.lookup(*args,**kwargs)
         
     def lookup(self,name,timestep=None,nicpIdx=None,degIdx=None):
         # handle outputs specially
