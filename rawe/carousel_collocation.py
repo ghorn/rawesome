@@ -73,20 +73,15 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
     for name in [ "y","z",
                   "dy","dz",
                   "w1","w2","w3",
-                  "e11","e22","e33",
                   "ddelta",
                   "aileron","elevator",
                   "r","dr"]:
         ocp.constrain(ocp.lookup(name,timestep=0),'==',ocp.lookup(name,timestep=-1))
 
-    # make sure it doesn't find transposed-periodic DCM
-    # sign(eij(beginning) == sign(eij(end)) <--> eij(beginning)*eij(end) >= 0
-    for name in ['e12','e13','e23']:
-        ocp.constrain(ocp.lookup(name,timestep=0)*ocp.lookup(name,timestep=-1),'>=',0)
-
     # periodic attitude
 #    kiteutils.periodicEulers(ocp)
 #    kiteutils.periodicOrthonormalizedDcm(ocp)
+    kiteutils.periodicDcm(ocp)
 
     # bounds
     ocp.bound('aileron',(-0.04,0.04))
@@ -237,6 +232,8 @@ if __name__=='__main__':
 
     print "setting up ocp..."
     ocp = setupOcp(dae,conf,publisher,nk=30)
+
+    ocp.interpolateInitialGuess("data/carousel_opt.dat",force=True,quiet=True)
 
     for w0 in [10]:
         ocp.bound('w0',(w0,w0),force=True)

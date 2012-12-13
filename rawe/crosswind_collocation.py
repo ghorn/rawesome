@@ -50,20 +50,15 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4,collPoly='RADAU'):
     for name in [ "y","z",
                   "dy","dz",
                   "w1","w2","w3",
-                  "e11","e22","e33",
                   "r","dr",
                   'aileron','elevator'
                   ]:
         ocp.constrain(ocp.lookup(name,timestep=0),'==',ocp.lookup(name,timestep=-1))
 
-    # make sure it doesn't find transposed-periodic DCM
-    # sign(eij(beginning) == sign(eij(end)) <--> eij(beginning)*eij(end) >= 0
-    for name in ['e12','e13','e23']:
-        ocp.constrain(ocp.lookup(name,timestep=0)*ocp.lookup(name,timestep=-1),'>=',0)
-
     # periodic attitude
 #    kiteutils.periodicEulers(ocp)
 #    kiteutils.periodicOrthonormalizedDcm(ocp)
+    kiteutils.periodicDcm(ocp)
 
     # bounds
     ocp.bound('aileron',(-0.04,0.04))

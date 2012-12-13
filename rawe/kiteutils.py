@@ -38,29 +38,48 @@ def periodicEulers(ocp):
     ocp.constrain(pitch0,'==',pitchF)
     ocp.constrain(roll0,'==',rollF)
 
+
+def getDcm(ocp,k):
+    m11 = ocp.lookup('e11',timestep=k)
+    m12 = ocp.lookup('e12',timestep=k)
+    m13 = ocp.lookup('e13',timestep=k)
+
+    m21 = ocp.lookup('e21',timestep=k)
+    m22 = ocp.lookup('e22',timestep=k)
+    m23 = ocp.lookup('e23',timestep=k)
+
+    m31 = ocp.lookup('e31',timestep=k)
+    m32 = ocp.lookup('e32',timestep=k)
+    m33 = ocp.lookup('e33',timestep=k)
+
+    return C.vertcat([C.horzcat([m11,m12,m13]),
+                      C.horzcat([m21,m22,m23]),
+                      C.horzcat([m31,m32,m33])])
+
 def getOrthonormalizedDcm(ocp,k):
-    m = {}
-    m['e11'] = ocp.lookup('e11',timestep=k)
-    m['e12'] = ocp.lookup('e12',timestep=k)
-    m['e13'] = ocp.lookup('e13',timestep=k)
-
-    m['e21'] = ocp.lookup('e21',timestep=k)
-    m['e22'] = ocp.lookup('e22',timestep=k)
-    m['e23'] = ocp.lookup('e23',timestep=k)
-
-    m['e31'] = ocp.lookup('e31',timestep=k)
-    m['e32'] = ocp.lookup('e32',timestep=k)
-    m['e33'] = ocp.lookup('e33',timestep=k)
-
+    m = getDcm(ocp,k)
     return orthonormalizeDcm(m)
+
+def matchDcms(ocp,R0,Rf):
+    err = C.mul(R0.T, Rf)
+    ocp.constrain(err[0,1], '==', 0)
+    ocp.constrain(err[0,2], '==', 0)
+    ocp.constrain(err[1,2], '==', 0)
+
+    ocp.constrain(err[0,0], '>=', 0.5)
+    ocp.constrain(err[1,1], '>=', 0.5)
+#    ocp.constrain(err[2,2], '>=', 0.5)
+
+def periodicDcm(ocp):
+    R0 = getDcm(ocp,0)
+    Rf = getDcm(ocp,-1)
+    matchDcms(ocp,R0,Rf)
 
 # dcm periodic constraints
 def periodicOrthonormalizedDcm(ocp):
-    dcm0 = getOrthonormalizedDcm(ocp, 0)
-    dcmf = getOrthonormalizedDcm(ocp, -1)
-    ocp.constrain(dcm0['e11'], '==', dcmf['e11'])
-    ocp.constrain(dcm0['e22'], '==', dcmf['e22'])
-    ocp.constrain(dcm0['e33'], '==', dcmf['e33'])
+    R0 = getOrthonormalizedDcm(ocp,0)
+    Rf = getOrthonormalizedDcm(ocp,-1)
+    matchDcms(ocp,R0,Rf)
 
 def orthonormalizeDcm(m):
     ## OGRE (www.ogre3d.org) is made available under the MIT License.
@@ -95,17 +114,17 @@ def orthonormalizeDcm(m):
     # where |V| indicates length of vector V and A*B indicates dot
     # product of vectors A and B.
 
-    m00 = m['e11']
-    m01 = m['e12']
-    m02 = m['e13']
+    m00 = m[0,0]
+    m01 = m[0,1]
+    m02 = m[0,2]
 
-    m10 = m['e21']
-    m11 = m['e22']
-    m12 = m['e23']
+    m10 = m[1,0]
+    m11 = m[1,1]
+    m12 = m[1,2]
 
-    m20 = m['e31']
-    m21 = m['e32']
-    m22 = m['e33']
+    m20 = m[2,0]
+    m21 = m[2,1]
+    m22 = m[2,2]
     
     # compute q0
     fInvLength = 1.0/C.sqrt(m00*m00 + m10*m10 + m20*m20)
@@ -142,15 +161,6 @@ def orthonormalizeDcm(m):
     m12 *= fInvLength
     m22 *= fInvLength
 
-    return {'e11':m00,
-            'e12':m01,
-            'e13':m02,
-            
-            'e21':m10,
-            'e22':m11,
-            'e23':m12,
-            
-            'e31':m20,
-            'e32':m21,
-            'e33':m22
-            }
+    return C.vertcat([C.horzcat([m00,m01,m02]),
+                      C.horzcat([m10,m11,m12]),
+                      C.horzcat([m20,m21,m22])])
