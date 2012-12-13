@@ -13,14 +13,16 @@ from collocation import Coll
 from trajectory import Trajectory
 
 def main():
-    nk = 15
+    nk = 50
 
     print "creating model"
-    dae = models.pendulum()
+    dae = models.pendulum2()
     dae.addP('endTime')
 
     print "setting up OCP"
-    ocp = Coll(dae, nk=nk,nicp=1,deg=4)
+    ocp = Coll(dae, nk=nk,nicp=1,deg=4, collPoly='RADAU')
+    print "setting up collocation"
+    ocp.setupCollocation( ocp.lookup('endTime') )
     
     # constrain invariants
     ocp.constrain(ocp.lookup('c',timestep=0),'==',0)
@@ -28,26 +30,32 @@ def main():
 
     # bounds
     r = 0.3
-    ocp.bound('x',(-0.5,0.5))
-    ocp.bound('z',(-0.5,0.5))
+    ocp.bound('x',(-2*r,2*r))
+    ocp.bound('z',(-2*r,0.01*r))
     ocp.bound('dx',(-5,5))
     ocp.bound('dz',(-5,5))
     ocp.bound('torque',(-50,50))
-    ocp.bound('m',(0.3,0.5))
-    ocp.bound('endTime',(0.01,1.5))
+    ocp.bound('m',(0.3,0.3))
+    ocp.bound('endTime',(0.1,3.5))
 
     # boundary conditions
     ocp.bound('x',(r,r),timestep=0)
     ocp.bound('z',(0,0),timestep=0)
     ocp.bound('x',(0,0),timestep=-1)
-    ocp.bound('z',(-r*1.5,-r/2),timestep=-1)
+    ocp.bound('z',(-10*r,0.01*r),timestep=-1)
     ocp.bound('dx',(0,0),timestep=0)
     ocp.bound('dz',(0,0),timestep=0)
     ocp.bound('dx',(0,0),timestep=-1)
-    ocp.bound('dz',(0,0),timestep=-1)
+    ocp.bound('dz',(-0.5,0.5),timestep=-1)
 
     # make the solver
-    ocp.setObjective(ocp.lookup('endTime'))
+    obj = 0
+    for k in range(ocp.nk):
+        t = ocp.lookup('torque',timestep=k)
+        obj += t*t
+
+    ocp.setObjective(ocp.lookup('endTime') + 1e-6*obj/float(nk))
+#    ocp.setObjective(1e-6*obj/float(nk))
     
     context   = zmq.Context(1)
     publisher = context.socket(zmq.PUB)
@@ -66,41 +74,71 @@ def main():
           po = kite_pb2.PendulumOpt()
           po.x.extend(list([opt.lookup('x',timestep=k) for k in range(ocp.nk+1)]))
           po.z.extend(list([opt.lookup('z',timestep=k) for k in range(ocp.nk+1)]))
-          po.endTime = opt.lookup('endTime')
-          po.iters = self.iter
+          po.messages.append('endTime: %.3f'% opt.lookup('endTime'))
+          po.messages.append('mass: %.3f'% opt.lookup('m'))
+          po.messages.append('iters: %d'  % self.iter)
           publisher.send_multipart(["pendulum-opt", po.SerializeToString()])
         
     # solver
-    solverOptions = [ ("linear_solver","ma27")
+    solverOptions = [ ("linear_solver","ma57")
 #                    , ("derivative_test","first-order")
                     , ("expand_f",True)
                     , ("expand_g",True)
                     , ("generate_hessian",True)
-#                    , ("max_iter",1000)
-                    , ("tol",1e-4)
+                    , ("max_iter",10000)
+                    , ("tol",1e-8)
                     ]
-
     constraintFunOptions = [('numeric_jacobian',False)]
 
     # initial conditions
-    ocp.guessX([r,0,0,0])
-    ocp.guess('torque',0)
-    ocp.guess('m',0)
-    ocp.guess('endTime',0.3)
+    endTime = 0.3
+#    xOld = r
+#    zOld = 0
+#    dt0 = endTime/nk
+#    for k in range(nk+1):
+#        theta = float(k)/nk*C.pi/8.0
+#        x =  r*C.cos(theta)
+#        z = -r*C.sin(theta)
+#        
+#        ocp.guess('x',x,timestep=k)
+#        ocp.guess('z',z,timestep=k)
+#        ocp.guess('dx',(x-xOld)/dt0,timestep=k)
+#        ocp.guess('dz',(z-zOld)/dt0,timestep=k)
+#        xOld = x
+#        zOld = z
+##    ocp.guess('dx',0)
+##    ocp.guess('dz',0)
+#    for k in range(ocp.nk):
+#        if k < ocp.nk:
+#            ocp.guess('torque',0,timestep=k)
+#        else:
+#            ocp.guess('torque',-0,timestep=k)
 
-    ocp.setupCollocation( ocp.lookup('endTime') )
+#    ocp.guessX([r,0,0,0])
+#    ocp.guessX([0,-r,0,0])
+#    ocp.guess('torque',0)
+#    ocp.guess('m',0.3)
+#    ocp.guess('endTime',endTime)
+    ocp.interpolateInitialGuess("data/pendulum_opt.dat",force=True,quiet=True)
+
+    print "setting up solver"
     ocp.setupSolver( solverOpts=solverOptions,
                      constraintFunOpts=constraintFunOptions,
                      callback=MyCallback() )
     
+    print "solving"
     opt = ocp.solve()
+    print "endTime: "+str(opt.lookup('endTime'))
+    print "mass: "+str(opt.lookup('m'))
     traj = Trajectory(ocp,dvs=opt.vec)
 
+    print "saving optimal trajectory"
+#    traj.save("data/pendulum_opt.dat")
+
     # Plot the results
-    for name in ocp.dae.xNames():
-        traj.plot(name)
-    for name in ocp.dae.uNames():
-        traj.plot(name)
+    traj.subplot([['x','z'],['dx','dz']])
+    traj.plot('torque')
+    traj.plot('tau')
     plt.show()
 
 if __name__=='__main__':
