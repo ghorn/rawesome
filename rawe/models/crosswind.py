@@ -309,6 +309,28 @@ def crosswindModel(conf,nSteps=None,extraParams=[]):
     if nSteps is not None:
         dae.addP('endTime')
 
+    # acceleration
+    dae['accel (g)'] = C.sqrt(dae['ddx']**2 + dae['ddy']**2 + (dae['ddz'] + 9.8)**2)/9.8
+    dae['accel without gravity (g)'] = C.sqrt(dae['ddx']**2 + dae['ddy']**2 + dae['ddz']**2)/9.8
+    dae['accel'] = C.sqrt(dae['ddx']**2 + dae['ddy']**2 + (dae['ddz']+9.8)**2)
+    dae['accel without gravity'] = C.sqrt(dae['ddx']**2 + dae['ddy']**2 + dae['ddz']**2)
+
+
+    # add local loyd's limit
+    def addLoydsLimit():
+        w = dae['wind at altitude']
+        cL = dae['cL']
+        cD = dae['cD']
+        rho = conf['env']['rho']
+        S = conf['kite']['area']
+        loyds = 2/27.0*rho*S*w**3*cL**3/cD**2
+        loyds2 = 2/27.0*rho*S*w**3*(cL**2/cD**2 + 1)**(1.5)*cD
+        dae["loyd's limit"] = loyds
+        dae["loyd's limit (exact)"] = loyds2
+        dae['-(winch power)'] = -dae['winch power']
+    addLoydsLimit()
+    
+
     dae.stateDotDummy = C.veccat( [C.ssym(name+"DotDummy") for name in dae.xNames()] )
     scaledStateDotDummy = dae.stateDotDummy
     
