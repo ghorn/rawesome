@@ -33,9 +33,13 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4,collPoly='RADAU'):
     def constrainAirspeedAlphaBeta():
         for k in range(0,nk):
             ocp.constrain(ocp.lookup('airspeed',timestep=k), '>=', 10)
-            ocp.constrainBnds(ocp.lookup('alpha(deg)',timestep=k), (-5,10))
+            ocp.constrainBnds(ocp.lookup('alpha(deg)',timestep=k), (-5,20))
             ocp.constrainBnds(ocp.lookup('beta(deg)', timestep=k), (-10,10))
     constrainAirspeedAlphaBeta()
+    def constrainCl():
+        for k in range(0,nk):
+            ocp.constrain(ocp.lookup('cL',timestep=k), '<=', 1.4)
+    constrainCl()
 
     # constrain tether force
     for k in range(nk):
