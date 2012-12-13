@@ -144,7 +144,8 @@ class Coll():
                 bndtags.append((name,(k,i,j)))
         for name in self.dae.xNames():
             bndtags.append((name,(nk,0,0)))
-        self.bndtags = np.array(bndtags)
+
+        self.bndtags = bndtags
 
 
     def _setupOutputs(self):
