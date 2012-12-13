@@ -8,8 +8,8 @@ import qualified System.ZMQ as ZMQ
 import Control.Concurrent ( MVar, forkIO, modifyMVar_, newMVar, readMVar)
 import Control.Monad ( forever )
 import qualified Data.ByteString.Lazy as BL
-import Text.Printf ( printf )
 import Text.ProtocolBuffers ( messageGet )
+import Text.ProtocolBuffers.Basic ( uToString )
 
 import qualified Kite.PendulumOpt as PO
 
@@ -18,31 +18,41 @@ import Vis
 import DrawAC
 
 data State = State { sTrails :: [Xyz Double]
-                   , sEndTime :: Double
-                   , sIter :: Int
+                   , sMessages :: [String]
                    }
 
 
 drawFun :: Maybe State -> VisObject Double
 ----drawFun state = VisObjects $ [axes] ++ (map text [-5..5]) ++ [boxText, ac, plane,trailLines]
 drawFun Nothing = VisObjects []
-drawFun (Just state) = VisObjects $ [axes, txt, plane, trailLines]
+drawFun (Just state) = VisObjects $ [txt, plane, trailLines, yLines, zLines]
   where
-    axes = Trans (Xyz 0 (-0.1) 0) $ Axes (0.5, 15)
+--    axes = Trans (Xyz 0 (-0.1) 0) $ Axes (0.5, 15)
     plane = Trans (Xyz 0 0 1) $ Plane (Xyz 0 0 1) (makeColor 1 1 1 1) (makeColor 0.2 0.3 0.32 1)
-    txt = VisObjects
-          [ Text2d (printf "iteration: %d" (sIter state)) (30,60) TimesRoman24 (makeColor 1 1 1 1)
-          , Text2d (printf "endTime: %.3f" (sEndTime state)) (30,30) TimesRoman24 (makeColor 1 1 1 1)
-          ]
+    txt = VisObjects $ zipWith (\s k -> Text2d s (30,30*k) TimesRoman24 (makeColor 1 1 1 1)) (sMessages state) [1..]
     trailLines = drawTrail (sTrails state) (\a -> makeColor a (1-a) 0 1)
+
+    yLines = VisObjects $ map mkLine (sTrails state)
+      where
+        mkLine (Xyz x y z) = Line [Xyz x y z, Xyz x 0 z] (makeColor 0 0.2 1 0.8)
+
+    zLines = VisObjects $ map mkLine (sTrails state)
+      where
+        mkLine (Xyz x y z) = Line [Xyz x y z, Xyz x y 0] (makeColor 1 0.2 0 0.8)
 
 
 updateState :: PO.PendulumOpt -> (Maybe State) -> IO (Maybe State)
 updateState po _ =
-  return $ Just $ State { sIter = fromIntegral $ PO.iters po
-                        , sEndTime = PO.endTime po
-                        , sTrails = zipWith3 Xyz (toList (PO.x po)) [0,0..] (toList (PO.z po))
+  return $ Just $ State { sMessages = reverse $ map uToString $ toList $ PO.messages po
+                        , sTrails = zipWith3 Xyz xs ys zs
                         }
+  where
+    xs = toList $ PO.x po
+    zs = toList $ PO.z po
+    ys = take len [0,dy..]
+      where
+        len = length xs
+        dy = 0.3 / realToFrac len
     
 sub :: MVar (Maybe State) -> IO ()
 sub m = ZMQ.withContext 1 $ \context -> do

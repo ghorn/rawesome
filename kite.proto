@@ -47,9 +47,7 @@ message CarouselState {
 message PendulumOpt {
   repeated double x = 1;
   repeated double z = 2;
-  //  repeated string messages = 3;
-  required double endTime = 3;
-  required int32 iters = 4;
+  repeated string messages = 3;
 }
 
 message MultiCarousel {
