@@ -1,5 +1,6 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# Language DoAndIfThenElse #-}
+{-# Language OverloadedStrings #-}
 
 module Main where
 
@@ -12,6 +13,7 @@ import qualified Data.ByteString.Lazy as BL
 import Data.Packed ( fromLists )
 import Text.ProtocolBuffers ( messageGet )
 import Text.ProtocolBuffers.Basic ( uToString )
+import System.Remote.Monitoring ( forkServer )
 
 import qualified Kite.MultiCarousel as MC
 import qualified Kite.CarouselState as CS
@@ -186,6 +188,7 @@ ts = 0.02
 
 main :: IO ()
 main = do
+  _ <- forkServer "localhost" 8000
   ip <- getip "multicarousel" "tcp://localhost:5563"
   putStrLn $ "using ip \""++ip++"\""
 
