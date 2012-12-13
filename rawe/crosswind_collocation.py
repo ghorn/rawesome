@@ -72,7 +72,7 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4,collPoly='RADAU'):
         ocp.bound('z',(conf['minAltitude'],200))
     else:
         ocp.bound('z',(0.5,200))
-    ocp.bound('r',(1,100))
+    ocp.bound('r',(1,200))
     ocp.bound('dr',(-30,30))
     ocp.bound('ddr',(-500,500))
 

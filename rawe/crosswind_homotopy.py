@@ -70,7 +70,7 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
         ocp.bound('z',(conf['minAltitude'],200))
     else:
         ocp.bound('z',(0.5,200))
-    ocp.bound('r',(1,100))
+    ocp.bound('r',(1,200))
     ocp.bound('dr',(-30,30))
     ocp.bound('ddr',(-500,500))
 
@@ -111,7 +111,7 @@ if __name__=='__main__':
     print "setting up ocp..."
     ocp = setupOcp(dae,conf,publisher,nk=40)
 
-    lineRadiusGuess = 40.0
+    lineRadiusGuess = 70.0
     circleRadiusGuess = 10.0
 
     # trajectory for homotopy
