@@ -212,10 +212,10 @@ if __name__=='__main__':
 #        (_,lbx,ubx) = ocp._vectorizeBoundsAndGuess( ocp._parseBoundsAndGuess(False,False) )
         lbx = ocp.solver.input(C.NLP_LBX)
         ubx = ocp.solver.input(C.NLP_UBX)
-        violations = boundsFeedback(opt['X_OPT'],lbx,ubx,ocp.bndtags,tolerance=0.5)
+        violations = boundsFeedback(opt.vec,lbx,ubx,ocp.bndtags,tolerance=-0.01)
         for name in violations:
             print "violation!: "+name+": "+str(violations[name])
-#    printBoundsFeedback()
+    printBoundsFeedback()
 
     # Plot the results
     def plotResults():
