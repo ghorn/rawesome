@@ -183,11 +183,16 @@ def setupModel(dae, conf):
     
     cdot =dx*(x + zt*e31) + dy*(y + zt*e32) + dz*(z + zt*e33) + zt*(w2 - ddelta*e23)*(e11*x + e12*y + e13*z + zt*e11*e31 + zt*e12*e32 + zt*e13*e33) - zt*(w1 - ddelta*e13)*(e21*x + e22*y + e23*z + zt*e21*e31 + zt*e22*e32 + zt*e23*e33) - r*dr
 
-    ddx = dae['ddx']
-    ddy = dae['ddy']
-    ddz = dae['ddz']
-    dw1 = dae['dw1']
-    dw2 = dae['dw2']
+    ddx = dae.ddt('dx')
+    ddy = dae.ddt('dy')
+    ddz = dae.ddt('dz')
+    dw1 = dae.ddt('w1')
+    dw2 = dae.ddt('w2')
+#    ddx = dae['ddx']
+#    ddy = dae['ddy']
+#    ddz = dae['ddz']
+#    dw1 = dae['dw1']
+#    dw2 = dae['dw2']
     dddelta = 0
     
     cddot = -(w1-ddelta*e13)*(zt*e23*(dz+zt*e13*w2-zt*e23*w1)+zt*e33*(w1*z+zt*e33*w1+ddelta*e11*x+ddelta*e12*y+zt*ddelta*e11*e31+zt*ddelta*e12*e32)+zt*e21*(dx+zt*e11*w2-zt*e21*w1-zt*ddelta*e11*e23+zt*ddelta*e13*e21)+zt*e22*(dy+zt*e12*w2-zt*e22*w1-zt*ddelta*e12*e23+zt*ddelta*e13*e22)+zt*e31*(x+zt*e31)*(w1-ddelta*e13)+zt*e32*(y+zt*e32)*(w1-ddelta*e13))+(w2-ddelta*e23)*(zt*e13*(dz+zt*e13*w2-zt*e23*w1)-zt*e33*(w2*z+zt*e33*w2+ddelta*e21*x+ddelta*e22*y+zt*ddelta*e21*e31+zt*ddelta*e22*e32)+zt*e11*(dx+zt*e11*w2-zt*e21*w1-zt*ddelta*e11*e23+zt*ddelta*e13*e21)+zt*e12*(dy+zt*e12*w2-zt*e22*w1-zt*ddelta*e12*e23+zt*ddelta*e13*e22)-zt*e31*(x+zt*e31)*(w2-ddelta*e23)-zt*e32*(y+zt*e32)*(w2-ddelta*e23))-ddr*r+(zt*w1*(e11*x+e12*y+e13*z+zt*e11*e31+zt*e12*e32+zt*e13*e33)+zt*w2*(e21*x+e22*y+e23*z+zt*e21*e31+zt*e22*e32+zt*e23*e33))*(w3-ddelta*e33)+dx*(dx+zt*e11*w2-zt*e21*w1-zt*ddelta*e11*e23+zt*ddelta*e13*e21)+dy*(dy+zt*e12*w2-zt*e22*w1-zt*ddelta*e12*e23+zt*ddelta*e13*e22)+dz*(dz+zt*e13*w2-zt*e23*w1)+ddx*(x+zt*e31)+ddy*(y+zt*e32)+ddz*(z+zt*e33)-dr*dr+zt*(dw2-dddelta*e23)*(e11*x+e12*y+e13*z+zt*e11*e31+zt*e12*e32+zt*e13*e33)-zt*(dw1-dddelta*e13)*(e21*x+e22*y+e23*z+zt*e21*e31+zt*e22*e32+zt*e23*e33)-zt*dddelta*(e11*e23*x-e13*e21*x+e12*e23*y-e13*e22*y+zt*e11*e23*e31-zt*e13*e21*e31+zt*e12*e23*e32-zt*e13*e22*e32)
@@ -214,14 +219,15 @@ def crosswindModel(conf,nSteps=None,extraParams=[]):
     for ep in extraParams:
         dae.addP(ep)
         
-    dae.addZ( [ "ddx"
-              , "ddy"
-              , "ddz"
-              , "dw1"
-              , "dw2"
-              , "dw3"
-              , "nu"
-              ] )
+#    dae.addZ( [ "ddx"
+#              , "ddy"
+#              , "ddz"
+#              , "dw1"
+#              , "dw2"
+#              , "dw3"
+#              , "nu"
+#              ] )
+    dae.addZ("nu")
     dae.addX( [ "x"   # state 0
               , "y"   # state 1
               , "z"   # state 2
@@ -252,6 +258,13 @@ def crosswindModel(conf,nSteps=None,extraParams=[]):
               ] )
     dae.addP( ['w0'] )
     
+    dae['ddx'] = dae.ddt('dx')
+    dae['ddy'] = dae.ddt('dy')
+    dae['ddz'] = dae.ddt('dz')
+    dae['dw1'] = dae.ddt('w1')
+    dae['dw2'] = dae.ddt('w2')
+    dae['dw3'] = dae.ddt('w3')
+    
     dae['aileron(deg)'] = dae['aileron']*180/C.pi
     dae['elevator(deg)'] = dae['elevator']*180/C.pi
     dae['daileron(deg/s)'] = dae['daileron']*180/C.pi
@@ -272,8 +285,8 @@ def crosswindModel(conf,nSteps=None,extraParams=[]):
         C.veccat([dae.ddt(name) for name in ["e11","e12","e13",
                                              "e21","e22","e23",
                                              "e31","e32","e33"]]) - dRexp.trans().reshape([9,1]),
-        C.veccat([dae.ddt(name) for name in ['dx','dy','dz']]) - C.veccat([dae['ddx'],dae['ddy'],dae['ddz']]),
-        C.veccat([dae.ddt(name) for name in ['w1','w2','w3']]) - C.veccat([dae['dw1'],dae['dw2'],dae['dw3']]),
+#        C.veccat([dae.ddt(name) for name in ['dx','dy','dz']]) - C.veccat([dae['ddx'],dae['ddy'],dae['ddz']]),
+#        C.veccat([dae.ddt(name) for name in ['w1','w2','w3']]) - C.veccat([dae['dw1'],dae['dw2'],dae['dw3']]),
         dae.ddt('r') - dae['dr'],
         dae.ddt('dr') - dae['ddr'],
         dae.ddt('energy') - dae['winch power'],
@@ -285,10 +298,16 @@ def crosswindModel(conf,nSteps=None,extraParams=[]):
         dae.addP('endTime')
 
     # acceleration
-    dae['accel (g)'] = C.sqrt(dae['ddx']**2 + dae['ddy']**2 + (dae['ddz'] + 9.8)**2)/9.8
-    dae['accel without gravity (g)'] = C.sqrt(dae['ddx']**2 + dae['ddy']**2 + dae['ddz']**2)/9.8
-    dae['accel'] = C.sqrt(dae['ddx']**2 + dae['ddy']**2 + (dae['ddz']+9.8)**2)
-    dae['accel without gravity'] = C.sqrt(dae['ddx']**2 + dae['ddy']**2 + dae['ddz']**2)
+#    ddx = dae['ddx']
+#    ddy = dae['ddy']
+#    ddz = dae['ddz']
+    ddx = dae.ddt('dx')
+    ddy = dae.ddt('dy')
+    ddz = dae.ddt('dz')
+    dae['accel (g)'] = C.sqrt(ddx**2 + ddy**2 + (ddz + 9.8)**2)/9.8
+    dae['accel without gravity (g)'] = C.sqrt(ddx**2 + ddy**2 + ddz**2)/9.8
+    dae['accel'] = C.sqrt(ddx**2 + ddy**2 + (ddz+9.8)**2)
+    dae['accel without gravity'] = C.sqrt(ddx**2 + ddy**2 + ddz**2)
 
 
     # add local loyd's limit
@@ -306,7 +325,9 @@ def crosswindModel(conf,nSteps=None,extraParams=[]):
     addLoydsLimit()
     
     dae.setOdeRes( ode )
-    dae.setAlgRes( C.mul(massMatrix, dae.zVec()) - rhs )
+#    dae.setAlgRes( C.mul(massMatrix, dae.zVec()) - rhs )
+    psuedoZVec = C.veccat([dae.ddt(name) for name in ['dx','dy','dz','w1','w2','w3']]+[dae['nu']])
+    dae.setAlgRes( C.mul(massMatrix, psuedoZVec) - rhs )
     
     return dae
 

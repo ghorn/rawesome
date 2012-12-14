@@ -120,9 +120,6 @@ class Coll():
         # setup NLP variables
         self._dvMap = CollMap(self,"design var map",devectorize=CS.msym("V",self.getNV()))
 
-        # add outputs with no algebraic states
-        self._setupOutputs()
-
         # tags for the bounds
         bndtags = []
         for name in self.dae.pNames():
@@ -149,38 +146,42 @@ class Coll():
 
 
     def _setupOutputs(self):
-        (fAll,(fNoZ,outputNamesNoZ)) = self.dae.outputsFun()
+        (fAll,(f0,outputNames0)) = self.dae.outputsFun()
         
         self._outputs = {}
-        self._outputsNoZ = {}
-        for name in outputNamesNoZ:
-            self._outputsNoZ[name] = np.resize(np.array([None],dtype=CS.MX),(self.nk,self.nicp))
+        self._outputs0 = {}
+        for name in outputNames0:
+            self._outputs0[name] = np.resize(np.array([None],dtype=CS.MX),(self.nk,self.nicp))
         for name in self.dae.outputNames():
             self._outputs[name] = np.resize(np.array([None],dtype=CS.MX),(self.nk,self.nicp,self.deg+1))
             
         for timestepIdx in range(self.nk):
             for nicpIdx in range(self.nicp):
-                # outputs with no algebraic states
-                if fNoZ is not None:
-                    outs = fNoZ.call([self.xVec(timestepIdx,nicpIdx=nicpIdx,degIdx=0),
-                                      self.uVec(timestepIdx),
-                                      self.pVec()])
+                # outputs defined at tau_i0
+                if f0 is not None:
+                    outs = f0.call([self.xVec(timestepIdx,nicpIdx=nicpIdx,degIdx=0),
+                                    self.uVec(timestepIdx),
+                                    self.pVec()])
                 else:
                     outs = []
-                for name,val in zip(outputNamesNoZ,outs):
-                    self._outputsNoZ[name][timestepIdx][nicpIdx] = val
+                for name,val in zip(outputNames0,outs):
+                    self._outputs0[name][timestepIdx,nicpIdx] = val
                 
                 # all outputs
                 for degIdx in range(1,self.deg+1):
                     if fAll is not None:
-                        outs = fAll.call([self.xVec(timestepIdx,nicpIdx=nicpIdx,degIdx=degIdx),
+                        outs = fAll.call([self._xDot[timestepIdx,nicpIdx,degIdx],
+                                          self.xVec(timestepIdx,nicpIdx=nicpIdx,degIdx=degIdx),
                                           self.zVec(timestepIdx,nicpIdx=nicpIdx,degIdx=degIdx),
                                           self.uVec(timestepIdx),
                                           self.pVec()])
                     else:
                         outs = []
                     for name,val in zip(self.dae.outputNames(),outs):
-                        self._outputs[name][timestepIdx][nicpIdx][degIdx] = val
+                        self._outputs[name][timestepIdx,nicpIdx,degIdx] = val
+#        self._fAll = fAll
+#        self._f0 = f0
+        self._outputNames0 = outputNames0
 
     def setupCollocation(self,tf):
         if self.collocationIsSetup:
@@ -205,6 +206,8 @@ class Coll():
  
         ndiff = self.xSize()
         nalg = self.zSize()
+
+        self._xDot = np.resize(np.array([None]),(self.nk,self.nicp,self.deg+1))
         
         # For all finite elements
         for k in range(self.nk):
@@ -216,8 +219,9 @@ class Coll():
                     for j2 in range (self.deg+1):
                         # get the time derivative of the differential states (eq 10.19b)
                         xp_jk += self.lagrangePoly.lDotAtTauRoot[j,j2]*self.xVec(k,nicpIdx=i,degIdx=j2)
+                    self._xDot[k,i,j] = xp_jk/self.h
                     # Add collocation equations to the NLP
-                    [fk] = ffcn.call([xp_jk/self.h,
+                    [fk] = ffcn.call([self._xDot[k,i,j],
                                       self.xVec(k,nicpIdx=i,degIdx=j),
                                       self.zVec(k,nicpIdx=i,degIdx=j),
                                       self.uVec(k),
@@ -251,7 +255,9 @@ class Coll():
                 else:
                     self.constrain(self.xVec(k,nicpIdx=i+1,degIdx=0), '==', xf_k,
                                    tag="continuity, kIdx: %d,nicpIdx: %d" % (k,i))
-                    
+
+        # add outputs
+        self._setupOutputs()
 
     def xVec(self,*args,**kwargs):
         return self._dvMap.xVec(*args,**kwargs)
@@ -648,7 +654,11 @@ class Coll():
         
     def lookup(self,name,timestep=None,nicpIdx=None,degIdx=None):
         # handle outputs specially
-        if name in self._outputsNoZ or name in self._outputs:
+        if name in self.dae.outputNames():
+            assert hasattr(self, '_outputs0') or hasattr(self, '_outputs'),\
+                   "Can't lookup outputs until you call setupCollocation"
+            assert (name in self._outputs0 or name in self._outputs)
+            
             #assert (timestep is not None), "please specify timestep at which you want to look up output \""+name+"\""
             if nicpIdx is None:
                 nicpIdx = 0
@@ -657,11 +667,11 @@ class Coll():
             
             # if degIdx == 0, return value with no algebraic inputs
             if degIdx == 0:
-                assert (name in self._outputsNoZ), "output \""+name+"\" is a function of algebraic variables and is not defined at the beginning of the collocation interval, specify degIdx > 0"
+                assert (name in self._outputs0), "output \""+name+"\" is not an explicit function of x/u/p and is not defined at the beginning of the collocation interval, specify degIdx > 0"
                 if timestep is None:
-                    return [self._outputsNoZ[name][k][nicpIdx] for k in range(self.nk)]
+                    return [self._outputs0[name][k][nicpIdx] for k in range(self.nk)]
                 else:
-                    return self._outputsNoZ[name][timestep][nicpIdx]
+                    return self._outputs0[name][timestep][nicpIdx]
                     
             # if degIdx != 0, return value which may or may not have algebraic inputs
             if timestep is None:

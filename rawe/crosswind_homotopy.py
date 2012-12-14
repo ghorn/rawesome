@@ -18,6 +18,9 @@ from trajectory import Trajectory
 def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
     ocp = Coll(dae, nk=nk,nicp=nicp,deg=deg)
     
+    print "setting up collocation..."
+    ocp.setupCollocation(ocp.lookup('endTime'))
+    
     # constrain invariants
     def constrainInvariantErrs():
         dcm = ocp.lookup('dcm',timestep=0)
@@ -288,8 +291,6 @@ if __name__=='__main__':
 #                    , ("ScaledQP",True)
                     ]
     
-    print "setting up collocation..."
-    ocp.setupCollocation(ocp.lookup('endTime'))
     print "setting up solver..."
     ocp.setupSolver( solverOpts=solverOptions,
                      callback=MyCallback() )

@@ -51,6 +51,9 @@ def toFourierKiteProto(fits,k,kiteAlpha=1,lineAlpha=1,dz=0,zt=0,rArm=0):
 def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
     ocp = Coll(dae, nk=nk,nicp=nicp,deg=deg)
     
+    print "setting up collocation..."
+    ocp.setupCollocation(ocp.lookup('endTime'))
+    
     # constrain invariants
     def constrainInvariantErrs():
         dcm = ocp.lookup('dcm',timestep=0)
@@ -335,8 +338,6 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
 #                    , ("ScaledQP",True)
                     ]
 
-    print "setting up collocation..."
-    ocp.setupCollocation(ocp.lookup('endTime'))
     print "setting up solver..."
     ocp.setupSolver( solverOpts=solverOptions,
                      callback=MyCallback() )

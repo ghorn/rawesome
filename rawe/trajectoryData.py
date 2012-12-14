@@ -64,10 +64,6 @@ class TrajectoryData(object):
             elif name in self.outputs:
                 plt.plot(self.tgridX[:-1],self.outputs[name])
 
-            # if it's a dae output WITH algebraic states
-            elif name in self.outputsZ:
-                plt.plot(self.tgridZ,self.outputsZ[name])
-
             # throw error on parameter
             elif name in self.parameters:
                 raise ValueError("can't plot a parameter (\""+name+"\")")
@@ -127,19 +123,6 @@ class TrajectoryData(object):
             ret.append("traj."+n+".name = '"+matlabName(name)+"';")
             ret.append("traj."+n+".time = "+str(self.tgridX[:-1])+";")
 #            ret.append("traj."+n+".data = "+str(self.outputs[name].flatten())+";")
-            ret.append("traj."+n+".data = "+str(out.tolist())+";")
-
-        for name in self.outputsZ:
-            out = self.outputsZ[name]
-            for k in range(out.size):
-                try:
-                    out[k] = out[k][0][0]
-                except TypeError:
-                    pass
-            n = sanitizeName(name)
-            ret.append("traj."+n+".name = '"+matlabName(name)+"';")
-            ret.append("traj."+n+".time = "+str(self.tgridZ)+";")
-#            ret.append("traj."+n+".data = "+str(self.outputsZ[name].flatten())+";")
             ret.append("traj."+n+".data = "+str(out.tolist())+";")
 
         return "\n".join(ret)

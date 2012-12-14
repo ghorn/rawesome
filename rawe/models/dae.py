@@ -153,38 +153,38 @@ class Dae(object):
     def outputsFun(self):
         self._freeze('outputsFun()')
 
-        outputsNoZ = [] # only outputs with no algebraic variables
-
-        # which outputs have no algebraic vars
+        # which outputs are defined at tau_i0
+        outputs0 = [] # only outputs which are defined at tau_i0
         for name in self.outputNames():
-            # try to make a function without any algebraic variables
+            # try to make a function without any algebraic or ddt(x) variables
             f = C.SXFunction([self.xVec(),self.uVec(),self.pVec()],
                              [self[name]]
                              )
             f.init()
             if len(f.getFree()) == 0:
-                # only add if there are no algebraic variables
-                outputsNoZ.append(name)
+                # only add if there are no algebraic or ddt(x) variables
+                outputs0.append(name)
             
-        # function with only outputs with no algebraic vars
-        if len(outputsNoZ)>0:
-            fNoZ = C.SXFunction([self.xVec(), self.uVec(), self.pVec()],
-                                [self[name] for name in outputsNoZ])
-            fNoZ.setOption('name','outputs with no algebraic vars')
-            fNoZ.init()
+        # function with outputs defined at tau_i0
+        if len(outputs0)>0:
+            f0 = C.SXFunction([self.xVec(), self.uVec(), self.pVec()],
+                              [self[name] for name in outputs0])
+            f0.setOption('name','outputs defined at tau_i0')
+            f0.init()
         else:
-            fNoZ = None
+            f0 = None
 
-        # function which outputs everything
+        # function with all outputs (defined at collocation points)
         if len(self.outputNames())>0:
-            fAll = C.SXFunction([self.xVec(), self.zVec(), self.uVec(), self.pVec()],
+            xdot = C.veccat([self.ddt(name) for name in self.xNames()])
+            fAll = C.SXFunction([xdot, self.xVec(), self.zVec(), self.uVec(), self.pVec()],
                                 [self[name] for name in self.outputNames()])
             fAll.init()
             fAll.setOption('name','all outputs')
         else:
             fAll = None
 
-        return (fAll,(fNoZ,outputsNoZ))
+        return (fAll,(f0,outputs0))
 
     def sxFun(self):
         self._freeze('sxFun()')

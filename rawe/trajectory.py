@@ -15,33 +15,33 @@ class Trajectory(object):
         self.trajData.uNames = ocp.dae.uNames()
         self.trajData.pNames = ocp.dae.pNames()
         self.trajData.outputNames = ocp.dae.outputNames()
+        self.trajData._outputNames0 = ocp._outputNames0
         self.trajData.nv = ocp.getNV()
         
+        self._outputNamesNot0 = [ons for ons in self.trajData.outputNames
+                                 if ons not in self.trajData._outputNames0]
         self._setupOutputFuns(ocp)
+        
         if dvs is not None:
             self.setDvs(ocp,dvs)
         
     def _setupOutputFuns(self,ocp):
-        # if it's a Dae output
-        self._outputFuns  = {} # no algebraic states
-        self._outputFunsZ = {} # has algebraic states
+        outs = []
+        for timestepIdx in range(0,ocp.nk):
+            for nicpIdx in range(0,ocp.nicp):
+                # deg 0:
+                for name in self.trajData._outputNames0:
+                    outs.append(ocp(name,timestep=timestepIdx,nicpIdx=nicpIdx,degIdx=0))
+                for name in self._outputNamesNot0:
+                    # dummies to get the size right
+                    outs.append(0*ocp(name,timestep=timestepIdx,nicpIdx=nicpIdx,degIdx=1))
+                # deg > 0:
+                for degIdx in range(1,ocp.deg+1):
+                    for name in self.trajData.outputNames:
+                        outs.append(ocp(name,timestep=timestepIdx,nicpIdx=nicpIdx,degIdx=degIdx))
+        self.outputFun = C.MXFunction([ocp._dvMap.vec],outs)
+        self.outputFun.init()
         
-        for name in self.trajData.outputNames:
-            # try to make a function without any algebraic states
-            f = C.SXFunction([ocp.dae.xVec(),ocp.dae.uVec(),ocp.dae.pVec()],
-                             [ocp.dae[name]]
-                             )
-            f.init()
-            if len(f.getFree()) == 0:
-                self._outputFuns[name] = f
-            else:
-                # darn, it has algebraic states
-                f = C.SXFunction([ocp.dae.xVec(),ocp.dae.zVec(),ocp.dae.uVec(),ocp.dae.pVec()],
-                                 [ocp.dae[name]]
-                                 )
-                f.init()
-                self._outputFunsZ[name] = f
-
     def setDvs(self,ocp,dvs):
         opt = ocp.devectorize(dvs)
 
@@ -52,7 +52,6 @@ class Trajectory(object):
         self.trajData.u = {}
         self.trajData.parameters = {}
         self.trajData.outputs = {}
-        self.trajData.outputsZ = {}
 
         # make time grids
         tgrid = ocp.mkTimeGrid(dvs)
@@ -66,6 +65,7 @@ class Trajectory(object):
                     self.trajData.tgridX.append(tgrid[timestepIdx][nicpIdx][degIdx])
                     if degIdx > 0:
                         self.trajData.tgridZ.append(tgrid[timestepIdx][nicpIdx][degIdx])
+                # one more nan
                 self.trajData.tgridX.append(numpy.nan)
                 self.trajData.tgridZ.append(numpy.nan)
         self.trajData.tgridX.append(tgrid[opt._nk][0][0])
@@ -101,34 +101,37 @@ class Trajectory(object):
         for name in self.trajData.pNames:
             self.trajData.parameters[name] = opt.lookup(name)
 
-        # get outputs with no algebraic states
-        for name,f in self._outputFuns.items():
-            y = []
-            for timestepIdx in range(opt._nk):
-                for nicpIdx in range(opt._nicp):
-                    for degIdx in range(opt._deg+1):
-                        f.setInput(opt.xVec(timestepIdx,nicpIdx=nicpIdx,degIdx=degIdx),0)
-                        f.setInput(opt.uVec(timestepIdx),1)
-                        f.setInput(opt.pVec(),2)
-                        f.evaluate()
-                        y.append(numpy.array(f.output(0))) # doesn't allow for vector/matrix outputs
-                    y.append(numpy.nan)
-            self.trajData.outputs[name] = numpy.array(y)
+        # outputs
+        for name in self.trajData.outputNames:
+            self.trajData.outputs[name] = []
+        self.outputFun.setInput(dvs,0)
+        self.outputFun.evaluate()
 
-        # get outputs with algebraic states
-        for name,f in self._outputFunsZ.items():
-            y = []
-            for timestepIdx in range(opt._nk):
-                for nicpIdx in range(opt._nicp):
-                    for degIdx in range(1,opt._deg+1):
-                        f.setInput(opt.xVec(timestepIdx,nicpIdx=nicpIdx,degIdx=degIdx),0)
-                        f.setInput(opt.zVec(timestepIdx,nicpIdx=nicpIdx,degIdx=degIdx),1)
-                        f.setInput(opt.uVec(timestepIdx),2)
-                        f.setInput(opt.pVec(),3)
-                        f.evaluate()
-                        y.append(numpy.array(f.output(0))) # doesn't allow for vector/matrix outputs
-                    y.append(numpy.nan)
-            self.trajData.outputsZ[name] = numpy.array(y)
+        def grab(x):
+            if x.shape == (1,1):
+                return numpy.array(x[0,0])
+            else:
+                return x
+
+        k = 0
+        for timestepIdx in range(0,ocp.nk):
+            for nicpIdx in range(0,ocp.nicp):
+                # deg 0:
+                for name in self.trajData._outputNames0:
+                    self.trajData.outputs[name].append(grab(numpy.array(self.outputFun.output(k))))
+                    k += 1
+                for name in self._outputNamesNot0:
+                    self.trajData.outputs[name].append(grab(numpy.nan*numpy.array(self.outputFun.output(k))))
+                    k += 1
+                # deg > 0:
+                for degIdx in range(1,ocp.deg+1):
+                    for name in self.trajData.outputNames:
+                        self.trajData.outputs[name].append(grab(numpy.array(self.outputFun.output(k))))
+                        k += 1
+                # one more nan
+                for name in self.trajData.outputNames:
+                    self.trajData.outputs[name].append(numpy.nan*self.trajData.outputs[name][1])
+
         return self.trajData
 
     def plot(self,names,**kwargs):

@@ -16,6 +16,11 @@ import models
 def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4,collPoly='RADAU'):
     ocp = Coll(dae, nk=nk,nicp=nicp,deg=deg,collPoly=collPoly)
     
+    print "setting up collocation..."
+    ocp.setupCollocation(ocp.lookup('endTime'))
+
+    print "moar setting up ocp..."
+    
     # constrain invariants
     def constrainInvariantErrs():
         dcm = ocp.lookup('dcm',timestep=0)
@@ -192,8 +197,6 @@ if __name__=='__main__':
 #                    , ("ScaledQP",True)
                     ]
     
-    print "setting up collocation..."
-    ocp.setupCollocation(ocp.lookup('endTime'))
     print "setting up solver..."
     ocp.setupSolver( solverOpts=solverOptions,
                      callback=MyCallback() )

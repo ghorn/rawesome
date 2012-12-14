@@ -42,6 +42,7 @@ oldKites = []
 
 def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
     ocp = Coll(dae, nk=nk,nicp=nicp,deg=deg)
+    ocp.setupCollocation(ocp.lookup('endTime'))
                    
     # constrain invariants
     def constrainInvariantErrs():
@@ -213,9 +214,9 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
     ocp.guess('ddr',0)
     ocp.guess('w0',10)
 
-    ocp.setupCollocation(ocp.lookup('endTime'))
     ocp.setupSolver( solverOpts=solverOptions,
                      callback=MyCallback() )
+
     return ocp
 
 
