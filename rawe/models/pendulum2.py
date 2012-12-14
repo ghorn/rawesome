@@ -17,26 +17,13 @@ def pendulumModel(nSteps=None):
 
     r = 0.3
     
-    dae.stateDotDummy = C.veccat( [C.ssym(name+"DotDummy") for name in dae._xNames] )
+    ddx = dae.ddt('dx')
+    ddz = dae.ddt('dz')
 
-    scaledStateDotDummy = dae.stateDotDummy
-    
-    if nSteps is not None:
-        endTime = dae.addP('endTime')
-        scaledStateDotDummy = dae.stateDotDummy/(endTime/(nSteps-1))
-
-    xDotDummy  = scaledStateDotDummy[0]
-    zDotDummy  = scaledStateDotDummy[1]
-    dxDotDummy = scaledStateDotDummy[2]
-    dzDotDummy = scaledStateDotDummy[3]
-    
-    ddx = dxDotDummy
-    ddz = dzDotDummy
-
-    ode = [ dae['dx'] - xDotDummy
-          , dae['dz'] - zDotDummy
-#          , dae['ddx'] - dxDotDummy
-#          , dae['ddz'] - dzDotDummy
+    ode = [ dae['dx'] - dae.ddt('x')
+          , dae['dz'] - dae.ddt('z')
+#          , dae['ddx'] - dae.ddt('dx')
+#          , dae['ddz'] - dae.ddt('dz')
           ]
 
     fx =  dae['torque']*dae['z']

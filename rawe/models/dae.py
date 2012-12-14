@@ -1,7 +1,7 @@
 
 import casadi as C
 
-class Dae():
+class Dae(object):
     """
     Class to hold represent a differential-algebraic or ordinary differential equation
     """
@@ -19,6 +19,9 @@ class Dae():
         # dictionaries of SXMatrix symbols
         self._syms = {}
 
+        # map of derivatives
+        self._dummyDdtMap = {}
+        
     def _freeze(self,msg):
         self._frozen.add(msg)
 
@@ -44,6 +47,15 @@ class Dae():
         ret = C.ssym(name)
         self._syms[name] = ret
         return ret
+
+    def ddt(self,name):
+        if name not in self._xNames:
+            raise ValueError("unrecognized state \""+name+"\"")
+        try:
+            return self._dummyDdtMap[name]
+        except KeyError:
+            self._dummyDdtMap[name] = C.ssym(name+"DotDummy_____")
+            return self.ddt(name)
 
     def setAlgRes(self,res):
         if hasattr(self,'_algRes'):
@@ -186,7 +198,11 @@ class Dae():
         if isinstance(algRes,list):
             algRes = C.veccat(algRes)
             
-        return C.SXFunction( C.daeIn( x=self.xVec(), z=self.zVec(), p=C.veccat([self.uVec(),self.pVec()]), xdot=self.stateDotDummy ),
+        xdot = C.veccat([self.ddt(name) for name in self.xNames()])
+        return C.SXFunction( C.daeIn( x=self.xVec(),
+                                      z=self.zVec(),
+                                      p=C.veccat([self.uVec(),self.pVec()]),
+                                      xdot=xdot ),
                              C.daeOut( alg=algRes, ode=odeRes) )
 
 if __name__=='__main__':

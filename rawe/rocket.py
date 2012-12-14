@@ -13,7 +13,10 @@ if __name__ == "__main__":
     
     dae['pos*vel'] = pos*vel
 
-    dae.setOdeRhs([vel, (thrust - 0.05*vel*vel)/mass, -0.1*thrust*thrust])
+    dae.setOdeRes([dae.ddt('pos') - vel,
+                   dae.ddt('vel') - (thrust - 0.05*vel*vel)/mass,
+                   dae.ddt('mass') - -0.1*thrust*thrust])
+
     dae.setAlgRes([zdummy])
 
     # make the collocation scheme

@@ -11,7 +11,6 @@ class MultipleShootingStage():
         # make sure dae has everything
         assert hasattr(dae,'_odeRes')
         assert hasattr(dae,'_algRes')
-        assert hasattr(dae,'stateDotDummy')
         
         self.dae = dae
         self.dae._freeze('MultipleShootingStage(dae)')

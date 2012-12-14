@@ -264,47 +264,22 @@ def crosswindModel(conf,nSteps=None,extraParams=[]):
                             C.horzcat([dae['e21'],dae['e22'],dae['e23']]),
                             C.horzcat([dae['e31'],dae['e32'],dae['e33']])])
     
-    def addOrthonormalizedDcm():
-        m = {}
-        m['e11'] = dae['e11']
-        m['e12'] = dae['e12']
-        m['e13'] = dae['e13']
-
-        m['e21'] = dae['e21']
-        m['e22'] = dae['e22']
-        m['e23'] = dae['e23']
-
-        m['e31'] = dae['e31']
-        m['e32'] = dae['e32']
-        m['e33'] = dae['e33']
-        import kiteutils
-        m = kiteutils.orthonormalizeDcm(m)
-        dae['e11o'] = m['e11']
-        dae['e12o'] = m['e12']
-        dae['e13o'] = m['e13']
-
-        dae['e21o'] = m['e21']
-        dae['e22o'] = m['e22']
-        dae['e23o'] = m['e23']
-
-        dae['e31o'] = m['e31']
-        dae['e32o'] = m['e32']
-        dae['e33o'] = m['e33']
-    #addOrthonormalizedDcm()
-    
     (massMatrix, rhs, dRexp) = setupModel(dae, conf)
 
     
-    ode = C.veccat( [ C.veccat([dae['dx'],dae['dy'],dae['dz']])
-                    , dRexp.trans().reshape([9,1])
-                    , C.veccat([dae['ddx'],dae['ddy'],dae['ddz']])
-                    , C.veccat([dae['dw1'],dae['dw2'],dae['dw3']])
-                    , dae['dr']
-                    , dae['ddr']
-                    , dae['winch power']
-                    , dae['daileron']
-                    , dae['delevator']
-                    ] )
+    ode = C.veccat([
+        C.veccat([dae.ddt(name) for name in ['x','y','z']]) - C.veccat([dae['dx'],dae['dy'],dae['dz']]),
+        C.veccat([dae.ddt(name) for name in ["e11","e12","e13",
+                                             "e21","e22","e23",
+                                             "e31","e32","e33"]]) - dRexp.trans().reshape([9,1]),
+        C.veccat([dae.ddt(name) for name in ['dx','dy','dz']]) - C.veccat([dae['ddx'],dae['ddy'],dae['ddz']]),
+        C.veccat([dae.ddt(name) for name in ['w1','w2','w3']]) - C.veccat([dae['dw1'],dae['dw2'],dae['dw3']]),
+        dae.ddt('r') - dae['dr'],
+        dae.ddt('dr') - dae['ddr'],
+        dae.ddt('energy') - dae['winch power'],
+        dae.ddt('aileron') - dae['daileron'],
+        dae.ddt('elevator') - dae['delevator']
+        ])
 
     if nSteps is not None:
         dae.addP('endTime')
@@ -330,14 +305,7 @@ def crosswindModel(conf,nSteps=None,extraParams=[]):
         dae['-(winch power)'] = -dae['winch power']
     addLoydsLimit()
     
-
-    dae.stateDotDummy = C.veccat( [C.ssym(name+"DotDummy") for name in dae.xNames()] )
-    scaledStateDotDummy = dae.stateDotDummy
-    
-    if nSteps is not None:
-        scaledStateDotDummy = dae.stateDotDummy/(dae.p('endTime')/(nSteps-1))
-
-    dae.setOdeRes( ode - scaledStateDotDummy )
+    dae.setOdeRes( ode )
     dae.setAlgRes( C.mul(massMatrix, dae.zVec()) - rhs )
     
     return dae

@@ -283,29 +283,26 @@ def carouselModel(conf,nSteps=None,extraParams=[]):
     
     (massMatrix, rhs, dRexp) = setupModel(dae, conf)
 
-    
-    ode = C.veccat( [ C.veccat([dae['dx'],dae['dy'],dae['dz']])
-                    , dRexp.trans().reshape([9,1])
-                    , C.veccat([dae['ddx'],dae['ddy'],dae['ddz']])
-                    , C.veccat([dae['dw1'],dae['dw2'],dae['dw3']])
-                    , C.veccat([dae['ddelta'], dae['dddelta']])
-                    , dae['dr']
-                    , dae['ddr']
-                    , dae['winch power'] + dae['motor power']
-                    , dae['daileron']
-                    , dae['delevator']
-                    ] )
+    ode = C.veccat([
+        C.veccat([dae.ddt(name) for name in ['x','y','z']]) - C.veccat([dae['dx'],dae['dy'],dae['dz']]),
+        C.veccat([dae.ddt(name) for name in ["e11","e12","e13",
+                                             "e21","e22","e23",
+                                             "e31","e32","e33"]]) - dRexp.trans().reshape([9,1]),
+        C.veccat([dae.ddt(name) for name in ['dx','dy','dz']]) - C.veccat([dae['ddx'],dae['ddy'],dae['ddz']]),
+        dae.ddt('delta') - dae['ddelta'],
+        dae.ddt('ddelta') - dae['dddelta'],
+        C.veccat([dae.ddt(name) for name in ['w1','w2','w3']]) - C.veccat([dae['dw1'],dae['dw2'],dae['dw3']]),
+        dae.ddt('r') - dae['dr'],
+        dae.ddt('dr') - dae['ddr'],
+        dae.ddt('energy') - dae['winch power'],
+        dae.ddt('aileron') - dae['daileron'],
+        dae.ddt('elevator') - dae['delevator']
+        ])
 
     if nSteps is not None:
         dae.addP('endTime')
 
-    dae.stateDotDummy = C.veccat( [C.ssym(name+"DotDummy") for name in dae.xNames()] )
-    scaledStateDotDummy = dae.stateDotDummy
-    
-    if nSteps is not None:
-        scaledStateDotDummy = dae.stateDotDummy/(dae['endTime']/(nSteps-1))
-
-    dae.setOdeRes( ode - scaledStateDotDummy )
+    dae.setOdeRes( ode )
     dae.setAlgRes( C.mul(massMatrix, dae.zVec()) - rhs )
     
     return dae

@@ -235,6 +235,14 @@ class Coll():
                 xf_k = 0
                 for j in range(self.deg+1):
                     xf_k += self.lagrangePoly.lAtOne[j]*self.xVec(k,nicpIdx=i,degIdx=j)
+#                    print "self.lagrangePoly.lAtOne["+str(j)+"]:" +str(self.lagrangePoly.lAtOne[j])
+
+#                mxfun = CS.MXFunction([self._V],[xf_k])
+#                mxfun.init()
+#                sxfun = CS.SXFunction(mxfun)
+#                sxfun.init()
+#                print ""
+#                print sxfun.outputSX()
 
                 # Add continuity equation to NLP
                 if i==self.nicp-1:
@@ -279,11 +287,9 @@ class Coll():
         return NXD+NXA+NU+NXF+NP
 
     def _makeResidualFun(self):
-        if not hasattr(self.dae, 'stateDotDummy'):
-            raise ValueError("need to set stateDotDummy")
         if not hasattr(self.dae, '_odeRes'):
             raise ValueError("need to set ode residual")
-        
+
         residual = self.dae._odeRes
         
         if hasattr(self.dae,'_algRes'):
@@ -291,12 +297,14 @@ class Coll():
         else:
             if self.zSize()>0:
                 raise ValueError("you've added algebraic states but haven't set the algebraic residual")
+
+        assert (residual.size() == self.zSize()+self.xSize())
     
         # residual function
         u = self.dae.uVec()
         xd = self.dae.xVec()
         xa = self.dae.zVec()
-        xddot = self.dae.stateDotDummy
+        xddot = CS.veccat([self.dae.ddt(name) for name in self.dae.xNames()])
         p  = self.dae.pVec()
         
         ffcn = CS.SXFunction([xddot,xd,xa,u,p],[residual])
@@ -451,7 +459,9 @@ class Coll():
 
         # Allocate an NLP solver
         self.solver = CS.IpoptSolver(ofcn,gfcn)
-        
+#        self.solver = CS.WorhpSolver(ofcn,gfcn)
+#        self.solver = CS.SQPMethod(ofcn,gfcn)
+
         # Set options
         setFXOptions(self.solver, solverOpts)
         
@@ -666,56 +676,3 @@ class Coll():
         if hasattr(self,'_objective'):
             raise ValueError("can't change objective function once it's already set")
         self._objective = obj
-
-
-if __name__=='__main__':
-    dae = Dae()
-    # -----------------------------------------------------------------------------
-    # Model setup
-    # -----------------------------------------------------------------------------
-    # Declare variables (use scalar graph)
-    t  = CS.ssym("t")          # time
-    u  = dae.addU("u")          # control
-    xd = CS.veccat(dae.addX(["x0","x1","x2"]))  # differential state
-#    xa = CS.ssym("xa",0,1)     # algebraic state
-#    xddot = CS.ssym("xdot",3)  # differential state time derivative
-#    p     = CS.ssym("p",0,1)      # parameters
-    dae.addOutput('u^2',u*u)
-    dae.stateDotDummy = CS.veccat( [CS.ssym(name+"DotDummy") for name in dae._xNames] )
-
-    # ODE right hand side function
-    rhs = CS.vertcat([(1 - xd[1]*xd[1])*xd[0] - xd[1] + u, \
-           xd[0], \
-           xd[0]*xd[0] + xd[1]*xd[1] + u*u])
-    dae.setOdeRes( rhs - dae.stateDotDummy )
-
-    nicp_ = 1        # Number of (intermediate) collocation points per control interval
-    nk_ = 10         # Control discretization
-    deg_ = 4         # Degree of interpolating polynomial
-    collPoly_ = 'RADAU'  # use Radau collocation points
-    #collPoly = 'LEGENDRE'    # use LEGENDRE collocation points
-
-    coll = Coll(dae, nk_, nicp_, deg_, collPoly_)
-    coll.bound('x0',(-CS.inf,CS.inf))
-    coll.bound('x1',(-CS.inf,CS.inf))
-    coll.bound('x2',(-CS.inf,CS.inf))
-
-    coll.bound('x0',(0,0),timestep=0)
-    coll.bound('x1',(1,1),timestep=0)
-    coll.bound('x2',(0,0),timestep=0)
-    
-    coll.bound('x0',(0,0),timestep=-1)
-    coll.bound('x1',(0,0),timestep=-1)
-
-    coll.bound('u',(-0.75,1))
-
-    coll.guess('x0',0)
-    coll.guess('x1',0)
-    coll.guess('x2',0)
-    coll.guess('u',0)
-
-    coll.setObjective( coll.lookup('x2',timestep=-1) )
-
-    coll.setupCollocation(2.5)
-    coll.setupSolver()
-    opt = coll.solve()
