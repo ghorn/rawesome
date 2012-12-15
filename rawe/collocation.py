@@ -5,10 +5,10 @@ import pickle
 from scipy.interpolate import PiecewisePolynomial
 
 from ocputils import Constraints,setFXOptions
-from collmap import CollMap
+import collmap
 from collutils import mkCollocationPoints
 from models import Dae
-from trajectoryData import TrajectoryData
+import trajectory
 
 class LagrangePoly(object):
     def __init__(self,deg=None,collPoly=None):
@@ -112,13 +112,13 @@ class Coll():
         self.deg = deg
         self.collPoly = collPoly
 
-        self._bounds = CollMap(self,"bounds")
-        self._guess = CollMap(self,"guess")
+        self._bounds = collmap.WriteableCollMap(self,"bounds")
+        self._guess = collmap.WriteableCollMap(self,"guess")
 
         self._constraints = Constraints()
 
         # setup NLP variables
-        self._dvMap = CollMap(self,"design var map",devectorize=CS.msym("V",self.getNV()))
+        self._dvMap = collmap.VectorizedReadOnlyCollMap(self,"design var map",CS.msym("V",self.getNV()))
 
         # tags for the bounds
         bndtags = []
@@ -145,43 +145,7 @@ class Coll():
         self.bndtags = bndtags
 
 
-    def _setupOutputs(self):
-        (fAll,(f0,outputNames0)) = self.dae.outputsFun()
         
-        self._outputs = {}
-        self._outputs0 = {}
-        for name in outputNames0:
-            self._outputs0[name] = np.resize(np.array([None],dtype=CS.MX),(self.nk,self.nicp))
-        for name in self.dae.outputNames():
-            self._outputs[name] = np.resize(np.array([None],dtype=CS.MX),(self.nk,self.nicp,self.deg+1))
-            
-        for timestepIdx in range(self.nk):
-            for nicpIdx in range(self.nicp):
-                # outputs defined at tau_i0
-                if f0 is not None:
-                    outs = f0.call([self.xVec(timestepIdx,nicpIdx=nicpIdx,degIdx=0),
-                                    self.uVec(timestepIdx),
-                                    self.pVec()])
-                else:
-                    outs = []
-                for name,val in zip(outputNames0,outs):
-                    self._outputs0[name][timestepIdx,nicpIdx] = val
-                
-                # all outputs
-                for degIdx in range(1,self.deg+1):
-                    if fAll is not None:
-                        outs = fAll.call([self._xDot[timestepIdx,nicpIdx,degIdx],
-                                          self.xVec(timestepIdx,nicpIdx=nicpIdx,degIdx=degIdx),
-                                          self.zVec(timestepIdx,nicpIdx=nicpIdx,degIdx=degIdx),
-                                          self.uVec(timestepIdx),
-                                          self.pVec()])
-                    else:
-                        outs = []
-                    for name,val in zip(self.dae.outputNames(),outs):
-                        self._outputs[name][timestepIdx,nicpIdx,degIdx] = val
-#        self._fAll = fAll
-#        self._f0 = f0
-        self._outputNames0 = outputNames0
 
     def setupCollocation(self,tf):
         if self.collocationIsSetup:
@@ -198,7 +162,7 @@ class Coll():
         self.lagrangePoly = LagrangePoly(deg=self.deg,collPoly=self.collPoly)
         
         # function to get h out
-        self.hfun = CS.MXFunction([self._dvMap.vec],[self.h])
+        self.hfun = CS.MXFunction([self._dvMap.vectorize()],[self.h])
         self.hfun.init()
         
         # add collocation constraints
@@ -257,7 +221,8 @@ class Coll():
                                    tag="continuity, kIdx: %d,nicpIdx: %d" % (k,i))
 
         # add outputs
-        self._setupOutputs()
+        self._outputMapGenerator = collmap.OutputMapGenerator(self, self._xDot)
+        self._outputMap = collmap.OutputMap(self._outputMapGenerator, self._dvMap.vectorize())
 
     def xVec(self,*args,**kwargs):
         return self._dvMap.xVec(*args,**kwargs)
@@ -324,56 +289,56 @@ class Coll():
         traj = pickle.load(f)
         f.close()
 
-        assert isinstance(traj,TrajectoryData), "the file \""+filename+"\" doean't have a pickled TrajectoryData"
+        assert isinstance(traj,trajectory.Trajectory), "the file \""+filename+"\" doean't have a pickled Trajectory"
 
-        h = (traj.tgrid[-1,0,0] - traj.tgrid[0,0,0])/float(traj.collMap._nk*traj.collMap._nicp)
-        h *= traj.collMap._nk*traj.collMap._nicp/float(self.nk*self.nicp)
+        h = (traj.tgrid[-1,0,0] - traj.tgrid[0,0,0])/float(traj.dvMap._nk*traj.dvMap._nicp)
+        h *= traj.dvMap._nk*traj.dvMap._nicp/float(self.nk*self.nicp)
         h *= numLoops
             
         pps = {}
         missing = []
         ############# make piecewise polynomials ###########
         # differential states
-        for name in traj.collMap._xNames:
+        for name in traj.dvMap._xNames:
             # make piecewise poly
             pps[name] = None
-            for timestepIdx in range(traj.collMap._nk):
-                for nicpIdx in range(traj.collMap._nicp):
+            for timestepIdx in range(traj.dvMap._nk):
+                for nicpIdx in range(traj.dvMap._nicp):
                     ts = []
                     ys = []
-                    for degIdx in range(traj.collMap._deg+1):
+                    for degIdx in range(traj.dvMap._deg+1):
                         ts.append(traj.tgrid[timestepIdx,nicpIdx,degIdx])
-                        ys.append([traj.collMap.lookup(name,timestep=timestepIdx,nicpIdx=nicpIdx,degIdx=degIdx)])
+                        ys.append([traj.dvMap.lookup(name,timestep=timestepIdx,nicpIdx=nicpIdx,degIdx=degIdx)])
                     if pps[name] is None:
                         pps[name] = PiecewisePolynomial(ts,ys)
                     else:
                         pps[name].extend(ts,ys)
-            pps[name].extend([traj.tgrid[-1,0,0]],[[traj.collMap.lookup(name,timestep=-1,nicpIdx=0,degIdx=0)]])
+            pps[name].extend([traj.tgrid[-1,0,0]],[[traj.dvMap.lookup(name,timestep=-1,nicpIdx=0,degIdx=0)]])
 
         # algebraic variables
-        for name in traj.collMap._zNames:
+        for name in traj.dvMap._zNames:
             # make piecewise poly
             pps[name] = None
-            for timestepIdx in range(traj.collMap._nk):
-                for nicpIdx in range(traj.collMap._nicp):
+            for timestepIdx in range(traj.dvMap._nk):
+                for nicpIdx in range(traj.dvMap._nicp):
                     ts = []
                     ys = []
-                    for degIdx in range(1,traj.collMap._deg+1):
+                    for degIdx in range(1,traj.dvMap._deg+1):
                         ts.append(traj.tgrid[timestepIdx,nicpIdx,degIdx])
-                        ys.append([traj.collMap.lookup(name,timestep=timestepIdx,nicpIdx=nicpIdx,degIdx=degIdx)])
+                        ys.append([traj.dvMap.lookup(name,timestep=timestepIdx,nicpIdx=nicpIdx,degIdx=degIdx)])
                     if pps[name] is None:
                         pps[name] = PiecewisePolynomial(ts,ys)
                     else:
                         pps[name].extend(ts,ys)
 
         # controls
-        for name in traj.collMap._uNames:
+        for name in traj.dvMap._uNames:
             # make piecewise poly
             ts = []
             ys = []
-            for timestepIdx in range(traj.collMap._nk):
+            for timestepIdx in range(traj.dvMap._nk):
                 ts.append(traj.tgrid[timestepIdx,0,0])
-                ys.append([traj.collMap.lookup(name,timestep=timestepIdx)])
+                ys.append([traj.dvMap.lookup(name,timestep=timestepIdx)])
             pps[name] = PiecewisePolynomial(ts,ys)
 
         ############# interpolate ###########
@@ -422,13 +387,13 @@ class Coll():
 
         # set parameters
         for name in self.dae.pNames():
-            if name not in traj.collMap._pNames:
+            if name not in traj.dvMap._pNames:
                 missing.append(name)
                 continue
             if name=='endTime':
-                self.guess(name,traj.collMap.lookup(name)*numLoops,force=force,quiet=quiet)
+                self.guess(name,traj.dvMap.lookup(name)*numLoops,force=force,quiet=quiet)
             else:
-                self.guess(name,traj.collMap.lookup(name),force=force,quiet=quiet)
+                self.guess(name,traj.dvMap.lookup(name),force=force,quiet=quiet)
 
         msg = "finished interpolating initial guess"
         if len(missing) > 0:
@@ -446,17 +411,17 @@ class Coll():
         ubg = self._constraints.getUb()
 
         # Nonlinear constraint function
-        gfcn = CS.MXFunction([self._dvMap.vec],[g])
+        gfcn = CS.MXFunction([self._dvMap.vectorize()],[g])
         setFXOptions(gfcn,constraintFunOpts)
         
         # Objective function of the NLP
         if not hasattr(self,'_objective'):
             raise ValueError('need to set objective function')
-        ofcn = CS.MXFunction([self._dvMap.vec],[self._objective])
+        ofcn = CS.MXFunction([self._dvMap.vectorize()],[self._objective])
 
         # solver callback (optional)
         if callback is not None:
-            nd = self._dvMap.vec.size()
+            nd = self._dvMap.vectorize().size()
             nc = self._constraints.getG().size()
     
             c = CS.PyFunction( callback, CS.nlpsolverOut(x_opt=CS.sp_dense(nd,1), cost=CS.sp_dense(1,1), lambda_x=CS.sp_dense(nd,1), lambda_g = CS.sp_dense(nc,1), g = CS.sp_dense(nc,1) ), [CS.sp_dense(1,1)] )
@@ -525,41 +490,8 @@ class Coll():
         print "optimal cost: ", float(self.solver.output(CS.NLP_COST))
         
         # Retrieve the solution
-        v_opt = np.array(self.solver.output(CS.NLP_X_OPT))
+        return trajectory.TrajectoryPlotter(self,np.array(self.solver.output(CS.NLP_X_OPT)))
         
-        return self.devectorize(v_opt)
-    
-
-    def devectorize(self,v_opt):
-        return CollMap(self,'devectorized design vars',devectorize=v_opt)
-
-    def mkTimeGrid(self,v_opt):
-        self.hfun.setInput(v_opt)
-        self.hfun.evaluate()
-        h = float(self.hfun.output())
-
-        tgrid = np.resize([],(self.nk+1,self.nicp,self.deg+1))
-        tf = 0.0
-        for k in range(self.nk):
-            for i in range(self.nicp):
-                tgrid[k,i,:] = tf + h*np.array(self.lagrangePoly.tau_root)
-                tf += h
-        tgrid[self.nk,0,0] = tf
-        return tgrid
-
-    def mkTimeGridVec(self,v_opt):
-        self.hfun.setInput(v_opt)
-        self.hfun.evaluate()
-        h = float(self.hfun.output())
-        tg = np.array(self.lagrangePoly.tau_root)*h
-        for k in range(self.nk*self.nicp):
-            if k == 0:
-                tgrid = tg
-            else:
-                tgrid = np.append(tgrid,tgrid[-1]+tg)
-        tgrid = np.append(tgrid,tgrid[-1])
-        return tgrid
-
     def bound(self,name,val,timestep=None,quiet=False,force=False):
         assert isinstance(name,str)
         assert isinstance(val,tuple)
@@ -653,34 +585,17 @@ class Coll():
         return self.lookup(*args,**kwargs)
         
     def lookup(self,name,timestep=None,nicpIdx=None,degIdx=None):
-        # handle outputs specially
-        if name in self.dae.outputNames():
-            assert hasattr(self, '_outputs0') or hasattr(self, '_outputs'),\
-                   "Can't lookup outputs until you call setupCollocation"
-            assert (name in self._outputs0 or name in self._outputs)
-            
-            #assert (timestep is not None), "please specify timestep at which you want to look up output \""+name+"\""
-            if nicpIdx is None:
-                nicpIdx = 0
-            if degIdx is None:
-                degIdx = 0
-            
-            # if degIdx == 0, return value with no algebraic inputs
-            if degIdx == 0:
-                assert (name in self._outputs0), "output \""+name+"\" is not an explicit function of x/u/p and is not defined at the beginning of the collocation interval, specify degIdx > 0"
-                if timestep is None:
-                    return [self._outputs0[name][k][nicpIdx] for k in range(self.nk)]
-                else:
-                    return self._outputs0[name][timestep][nicpIdx]
-                    
-            # if degIdx != 0, return value which may or may not have algebraic inputs
-            if timestep is None:
-                return [self._outputs[name][k][nicpIdx][0] for k in range(self.nk)]
-            else:
-                return self._outputs[name][timestep][nicpIdx][degIdx]
-
-        # if it's not an output, perform a design variable lookup
-        return self._dvMap.lookup(name,timestep=timestep,nicpIdx=nicpIdx,degIdx=degIdx)
+        if (name in self.dae.outputNames()) and (not hasattr(self,'_outputMap')):
+            raise ValueError("Can't lookup outputs until you call setupOutputs")
+        try:
+            return self._dvMap.lookup(name,timestep=timestep,nicpIdx=nicpIdx,degIdx=degIdx)
+        except NameError:
+            pass
+        try:
+            return self._outputMap.lookup(name,timestep=timestep,nicpIdx=nicpIdx,degIdx=degIdx)
+        except NameError:
+            pass
+        raise NameError("lookup fail, unrecognized name "+name)
 
     def setObjective(self,obj):
         if hasattr(self,'_objective'):

@@ -10,7 +10,7 @@ import casadi as C
 
 import models
 from collocation import Coll
-from trajectory import Trajectory
+import trajectory
 
 def main():
     nk = 50
@@ -63,21 +63,21 @@ def main():
 
     # callback function
     class MyCallback:
-      def __init__(self):
-        self.iter = 0 
-      def __call__(self,f,*args):
-          xOpt = numpy.array(f.input(C.NLP_X_OPT))
-
-          self.iter = self.iter + 1
-          opt = ocp.devectorize(xOpt)
-          
-          po = kite_pb2.PendulumOpt()
-          po.x.extend(list([opt.lookup('x',timestep=k) for k in range(ocp.nk+1)]))
-          po.z.extend(list([opt.lookup('z',timestep=k) for k in range(ocp.nk+1)]))
-          po.messages.append('endTime: %.3f'% opt.lookup('endTime'))
-          po.messages.append('mass: %.3f'% opt.lookup('m'))
-          po.messages.append('iters: %d'  % self.iter)
-          publisher.send_multipart(["pendulum-opt", po.SerializeToString()])
+        def __init__(self):
+            self.iter = 0 
+        def __call__(self,f,*args):
+            xOpt = numpy.array(f.input(C.NLP_X_OPT))
+        
+            self.iter = self.iter + 1
+            traj = trajectory.Trajectory(ocp,xOpt)
+            
+            po = kite_pb2.PendulumOpt()
+            po.x.extend(list([traj.lookup('x',timestep=k) for k in range(ocp.nk+1)]))
+            po.z.extend(list([traj.lookup('z',timestep=k) for k in range(ocp.nk+1)]))
+            po.messages.append('endTime: %.3f'% traj.lookup('endTime'))
+            po.messages.append('mass: %.3f'% traj.lookup('m'))
+            po.messages.append('iters: %d'  % self.iter)
+            publisher.send_multipart(["pendulum-opt", po.SerializeToString()])
         
     # solver
     solverOptions = [ ("linear_solver","ma57")
@@ -92,34 +92,35 @@ def main():
 
     # initial conditions
     endTime = 0.3
-#    xOld = r
-#    zOld = 0
-#    dt0 = endTime/nk
-#    for k in range(nk+1):
-#        theta = float(k)/nk*C.pi/8.0
-#        x =  r*C.cos(theta)
-#        z = -r*C.sin(theta)
-#        
-#        ocp.guess('x',x,timestep=k)
-#        ocp.guess('z',z,timestep=k)
-#        ocp.guess('dx',(x-xOld)/dt0,timestep=k)
-#        ocp.guess('dz',(z-zOld)/dt0,timestep=k)
-#        xOld = x
-#        zOld = z
+    xOld = r
+    zOld = 0
+    dt0 = endTime/nk
+    for k in range(nk+1):
+        theta = float(k)/nk*C.pi/8.0
+        x =  r*C.cos(theta)
+        z = -r*C.sin(theta)
+        
+        ocp.guess('x',x,timestep=k)
+        ocp.guess('z',z,timestep=k)
+        ocp.guess('dx',(x-xOld)/dt0,timestep=k)
+        ocp.guess('dz',(z-zOld)/dt0,timestep=k)
+        xOld = x
+        zOld = z
+    for k in range(ocp.nk):
+        if k < ocp.nk:
+            ocp.guess('torque',0,timestep=k)
+        else:
+            ocp.guess('torque',-0,timestep=k)
+    ocp.guess('m',0.3)
+    ocp.guess('endTime',endTime)
+
 ##    ocp.guess('dx',0)
 ##    ocp.guess('dz',0)
-#    for k in range(ocp.nk):
-#        if k < ocp.nk:
-#            ocp.guess('torque',0,timestep=k)
-#        else:
-#            ocp.guess('torque',-0,timestep=k)
-
 #    ocp.guessX([r,0,0,0])
 #    ocp.guessX([0,-r,0,0])
 #    ocp.guess('torque',0)
-#    ocp.guess('m',0.3)
-#    ocp.guess('endTime',endTime)
-    ocp.interpolateInitialGuess("data/pendulum_opt.dat",force=True,quiet=True)
+
+#    ocp.interpolateInitialGuess("data/pendulum_opt.dat",force=True,quiet=True)
 
     print "setting up solver"
     ocp.setupSolver( solverOpts=solverOptions,
@@ -127,13 +128,12 @@ def main():
                      callback=MyCallback() )
     
     print "solving"
-    opt = ocp.solve()
-    print "endTime: "+str(opt.lookup('endTime'))
-    print "mass: "+str(opt.lookup('m'))
-    traj = Trajectory(ocp,dvs=opt.vec)
+    traj = ocp.solve()
+    print "endTime: "+str(traj.lookup('endTime'))
+    print "mass: "+str(traj.lookup('m'))
 
     print "saving optimal trajectory"
-#    traj.save("data/pendulum_opt.dat")
+    traj.save("data/pendulum_opt.dat")
 
     # Plot the results
     traj.subplot([['x','z'],['dx','dz']])

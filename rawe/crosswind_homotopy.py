@@ -13,7 +13,7 @@ import kiteutils
 import kite_pb2
 import kiteproto
 import models
-from trajectory import Trajectory
+import trajectory
 
 def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
     ocp = Coll(dae, nk=nk,nicp=nicp,deg=deg)
@@ -239,16 +239,16 @@ if __name__=='__main__':
             self.iter = self.iter + 1
             xOpt = numpy.array(f.input(C.NLP_X_OPT))
 
-            opt = ocp.devectorize(xOpt)
+            traj = trajectory.Trajectory(ocp,xOpt)
             
             kiteProtos = []
             for k in range(0,ocp.nk):
                 for nicpIdx in range(0,ocp.nicp):
                     for j in [0]:
 #                    for j in range(ocp.deg+1):
-                        kiteProtos.append( kiteproto.toKiteProto(C.DMatrix(opt.xVec(k,nicpIdx=nicpIdx,degIdx=j)),
-                                                                 C.DMatrix(opt.uVec(k)),
-                                                                 C.DMatrix(opt.pVec()),
+                        kiteProtos.append( kiteproto.toKiteProto(C.DMatrix(traj.dvMap.xVec(k,nicpIdx=nicpIdx,degIdx=j)),
+                                                                 C.DMatrix(traj.dvMap.uVec(k)),
+                                                                 C.DMatrix(traj.dvMap.pVec()),
                                                                  conf['kite']['zt'],
                                                                  conf['carousel']['rArm'],
                                                                  lineAlpha=0.2,
@@ -256,11 +256,11 @@ if __name__=='__main__':
             mc = kite_pb2.MultiCarousel()
             mc.css.extend(list(kiteProtos))
             
-            mc.messages.append("w0: "+str(opt.lookup('w0')))
+            mc.messages.append("w0: "+str(traj.lookup('w0')))
             mc.messages.append("iter: "+str(self.iter))
-            mc.messages.append("endTime: "+str(opt.lookup('endTime')))
-            mc.messages.append("average power: "+str(opt.lookup('energy',timestep=-1)/opt.lookup('endTime'))+" W")
-            mc.messages.append("homotopy gamma: "+str(opt.lookup('gamma_homotopy')))
+            mc.messages.append("endTime: "+str(traj.lookup('endTime')))
+            mc.messages.append("average power: "+str(traj.lookup('energy',timestep=-1)/traj.lookup('endTime'))+" W")
+            mc.messages.append("homotopy gamma: "+str(traj.lookup('gamma_homotopy')))
 
             # bounds feedback
 #            lbx = ocp.solver.input(C.NLP_LBX)
@@ -298,16 +298,15 @@ if __name__=='__main__':
 
     xInit = None
     ocp.bound('gamma_homotopy',(1e-4,1e-4),force=True)
-    opt = ocp.solve(xInit=xInit)
+    traj = ocp.solve(xInit=xInit)
 
     ocp.bound('gamma_homotopy',(0,1),force=True)
-    opt = ocp.solve(xInit=opt.vec)
+    traj = ocp.solve(xInit=traj.getDvs())
     
     ocp.bound('gamma_homotopy',(1,1),force=True)
-    ocp.bound('endTime',(0.5,3.0),force=True)
-    opt = ocp.solve(xInit=opt.vec)
+    ocp.bound('endTime',(4.0,4.0),force=True)
+    traj = ocp.solve(xInit=traj.getDvs())
 
-    traj = Trajectory(ocp,dvs=opt.vec)
     print "saving optimal trajectory"
     traj.save("data/crosswind_homotopy.dat")
 

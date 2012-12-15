@@ -4,7 +4,7 @@ import numpy
 from numpy import pi
 import zmq
 import pickle
-from trajectory import Trajectory
+import trajectory
 
 from collocation import Coll,boundsFeedback
 from config import readConfig
@@ -146,16 +146,16 @@ if __name__=='__main__':
             self.iter = self.iter + 1
             xOpt = numpy.array(f.input(C.NLP_X_OPT))
 
-            opt = ocp.devectorize(xOpt)
+            traj = trajectory.Trajectory(ocp,xOpt)
             
             kiteProtos = []
             for k in range(0,ocp.nk):
                 for nicpIdx in range(0,ocp.nicp):
                     for j in [0]:
 #                    for j in range(ocp.deg+1):
-                        kiteProtos.append( kiteproto.toKiteProto(C.DMatrix(opt.xVec(k,nicpIdx=nicpIdx,degIdx=j)),
-                                                                 C.DMatrix(opt.uVec(k)),
-                                                                 C.DMatrix(opt.pVec()),
+                        kiteProtos.append( kiteproto.toKiteProto(C.DMatrix(traj.dvMap.xVec(k,nicpIdx=nicpIdx,degIdx=j)),
+                                                                 C.DMatrix(traj.dvMap.uVec(k)),
+                                                                 C.DMatrix(traj.dvMap.pVec()),
                                                                  conf['kite']['zt'],
                                                                  conf['carousel']['rArm'],
                                                                  lineAlpha=0.2,
@@ -163,10 +163,10 @@ if __name__=='__main__':
             mc = kite_pb2.MultiCarousel()
             mc.css.extend(list(kiteProtos))
 
-            mc.messages.append("w0: "+str(opt.lookup('w0')))
+            mc.messages.append("w0: "+str(traj.lookup('w0')))
             mc.messages.append("iter: "+str(self.iter))
-            mc.messages.append("endTime: "+str(opt.lookup('endTime')))
-            mc.messages.append("average power: "+str(opt.lookup('energy',timestep=-1)/opt.lookup('endTime'))+" W")
+            mc.messages.append("endTime: "+str(traj.lookup('endTime')))
+            mc.messages.append("average power: "+str(traj.lookup('energy',timestep=-1)/traj.lookup('endTime'))+" W")
 
             # bounds feedback
 #            lbx = ocp.solver.input(C.NLP_LBX)
@@ -202,12 +202,12 @@ if __name__=='__main__':
                      callback=MyCallback() )
 
     ocp.interpolateInitialGuess("data/crosswind_homotopy.dat",force=True,quiet=True)
+    traj = ocp.solve()
 
-    opt = ocp.solve()
-    traj = Trajectory(ocp,dvs=opt.vec)
     
-    print "optimal power: "+str(opt.lookup('energy',-1)/opt.lookup('endTime'))
-    
+    print "optimal power: "+str(traj.lookup('energy',-1)/traj.lookup('endTime'))
+    print "endTime: "+str(traj.lookup('endTime'))
+
     print "saving optimal trajectory"
     traj.save("data/crosswind_opt.dat")
 
@@ -215,7 +215,7 @@ if __name__=='__main__':
 #        (_,lbx,ubx) = ocp._vectorizeBoundsAndGuess( ocp._parseBoundsAndGuess(False,False) )
         lbx = ocp.solver.input(C.NLP_LBX)
         ubx = ocp.solver.input(C.NLP_UBX)
-        violations = boundsFeedback(opt.vec,lbx,ubx,ocp.bndtags,tolerance=-0.01)
+        violations = boundsFeedback(traj.dvMap.vectorize(),lbx,ubx,ocp.bndtags,tolerance=-0.01)
         for name in violations:
             print "violation!: "+name+": "+str(violations[name])
     printBoundsFeedback()

@@ -69,12 +69,10 @@ if __name__ == "__main__":
                     ]
     ocp.setupSolver(solverOpts=solverOptions)
 
-    opt = ocp.solve()
+#    ocp.interpolateInitialGuess("data/rocket_opt.dat",force=True,quiet=True,numLoops=1)
+    traj = ocp.solve()
 
-    # make trajectory
-    traj = Trajectory(ocp,dvs=opt.vec)
-
-    print "final position: "+str(opt.lookup('pos',-1))
+    print "final position: "+str(traj.lookup('pos',-1))
     
     # save trajectory
     traj.save("data/rocket_opt.dat")
@@ -83,4 +81,5 @@ if __name__ == "__main__":
     traj.plot('pos')
     traj.plot(['pos','vel'])
     traj.subplot([['pos','vel'],['thrust']])
+    traj.plot('pos*vel')
     plt.show()

@@ -1,8 +1,13 @@
 import numpy as np
 from collutils import mkCollocationPoints
+import casadi as C
 
-class CollMap(object):
-    def __init__(self,ocp,name,devectorize=None):
+class ReadOnlyCollMap(object):
+    """
+    A map of x/z/u/p handling number of timesteps, nicp, and deg.
+    Useful function s are "lookup", "{x,z,u,p}Vec", and "vectorize"
+    """
+    def __init__(self,ocp,name):
         # grab everything needed from the ocp
         self._xNames = ocp.dae.xNames()
         self._zNames = ocp.dae.zNames()
@@ -29,138 +34,12 @@ class CollMap(object):
         for name in self._pNames:
             self._pMap[name] = None
 
-        if devectorize is not None:
-            self._devectorize(devectorize)
-
-    def _devectorize(self,V):
-        self.vec = V
-        ndiff = len(self._xNames)
-        nalg = len(self._zNames)
-        nu = len(self._uNames)
-        NP = len(self._pNames)
-        nx = ndiff + nalg
-        
-        # Total number of variables
-        NXD = self._nicp*self._nk*(self._deg+1)*ndiff # Collocated differential states
-        NXA = self._nicp*self._nk*self._deg*nalg      # Collocated algebraic states
-        NU = self._nk*nu                  # Parametrized controls
-        NXF = ndiff                 # Final state (only the differential states)
-        NV = NXD+NXA+NU+NXF+NP
-        
-        offset = 0
-        
-        # Get the parameters
-        P = V[offset:offset+NP]
-        for k,name in enumerate(self._pNames):
-#            self._indexMap.setVal(name,k)
-#            self._dvMap.setVal(name,V[offset+k])
-            self.setVal(name,V[offset+k])
-        offset += NP
-        
-        # Get collocated states and parametrized control
-        XD = np.resize(np.array([],dtype=type(V)),(self._nk+1,self._nicp,self._deg+1)) # NB: same name as above
-        XA = np.resize(np.array([],dtype=type(V)),(self._nk,self._nicp,self._deg+1)) # NB: same name as above
-        U = np.resize(np.array([],dtype=type(V)),self._nk)
-        
-        for k in range(self._nk):
-            # Collocated states
-            for i in range(self._nicp):
-                for j in range(self._deg+1):
-                    # Get the expression for the state vector
-                    XD[k][i][j] = V[offset:offset+ndiff]
-                    for m,name in enumerate(self._xNames):
-#                        self._indexMap.setVal(name,offset+m,timestep=k,nicpIdx=i,degIdx=j)
-#                        self._dvMap.setVal(name,V[offset+m],timestep=k,nicpIdx=i,degIdx=j)
-                        self.setVal(name,V[offset+m],timestep=k,nicpIdx=i,degIdx=j)
-                        
-                    if j !=0:
-                        XA[k][i][j] = V[offset+ndiff:offset+ndiff+nalg]
-                        for m,name in enumerate(self._zNames):
-#                            self._indexMap.setVal(name,offset+ndiff+m,timestep=k,nicpIdx=i,degIdx=j)
-#                            self._dvMap.setVal(name,V[offset+ndiff+m],timestep=k,nicpIdx=i,degIdx=j)
-                            self.setVal(name,V[offset+ndiff+m],timestep=k,nicpIdx=i,degIdx=j)
-
-                    index = (self._deg+1)*(self._nicp*k+i) + j
-                    if k==0 and j==0 and i==0:
-                        offset += ndiff
-                    else:
-                        if j!=0:
-                            offset += nx
-                        else:
-                            offset += ndiff
-            
-            # Parametrized controls
-            U[k] = V[offset:offset+nu]
-            for m,name in enumerate(self._uNames):
-#                self._indexMap.setVal(name,offset+m,timestep=k)
-#                self._dvMap.setVal(name,V[offset+m],timestep=k)
-                self.setVal(name,V[offset+m],timestep=k)
-            offset += nu
-        
-        # State at end time
-        XD[self._nk][0][0] = V[offset:offset+ndiff]
-        for m,name in enumerate(self._xNames):
-#            self._indexMap.setVal(name,offset+m,timestep=self.nk,degIdx=0,nicpIdx=0)
-#            self._dvMap.setVal(name,V[offset+m],timestep=self.nk,degIdx=0,nicpIdx=0)
-            self.setVal(name,V[offset+m],timestep=self._nk,degIdx=0,nicpIdx=0)
-        
-        offset += ndiff
-        assert offset==NV
-
-        self._xVec = XD
-        self._zVec = XA
-        self._uVec = U
-        self._pVec = P
-
-    def fillInMissing(self,mapName,interpFun):
-        assert(isinstance(mapName, str))
-        import collutils
-        tau_root = mkCollocationPoints(self._collPoly,self._deg)
-
-        # all parameters should be set
-        for name in self._pNames:
-            val = self.lookup(name)
-            if val is None:
-                raise ValueError(mapName+" for parameter \""+name+"\" is not set")
-        
-        # all controls should be set
-        for name in self._uNames:
-            for k in range(self._nk):
-                if self.lookup(name,timestep=k) is None:
-                    raise ValueError(mapName+" for control \""+name+"\" is not set at timestep "+str(k))
-
-        # all algebraic variables should be set
-        for name in self._zNames:
-            for k in range(self._nk):
-                for j in range(self._nicp):
-                    for d in range(1,self._deg+1):
-                        if self.lookup(name,timestep=k,nicpIdx=j,degIdx=d) is None:
-                            raise ValueError(mapName+" for algebraic variable \""+name+"\" is not set at timestep "+str(k)+", nicpIdx: "+str(j)+", degIdx: "+str(d))
-
-        # states should all be set at degIdx=0, nicpIdx=0
-        # if not set in between, call interpFun
-        for name in self._xNames:
-            for k in range(self._nk):
-                # Collocated states
-                val0 = self.lookup(name,timestep=k,nicpIdx=0,degIdx=0)
-                val1 = self.lookup(name,timestep=k+1,nicpIdx=0,degIdx=0)
-                if val0 is None:
-                    raise ValueError(mapName+" for state \""+name+"\" is not set at timestep "+str(k))
-                if val1 is None:
-                    raise ValueError(mapName+" for state \""+name+"\" is not set at timestep "+str(k+1))
-                alpha = 0
-                alphaIndex = 0
-                for j in range(self._nicp):
-                    for d in range(self._deg+1):
-                        val = self.lookup(name,timestep=k,nicpIdx=j,degIdx=d)
-                        if val is None:
-                            tau = j + tau_root[d]/float(self._nicp)
-                            self.setVal(name,interpFun(tau,val0,val1),timestep=k,nicpIdx=j,degIdx=d)
-                        alphaIndex += 1
-
     def vectorize(self):
+        """
+        Return all the variables in one vector
+        """
         if all([hasattr(self,attr) for attr in ['_xVec','_zVec','uVec','pVec']]):
-            V = [self._pVec()]
+            V = [self.pVec()]
             for k in range(self._nk):
                 # Collocated states
                 for i in range(self._nicp):
@@ -228,9 +107,6 @@ class CollMap(object):
         else:
             return ret
         
-    def setVal(self,name,val,timestep=None,nicpIdx=None,degIdx=None,quiet=False,force=False):
-        self._lookupOrSet(name,timestep,nicpIdx,degIdx,setVal=val,quiet=quiet,force=force)
-        
     def _lookupOrSet(self,name,timestep,nicpIdx,degIdx,setVal=None,quiet=False,force=False):
         assert isinstance(name,str), "lookup key must be a string in "+self._name+" map"
         
@@ -240,10 +116,10 @@ class CollMap(object):
                 nicpIdx = 0
             if degIdx is None:
                 degIdx = 0
-            assert timestep < (self._nk+1), \
-                   "timestep: "+str(timestep)+" out of range in "+self._name+" map (nk: "+str(nk)+")"
+            assert timestep <= self._nk, \
+                "timestep: "+str(timestep)+" out of range in "+self._name+" map (nk: "+str(nk)+")"
             assert degIdx >=0 and degIdx < (self._deg+1), \
-                   "degIdx: "+str(deg)+" out of range in "+self._name+" map (deg: "+str(self._deg)+")"
+                "degIdx: "+str(deg)+" out of range in "+self._name+" map (deg: "+str(self._deg)+")"
             if timestep is self._nk:
                 assert nicpIdx==0 and degIdx==0,"last timestep is only defined at nicpIdx=0,degIdx=0"
             if setVal is None:
@@ -251,7 +127,8 @@ class CollMap(object):
             else:
                 oldval = self._xMap[name][timestep][nicpIdx][degIdx]
                 if (not quiet) and (oldval is not None):
-                    print "WARNING: changing \"%s\" %s at timestep %d from %s to %s" % (name,self._name,timestep,str(oldval),str(setVal))
+                    print "WARNING: changing \"%s\" %s at timestep %d from %s to %s" % \
+                        (name,self._name,timestep,str(oldval),str(setVal))
                 self._xMap[name][timestep][nicpIdx][degIdx] = setVal
 
         elif name in self._zMap:
@@ -259,16 +136,18 @@ class CollMap(object):
             if nicpIdx is None:
                 nicpIdx = 0
             assert degIdx is not None, "must set degIdx for algebraic state map ("+self._name+")"
+            assert degIdx != 0, "algebraic variable ("+self._name+") not defined at degIdx 0"
             assert timestep < self._nk, \
-                   "timestep: "+str(timestep)+" out of range in "+self._name+" map (nk: "+str(nk)+")"
-            assert degIdx >=0 and degIdx < (self._deg+1), \
-                   "degIdx: "+str(degIdx)+" out of range in "+self._name+" map (deg: "+str(self._deg)+")"
+                "timestep: "+str(timestep)+" out of range in "+self._name+" map (nk: "+str(nk)+")"
+            assert degIdx > 0 and degIdx <= self._deg, \
+                "degIdx: "+str(degIdx)+" out of range in "+self._name+" map (deg: "+str(self._deg)+")"
             if setVal is None:
                 return self._zMap[name][timestep][nicpIdx][degIdx]
             else:
                 oldval = self._zMap[name][timestep][nicpIdx][degIdx]
                 if (quiet is False) and (oldval is not None):
-                    print "WARNING: changing \"%s\" %s at timestep %d from %s to %s" % (name,self._name,timestep,str(oldval),str(setVal))
+                    print "WARNING: changing \"%s\" %s at timestep %d from %s to %s" % \
+                        (name,self._name,timestep,str(oldval),str(setVal))
                 self._zMap[name][timestep][nicpIdx][degIdx] = setVal
 
         elif name in self._uMap:
@@ -282,7 +161,8 @@ class CollMap(object):
             else:
                 oldval = self._uMap[name][timestep]
                 if (quiet is False) and (oldval is not None):
-                    print "WARNING: changing \"%s\" %s at timestep %d from %s to %s" % (name,self._name,timestep,str(oldval),str(setVal))
+                    print "WARNING: changing \"%s\" %s at timestep %d from %s to %s" % \
+                        (name,self._name,timestep,str(oldval),str(setVal))
                 self._uMap[name][timestep] = setVal
 
         elif name in self._pMap:
@@ -294,8 +174,455 @@ class CollMap(object):
             else:
                 oldval = self._pMap[name]
                 if (force is False) and (oldval is not None):
-                    raise ValueError("can't change \""+name+"\" "+self._name+" once it's set unless you use force=True (tried to change "+str(oldval)+" to "+str(setVal))
+                    msg = "can't change \""+name+"\" "+self._name+" once it's set unless " + \
+                        "you use force=True (tried to change "+str(oldval)+" to "+str(setVal)
+                    raise ValueError(msg)
                 self._pMap[name] = setVal
 
         else:
-            raise ValueError("couldn't find \""+name+"\" in "+self._name+" map")
+            raise NameError("couldn't find \""+name+"\" in "+self._name+" map")
+
+
+class WriteableCollMap(ReadOnlyCollMap):
+    """
+    A ReadOnlyCollMap that also has the "setVal" and "fillInMissing" methods
+    """
+    def setVal(self,name,val,timestep=None,nicpIdx=None,degIdx=None,quiet=False,force=False):
+        self._lookupOrSet(name,timestep,nicpIdx,degIdx,setVal=val,quiet=quiet,force=force)
+        
+    def fillInMissing(self,mapName,interpFun):
+        assert(isinstance(mapName, str))
+        import collutils
+        tau_root = mkCollocationPoints(self._collPoly,self._deg)
+
+        # all parameters should be set
+        for name in self._pNames:
+            val = self.lookup(name)
+            if val is None:
+                raise ValueError(mapName+" for parameter \""+name+"\" is not set")
+        
+        # all controls should be set
+        for name in self._uNames:
+            for k in range(self._nk):
+                if self.lookup(name,timestep=k) is None:
+                    raise ValueError(mapName+" for control \""+name+"\" is not set at timestep "+str(k))
+
+        # all algebraic variables should be set
+        for name in self._zNames:
+            for k in range(self._nk):
+                for j in range(self._nicp):
+                    for d in range(1,self._deg+1):
+                        if self.lookup(name,timestep=k,nicpIdx=j,degIdx=d) is None:
+                            raise ValueError(mapName+" for algebraic variable \""+name+"\" is not set at timestep "+str(k)+", nicpIdx: "+str(j)+", degIdx: "+str(d))
+
+        # states should all be set at degIdx=0, nicpIdx=0
+        # if not set in between, call interpFun
+        for name in self._xNames:
+            for k in range(self._nk):
+                # Collocated states
+                val0 = self.lookup(name,timestep=k,nicpIdx=0,degIdx=0)
+                val1 = self.lookup(name,timestep=k+1,nicpIdx=0,degIdx=0)
+                if val0 is None:
+                    raise ValueError(mapName+" for state \""+name+"\" is not set at timestep "+str(k))
+                if val1 is None:
+                    raise ValueError(mapName+" for state \""+name+"\" is not set at timestep "+str(k+1))
+                alpha = 0
+                alphaIndex = 0
+                for j in range(self._nicp):
+                    for d in range(self._deg+1):
+                        val = self.lookup(name,timestep=k,nicpIdx=j,degIdx=d)
+                        if val is None:
+                            tau = j + tau_root[d]/float(self._nicp)
+                            self.setVal(name,interpFun(tau,val0,val1),timestep=k,nicpIdx=j,degIdx=d)
+                        alphaIndex += 1
+
+
+class VectorizedReadOnlyCollMap(ReadOnlyCollMap):
+    """
+    A ReadOnlyCollMap meant to play more nicely with the MX class.
+    Everything is stored in one vector so you can call
+    {x,z,u,p}Vec and get efficient slices, and "vectorize"
+    returns the original vector instead of concatenating all the individual elements.
+    This is 
+    """
+    def __init__(self,ocp,name,vec):
+        ReadOnlyCollMap.__init__(self,ocp,name)
+        self._devectorize(vec)
+        
+    def vectorize(self):
+        return self._vec
+            
+    def xVec(self,timestep,nicpIdx=None,degIdx=None):
+        if nicpIdx is None:
+            nicpIdx = 0
+        if degIdx is None:
+            degIdx = 0
+        return self._xVec[timestep][nicpIdx][degIdx]
+    def zVec(self,timestep,nicpIdx=None,degIdx=None):
+        if nicpIdx is None:
+            nicpIdx = 0
+        assert (degIdx is not None), "must set degIdx in zVec"
+        assert (degIdx != 0), "algebraic variables not defined at tau=0"
+        return self._zVec[timestep][nicpIdx][degIdx]
+    def uVec(self,timestep):
+        return self._uVec[timestep]
+    def pVec(self):
+        return self._pVec
+
+    def _devectorize(self,V):
+        """
+        Take a vector and populate internal _{x,z,u,p}Vec, then
+        look through and call setVal so that lookup() works as normal
+        """
+        self._vec = V
+        ndiff = len(self._xNames)
+        nalg = len(self._zNames)
+        nu = len(self._uNames)
+        NP = len(self._pNames)
+        nx = ndiff + nalg
+        
+        # Total number of variables
+        NXD = self._nicp*self._nk*(self._deg+1)*ndiff # Collocated differential states
+        NXA = self._nicp*self._nk*self._deg*nalg      # Collocated algebraic states
+        NU = self._nk*nu                  # Parametrized controls
+        NXF = ndiff                 # Final state (only the differential states)
+        NV = NXD+NXA+NU+NXF+NP
+        
+        def setVal(name,val,timestep=None,nicpIdx=None,degIdx=None):
+            self._lookupOrSet(name,timestep,nicpIdx,degIdx,setVal=val)
+
+        offset = 0
+        
+        # Get the parameters
+        P = V[offset:offset+NP]
+        for k,name in enumerate(self._pNames):
+#            self._indexMap.setVal(name,k)
+#            self._dvMap.setVal(name,V[offset+k])
+            setVal(name,V[offset+k])
+        offset += NP
+        
+        # Get collocated states and parametrized control
+        XD = np.resize(np.array([],dtype=type(V)),(self._nk+1,self._nicp,self._deg+1)) # NB: same name as above
+        XA = np.resize(np.array([],dtype=type(V)),(self._nk,self._nicp,self._deg+1)) # NB: same name as above
+        U = np.resize(np.array([],dtype=type(V)),self._nk)
+        
+        for k in range(self._nk):
+            # Collocated states
+            for i in range(self._nicp):
+                for j in range(self._deg+1):
+                    # Get the expression for the state vector
+                    XD[k][i][j] = V[offset:offset+ndiff]
+                    for m,name in enumerate(self._xNames):
+#                        self._indexMap.setVal(name,offset+m,timestep=k,nicpIdx=i,degIdx=j)
+#                        self._dvMap.setVal(name,V[offset+m],timestep=k,nicpIdx=i,degIdx=j)
+                        setVal(name,V[offset+m],timestep=k,nicpIdx=i,degIdx=j)
+                        
+                    if j !=0:
+                        XA[k][i][j] = V[offset+ndiff:offset+ndiff+nalg]
+                        for m,name in enumerate(self._zNames):
+#                            self._indexMap.setVal(name,offset+ndiff+m,timestep=k,nicpIdx=i,degIdx=j)
+#                            self._dvMap.setVal(name,V[offset+ndiff+m],timestep=k,nicpIdx=i,degIdx=j)
+                            setVal(name,V[offset+ndiff+m],timestep=k,nicpIdx=i,degIdx=j)
+
+                    index = (self._deg+1)*(self._nicp*k+i) + j
+                    if k==0 and j==0 and i==0:
+                        offset += ndiff
+                    else:
+                        if j!=0:
+                            offset += nx
+                        else:
+                            offset += ndiff
+            
+            # Parametrized controls
+            U[k] = V[offset:offset+nu]
+            for m,name in enumerate(self._uNames):
+#                self._indexMap.setVal(name,offset+m,timestep=k)
+#                self._dvMap.setVal(name,V[offset+m],timestep=k)
+                setVal(name,V[offset+m],timestep=k)
+            offset += nu
+        
+        # State at end time
+        XD[self._nk][0][0] = V[offset:offset+ndiff]
+        for m,name in enumerate(self._xNames):
+#            self._indexMap.setVal(name,offset+m,timestep=self.nk,degIdx=0,nicpIdx=0)
+#            self._dvMap.setVal(name,V[offset+m],timestep=self.nk,degIdx=0,nicpIdx=0)
+            setVal(name,V[offset+m],timestep=self._nk,degIdx=0,nicpIdx=0)
+        
+        offset += ndiff
+        assert offset==NV
+
+        self._xVec = XD
+        self._zVec = XA
+        self._uVec = U
+        self._pVec = P
+
+
+class OutputMapGenerator(object):
+    """
+    Something which will efficiently generate a map of all outputs.
+    The outputs are all computed all at once to ensure no (additional) CSEs are generated.
+
+    On initialization, the function which creates all the outputs from a dv vector is created.
+    Then you can pass a dv vector to "makeOutputs" to get the map.
+    """
+    def __init__(self,ocp,xDot):
+        (fAll,(f0,outputNames0)) = ocp.dae.outputsFun()
+        self._outputNames0 = outputNames0
+        self._outputNames = ocp.dae.outputNames()
+
+        assert (len(self._outputNames0) == f0.getNumOutputs())
+        assert (len(self._outputNames) == fAll.getNumOutputs())
+
+        self._nk = ocp.nk
+        self._nicp = ocp.nicp
+        self._deg = ocp.deg
+
+        outs = []
+        for timestepIdx in range(self._nk):
+            for nicpIdx in range(self._nicp):
+                # outputs defined at tau_i0
+                if f0 is not None:
+                    outs += f0.call([ocp._dvMap.xVec(timestepIdx,nicpIdx=nicpIdx,degIdx=0),
+                                     ocp._dvMap.uVec(timestepIdx),
+                                     ocp._dvMap.pVec()])
+                # all outputs
+                for degIdx in range(1,self._deg+1):
+                    if fAll is not None:
+                        outs += fAll.call([xDot[timestepIdx,nicpIdx,degIdx],
+                                           ocp._dvMap.xVec(timestepIdx,nicpIdx=nicpIdx,degIdx=degIdx),
+                                           ocp._dvMap.zVec(timestepIdx,nicpIdx=nicpIdx,degIdx=degIdx),
+                                           ocp._dvMap.uVec(timestepIdx),
+                                           ocp._dvMap.pVec()])
+        # make the function
+        self.fEveryOutput = C.MXFunction([ocp._dvMap.vectorize()],outs)
+        self.fEveryOutput.init()
+
+class OutputMap(object):
+    def __init__(self,outputMapGenerator,dvs):
+        if type(dvs) in [C.MX,C.SXMatrix]:
+            allOutputs = outputMapGenerator.fEveryOutput.call([dvs])
+        elif type(dvs) in [np.ndarray,C.DMatrix]:
+            outputMapGenerator.fEveryOutput.setInput(dvs,0)
+            outputMapGenerator.fEveryOutput.evaluate()
+            allOutputs = [np.array(outputMapGenerator.fEveryOutput.output(k))
+                          for k in range(outputMapGenerator.fEveryOutput.getNumOutputs())]
+        else:
+            raise TypeError("OutputMap got unrecognized design vector type: "+str(type(dvs)))
+
+        self._outputNames0 = outputMapGenerator._outputNames0
+        self._outputNames = outputMapGenerator._outputNames
+
+        self._numOutputs0 = len(self._outputNames0)
+        self._numOutputs  = len(self._outputNames)
+
+        self._nk = outputMapGenerator._nk
+        self._nicp = outputMapGenerator._nicp
+        self._deg = outputMapGenerator._deg
+
+        self._outputs = {}
+        self._outputs0 = {}
+
+        for name in self._outputNames0:
+            self._outputs0[name] = np.resize(np.array([None]),(self._nk,self._nicp))
+        for name in self._outputNames:
+            self._outputs[name] = np.resize(np.array([None]),(self._nk,self._nicp,self._deg+1))
+
+        outs = []
+        k = 0
+        for timestepIdx in range(self._nk):
+            for nicpIdx in range(self._nicp):
+                # outputs defined at tau_i0
+                outs = allOutputs[k:k+self._numOutputs0]
+                k += self._numOutputs0
+                for name,val in zip(self._outputNames0,outs):
+                    self._outputs0[name][timestepIdx,nicpIdx] = val
+                
+                # all outputs
+                for degIdx in range(1,self._deg+1):
+                    outs = allOutputs[k:k+self._numOutputs]
+                    k += self._numOutputs
+                    for name,val in zip(self._outputNames,outs):
+                        self._outputs[name][timestepIdx,nicpIdx,degIdx] = val
+
+        
+    def lookup(self,name,timestep=None,nicpIdx=None,degIdx=None):
+        if not (name in self._outputs0 or name in self._outputs):
+            raise NameError("couldn't find \""+name+"\"")
+            
+        #assert (timestep is not None), "please specify timestep at which you want to look up output \""+name+"\""
+        if nicpIdx is None:
+            nicpIdx = 0
+        if degIdx is None:
+            degIdx = 0
+        
+        # if degIdx == 0, return value with no algebraic inputs
+        if degIdx == 0:
+            assert (name in self._outputs0), "output \""+name+"\" is not an explicit function of x/u/p and is not defined at the beginning of the collocation interval, specify degIdx > 0"
+            if timestep is None:
+                return [self._outputs0[name][k][nicpIdx] for k in range(self.nk)]
+            else:
+                return self._outputs0[name][timestep][nicpIdx]
+                
+        # if degIdx != 0, return value which may or may not have algebraic inputs
+        if timestep is None:
+            return [self._outputs[name][k][nicpIdx][degIdx] for k in range(self.nk)]
+        else:
+            return self._outputs[name][timestep][nicpIdx][degIdx]
+
+    
+
+
+# a CollMap with outputs and quadrature states
+class CollMapPlus(WriteableCollMap):
+    def __init__(self,*args,**kwargs):
+        self.quadratures = {}
+        WriteableCollMap.__init__(self,*args,**kwargs)
+    
+    def setupOutputs(self,ocp,xDot):
+        """
+        setup symbolic outputs
+        """
+        assert self._xNames == ocp.dae.xNames()
+        assert self._zNames == ocp.dae.zNames()
+        assert self._uNames == ocp.dae.uNames()
+        assert self._pNames == ocp.dae.pNames()
+        assert self._nk == ocp.nk
+        assert self._nicp == ocp.nicp
+        assert self._deg == ocp.deg
+        assert self._collPoly == ocp.collPoly
+
+        (fAll,(f0,outputNames0)) = ocp.dae.outputsFun()
+        self._outputNames0 = outputNames0
+        self._outputNames = ocp.dae.outputNames()
+        
+        self._outputs = {}
+        self._outputs0 = {}
+        for name in self._outputNames0:
+            self._outputs0[name] = np.resize(np.array([None],dtype=C.MX),(self._nk,self._nicp))
+        for name in self._outputNames:
+            self._outputs[name] = np.resize(np.array([None],dtype=C.MX),(self._nk,self._nicp,self._deg+1))
+            
+        for timestepIdx in range(self._nk):
+            for nicpIdx in range(self._nicp):
+                # outputs defined at tau_i0
+                if f0 is not None:
+                    outs = f0.call([self.xVec(timestepIdx,nicpIdx=nicpIdx,degIdx=0),
+                                    self.uVec(timestepIdx),
+                                    self.pVec()])
+                else:
+                    outs = []
+                for name,val in zip(self._outputNames0,outs):
+                    self._outputs0[name][timestepIdx,nicpIdx] = val
+                
+                # all outputs
+                for degIdx in range(1,self._deg+1):
+                    if fAll is not None:
+                        outs = fAll.call([xDot[timestepIdx,nicpIdx,degIdx],
+                                          self.xVec(timestepIdx,nicpIdx=nicpIdx,degIdx=degIdx),
+                                          self.zVec(timestepIdx,nicpIdx=nicpIdx,degIdx=degIdx),
+                                          self.uVec(timestepIdx),
+                                          self.pVec()])
+                    else:
+                        outs = []
+                    for name,val in zip(self._outputNames,outs):
+                        self._outputs[name][timestepIdx,nicpIdx,degIdx] = val
+#        self._fAll = fAll
+#        self._f0 = f0
+
+        
+    def lookup(self,name,timestep=None,nicpIdx=None,degIdx=None):
+        # if it's not an output, perform a design variable lookup
+        try:
+            return CollMap.lookup(self,name,timestep=timestep,nicpIdx=nicpIdx,degIdx=degIdx)
+        except NameError:
+            pass
+    
+        # handle quadrature states specially
+        if name in self.quadratures:
+            assert (timestep is not None),\
+                   "please specify timestep at which you want to look up quadrature state \""+name+"\""
+            if nicpIdx is None:
+                nicpIdx = 0
+            if degIdx is None:
+                degIdx = 0
+            return self.quadratures[name][timestep][nicpIdx][degIdx]
+
+        # handle outputs specially
+        if not (hasattr(self,'_outputs0') and hasattr(self,'_outputs')):
+            raise ValueError("Can't lookup outputs until you call setupOutputs")
+        if name in self._outputNames:
+            assert (name in self._outputs0 or name in self._outputs)
+            
+            #assert (timestep is not None), "please specify timestep at which you want to look up output \""+name+"\""
+            if nicpIdx is None:
+                nicpIdx = 0
+            if degIdx is None:
+                degIdx = 0
+            
+            # if degIdx == 0, return value with no algebraic inputs
+            if degIdx == 0:
+                assert (name in self._outputs0), "output \""+name+"\" is not an explicit function of x/u/p and is not defined at the beginning of the collocation interval, specify degIdx > 0"
+                if timestep is None:
+                    return [self._outputs0[name][k][nicpIdx] for k in range(self.nk)]
+                else:
+                    return self._outputs0[name][timestep][nicpIdx]
+                    
+            # if degIdx != 0, return value which may or may not have algebraic inputs
+            if timestep is None:
+                return [self._outputs[name][k][nicpIdx][0] for k in range(self.nk)]
+            else:
+                return self._outputs[name][timestep][nicpIdx][degIdx]
+
+        raise ValueError("couldn't find \""+name+"\"")
+    
+
+    def setQuadratureDdt(self,quadratureStateName,quadratureStateDotName,lagrangePoly,h):
+        qStates = np.resize(np.array([None],dtype=C.MX),(self._nk+1,self._nicp,self._deg+1))
+        qStates[0,0,0] = 0
+
+        # lagrange term for power
+        # For all finite elements
+        lagrangeTerms = []
+        lagrangeTerm = 0
+        
+        ldInv = np.linalg.inv(lagrangePoly.lDotAtTauRoot[1:,1:])
+        ld0 = lagrangePoly.lDotAtTauRoot[1:,0]
+        l1 = lagrangePoly.lAtOne
+#        print -C.mul(C.mul(ldInv, ld0).T, l1[1:])
+        print -C.mul(C.mul(ldInv, ld0).T, l1[1:]) + l1[0]
+#        import sys; sys.exit()
+        
+        for k in range(self._nk):
+            for i in range(self._nicp):
+                dQs = h*C.veccat([self.lookup(quadratureStateDotName,timestep=k,nicpIdx=i,degIdx=j)
+                                  for j in range(1,self._deg+1)])
+                Qs = C.mul( ldInv, dQs - ld0*qStates[k,i,0] )
+                for j in range(1,self._deg+1):
+                    qStates[k,i,j] = Qs[j-1]
+                
+                m = C.veccat( [qStates[k,i,0], Qs] )
+                m = C.mul( m.T, l1)
+                if i < self._nicp - 1:
+                    qStates[k,i+1,0] = m
+                else:
+                    qStates[k+1,0,0] = m
+                
+#                lagrangeTerm += C.mul( C.veccat([lagrangeTerm, C.mul(ldInv, dQ - ld0*lagrangeTerm)]).T, l1)
+#                lagrangeTerms.append(C.mul( C.mul(ldInv, dQ).T, l1[1:]))
+#        import sys; sys.exit()
+
+#        for k in range(self.nk):
+#            for i in range(self.nicp):
+#                dQs = self.h*C.veccat([self.lookup(quadratureStateDotName,timestep=k,nicpIdx=i,degIdx=j)
+#                                        for j in range(1,self.deg+1)])
+#                m = dQs - ld0*lagrangeTerm
+#                m = C.mul( ldInv, m )
+#                m = C.veccat( [lagrangeTerm, m] )
+#                m = C.mul( m.T, l1)
+#                lagrangeTerm += m
+#                
+##                lagrangeTerm += C.mul( C.veccat([lagrangeTerm, C.mul(ldInv, dQ - ld0*lagrangeTerm)]).T, l1)
+#                lagrangeTerms.append(C.mul( C.mul(ldInv, dQ).T, l1[1:]))
+#        import sys; sys.exit()
+#    self.setObjective( obj + self.lookup('energy',timestep=-1)/self.lookup('endTime') )
+        self.quadratures[quadratureStateName] = qStates
