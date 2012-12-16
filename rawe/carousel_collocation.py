@@ -5,8 +5,8 @@ import numpy
 from numpy import pi
 import zmq
 import pickle
-from trajectory import Trajectory
 
+import trajectory
 from collocation import Coll,boundsFeedback
 from config import readConfig
 import kiteutils
@@ -150,24 +150,24 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
             self.iter = self.iter + 1
             xOpt = numpy.array(f.input(C.NLP_X_OPT))
 
-            opt = ocp.devectorize(xOpt)
+            traj = trajectory.Trajectory(ocp,xOpt)
             
             kiteProtos = []
             for k in range(0,ocp.nk):
                 for nicpIdx in range(0,ocp.nicp):
                     for j in [0]:
 #                    for j in range(ocp.deg+1):
-                        kiteProtos.append( kiteproto.toKiteProto(C.DMatrix(opt.xVec(k,nicpIdx=nicpIdx,degIdx=j)),
-                                                                 C.DMatrix(opt.uVec(k)),
-                                                                 C.DMatrix(opt.pVec()),
+                        kiteProtos.append( kiteproto.toKiteProto(C.DMatrix(traj.dvMap.xVec(k,nicpIdx=nicpIdx,degIdx=j)),
+                                                                 C.DMatrix(traj.dvMap.uVec(k)),
+                                                                 C.DMatrix(traj.dvMap.pVec()),
                                                                  conf['kite']['zt'],
                                                                  conf['carousel']['rArm'],
                                                                  lineAlpha=0.2) )
             mc = kite_pb2.MultiCarousel()
             mc.css.extend(list(kiteProtos+oldKites))
             
-            mc.messages.append("w0: "+str(opt.lookup('w0')))
-            mc.messages.append("endTime: "+str(opt.lookup('endTime')))
+            mc.messages.append("w0: "+str(traj.lookup('w0')))
+            mc.messages.append("endTime: "+str(traj.lookup('endTime')))
             mc.messages.append("iter: "+str(self.iter))
 
 #            # bounds feedback
@@ -238,24 +238,23 @@ if __name__=='__main__':
 
     for w0 in [10]:
         ocp.bound('w0',(w0,w0),force=True)
-        opt = ocp.solve()
+        traj = ocp.solve()
         
         for k in range(0,ocp.nk):
             for nicpIdx in range(0,ocp.nicp):
                 for j in [0]:
 #                for j in range(ocp.deg+1):
-                    oldKites.append( kiteproto.toKiteProto(C.DMatrix(opt.xVec(k,nicpIdx=nicpIdx,degIdx=j)),
-                                                           C.DMatrix(opt.uVec(k)),
-                                                           C.DMatrix(opt.pVec()),
+                    oldKites.append( kiteproto.toKiteProto(C.DMatrix(traj.dvMap.xVec(k,nicpIdx=nicpIdx,degIdx=j)),
+                                                           C.DMatrix(traj.dvMap.uVec(k)),
+                                                           C.DMatrix(traj.dvMap.pVec()),
                                                            conf['kite']['zt'],
                                                            conf['carousel']['rArm'],
                                                            lineAlpha=0.2) )
 
-    traj = Trajectory(ocp,dvs=opt.vec)
     print "saving optimal trajectory"
     traj.save("data/carousel_opt.dat")
 
-    print "optimal power: "+str(opt.lookup('energy',timestep=-1)/opt.lookup('endTime'))
+    print "optimal power: "+str(traj.lookup('energy',timestep=-1)/traj.lookup('endTime'))
     
     # Plot the results
     def plotResults():
