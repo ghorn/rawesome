@@ -7,7 +7,8 @@ class Dae(object):
     """
     def __init__(self):
         # set of reasons (strings) why the Dae cannot be modified (add new x/z/u/p/output)
-        self._frozen = set()
+        self._xzupFrozen = set()
+        self._outputsFrozen = set()
 
         # lists of names (strings)
         self._xNames = []
@@ -22,12 +23,19 @@ class Dae(object):
         # map of derivatives
         self._dummyDdtMap = {}
         
-    def _freeze(self,msg):
-        self._frozen.add(msg)
+    def _freezeXzup(self,msg):
+        self._xzupFrozen.add(msg)
 
-    def assertNotFrozen(self):
-        if len(self._frozen) > 0:
-            raise ValueError("can't perform this operation because Dae has been frozen by: "+str([n for n in self._frozen]))
+    def _freezeOutputs(self,msg):
+        self._outputsFrozen.add(msg)
+
+    def assertXzupNotFrozen(self):
+        if len(self._xzupFrozen) > 0:
+            raise ValueError("can't perform this operation because Dae has been frozen by: "+str([n for n in self._xzupFrozen]))
+
+    def assertOutputsNotFrozen(self):
+        if len(self._outputsFrozen) > 0:
+            raise ValueError("can't perform this operation because Dae has been frozen by: "+str([n for n in self._outputsFrozen]))
 
     def assertUniqueName(self, name):
         allNames = self._xNames + self._zNames + self._uNames + self._pNames + self._outputNames
@@ -35,7 +43,7 @@ class Dae(object):
             raise ValueError('name "'+name+'" is not unique')
 
     def _addVar(self,name,namelist):
-        self.assertNotFrozen()
+        self.assertXzupNotFrozen()
         if isinstance(name,list):
             return [self._addVar(n,namelist) for n in name]
 
@@ -96,32 +104,32 @@ class Dae(object):
         return self._addVar(name,self._pNames)
     
     def xVec(self):
-        self._freeze('xVec()')
+        self._freezeXzup('xVec()')
         return C.veccat([self._syms[n] for n in self._xNames])
     def zVec(self):
-        self._freeze('zVec()')
+        self._freezeXzup('zVec()')
         return C.veccat([self._syms[n] for n in self._zNames])
     def uVec(self):
-        self._freeze('uVec()')
+        self._freezeXzup('uVec()')
         return C.veccat([self._syms[n] for n in self._uNames])
     def pVec(self):
-        self._freeze('pVec()')
+        self._freezeXzup('pVec()')
         return C.veccat([self._syms[n] for n in self._pNames])
 
     def xNames(self):
-        self._freeze('xNames()')
+        self._freezeXzup('xNames()')
         return self._xNames
     def zNames(self):
-        self._freeze('zNames()')
+        self._freezeXzup('zNames()')
         return self._zNames
     def uNames(self):
-        self._freeze('uNames()')
+        self._freezeXzup('uNames()')
         return self._uNames
     def pNames(self):
-        self._freeze('pNames()')
+        self._freezeXzup('pNames()')
         return self._pNames
     def outputNames(self):
-        self._freeze('outputNames()')
+        self._freezeOutputs('outputNames()')
         return self._outputNames
 
     def __getitem__(self,name):
@@ -140,7 +148,7 @@ class Dae(object):
         """
         Add an output
         """
-        self.assertNotFrozen()
+        self.assertOutputsNotFrozen()
         if not isinstance(name,str):
             raise KeyError('Output name must be a string')
 
@@ -151,7 +159,7 @@ class Dae(object):
         self._syms[name] = val
 
     def outputsFun(self):
-        self._freeze('outputsFun()')
+        self._freezeOutputs('outputsFun()')
 
         # which outputs are defined at tau_i0
         outputs0 = [] # only outputs which are defined at tau_i0
@@ -187,7 +195,7 @@ class Dae(object):
         return (fAll,(f0,outputs0))
 
     def sxFun(self):
-        self._freeze('sxFun()')
+        self._freezeXzup('sxFun()')
         algRes = None
         if hasattr(self,'_algRes'):
             algRes = self._algRes
