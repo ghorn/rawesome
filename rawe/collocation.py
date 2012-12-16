@@ -121,7 +121,7 @@ class Coll():
         self._dvMap = collmaps.VectorizedReadOnlyCollMap(self,"design var map",CS.msym("V",self.getNV()))
 
         # quadratures
-        self.quadratures = {}
+        self._quadratureManager = collmaps.QuadratureManager(self)
 
         # tags for the bounds
         bndtags = []
@@ -148,7 +148,20 @@ class Coll():
         self.bndtags = bndtags
 
 
+    def setQuadratureDdt(self,quadratureStateName,quadratureStateDotName):
+        # run some checks and pass it to the less safe CollMapPlus.setQuadratureDdt
+        if not self.collocationIsSetup:
+            raise ValueError("Can't add quadratures until you call setupCollocation")
         
+        # make sure this is a unique name (quadratureManager also checks)
+        self.dae.assertUniqueName(quadratureStateName)
+
+        # make sure nobody adds an output named the same as quadratureStateName
+        self.dae._illegalNames.append(quadratureStateName)
+
+        # setup the quadrature state
+        self._quadratureManager.setQuadratureDdt(quadratureStateName,quadratureStateDotName,
+                                                 self.lookup,self.lagrangePoly,self.h,self._dvMap.vectorize())
 
     def setupCollocation(self,tf):
         if self.collocationIsSetup:
@@ -596,6 +609,10 @@ class Coll():
             pass
         try:
             return self._outputMap.lookup(name,timestep=timestep,nicpIdx=nicpIdx,degIdx=degIdx)
+        except NameError:
+            pass
+        try:
+            return self._quadratureManager.lookup(name,timestep,nicpIdx,degIdx)
         except NameError:
             pass
         raise NameError("lookup fail, unrecognized name "+name)

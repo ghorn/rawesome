@@ -14,6 +14,7 @@ class Trajectory(object):
     def __init__(self,ocp,v_opt):
         self.dvMap = collmaps.VectorizedReadOnlyCollMap(ocp,'devectorized design vars',v_opt)
         self.outputMap = collmaps.OutputMap(ocp._outputMapGenerator, v_opt)
+        self.quadratureMap = collmaps.QuadratureMap(ocp._quadratureManager, v_opt)
 
         # make time grid
         ocp.hfun.setInput(v_opt)
@@ -38,6 +39,10 @@ class Trajectory(object):
             pass
         try: 
             return self.outputMap.lookup(*args,**kwargs)
+        except NameError:
+            pass
+        try: 
+            return self.quadratureMap.lookup(*args,**kwargs)
         except NameError:
             pass
         raise NameError("lookup fail, unrecognized name "+args[0])
@@ -178,8 +183,25 @@ class TrajectoryPlotter(Trajectory):
                         ts.append(ts[-1])
                 plt.plot(ts,ys)
 
+            # if it's a quadrature state
+            elif name in self.quadratureMap._quadMap:
+                ys = []
+                ts = []
+                def unArray(val):
+                    if val.shape == (1,1):
+                        return float(val)
+                    return val
+                for i in range(self.quadratureMap._nk):
+                    for k in range(self.quadratureMap._nicp):
+                        for j in range(self.quadratureMap._deg+1):
+                            ys.append(unArray(self.quadratureMap.lookup(name,timestep=i,nicpIdx=k,degIdx=j)))
+                            ts.append(self.tgrid[i,k,j])
+                        ys.append(np.nan*ys[-1])
+                        ts.append(ts[-1])
+                plt.plot(ts,ys)
+
             # throw error on parameter
-            elif name in self.parameters:
+            elif name in self.dvMap._pNames:
                 raise ValueError("can't plot a parameter (\""+name+"\")")
 
             # throw error on unrecognized

@@ -12,6 +12,7 @@ if __name__ == "__main__":
     thrust = dae.addU( "thrust" )
     
     dae['pos*vel'] = pos*vel
+    dae['vel*vel'] = vel*vel
 
     dae.setOdeRes([dae.ddt('pos') - vel,
                    dae.ddt('vel') - (thrust - 0.05*vel*vel)/mass,
@@ -46,6 +47,7 @@ if __name__ == "__main__":
     ocp.guess("mass",1)
     ocp.guess("thrust",0)
     
+    ocp.setQuadratureDdt('integral vel*vel','vel*vel')
 
     # lookup states/actions/outputs/params
     thrust4 = ocp.lookup('thrust',timestep=4)
@@ -61,6 +63,7 @@ if __name__ == "__main__":
     obj = sum([ocp('thrust',timestep=k)**2
                for k in range(ocp.nk)])
     ocp.setObjective(obj)
+#    ocp.setObjective(ocp.lookup('integral vel*vel',timestep=-1))
     
     solverOptions = [ ("expand_f",True)
                     , ("expand_g",True)
@@ -82,4 +85,5 @@ if __name__ == "__main__":
     traj.plot(['pos','vel'])
     traj.subplot([['pos','vel'],['thrust']])
     traj.plot('pos*vel')
+    traj.plot('integral vel*vel')
     plt.show()

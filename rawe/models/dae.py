@@ -17,6 +17,9 @@ class Dae(object):
         self._pNames = []
         self._outputNames = []
 
+        # list of illegal names
+        self._illegalNames = []
+
         # dictionaries of SXMatrix symbols
         self._syms = {}
 
@@ -38,9 +41,9 @@ class Dae(object):
             raise ValueError("can't perform this operation because Dae has been frozen by: "+str([n for n in self._outputsFrozen]))
 
     def assertUniqueName(self, name):
-        allNames = self._xNames + self._zNames + self._uNames + self._pNames + self._outputNames
+        allNames = self._xNames + self._zNames + self._uNames + self._pNames + self._outputNames + self._illegalNames
         if name in allNames:
-            raise ValueError('name "'+name+'" is not unique')
+            raise ValueError('name "'+name+'" is not unique or illegal')
 
     def _addVar(self,name,namelist):
         self.assertXzupNotFrozen()
@@ -151,8 +154,6 @@ class Dae(object):
         self.assertOutputsNotFrozen()
         if not isinstance(name,str):
             raise KeyError('Output name must be a string')
-
-#        assert( isinstance(val, C.SXMatrix) )
 
         self.assertUniqueName(name)
         self._outputNames.append(name)

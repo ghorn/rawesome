@@ -363,7 +363,7 @@ class OutputMapGenerator(object):
     The outputs are all computed all at once to ensure no (additional) CSEs are generated.
 
     On initialization, the function which creates all the outputs from a dv vector is created.
-    Then you can pass a dv vector to "makeOutputs" to get the map.
+    Then you use it to initialize an OutputMap object
     """
     def __init__(self,ocp,xDot):
         (fAll,(f0,outputNames0)) = ocp.dae.outputsFun()
@@ -398,6 +398,11 @@ class OutputMapGenerator(object):
         self.fEveryOutput.init()
 
 class OutputMap(object):
+    """
+    Initialize this with an outputMapGenerator and a vector of design vars.
+    If you pass a symbolic vector you get symbolic outputs with MXFunction.call().
+    If you pass a numeric vector you get numeric outputs with MXFunction.setInput(); MXFunction.evaluate(); ..
+    """
     def __init__(self,outputMapGenerator,dvs):
         if type(dvs) in [C.MX,C.SXMatrix]:
             allOutputs = outputMapGenerator.fEveryOutput.call([dvs])
@@ -444,7 +449,7 @@ class OutputMap(object):
                     for name,val in zip(self._outputNames,outs):
                         self._outputs[name][timestepIdx,nicpIdx,degIdx] = val
 
-        
+
     def lookup(self,name,timestep=None,nicpIdx=None,degIdx=None):
         if not (name in self._outputs0 or name in self._outputs):
             raise NameError("couldn't find \""+name+"\"")
@@ -469,160 +474,117 @@ class OutputMap(object):
         else:
             return self._outputs[name][timestep][nicpIdx][degIdx]
 
-    
 
+class QuadratureManager(object):
+    """
+    This is a thing which manages the quadrature states.
+    Call setQuadratureDdt with the name of a quadrature state and the name of it's derivative.
+    The derivative name must be something that ocp.lookup() will find.
+    """
+    def __init__(self,ocp):
+        self._quadratures = {}
+        self._nk = ocp.nk
+        self._nicp = ocp.nicp
+        self._deg = ocp.deg
 
-# a CollMap with outputs and quadrature states
-class CollMapPlus(WriteableCollMap):
-    def __init__(self,*args,**kwargs):
-        self.quadratures = {}
-        WriteableCollMap.__init__(self,*args,**kwargs)
-    
-    def setupOutputs(self,ocp,xDot):
-        """
-        setup symbolic outputs
-        """
-        assert self._xNames == ocp.dae.xNames()
-        assert self._zNames == ocp.dae.zNames()
-        assert self._uNames == ocp.dae.uNames()
-        assert self._pNames == ocp.dae.pNames()
-        assert self._nk == ocp.nk
-        assert self._nicp == ocp.nicp
-        assert self._deg == ocp.deg
-        assert self._collPoly == ocp.collPoly
+    def setQuadratureDdt(self,quadratureStateName,quadratureStateDotName,lookup,lagrangePoly,h,symbolicDvs):
+        if quadratureStateName in self._quadratures:
+            raise ValueError(quadratureStateName+" is not unique")
 
-        (fAll,(f0,outputNames0)) = ocp.dae.outputsFun()
-        self._outputNames0 = outputNames0
-        self._outputNames = ocp.dae.outputNames()
-        
-        self._outputs = {}
-        self._outputs0 = {}
-        for name in self._outputNames0:
-            self._outputs0[name] = np.resize(np.array([None],dtype=C.MX),(self._nk,self._nicp))
-        for name in self._outputNames:
-            self._outputs[name] = np.resize(np.array([None],dtype=C.MX),(self._nk,self._nicp,self._deg+1))
-            
-        for timestepIdx in range(self._nk):
-            for nicpIdx in range(self._nicp):
-                # outputs defined at tau_i0
-                if f0 is not None:
-                    outs = f0.call([self.xVec(timestepIdx,nicpIdx=nicpIdx,degIdx=0),
-                                    self.uVec(timestepIdx),
-                                    self.pVec()])
-                else:
-                    outs = []
-                for name,val in zip(self._outputNames0,outs):
-                    self._outputs0[name][timestepIdx,nicpIdx] = val
-                
-                # all outputs
-                for degIdx in range(1,self._deg+1):
-                    if fAll is not None:
-                        outs = fAll.call([xDot[timestepIdx,nicpIdx,degIdx],
-                                          self.xVec(timestepIdx,nicpIdx=nicpIdx,degIdx=degIdx),
-                                          self.zVec(timestepIdx,nicpIdx=nicpIdx,degIdx=degIdx),
-                                          self.uVec(timestepIdx),
-                                          self.pVec()])
-                    else:
-                        outs = []
-                    for name,val in zip(self._outputNames,outs):
-                        self._outputs[name][timestepIdx,nicpIdx,degIdx] = val
-#        self._fAll = fAll
-#        self._f0 = f0
-
-        
-    def lookup(self,name,timestep=None,nicpIdx=None,degIdx=None):
-        # if it's not an output, perform a design variable lookup
-        try:
-            return CollMap.lookup(self,name,timestep=timestep,nicpIdx=nicpIdx,degIdx=degIdx)
-        except NameError:
-            pass
-    
-        # handle quadrature states specially
-        if name in self.quadratures:
-            assert (timestep is not None),\
-                   "please specify timestep at which you want to look up quadrature state \""+name+"\""
-            if nicpIdx is None:
-                nicpIdx = 0
-            if degIdx is None:
-                degIdx = 0
-            return self.quadratures[name][timestep][nicpIdx][degIdx]
-
-        # handle outputs specially
-        if not (hasattr(self,'_outputs0') and hasattr(self,'_outputs')):
-            raise ValueError("Can't lookup outputs until you call setupOutputs")
-        if name in self._outputNames:
-            assert (name in self._outputs0 or name in self._outputs)
-            
-            #assert (timestep is not None), "please specify timestep at which you want to look up output \""+name+"\""
-            if nicpIdx is None:
-                nicpIdx = 0
-            if degIdx is None:
-                degIdx = 0
-            
-            # if degIdx == 0, return value with no algebraic inputs
-            if degIdx == 0:
-                assert (name in self._outputs0), "output \""+name+"\" is not an explicit function of x/u/p and is not defined at the beginning of the collocation interval, specify degIdx > 0"
-                if timestep is None:
-                    return [self._outputs0[name][k][nicpIdx] for k in range(self.nk)]
-                else:
-                    return self._outputs0[name][timestep][nicpIdx]
-                    
-            # if degIdx != 0, return value which may or may not have algebraic inputs
-            if timestep is None:
-                return [self._outputs[name][k][nicpIdx][0] for k in range(self.nk)]
-            else:
-                return self._outputs[name][timestep][nicpIdx][degIdx]
-
-        raise ValueError("couldn't find \""+name+"\"")
-    
-
-    def setQuadratureDdt(self,quadratureStateName,quadratureStateDotName,lagrangePoly,h):
         qStates = np.resize(np.array([None],dtype=C.MX),(self._nk+1,self._nicp,self._deg+1))
-        qStates[0,0,0] = 0
+        # set the dimension of the initial quadrature state correctly, and make sure the derivative name is valid
+        try:
+            qStates[0,0,0] = 0*lookup(quadratureStateDotName,timestep=0,nicpIdx=0,degIdx=1)
+        except ValueError:
+            raise ValueError('quadrature derivative name \"'+quadratureStateDotName+
+                             '\" is not a valid x/z/u/p/output')
 
-        # lagrange term for power
-        # For all finite elements
-        lagrangeTerms = []
-        lagrangeTerm = 0
-        
         ldInv = np.linalg.inv(lagrangePoly.lDotAtTauRoot[1:,1:])
         ld0 = lagrangePoly.lDotAtTauRoot[1:,0]
         l1 = lagrangePoly.lAtOne
-#        print -C.mul(C.mul(ldInv, ld0).T, l1[1:])
-        print -C.mul(C.mul(ldInv, ld0).T, l1[1:]) + l1[0]
-#        import sys; sys.exit()
-        
-        for k in range(self._nk):
-            for i in range(self._nicp):
-                dQs = h*C.veccat([self.lookup(quadratureStateDotName,timestep=k,nicpIdx=i,degIdx=j)
-                                  for j in range(1,self._deg+1)])
-                Qs = C.mul( ldInv, dQs - ld0*qStates[k,i,0] )
-                for j in range(1,self._deg+1):
-                    qStates[k,i,j] = Qs[j-1]
-                
-                m = C.veccat( [qStates[k,i,0], Qs] )
-                m = C.mul( m.T, l1)
-                if i < self._nicp - 1:
-                    qStates[k,i+1,0] = m
-                else:
-                    qStates[k+1,0,0] = m
-                
-#                lagrangeTerm += C.mul( C.veccat([lagrangeTerm, C.mul(ldInv, dQ - ld0*lagrangeTerm)]).T, l1)
-#                lagrangeTerms.append(C.mul( C.mul(ldInv, dQ).T, l1[1:]))
-#        import sys; sys.exit()
+#        print -C.mul(C.mul(ldInv, ld0).T, l1[1:]) + l1[0]
 
-#        for k in range(self.nk):
-#            for i in range(self.nicp):
-#                dQs = self.h*C.veccat([self.lookup(quadratureStateDotName,timestep=k,nicpIdx=i,degIdx=j)
-#                                        for j in range(1,self.deg+1)])
-#                m = dQs - ld0*lagrangeTerm
-#                m = C.mul( ldInv, m )
-#                m = C.veccat( [lagrangeTerm, m] )
-#                m = C.mul( m.T, l1)
-#                lagrangeTerm += m
-#                
-##                lagrangeTerm += C.mul( C.veccat([lagrangeTerm, C.mul(ldInv, dQ - ld0*lagrangeTerm)]).T, l1)
-#                lagrangeTerms.append(C.mul( C.mul(ldInv, dQ).T, l1[1:]))
-#        import sys; sys.exit()
-#    self.setObjective( obj + self.lookup('energy',timestep=-1)/self.lookup('endTime') )
-        self.quadratures[quadratureStateName] = qStates
+        breakQuadratureIntervals = True
+
+        if breakQuadratureIntervals:
+            for k in range(self._nk):
+                for i in range(self._nicp):
+                    dQs = h*C.veccat([lookup(quadratureStateDotName,timestep=k,nicpIdx=i,degIdx=j)
+                                      for j in range(1,self._deg+1)])
+                    Qs = C.mul( ldInv, dQs)
+                    for j in range(1,self._deg+1):
+                        qStates[k,i,j] = qStates[k,i,0] + Qs[j-1]
+                    
+                    m = C.mul( Qs.T, l1[1:])
+                    if i < self._nicp - 1:
+                        qStates[k,i+1,0] = qStates[k,i,0] + m
+                    else:
+                        qStates[k+1,0,0] = qStates[k,i,0] + m
+        else:
+            for k in range(self._nk):
+                for i in range(self._nicp):
+                    dQs = h*C.veccat([lookup(quadratureStateDotName,timestep=k,nicpIdx=i,degIdx=j)
+                                      for j in range(1,self._deg+1)])
+                    Qs = C.mul( ldInv, dQs - ld0*qStates[k,i,0] )
+                    for j in range(1,self._deg+1):
+                        qStates[k,i,j] = Qs[j-1]
+                    
+                    m = C.veccat( [qStates[k,i,0], Qs] )
+                    m = C.mul( m.T, l1)
+                    if i < self._nicp - 1:
+                        qStates[k,i+1,0] = m
+                    else:
+                        qStates[k+1,0,0] = m
+                
+        self._quadratures[quadratureStateName] = qStates
+        self._setupQuadratureFunctions(symbolicDvs)
+
+    def lookup(self,name,timestep,nicpIdx,degIdx):
+        if name not in self._quadratures:
+            raise NameError('unrecognized name "'+name+'"')
+        assert (timestep is not None), "please specify timestep at which you want to look up output \""+name+"\""
+        if nicpIdx is None:
+            nicpIdx = 0
+        if degIdx is None:
+            degIdx = 0
+        return self._quadratures[name][timestep][nicpIdx][degIdx]
+
+    def _setupQuadratureFunctions(self,symbolicDvs):
+        quadouts = []
+        for name in self._quadratures:
+            quadouts.extend(list(self._quadratures[name].flatten()[:-self._deg]))
+        self.quadratureFun = C.MXFunction([symbolicDvs],quadouts)
+        self.quadratureFun.init()
+        
+class QuadratureMap(object):
+    def __init__(self,quadratureManager,numericDvs):
+        self._nk = quadratureManager._nk
+        self._nicp = quadratureManager._nicp
+        self._deg = quadratureManager._deg
+
+        f = quadratureManager.quadratureFun
+        f.setInput(numericDvs,0)
+        f.evaluate()
+        allOutputs = [np.array(f.output(k)) for k in range(f.getNumOutputs())]
+
+        k = 0
+        self._quadMap = {}
+        numPerState = self._nk*self._nicp*(self._deg+1) + 1
+
+        for name in quadratureManager._quadratures:
+            self._quadMap[name] = np.resize(allOutputs[k:k+numPerState],(self._nk+1,self._nicp,self._deg+1))
+#            self.quadMap[name][-1,1:,:] = None
+#            self.quadMap[name][-1,0,1:] = None
+            k += numPerState
+
+    def lookup(self,name,timestep,nicpIdx,degIdx):
+        if name not in self._quadMap:
+            raise NameError('unrecognized name "'+name+'"')
+        assert (timestep is not None), "please specify timestep at which you want to look up output \""+name+"\""
+        if nicpIdx is None:
+            nicpIdx = 0
+        if degIdx is None:
+            degIdx = 0
+        if (timestep == -1) or (timestep == self._nk):
+            assert (degIdx==0 and nicpIdx==0), "quadrature state undefined at last timestep, degIdx>0 and/or nicpIdx>0"
+        return self._quadMap[name][timestep][nicpIdx][degIdx]
