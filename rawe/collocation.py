@@ -5,7 +5,7 @@ import pickle
 from scipy.interpolate import PiecewisePolynomial
 
 from ocputils import Constraints,setFXOptions
-import collmap
+import collmaps
 from collutils import mkCollocationPoints
 from models import Dae
 import trajectory
@@ -112,13 +112,16 @@ class Coll():
         self.deg = deg
         self.collPoly = collPoly
 
-        self._bounds = collmap.WriteableCollMap(self,"bounds")
-        self._guess = collmap.WriteableCollMap(self,"guess")
+        self._bounds = collmaps.WriteableCollMap(self,"bounds")
+        self._guess = collmaps.WriteableCollMap(self,"guess")
 
         self._constraints = Constraints()
 
         # setup NLP variables
-        self._dvMap = collmap.VectorizedReadOnlyCollMap(self,"design var map",CS.msym("V",self.getNV()))
+        self._dvMap = collmaps.VectorizedReadOnlyCollMap(self,"design var map",CS.msym("V",self.getNV()))
+
+        # quadratures
+        self.quadratures = {}
 
         # tags for the bounds
         bndtags = []
@@ -221,8 +224,8 @@ class Coll():
                                    tag="continuity, kIdx: %d,nicpIdx: %d" % (k,i))
 
         # add outputs
-        self._outputMapGenerator = collmap.OutputMapGenerator(self, self._xDot)
-        self._outputMap = collmap.OutputMap(self._outputMapGenerator, self._dvMap.vectorize())
+        self._outputMapGenerator = collmaps.OutputMapGenerator(self, self._xDot)
+        self._outputMap = collmaps.OutputMap(self._outputMapGenerator, self._dvMap.vectorize())
 
     def xVec(self,*args,**kwargs):
         return self._dvMap.xVec(*args,**kwargs)

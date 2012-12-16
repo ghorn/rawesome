@@ -3,7 +3,7 @@ import pickle
 import numpy as np
 
 import casadi as C
-import collmap
+import collmaps
 
 class Trajectory(object):
     """
@@ -12,8 +12,8 @@ class Trajectory(object):
     It is the thing which is saved and loaded.
     """
     def __init__(self,ocp,v_opt):
-        self.dvMap = collmap.VectorizedReadOnlyCollMap(ocp,'devectorized design vars',v_opt)
-        self.outputMap = collmap.OutputMap(ocp._outputMapGenerator, v_opt)
+        self.dvMap = collmaps.VectorizedReadOnlyCollMap(ocp,'devectorized design vars',v_opt)
+        self.outputMap = collmaps.OutputMap(ocp._outputMapGenerator, v_opt)
 
         # make time grid
         ocp.hfun.setInput(v_opt)
