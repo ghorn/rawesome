@@ -6,8 +6,7 @@ from numpy import pi
 import zmq
 import pickle
 
-import trajectory
-from collocation import Coll,boundsFeedback
+from collocation import Coll,boundsFeedback,trajectory
 from config import readConfig
 import kiteutils
 import kite_pb2

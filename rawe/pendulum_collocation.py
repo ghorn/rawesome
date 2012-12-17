@@ -9,8 +9,7 @@ import kite_pb2
 import casadi as C
 
 import models
-from collocation import Coll
-import trajectory
+from collocation import Coll,trajectory
 
 def main():
     nk = 50

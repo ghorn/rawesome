@@ -7,13 +7,12 @@ import zmq
 import pickle
 
 import crosswind_collocation
-from collocation import Coll,boundsFeedback
+from collocation import Coll,boundsFeedback,trajectory
 from config import readConfig
 import kiteutils
 import kite_pb2
 import kiteproto
 import models
-import trajectory
 
 def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
     ocp = Coll(dae, nk=nk,nicp=nicp,deg=deg)

@@ -1,7 +1,7 @@
+import matplotlib.pyplot as plt
+
 from models.dae import Dae
 from collocation import Coll
-from trajectory import Trajectory
-import matplotlib.pyplot as plt
 
 if __name__ == "__main__":
     # make the Dae

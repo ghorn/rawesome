@@ -1,6 +1,8 @@
 import numpy as np
-from collutils import mkCollocationPoints
+
 import casadi as C
+
+from collutils import mkCollocationPoints
 
 class ReadOnlyCollMap(object):
     """

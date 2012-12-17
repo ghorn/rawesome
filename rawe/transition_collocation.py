@@ -6,7 +6,6 @@ from numpy import pi
 import zmq
 from fourier_fit import FourierFit
 import pickle
-from trajectory import Trajectory
 
 from collocation import Coll,boundsFeedback
 from config import readConfig
