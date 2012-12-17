@@ -1,69 +1,97 @@
 import casadi as C
 
-import models
-from collocation import Coll
+class Newton(object):
+    def __init__(self,LagrangePoly,dae,nk,nicp,deg,collPoly):
+        self.dae = dae
+        self.nk = nk
+        self.nicp = nicp
+        self.deg = deg
+        self.collPoly = collPoly
+        self.lagrangePoly = LagrangePoly(deg=self.deg,collPoly=self.collPoly)
 
-if __name__ == '__main__':
-    print "creating model"
-    dae = models.pendulum2()
-#    dae.addP('endTime')
+    def setupStuff(self,endTime):
+        self.h = endTime/float(self.nk*self.nicp)
+        assert isinstance(self.h,float), "gauss newton doesn't support free end time yet"
 
-#    x = dae.xVec()
-#    z = dae.zVec()
-#    u = dae.uVec()
-#    p = dae.pVec()
-#    xDot = C.veccat([dae.ddt(name) for name in dae.xNames()])
+        ifcn = self._makeImplicitFunction()
+        self.isolver = self._makeImplicitSolver(ifcn)
 
-    ocp = Coll(dae, nk=1, nicp=1, collPoly="RADAU", deg=4)
-    endTime = 0.01
-    ocp.setupCollocation(endTime)
+    def _makeImplicitSolver(self,ifcn):
+#        self.implicitSolver = C.KinsolSolver(ifcn)
+        implicitSolver = C.NLPImplicitSolver(ifcn)
+        implicitSolver.setOption("nlp_solver",C.IpoptSolver)
+        implicitSolver.setOption("linear_solver",C.CSparse)
+        implicitSolver.init()
+        return implicitSolver
 
-    ############################################################
+    def _makeImplicitFunction(self):
+        ffcn = self._makeResidualFunction()
+        x0 = C.ssym('x0',self.dae.xVec().size())
+        X =  C.ssym('X',self.dae.xVec().size(),self.deg*self.nicp)
+        Z =  C.ssym('Z',self.dae.zVec().size(),self.deg*self.nicp)
+        u =  C.ssym('u',self.dae.uVec().size())
+        p =  C.ssym('p',self.dae.pVec().size())
+        constraints = []
+        ############################################################
+        
+        ndiff = self.dae.xVec().size()
 
-    V = ocp._dvMap.vectorize()
-    constraints = ocp._constraints.getG()
+        x0_ = x0
+        for nicpIdx in range(self.nicp):
+            X_ = X[:,nicpIdx*self.deg:(nicpIdx+1)*self.deg]
+            Z_ = Z[:,nicpIdx*self.deg:(nicpIdx+1)*self.deg]
+            for j in range(1,self.deg+1):
+                # Get an expression for the state derivative at the collocation point
+                xp_jk = self.lagrangePoly.lDotAtTauRoot[j,0]*x0_
+                for j2 in range (1,self.deg+1):
+                    # get the time derivative of the differential states (eq 10.19b)
+                    xp_jk += self.lagrangePoly.lDotAtTauRoot[j,j2]*X_[:,j2-1]
+                # Add collocation equations to the NLP
+                [fk] = ffcn.eval([xp_jk/self.h,
+                                  X_[:,j-1],
+                                  Z_[:,j-1],
+                                  u,
+                                  p])
+                
+                # impose system dynamics (for the differential states (eq 10.19b))
+                constraints.append(fk[:ndiff])
+                
+                # impose system dynamics (for the algebraic states (eq 10.19b))
+                constraints.append(fk[ndiff:])
+                
+            # Get an expression for the state at the end of the finite element
+            xf = self.lagrangePoly.lAtOne[0]*x0_
+            for j in range(1,self.deg+1):
+                xf += self.lagrangePoly.lAtOne[j]*X_[:,j-1]
+            x0_ = xf
+     
+        ifcn = C.SXFunction([C.veccat([X,Z]),x0,u,p],[C.veccat(constraints),xf])
+        ifcn.init()
+        return ifcn
+
+
+    def _makeResidualFunction(self):
+        if not hasattr(self.dae, '_odeRes'):
+            raise ValueError("need to set ode residual")
+
+        residual = self.dae._odeRes
+
+        xSize = self.dae.xVec().size()
+        zSize = self.dae.zVec().size()
+        
+        if hasattr(self.dae,'_algRes'):
+            residual = C.veccat([residual, self.dae._algRes])
+
+        assert (residual.size() == zSize+xSize)
     
-    m = C.MXFunction([V],[constraints,
-                          C.veccat([ocp.xVec(0,degIdx=k) for k in range(1,ocp.deg+1)]),
-                          C.veccat([ocp.zVec(0,degIdx=k) for k in range(1,ocp.deg+1)]),
-                          ocp.xVec(0,degIdx=0),
-                          ocp.xVec(1,degIdx=0),
-                          ocp('torque',timestep=0),
-                          ocp('m')])
-    m.init()
+        # residual function
+        u = self.dae.uVec()
+        xd = self.dae.xVec()
+        xa = self.dae.zVec()
+        xddot = C.veccat([self.dae.ddt(name) for name in self.dae.xNames()])
+        p  = self.dae.pVec()
+        
+        ffcn = C.SXFunction([xddot,xd,xa,u,p],[residual])
+        ffcn.init()
 
-    s = C.SXFunction(m)
-    s.init()
-    sxV = C.ssym("sxV",V.shape)
-#    [constraints,xUnknown,zUnknown,x0,xf] = s.eval([sxV])
-    [constraints,xUnknown,zUnknown,x0,xf,u,m] = s.eval([sxV])
-#    print xUnknown
-#    print zUnknown
-#    print x0
-#    print xf
-
-    ifcnSx = C.SXFunction([C.veccat([xUnknown,zUnknown,xf]),x0,u,m],[constraints,xf])
-#    ifcnSx = C.SXFunction([C.veccat([xUnknown,zUnknown,xf]),x0],[constraints,xf])
-    ifcnSx.init()
-    
-#    ifcn = C.KinsolSolver(ifcnSx)
-    ifcn = C.NLPImplicitSolver(ifcnSx)
-    ifcn.setOption("nlp_solver",C.IpoptSolver)
-    ifcn.setOption("linear_solver",C.CSparse)
-    ifcn.init()
-
-    r = 0.3
-    x0 = [r,0,0,0]
-    ifcn.input(0).set(x0)
-#    ifcn.setInput(x0,0)
-    ifcn.setInput(0,1) # torque
-    ifcn.setInput(0.3,2) # mass
-    ifcn.evaluate()
-
-    j = ifcn.jacobian(0,1)
-    j.init()
-
-    j.setInput(x0)
-    j.evaluate()
-    print j.output(0)
-    print j.output(1)
+        return ffcn
