@@ -6,7 +6,7 @@ from scipy.interpolate import PiecewisePolynomial
 
 from ocputils import Constraints,setFXOptions
 import collmaps
-from collutils import mkCollocationPoints
+from collpoints import mkCollocationPoints
 from models import Dae
 import trajectory
 

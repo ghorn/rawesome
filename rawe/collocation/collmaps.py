@@ -2,7 +2,7 @@ import numpy as np
 
 import casadi as C
 
-from collutils import mkCollocationPoints
+from collpoints import mkCollocationPoints
 
 class ReadOnlyCollMap(object):
     """
@@ -194,7 +194,6 @@ class WriteableCollMap(ReadOnlyCollMap):
         
     def fillInMissing(self,mapName,interpFun):
         assert(isinstance(mapName, str))
-        import collutils
         tau_root = mkCollocationPoints(self._collPoly,self._deg)
 
         # all parameters should be set
