@@ -410,7 +410,7 @@ class OutputMap(object):
         elif type(dvs) in [np.ndarray,C.DMatrix]:
             outputMapGenerator.fEveryOutput.setInput(dvs,0)
             outputMapGenerator.fEveryOutput.evaluate()
-            allOutputs = [np.array(outputMapGenerator.fEveryOutput.output(k))
+            allOutputs = [np.array(outputMapGenerator.fEveryOutput.output(k)).squeeze()
                           for k in range(outputMapGenerator.fEveryOutput.getNumOutputs())]
         else:
             raise TypeError("OutputMap got unrecognized design vector type: "+str(type(dvs)))
@@ -567,7 +567,7 @@ class QuadratureMap(object):
             f = quadratureManager.quadratureFun
             f.setInput(numericDvs,0)
             f.evaluate()
-            allOutputs = [np.array(f.output(k)) for k in range(f.getNumOutputs())]
+            allOutputs = [np.array(f.output(k)).squeeze() for k in range(f.getNumOutputs())]
 
         k = 0
         self._quadMap = {}

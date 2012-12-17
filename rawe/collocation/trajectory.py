@@ -153,14 +153,10 @@ class TrajectoryPlotter(Trajectory):
             elif name in self.outputMap._outputs0:
                 ys = []
                 ts = []
-                def unArray(val):
-                    if val.shape == (1,1):
-                        return float(val)
-                    return val
                 for i in range(self.dvMap._nk):
                     for k in range(self.dvMap._nicp):
                         for j in range(self.dvMap._deg+1):
-                            ys.append(unArray(self.outputMap.lookup(name,timestep=i,nicpIdx=k,degIdx=j)))
+                            ys.append(self.outputMap.lookup(name,timestep=i,nicpIdx=k,degIdx=j))
                             ts.append(self.tgrid[i,k,j])
                         ys.append(np.nan*ys[-1])
                         ts.append(ts[-1])
@@ -170,14 +166,10 @@ class TrajectoryPlotter(Trajectory):
             elif name in self.outputMap._outputs:
                 ys = []
                 ts = []
-                def unArray(val):
-                    if val.shape == (1,1):
-                        return float(val)
-                    return val
                 for i in range(self.dvMap._nk):
                     for k in range(self.dvMap._nicp):
                         for j in range(1,self.dvMap._deg+1):
-                            ys.append(unArray(self.outputMap.lookup(name,timestep=i,nicpIdx=k,degIdx=j)))
+                            ys.append(self.outputMap.lookup(name,timestep=i,nicpIdx=k,degIdx=j))
                             ts.append(self.tgrid[i,k,j])
                         ys.append(np.nan*ys[-1])
                         ts.append(ts[-1])
@@ -187,14 +179,10 @@ class TrajectoryPlotter(Trajectory):
             elif name in self.quadratureMap._quadMap:
                 ys = []
                 ts = []
-                def unArray(val):
-                    if val.shape == (1,1):
-                        return float(val)
-                    return val
                 for i in range(self.quadratureMap._nk):
                     for k in range(self.quadratureMap._nicp):
                         for j in range(self.quadratureMap._deg+1):
-                            ys.append(unArray(self.quadratureMap.lookup(name,timestep=i,nicpIdx=k,degIdx=j)))
+                            ys.append(self.quadratureMap.lookup(name,timestep=i,nicpIdx=k,degIdx=j))
                             ts.append(self.tgrid[i,k,j])
                         ys.append(np.nan*ys[-1])
                         ts.append(ts[-1])
