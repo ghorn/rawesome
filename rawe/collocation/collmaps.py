@@ -564,10 +564,11 @@ class QuadratureMap(object):
         self._nicp = quadratureManager._nicp
         self._deg = quadratureManager._deg
 
-        f = quadratureManager.quadratureFun
-        f.setInput(numericDvs,0)
-        f.evaluate()
-        allOutputs = [np.array(f.output(k)) for k in range(f.getNumOutputs())]
+        if hasattr(quadratureManager,'quadratureFun'):
+            f = quadratureManager.quadratureFun
+            f.setInput(numericDvs,0)
+            f.evaluate()
+            allOutputs = [np.array(f.output(k)) for k in range(f.getNumOutputs())]
 
         k = 0
         self._quadMap = {}
