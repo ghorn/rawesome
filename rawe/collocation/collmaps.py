@@ -405,8 +405,10 @@ class OutputMap(object):
     If you pass a numeric vector you get numeric outputs with MXFunction.setInput(); MXFunction.evaluate(); ..
     """
     def __init__(self,outputMapGenerator,dvs):
-        if type(dvs) in [C.MX,C.SXMatrix]:
+        if type(dvs) == C.MX:
             allOutputs = outputMapGenerator.fEveryOutput.call([dvs])
+        elif type(dvs) == C.SXMatrix:
+            allOutputs = outputMapGenerator.fEveryOutput.eval([dvs])
         elif type(dvs) in [np.ndarray,C.DMatrix]:
             outputMapGenerator.fEveryOutput.setInput(dvs,0)
             outputMapGenerator.fEveryOutput.evaluate()
