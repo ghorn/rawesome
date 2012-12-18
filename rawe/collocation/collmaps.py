@@ -59,25 +59,17 @@ class ReadOnlyCollMap(object):
         return V
             
     def xVec(self,timestep,nicpIdx=None,degIdx=None):
-        assert hasattr(self,'_xVec')
-        if nicpIdx is None:
-            nicpIdx = 0
-        if degIdx is None:
-            degIdx = 0
-        return self._xVec[timestep][nicpIdx][degIdx]
+        return C.veccat([self.lookup(name,timestep=timestep,nicpIdx=nicpIdx,degIdx=degIdx) \
+                         for name in self._xNames])
     def zVec(self,timestep,nicpIdx=None,degIdx=None):
-        assert hasattr(self,'_zVec')
-        if nicpIdx is None:
-            nicpIdx = 0
-        assert (degIdx is not None), "must set degIdx in zVec"
-        assert (degIdx != 0), "algebraic variables not defined at tau=0"
-        return self._zVec[timestep][nicpIdx][degIdx]
+        return C.veccat([self.lookup(name,timestep=timestep,nicpIdx=nicpIdx,degIdx=degIdx) \
+                         for name in self._zNames])
     def uVec(self,timestep):
-        assert hasattr(self,'_uVec')
-        return self._uVec[timestep]
+        return C.veccat([self.lookup(name,timestep=timestep) \
+                         for name in self._uNames])
     def pVec(self):
-        assert hasattr(self,'_pVec')
-        return self._pVec
+        return C.veccat([self.lookup(name) \
+                         for name in self._pNames])
 
     def lookup(self,name,timestep=None,nicpIdx=None,degIdx=None):
         ret = self._lookupOrSet(name,timestep,nicpIdx,degIdx)
