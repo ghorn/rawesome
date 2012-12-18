@@ -32,17 +32,17 @@ class Trajectory(object):
     def getDvs(self):
         return self.dvMap.vectorize()
 
-    def lookup(self,*args,**kwargs):
+    def lookup(self,name,timestep=None,nicpIdx=None,degIdx=None):
         try:
-            return self.dvMap.lookup(*args,**kwargs)
+            return self.dvMap.lookup(name,timestep=timestep,nicpIdx=nicpIdx,degIdx=degIdx)
         except NameError:
             pass
         try: 
-            return self.outputMap.lookup(*args,**kwargs)
+            return self.outputMap.lookup(name,timestep=timestep,nicpIdx=nicpIdx,degIdx=degIdx)
         except NameError:
             pass
         try: 
-            return self.quadratureMap.lookup(*args,**kwargs)
+            return self.quadratureMap.lookup(name,timestep,nicpIdx,degIdx)
         except NameError:
             pass
         raise NameError("lookup fail, unrecognized name "+args[0])
