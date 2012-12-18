@@ -58,11 +58,17 @@ class NmpcMap(object):
 
     def setVal(self,name,val,timestep=None):
         if name in self._xIdx:
-            assert (timestep != None), "please set timestep"
+            if timestep == None:
+                for k in range(self._nk+1):
+                    self.setVal(name,val,timestep=k)
+                return
             assert (timestep <= self._nk), "timestep too large"
             self._X[self._xIdx[name],timestep] = val
         elif name in self._uIdx:
-            assert (timestep != None), "please set timestep"
+            if timestep == None:
+                for k in range(self._nk):
+                    self.setVal(name,val,timestep=k)
+                return
             assert (timestep < self._nk), "timestep too large"
             self._U[self._uIdx[name],timestep] = val
         elif name in self._pIdx:
@@ -70,6 +76,28 @@ class NmpcMap(object):
             self._p[self._pIdx[name]] = val
         else:
             raise NameError('unrecognized name "'+name+'"')
+
+    def getMissing(self):
+        xuMissing = {}
+        for name in self._xNames:
+            missing = []
+            for k in range(self._nk+1):
+                if self.lookup(name,timestep=k) is None:
+                    missing.append(k)
+            if len(missing)>0:
+                xuMissing[name] = missing
+        for name in self._uNames:
+            missing = []
+            for k in range(self._nk):
+                if self.lookup(name,timestep=k) is None:
+                    missing.append(k)
+            if len(missing)>0:
+                xuMissing[name] = missing
+        pMissing = []
+        for name in self._pNames:
+            if self.lookup(name) is None:
+                pMissing.append(name)
+        return (xuMissing,pMissing)
 
 class OutputMapGenerator(object):
     """
@@ -141,7 +169,7 @@ class OutputMap(object):
                 self._outputs0[name][timestepIdx] = val
 
     def lookup(self,name,timestep):
-        if name not in self._outputs:
+        if name not in self._outputNames:
             raise NameError("couldn't find \""+name+"\"")
 
         if name not in self._outputs0:
