@@ -19,8 +19,9 @@ class Newton(object):
 
     def _makeImplicitSolver(self,ifcn):
 #        self.implicitSolver = C.KinsolSolver(ifcn)
-        implicitSolver = C.NLPImplicitSolver(ifcn)
-        implicitSolver.setOption("nlp_solver",C.IpoptSolver)
+        #implicitSolver = C.NLPImplicitSolver(ifcn)
+        #implicitSolver.setOption("nlp_solver",C.IpoptSolver)
+        implicitSolver = C.NewtonImplicitSolver(ifcn)
         implicitSolver.setOption("linear_solver",C.CSparse)
         implicitSolver.init()
         return implicitSolver

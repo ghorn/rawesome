@@ -32,6 +32,18 @@ if __name__ == '__main__':
         newton.isolver.setInput(xTraj[-1],0)
         newton.isolver.setInput(uTraj[-1],1)
         newton.isolver.setInput(p[-1],2)
+        if k ==0:
+          # NewtonImplicitSolver needs good initialisation
+          ifcn = newton.isolver.getF();
+          implicitSolver = C.NLPImplicitSolver(ifcn)
+          implicitSolver.setOption("nlp_solver",C.IpoptSolver)
+          implicitSolver.setOption("nlp_solver_options",{'print_level': 0})
+          implicitSolver.setOption("linear_solver",C.CSparse)
+          implicitSolver.init()
+          for i in range(3):
+            implicitSolver.input(i).set(newton.isolver.input(i))
+          implicitSolver.evaluate()
+          newton.isolver.output().set(implicitSolver.output())
         newton.isolver.evaluate()
         xTraj.append(np.array(newton.isolver.output(1)).squeeze())
 
