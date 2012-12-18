@@ -28,6 +28,19 @@ class NmpcMap(object):
         # on exception try
         return np.append(self._X.flatten(),self._U.flatten(),self._p.flatten())
     
+    def xVec(self,timestep):
+        return C.veccat([self.lookup(name,timestep=timestep) \
+                         for name in self._xNames])
+    def zVec(self,timestep):
+        return C.veccat([self.lookup(name,timestep=timestep) \
+                         for name in self._zNames])
+    def uVec(self,timestep):
+        return C.veccat([self.lookup(name,timestep=timestep) \
+                         for name in self._uNames])
+    def pVec(self):
+        return C.veccat([self.lookup(name) \
+                         for name in self._pNames])
+    
     def lookup(self,name,timestep=None):
         if name in self._xIdx:
             assert (timestep != None), "please set timestep"
@@ -75,16 +88,13 @@ class OutputMapGenerator(object):
         assert (len(self._outputNames) == fAll.getNumOutputs())
 
         self._nk = ocp.nk
-        self._nicp = ocp.nicp
 
         outs = []
         for timestepIdx in range(self._nk):
-            for nicpIdx in range(self._nicp):
-                # outputs defined at tau_i0
-                if f0 is not None:
-                    outs += f0.call([ocp._dvMap.xVec(timestepIdx,nicpIdx=nicpIdx),
-                                     ocp._dvMap.uVec(timestepIdx),
-                                     ocp._dvMap.pVec()])
+            if f0 is not None:
+                outs += f0.eval([ocp._dvMap.xVec(timestepIdx),
+                                 ocp._dvMap.uVec(timestepIdx),
+                                 ocp._dvMap.pVec()])
         # make the function
         self.fEveryOutput = C.SXFunction([ocp._dvMap.vectorize()],outs)
         self.fEveryOutput.init()
@@ -98,7 +108,7 @@ class OutputMap(object):
     def __init__(self,outputMapGenerator,dvs):
         if type(dvs) == C.MX:
             allOutputs = outputMapGenerator.fEveryOutput.call([dvs])
-        if type(dvs) == C.SXMatrix:
+        elif type(dvs) == C.SXMatrix:
             allOutputs = outputMapGenerator.fEveryOutput.eval([dvs])
         elif type(dvs) in [np.ndarray,C.DMatrix]:
             outputMapGenerator.fEveryOutput.setInput(dvs,0)
@@ -115,45 +125,28 @@ class OutputMap(object):
         self._numOutputs  = len(self._outputNames)
 
         self._nk = outputMapGenerator._nk
-        self._nicp = outputMapGenerator._nicp
 
         self._outputs0 = {}
 
         for name in self._outputNames0:
-            self._outputs0[name] = np.resize(np.array([None]),(self._nk,self._nicp))
+            self._outputs0[name] = np.resize(np.array([None]),self._nk)
 
         outs = []
         k = 0
         for timestepIdx in range(self._nk):
-            for nicpIdx in range(self._nicp):
-                # outputs defined at tau_i0
-                outs = allOutputs[k:k+self._numOutputs0]
-                k += self._numOutputs0
-                for name,val in zip(self._outputNames0,outs):
-                    self._outputs0[name][timestepIdx,nicpIdx] = val
+            # outputs defined at tau_i0
+            outs = allOutputs[k:k+self._numOutputs0]
+            k += self._numOutputs0
+            for name,val in zip(self._outputNames0,outs):
+                self._outputs0[name][timestepIdx] = val
 
-    def lookup(self,name,timestep=None,nicpIdx=None):
-        if not (name in self._outputs0 or name in self._outputs):
+    def lookup(self,name,timestep):
+        if name not in self._outputs:
             raise NameError("couldn't find \""+name+"\"")
 
-        if not (name in self._outputs):
-            raise NameError("sorry, \""+name+"\" depends on algebraic variable or ddt(differential variable) \
-                            and Multiple Shooting cannot access it")
-
-        #assert (timestep is not None), "please specify timestep at which you want to look up output \""+name+"\""
-        if nicpIdx is None:
-            nicpIdx = 0
+        if name not in self._outputs0:
+            raise ValueError("sorry, \""+name+"\" depends on algebraic variable or ddt(differential variable) \
+                             and Multiple Shooting cannot access it")
 
         assert (timestep != None), "please set timestep"
-        return self._outputs0[name][timestep][nicpIdx]
-
-
-    def makesolver(self):
-        V = self._dvMap.vectorize()
-        lb,ub = unzip(self._boundMap.vectorize()
-        guess = self._guessMap.vectorize()
-
-        ffcn = SXFunction([V],[self.obj])
-        gfcn = SXFunction([V],[])
-        IpoptSolver(
-
+        return self._outputs0[name][timestep]
