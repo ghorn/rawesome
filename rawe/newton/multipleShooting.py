@@ -12,20 +12,12 @@ class Nmpc(object):
 
         self._gaussNewtonObjF = []
 
-        X = C.ssym('x',dae.xVec().size(),self.nk+1)
-        U = C.ssym('u',dae.zVec().size(),self.nk)
-        p = C.ssym('p',dae.pVec().size())
-        self._dvMap = msmaps.NmpcMap(self.dae,self.nk,X,U,p)
+        mapSize = len(self.dae.xNames())*(self.nk+1) + len(self.dae.uNames())*self.nk + len(self.dae.pNames())
+        V = C.msym('dvs',mapSize)
+        self._dvMap = msmaps.VectorizedReadOnlyNmpcMap(self.dae,self.nk,V)
 
-        X = np.resize(np.array([None]),(dae.xVec().size(),self.nk+1))
-        U = np.resize(np.array([None]),(dae.zVec().size(),self.nk))
-        p = np.resize(np.array([None]),dae.pVec().size())
-        self._boundMap = msmaps.NmpcMap(self.dae,self.nk,X,U,p)
-
-        X = np.resize(np.array([None]),(dae.xVec().size(),self.nk+1))
-        U = np.resize(np.array([None]),(dae.zVec().size(),self.nk))
-        p = np.resize(np.array([None]),dae.pVec().size())
-        self._guessMap = msmaps.NmpcMap(self.dae,self.nk,X,U,p)
+        self._boundMap = msmaps.WriteableNmpcMap(self.dae,self.nk)
+        self._guessMap = msmaps.WriteableNmpcMap(self.dae,self.nk)
 
         self._outputMapGenerator = msmaps.OutputMapGenerator(self)
         self._outputMap = msmaps.OutputMap(self._outputMapGenerator, self._dvMap.vectorize())

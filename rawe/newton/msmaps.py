@@ -2,16 +2,100 @@ import numpy as np
 
 import casadi as C
 
-class NmpcMap(object):
-    def __init__(self,dae,nk,X,U,p):
+class VectorizedReadOnlyNmpcMap(object):
+    """
+    Initialize this with a vector (like MX or numpy.array)
+    and it will provide efficient slices with xVec/uVec/pVec.
+    It will also provide lookup(name,timestep) functionality
+    """
+    def __init__(self,dae,nk,vec):
+        self._nk = nk
+        self._xNames = dae.xNames()
+        self._uNames = dae.uNames()
+        self._pNames = dae.pNames()
+        self._vec = vec
+
+        xSize = len(self._xNames)
+        uSize = len(self._uNames)
+        pSize = len(self._pNames)
+        mapSize = xSize*(self._nk+1) + uSize*self._nk + pSize
+        if type(self._vec) in [C.MX,C.SXMatrix]:
+            assert (mapSize == self._vec.size()), "vector size is wrong"
+        elif type(self._vec) == np.array:
+            assert (mapSize == self._vec.size), "vector size is wrong"
+        else:
+            raise ValueError("unrecognized type: "+str(type(self._vec)))
+        
+        # set up xVec,uVec,pVec
+        vecIdx = 0
+        self._p = self._vec[vecIdx:vecIdx+pSize]
+        vecIdx += pSize
+
+        self._X = []
+        self._U = []
+        for ts in range(self._nk):
+            self._X.append(self._vec[vecIdx:vecIdx+xSize])
+            vecIdx += xSize
+            self._U.append(self._vec[vecIdx:vecIdx+uSize])
+            vecIdx += uSize
+        self._X.append(self._vec[vecIdx:vecIdx+xSize])
+        vecIdx += xSize
+        assert (vecIdx == mapSize)
+
+        # set up indexes
+        self._xIdx = {}
+        self._uIdx = {}
+        self._pIdx = {}
+        for k,name in enumerate(self._xNames):
+            print (k,name)
+            self._xIdx[name] = k
+        for k,name in enumerate(self._uNames):
+            self._uIdx[name] = k
+        for k,name in enumerate(self._pNames):
+            self._pIdx[name] = k
+
+    def vectorize(self):
+        return self._vec
+    
+    def xVec(self,timestep):
+        assert (timestep != None), "please set timestep"
+        assert (timestep <= self._nk), "timestep too large"
+        return self._X[timestep]
+    def uVec(self,timestep):
+        assert (timestep != None), "please set timestep"
+        assert (timestep < self._nk), "timestep too large"
+        return self._U[timestep]
+    def pVec(self):
+        return self._p
+    
+    def lookup(self,name,timestep=None):
+        if name in self._xIdx:
+            return self.xVec(timestep)[self._xIdx[name]]
+        elif name in self._uIdx:
+            return self.uVec(timestep)[self._uIdx[name]]
+        elif name in self._pIdx:
+            assert (timestep == None), "don't set timestep for parameter"
+            return self.pVec()[self._pIdx[name]]
+        else:
+            raise NameError('unrecognized name "'+name+'"')
+    
+
+class WriteableNmpcMap(object):
+    """
+    Initialize this with a dae and number of control intervals and
+    it will set all elements to None. Then you can call setVal() to set them
+    and lookup() or vectorize() to retrieve them.
+    You can also call getMissing() to get a summary of elements which haven't been set
+    """
+    def __init__(self,dae,nk):
         self._nk = nk
         self._xNames = dae.xNames()
         self._uNames = dae.uNames()
         self._pNames = dae.pNames()
 
-        self._X = X
-        self._U = U
-        self._p = p
+        self._X = np.resize(np.array([None]),(self._nk+1,dae.xVec().size()))
+        self._U = np.resize(np.array([None]),(self._nk,dae.uVec().size()))
+        self._p = np.resize(np.array([None]),dae.pVec().size())
         
         self._xIdx = {}
         self._uIdx = {}
@@ -24,32 +108,29 @@ class NmpcMap(object):
             self._pIdx[name] = k
 
     def vectorize(self):
-        return C.veccat([self._X,self._U,self._p])
-        # on exception try
-        return np.append(self._X.flatten(),self._U.flatten(),self._p.flatten())
+        out = self.pVec()
+        for k in range(self._nk):
+            np.append(out,self.xVec(k))
+            np.append(out,self.uVec(k))
+        np.append(out,self.xVec(self._nk))
+        return out
     
     def xVec(self,timestep):
-        return C.veccat([self.lookup(name,timestep=timestep) \
-                         for name in self._xNames])
-    def zVec(self,timestep):
-        return C.veccat([self.lookup(name,timestep=timestep) \
-                         for name in self._zNames])
+        return np.concatenate([self.lookup(name,timestep=timestep) for name in self._xNames])
     def uVec(self,timestep):
-        return C.veccat([self.lookup(name,timestep=timestep) \
-                         for name in self._uNames])
+        return np.concatenate([self.lookup(name,timestep=timestep) for name in self._uNames])
     def pVec(self):
-        return C.veccat([self.lookup(name) \
-                         for name in self._pNames])
+        return self._p
     
     def lookup(self,name,timestep=None):
         if name in self._xIdx:
             assert (timestep != None), "please set timestep"
             assert (timestep <= self._nk), "timestep too large"
-            return self._X[self._xIdx[name],timestep]
+            return self._X[timestep][self._xIdx[name]]
         elif name in self._uIdx:
             assert (timestep != None), "please set timestep"
             assert (timestep < self._nk), "timestep too large"
-            return self._U[self._uIdx[name],timestep]
+            return self._U[timestep][self._uIdx[name]]
         elif name in self._pIdx:
             assert (timestep == None), "don't set timestep for parameter"
             return self._p[self._pIdx[name]]
@@ -63,14 +144,14 @@ class NmpcMap(object):
                     self.setVal(name,val,timestep=k)
                 return
             assert (timestep <= self._nk), "timestep too large"
-            self._X[self._xIdx[name],timestep] = val
+            self._X[timestep,self._xIdx[name]] = val
         elif name in self._uIdx:
             if timestep == None:
                 for k in range(self._nk):
                     self.setVal(name,val,timestep=k)
                 return
             assert (timestep < self._nk), "timestep too large"
-            self._U[self._uIdx[name],timestep] = val
+            self._U[timestep,self._uIdx[name]] = val
         elif name in self._pIdx:
             assert (timestep == None), "don't set timestep for parameter"
             self._p[self._pIdx[name]] = val
@@ -120,11 +201,11 @@ class OutputMapGenerator(object):
         outs = []
         for timestepIdx in range(self._nk):
             if f0 is not None:
-                outs += f0.eval([ocp._dvMap.xVec(timestepIdx),
+                outs += f0.call([ocp._dvMap.xVec(timestepIdx),
                                  ocp._dvMap.uVec(timestepIdx),
                                  ocp._dvMap.pVec()])
         # make the function
-        self.fEveryOutput = C.SXFunction([ocp._dvMap.vectorize()],outs)
+        self.fEveryOutput = C.MXFunction([ocp._dvMap.vectorize()],outs)
         self.fEveryOutput.init()
 
 class OutputMap(object):
