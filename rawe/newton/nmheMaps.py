@@ -19,7 +19,7 @@ class VectorizedReadOnlyNmheMap(object):
         mapSize = xSize*(self._nk+1) + pSize
         if type(self._vec) in [C.MX,C.SXMatrix]:
             assert (mapSize == self._vec.size()), "vector size is wrong"
-        elif type(self._vec) == np.array:
+        elif type(self._vec) in [np.array,np.ndarray]:
             assert (mapSize == self._vec.size), "vector size is wrong"
         else:
             raise ValueError("unrecognized type: "+str(type(self._vec)))
@@ -42,7 +42,6 @@ class VectorizedReadOnlyNmheMap(object):
         self._xIdx = {}
         self._pIdx = {}
         for k,name in enumerate(self._xNames):
-            print (k,name)
             self._xIdx[name] = k
         for k,name in enumerate(self._pNames):
             self._pIdx[name] = k
@@ -90,14 +89,12 @@ class WriteableNmheMap(object):
             self._pIdx[name] = k
 
     def vectorize(self):
-        out = self.pVec()
-        for k in range(self._nk):
-            np.append(out,self.xVec(k))
-        np.append(out,self.xVec(self._nk))
-        return out
+        return np.concatenate([self.pVec()]+[self.xVec(k) for k in range(self._nk+1)])
     
     def xVec(self,timestep):
-        return np.concatenate([self.lookup(name,timestep=timestep) for name in self._xNames])
+        assert (timestep != None), "please set timestep"
+        assert (timestep <= self._nk), "timestep too large"
+        return self._X[timestep,:]
     def pVec(self):
         return self._p
     

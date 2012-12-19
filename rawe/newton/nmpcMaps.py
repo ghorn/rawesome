@@ -21,7 +21,7 @@ class VectorizedReadOnlyNmpcMap(object):
         mapSize = xSize*(self._nk+1) + uSize*self._nk + pSize
         if type(self._vec) in [C.MX,C.SXMatrix]:
             assert (mapSize == self._vec.size()), "vector size is wrong"
-        elif type(self._vec) == np.array:
+        elif type(self._vec) in [np.array,np.ndarray]:
             assert (mapSize == self._vec.size), "vector size is wrong"
         else:
             raise ValueError("unrecognized type: "+str(type(self._vec)))
@@ -47,7 +47,6 @@ class VectorizedReadOnlyNmpcMap(object):
         self._uIdx = {}
         self._pIdx = {}
         for k,name in enumerate(self._xNames):
-            print (k,name)
             self._xIdx[name] = k
         for k,name in enumerate(self._uNames):
             self._uIdx[name] = k
@@ -108,17 +107,21 @@ class WriteableNmpcMap(object):
             self._pIdx[name] = k
 
     def vectorize(self):
-        out = self.pVec()
+        outs = [self.pVec()]
         for k in range(self._nk):
-            np.append(out,self.xVec(k))
-            np.append(out,self.uVec(k))
-        np.append(out,self.xVec(self._nk))
-        return out
+            outs.append(self.xVec(k))
+            outs.append(self.uVec(k))
+        outs.append(self.xVec(self._nk))
+        return np.concatenate(outs)
     
     def xVec(self,timestep):
-        return np.concatenate([self.lookup(name,timestep=timestep) for name in self._xNames])
+        assert (timestep != None), "please set timestep"
+        assert (timestep <= self._nk), "timestep too large"
+        return self._X[timestep,:]
     def uVec(self,timestep):
-        return np.concatenate([self.lookup(name,timestep=timestep) for name in self._uNames])
+        assert (timestep != None), "please set timestep"
+        assert (timestep < self._nk), "timestep too large"
+        return self._U[timestep,:]
     def pVec(self):
         return self._p
     
