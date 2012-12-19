@@ -5,7 +5,7 @@ import casadi as C
 from collocation import Coll,LagrangePoly
 import models
 from newton.newton import Newton
-from newton.multipleShooting import Nmpc
+from newton.nmpc import Nmpc
 
 if __name__ == '__main__':
     print "creating model"

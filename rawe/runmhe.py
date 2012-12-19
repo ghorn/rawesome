@@ -5,7 +5,7 @@ import casadi as C
 from collocation import Coll,LagrangePoly
 import models
 from newton.newton import Newton
-from newton.multipleShooting import Nmpc
+from newton.nmhe import Nmhe
 
 if __name__ == '__main__':
     print "creating model"
@@ -52,7 +52,7 @@ if __name__ == '__main__':
     print xTraj[-1]
 
     # setup MHE
-    ocp = Nmpc(dae,nk)
+    ocp = Nmhe(dae,nk)
 
     # make objective
     obj = 0
