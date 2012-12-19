@@ -2,7 +2,7 @@ import numpy as np
 
 import casadi as C
 
-import msmaps
+import nmpcMaps
 from ocputils import Constraints
 
 class Nmpc(object):
@@ -14,13 +14,13 @@ class Nmpc(object):
 
         mapSize = len(self.dae.xNames())*(self.nk+1) + len(self.dae.uNames())*self.nk + len(self.dae.pNames())
         V = C.msym('dvs',mapSize)
-        self._dvMap = msmaps.VectorizedReadOnlyNmpcMap(self.dae,self.nk,V)
+        self._dvMap = nmpcMaps.VectorizedReadOnlyNmpcMap(self.dae,self.nk,V)
 
-        self._boundMap = msmaps.WriteableNmpcMap(self.dae,self.nk)
-        self._guessMap = msmaps.WriteableNmpcMap(self.dae,self.nk)
+        self._boundMap = nmpcMaps.WriteableNmpcMap(self.dae,self.nk)
+        self._guessMap = nmpcMaps.WriteableNmpcMap(self.dae,self.nk)
 
-        self._outputMapGenerator = msmaps.OutputMapGenerator(self)
-        self._outputMap = msmaps.OutputMap(self._outputMapGenerator, self._dvMap.vectorize())
+        self._outputMapGenerator = nmpcMaps.NmpcOutputMapGenerator(self)
+        self._outputMap = nmpcMaps.NmpcOutputMap(self._outputMapGenerator, self._dvMap.vectorize())
 
         self._constraints = Constraints()
         

@@ -2,7 +2,7 @@ import numpy as np
 
 import casadi as C
 
-class VectorizedReadOnlyNmpcMap(object):
+class VectorizedReadOnlyNmheMap(object):
     """
     Initialize this with a vector (like MX or numpy.array)
     and it will provide efficient slices with xVec/uVec/pVec.
@@ -11,14 +11,12 @@ class VectorizedReadOnlyNmpcMap(object):
     def __init__(self,dae,nk,vec):
         self._nk = nk
         self._xNames = dae.xNames()
-        self._uNames = dae.uNames()
         self._pNames = dae.pNames()
         self._vec = vec
 
         xSize = len(self._xNames)
-        uSize = len(self._uNames)
         pSize = len(self._pNames)
-        mapSize = xSize*(self._nk+1) + uSize*self._nk + pSize
+        mapSize = xSize*(self._nk+1) + pSize
         if type(self._vec) in [C.MX,C.SXMatrix]:
             assert (mapSize == self._vec.size()), "vector size is wrong"
         elif type(self._vec) == np.array:
@@ -26,7 +24,7 @@ class VectorizedReadOnlyNmpcMap(object):
         else:
             raise ValueError("unrecognized type: "+str(type(self._vec)))
         
-        # set up xVec,uVec,pVec
+        # set up xVec,pVec
         vecIdx = 0
         self._p = self._vec[vecIdx:vecIdx+pSize]
         vecIdx += pSize
@@ -36,21 +34,16 @@ class VectorizedReadOnlyNmpcMap(object):
         for ts in range(self._nk):
             self._X.append(self._vec[vecIdx:vecIdx+xSize])
             vecIdx += xSize
-            self._U.append(self._vec[vecIdx:vecIdx+uSize])
-            vecIdx += uSize
         self._X.append(self._vec[vecIdx:vecIdx+xSize])
         vecIdx += xSize
         assert (vecIdx == mapSize)
 
         # set up indexes
         self._xIdx = {}
-        self._uIdx = {}
         self._pIdx = {}
         for k,name in enumerate(self._xNames):
             print (k,name)
             self._xIdx[name] = k
-        for k,name in enumerate(self._uNames):
-            self._uIdx[name] = k
         for k,name in enumerate(self._pNames):
             self._pIdx[name] = k
 
@@ -61,18 +54,12 @@ class VectorizedReadOnlyNmpcMap(object):
         assert (timestep != None), "please set timestep"
         assert (timestep <= self._nk), "timestep too large"
         return self._X[timestep]
-    def uVec(self,timestep):
-        assert (timestep != None), "please set timestep"
-        assert (timestep < self._nk), "timestep too large"
-        return self._U[timestep]
     def pVec(self):
         return self._p
     
     def lookup(self,name,timestep=None):
         if name in self._xIdx:
             return self.xVec(timestep)[self._xIdx[name]]
-        elif name in self._uIdx:
-            return self.uVec(timestep)[self._uIdx[name]]
         elif name in self._pIdx:
             assert (timestep == None), "don't set timestep for parameter"
             return self.pVec()[self._pIdx[name]]
@@ -80,7 +67,7 @@ class VectorizedReadOnlyNmpcMap(object):
             raise NameError('unrecognized name "'+name+'"')
     
 
-class WriteableNmpcMap(object):
+class WriteableNmheMap(object):
     """
     Initialize this with a dae and number of control intervals and
     it will set all elements to None. Then you can call setVal() to set them
@@ -90,20 +77,15 @@ class WriteableNmpcMap(object):
     def __init__(self,dae,nk):
         self._nk = nk
         self._xNames = dae.xNames()
-        self._uNames = dae.uNames()
         self._pNames = dae.pNames()
 
         self._X = np.resize(np.array([None]),(self._nk+1,dae.xVec().size()))
-        self._U = np.resize(np.array([None]),(self._nk,dae.uVec().size()))
         self._p = np.resize(np.array([None]),dae.pVec().size())
         
         self._xIdx = {}
-        self._uIdx = {}
         self._pIdx = {}
         for k,name in enumerate(self._xNames):
             self._xIdx[name] = k
-        for k,name in enumerate(self._uNames):
-            self._uIdx[name] = k
         for k,name in enumerate(self._pNames):
             self._pIdx[name] = k
 
@@ -111,14 +93,11 @@ class WriteableNmpcMap(object):
         out = self.pVec()
         for k in range(self._nk):
             np.append(out,self.xVec(k))
-            np.append(out,self.uVec(k))
         np.append(out,self.xVec(self._nk))
         return out
     
     def xVec(self,timestep):
         return np.concatenate([self.lookup(name,timestep=timestep) for name in self._xNames])
-    def uVec(self,timestep):
-        return np.concatenate([self.lookup(name,timestep=timestep) for name in self._uNames])
     def pVec(self):
         return self._p
     
@@ -127,10 +106,6 @@ class WriteableNmpcMap(object):
             assert (timestep != None), "please set timestep"
             assert (timestep <= self._nk), "timestep too large"
             return self._X[timestep][self._xIdx[name]]
-        elif name in self._uIdx:
-            assert (timestep != None), "please set timestep"
-            assert (timestep < self._nk), "timestep too large"
-            return self._U[timestep][self._uIdx[name]]
         elif name in self._pIdx:
             assert (timestep == None), "don't set timestep for parameter"
             return self._p[self._pIdx[name]]
@@ -145,13 +120,6 @@ class WriteableNmpcMap(object):
                 return
             assert (timestep <= self._nk), "timestep too large"
             self._X[timestep,self._xIdx[name]] = val
-        elif name in self._uIdx:
-            if timestep == None:
-                for k in range(self._nk):
-                    self.setVal(name,val,timestep=k)
-                return
-            assert (timestep < self._nk), "timestep too large"
-            self._U[timestep,self._uIdx[name]] = val
         elif name in self._pIdx:
             assert (timestep == None), "don't set timestep for parameter"
             self._p[self._pIdx[name]] = val
@@ -167,20 +135,14 @@ class WriteableNmpcMap(object):
                     missing.append(k)
             if len(missing)>0:
                 xuMissing[name] = missing
-        for name in self._uNames:
-            missing = []
-            for k in range(self._nk):
-                if self.lookup(name,timestep=k) is None:
-                    missing.append(k)
-            if len(missing)>0:
-                xuMissing[name] = missing
         pMissing = []
         for name in self._pNames:
             if self.lookup(name) is None:
                 pMissing.append(name)
         return (xuMissing,pMissing)
 
-class OutputMapGenerator(object):
+
+class NmheOutputMapGenerator(object):
     """
     Something which will efficiently generate a map of all outputs.
     The outputs are all computed all at once to ensure no (additional) CSEs are generated.
@@ -199,28 +161,31 @@ class OutputMapGenerator(object):
         self._nk = ocp.nk
 
         outs = []
+        U = C.msym('u',self._nk,len(self.dae.uNames()))
         for timestepIdx in range(self._nk):
             if f0 is not None:
                 outs += f0.call([ocp._dvMap.xVec(timestepIdx),
-                                 ocp._dvMap.uVec(timestepIdx),
+                                 U[timestepIdx,:],
                                  ocp._dvMap.pVec()])
         # make the function
-        self.fEveryOutput = C.MXFunction([ocp._dvMap.vectorize()],outs)
+        self.fEveryOutput = C.MXFunction([ocp._dvMap.vectorize(),U],outs)
         self.fEveryOutput.init()
 
-class OutputMap(object):
+
+class NmheOutputMap(object):
     """
-    Initialize this with an outputMapGenerator and a vector of design vars.
+    Initialize this with an outputMapGenerator, a vector of design vars, and a matrix of control inputs.
     If you pass a symbolic vector you get symbolic outputs with MXFunction.call().
     If you pass a numeric vector you get numeric outputs with MXFunction.setInput(); MXFunction.evaluate(); ..
     """
-    def __init__(self,outputMapGenerator,dvs):
+    def __init__(self,outputMapGenerator,dvs,U):
         if type(dvs) == C.MX:
-            allOutputs = outputMapGenerator.fEveryOutput.call([dvs])
+            allOutputs = outputMapGenerator.fEveryOutput.call([dvs,U])
         elif type(dvs) == C.SXMatrix:
-            allOutputs = outputMapGenerator.fEveryOutput.eval([dvs])
+            allOutputs = outputMapGenerator.fEveryOutput.eval([dvs,U])
         elif type(dvs) in [np.ndarray,C.DMatrix]:
             outputMapGenerator.fEveryOutput.setInput(dvs,0)
+            outputMapGenerator.fEveryOutput.setInput(U,1)
             outputMapGenerator.fEveryOutput.evaluate()
             allOutputs = [np.array(outputMapGenerator.fEveryOutput.output(k)).squeeze()
                           for k in range(outputMapGenerator.fEveryOutput.getNumOutputs())]
