@@ -150,7 +150,7 @@ class NmheOutputMapGenerator(object):
     On initialization, the function which creates all the outputs from a dv vector is created.
     Then you use it to initialize an OutputMap object
     """
-    def __init__(self,ocp):
+    def __init__(self,ocp,U):
         (fAll,(f0,outputNames0)) = ocp.dae.outputsFun()
         self._outputNames0 = outputNames0
         self._outputNames = ocp.dae.outputNames()
@@ -161,7 +161,6 @@ class NmheOutputMapGenerator(object):
         self._nk = ocp.nk
 
         outs = []
-        U = C.msym('u',self._nk,len(self.dae.uNames()))
         for timestepIdx in range(self._nk):
             if f0 is not None:
                 outs += f0.call([ocp._dvMap.xVec(timestepIdx),
