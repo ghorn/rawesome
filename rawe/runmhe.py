@@ -2,7 +2,7 @@ import numpy as np
 
 import casadi as C
 
-from collocation import Coll,LagrangePoly
+from collocation import LagrangePoly
 import models
 from newton.newton import Newton
 from newton.nmhe import Nmhe
@@ -52,16 +52,40 @@ if __name__ == '__main__':
     print xTraj[-1]
 
     # setup MHE
-    ocp = Nmhe(dae,nk)
+    nmhe = Nmhe(dae,nk)
+
+    # bounds
+    r = 0.3
+    nmhe.bound('x',(-2*r,2*r))
+    nmhe.bound('z',(-2*r,0.01*r))
+    nmhe.bound('dx',(-5,5))
+    nmhe.bound('dz',(-5,5))
+    nmhe.bound('m',(0.3,0.3))
+
+    # boundary conditions
+    nmhe.bound('x',(r,r),timestep=0)
+    nmhe.bound('z',(0,0),timestep=0)
+    nmhe.bound('x',(0,0),timestep=-1)
+    nmhe.bound('z',(-10*r,0.01*r),timestep=-1)
+    nmhe.bound('dx',(0,0),timestep=0)
+    nmhe.bound('dz',(0,0),timestep=0)
+    nmhe.bound('dx',(0,0),timestep=-1)
+    nmhe.bound('dz',(-0.5,0.5),timestep=-1)
 
     # make objective
     obj = 0
     for k in range(nk):
-        obj += (ocp('x',timestep=k) - xTraj[k][0])**2
-        obj += (ocp('z',timestep=k) - xTraj[k][1])**2
-        obj += (ocp('dx',timestep=k) - xTraj[k][2])**2
-        obj += (ocp('dz',timestep=k) - xTraj[k][3])**2
-    print obj
+        nmhe.addGaussNewtonObjF(nmhe('x',timestep=k) - xTraj[k][0])
+        nmhe.addGaussNewtonObjF(nmhe('z',timestep=k) - xTraj[k][1])
+        nmhe.addGaussNewtonObjF(nmhe('dx',timestep=k) - xTraj[k][2])
+        nmhe.addGaussNewtonObjF(nmhe('dz',timestep=k) - xTraj[k][3])
+
+#        obj += (ocp('x',timestep=k) - xTraj[k][0])**2
+#        obj += (ocp('z',timestep=k) - xTraj[k][1])**2
+#        obj += (ocp('dx',timestep=k) - xTraj[k][2])**2
+#        obj += (ocp('dz',timestep=k) - xTraj[k][3])**2
+    uTraj = C.DMatrix(np.concatenate(uTraj)).shape
+    nmhe.makeSolver(uTraj)
 
 
 

@@ -57,12 +57,12 @@ class Nmhe(object):
         class JorisError(Exception): pass
         raise JorisError('JORIS, please implement this function _setupDynamicsConstraints, then we can solve a QP!!!!!!!')
 
-    def makeSolver(self):
+    def makeSolver(self,U):
         # make sure all bounds are set
-        (xuMissing,pMissing) = self._boundMap.getMissing()
+        (xMissing,pMissing) = self._boundMap.getMissing()
         msg = []
-        for name in xuMissing:
-            msg.append("you forgot to set a bound on \""+name+"\" at timesteps: "+str(xuMissing[name]))
+        for name in xMissing:
+            msg.append("you forgot to set a bound on \""+name+"\" at timesteps: "+str(xMissing[name]))
         for name in pMissing:
             msg.append("you forgot to set a bound on \""+name+"\"")
         if len(msg)>0:
@@ -116,10 +116,11 @@ class Nmhe(object):
         jacobH = C.jacobian(h,V)
 
         # function which generates everything needed
-        masterFun = C.SXFunction([V],[hessL, gradF, g, jacobG, h, jacobH])
+        masterFun = C.SXFunction([V,self._U],[hessL, gradF, g, jacobG, h, jacobH])
         masterFun.init()
 
         class JorisError(Exception): pass
+        raise JorisError('JORIS, what to do with uTraj: '+str(U))
         raise JorisError('JORIS, please read the following comment')
         ##########  need to setup/solve the following qp:  #########
         #     min   1/2*x.T*hessL*x + gradF.T*x
