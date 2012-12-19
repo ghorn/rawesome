@@ -61,14 +61,14 @@ class Nmhe(object):
 
     def _setupDynamicsConstraints(self):
         # Todo: add parallelization
-        # Todo: add initialization 
+        # Todo: get endTime right
         g = []
-        nicp = 10
+        nicp = 1
         deg = 4
         p = self._dvMap.pVec()
         for k in range(self.nk):
             newton = Newton(LagrangePoly,self.dae,1,nicp,deg,'RADAU')
-            endTime = 0.05
+            endTime = 0.025
             newton.setupStuff(endTime)
             
             X0_i = self._dvMap.xVec(k)
@@ -116,10 +116,12 @@ class Nmhe(object):
         gradF = C.gradient(arbitraryObj,V)
         
         # hessian of lagrangian:
-        J = C.DMatrix(0)
-        for gnf in self._gaussNewtonObjF:
-            J += C.jacobian(gnf,V)
-        hessL = C.mul(J.T,J) + C.jacobian(gradF,V)
+        Js = [C.jacobian(gnf,V) for gnf in self._gaussNewtonObjF]
+        gradFgns = [C.mul(J.T,F) for (F,J) in zip(self._gaussNewtonObjF, Js)]
+        gaussNewtonHess = sum([C.mul(J.T,J) for J in Js])
+        hessL = gaussNewtonHess + C.jacobian(gradF,V)
+        
+        gradF += sum(gradFgns)
         
         # equality/inequality constraint jacobian
         gfcn = C.MXFunction([V,self._U],[g])
@@ -149,89 +151,94 @@ class Nmhe(object):
         if len(msg)>0:
             raise ValueError('\n'.join(msg))
 
+
         lbx,ubx = zip(*(self._boundMap.vectorize()))
-        self.qp.setInput(lbx,C.QP_LBX)
-        self.qp.setInput(ubx,C.QP_UBX)
-        
-        x = list(self._guessMap.vectorize())
-        
-        from pylab import *
+        xk = C.DMatrix(list(self._guessMap.vectorize()))
+
+        import time
+#        from pylab import *
         for k in range(10):
-            import nmheMaps
-            xOpt = np.array(x).squeeze()
-            traj = nmheMaps.VectorizedReadOnlyNmheMap(self.dae,self.nk,xOpt)
-            
-            xs =  np.array([traj.lookup('x',timestep=kk) for kk in range(self.nk+1)] )
-            zs =  np.array([traj.lookup('z',timestep=kk) for kk in range(self.nk+1)] )
-            dxs = np.array([traj.lookup('dx',timestep=kk) for kk in range(self.nk+1)])
-            dzs = np.array([traj.lookup('dz',timestep=kk) for kk in range(self.nk+1)])
-            m = traj.lookup('m')
-            
-            outputMap = nmheMaps.NmheOutputMap(self._outputMapGenerator, xOpt, U)
-            c = np.array([outputMap.lookup('c',timestep=kk) for kk in range(self.nk)])
-            cdot = np.array([outputMap.lookup('cdot',timestep=kk) for kk in range(self.nk)])
-            
+            ############# plot stuff ###############
             print float(k)
-            figure()
-            title(str(float(k)))
-            subplot(2,2,1)
-            plot(xs,-zs)
-            ylabel('pos '+str(k))
-            axis('equal')
-            
-            subplot(2,2,2)
-            plot(dxs,-dzs)
-            ylabel('vel')
+#            import nmheMaps
+#            xOpt = np.array(xk).squeeze()
+#            traj = nmheMaps.VectorizedReadOnlyNmheMap(self.dae,self.nk,xOpt)
+#            
+#            xs =  np.array([traj.lookup('x',timestep=kk) for kk in range(self.nk+1)] )
+#            zs =  np.array([traj.lookup('z',timestep=kk) for kk in range(self.nk+1)] )
+#            dxs = np.array([traj.lookup('dx',timestep=kk) for kk in range(self.nk+1)])
+#            dzs = np.array([traj.lookup('dz',timestep=kk) for kk in range(self.nk+1)])
+#            m = traj.lookup('m')
+#            
+#            outputMap = nmheMaps.NmheOutputMap(self._outputMapGenerator, xOpt, U)
+#            c = np.array([outputMap.lookup('c',timestep=kk) for kk in range(self.nk)])
+#            cdot = np.array([outputMap.lookup('cdot',timestep=kk) for kk in range(self.nk)])
+#
+#            figure()
+#            title(str(float(k)))
+#            subplot(2,2,1)
+#            plot(xs,-zs)
+#            ylabel('pos '+str(k))
+#            axis('equal')
+#            
+#            subplot(2,2,2)
+#            plot(dxs,-dzs)
+#            ylabel('vel')
+#            axis('equal')
+#
+#            subplot(2,2,3)
+#            plot(c)
+#            ylabel('c')
+#
+#            subplot(2,2,4)
+#            plot(cdot)
+#            ylabel('cdot')
+#            ##########################################
 
-            subplot(2,2,3)
-            plot(c)
-            ylabel('c')
 
-            subplot(2,2,4)
-            plot(cdot)
-            ylabel('cdot')
-
-            self.masterFun.setInput(x,0)
+            self.masterFun.setInput(xk,0)
             self.masterFun.setInput(U,1)
+            t0 = time.time()
             self.masterFun.evaluate()
+            t1 = time.time()
+            print "masterFun delta time: %.3f ms" % ((t1-t0)*1000)
             hessL  = self.masterFun.output(0)
             gradF  = self.masterFun.output(1)
             g      = self.masterFun.output(2)
             jacobG = self.masterFun.output(3)
             f      = self.masterFun.output(4)
-            print "objective fun: ",f
 
-#            print np.linalg.eig(hessL)
-#
+            self.qp.setInput(0,      C.QP_X_INIT)
+            self.qp.setInput(hessL,  C.QP_H)
+            self.qp.setInput(jacobG, C.QP_A)
+            self.qp.setInput(gradF,  C.QP_G)
+
+            self.qp.setInput(lbx-xk,C.QP_LBX)
+            self.qp.setInput(ubx-xk,C.QP_UBX)
+            
+            self.qp.setInput(self.glb-g, C.QP_LBA)
+            self.qp.setInput(self.gub-g, C.QP_UBA)
+
+            t0 = time.time()
+            self.qp.evaluate()
+            t1 = time.time()
+            print "qp delta time: %.3f ms" % ((t1-t0)*1000)
+            print ""
+            deltaX = self.qp.output(C.QP_PRIMAL)
+
 #            import scipy.io
 #            scipy.io.savemat('hessL.mat',{'hessL':np.array(hessL),
 #                                          'gradF':np.array(gradF),
-#                                          'x':np.array(x),
-#                                          'lbx':lbx,
-#                                          'ubx':ubx,
+#                                          'x0':0,
+#                                          'xopt':np.array(deltaX),
+#                                          'lbx':lbx-np.array(xk),
+#                                          'ubx':ubx-np.array(xk),
 #                                          'jacobG':np.array(jacobG),
 #                                          'glb':np.array(self.glb),
 #                                          'gub':np.array(self.gub),
 #                                          'g':np.array(g)})
 #            import sys; sys.exit()
-            self.qp.setInput(x,      C.QP_X_INIT)
-            self.qp.setInput(hessL,  C.QP_H)
-            self.qp.setInput(jacobG, C.QP_A)
-            self.qp.setInput(gradF,  C.QP_G)
 
-            self.qp.setInput(self.glb-g, C.QP_LBA)
-            self.qp.setInput(self.gub-g, C.QP_UBA)
-
-            print "running!"
-            self.qp.evaluate()
-            x = self.qp.output(C.QP_PRIMAL)
-#
-        show()
-
-        ##########  need to setup/solve the following qp:  #########
-        #     min   1/2*x.T*hessL*x + gradF.T*x
-        #      x
-        #     
-        #     S.T           g + jacobG*x == 0
-        #           hlbs <= h + jacobH*x <= hubs
-        ############################################################
+#            print deltaX
+            xk += deltaX
+#        show()
