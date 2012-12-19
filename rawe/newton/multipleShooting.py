@@ -5,6 +5,9 @@ import casadi as C
 import nmpcMaps
 from ocputils import Constraints
 
+from newton import Newton
+from collocation import LagrangePoly
+
 class Nmpc(object):
     def __init__(self,dae,nk):
         self.dae = dae
@@ -53,8 +56,23 @@ class Nmpc(object):
         self._gaussNewtonObjF.append(gnF)
 
     def _setupDynamicsConstraints(self):
-        class JorisError(Exception): pass
-        raise JorisError('JORIS, please implement this function _setupDynamicsConstraints, then we can solve a QP!!!!!!!')
+        # Todo: add parallelization
+        # Todo: add initialization 
+        g = []
+        nicp = 10
+        deg = 4
+        p = self._dvMap.pVec()
+        for k in range(self.nk):
+            newton = Newton(LagrangePoly,self.dae,1,nicp,deg,'RADAU')
+            endTime = 0.05
+            newton.setupStuff(endTime)
+            
+            X0_i = self._dvMap.xVec(k)
+            U_i  = self._dvMap.uVec(k)
+            _, Xf_i = newton.isolver.call([X0_i,U_i,p])
+            X0_i_plus = self._dvMap.xVec(k+1)
+            g.append(Xf_i-X0_i_plus)
+    
 
     def makeSolver(self):
         # make sure all bounds are set
@@ -115,7 +133,7 @@ class Nmpc(object):
         jacobH = C.jacobian(h,V)
 
         # function which generates everything needed
-        masterFun = C.SXFunction([V],[hessL, gradF, g, jacobG, h, jacobH])
+        masterFun = C.MXFunction([V],[hessL, gradF, g, jacobG, h, jacobH])
         masterFun.init()
 
         class JorisError(Exception): pass
