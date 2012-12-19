@@ -73,6 +73,7 @@ class Nmhe(object):
             
             X0_i = self._dvMap.xVec(k)
             U_i  = self._U[k,:].T
+            newton.isolver.setOutput(1,0)
             _, Xf_i = newton.isolver.call([X0_i,U_i,p])
             X0_i_plus = self._dvMap.xVec(k+1)
             g.append(Xf_i-X0_i_plus)
@@ -90,29 +91,19 @@ class Nmhe(object):
             raise ValueError('\n'.join(msg))
 
         # constraints:
-        constraints = self._constraints._g
-        constraintLbgs = self._constraints._glb
-        constraintUbgs = self._constraints._gub
+        g   = self._constraints.getG()
+        glb = self._constraints.getLb()
+        gub = self._constraints.getUb()
 
-        g = [self._setupDynamicsConstraints()]
-        g = []
-        h = []
-        hlbs = []
-        hubs = []
-        for k in range(len(constraints)):
-            lb = constraintLbgs[k]
-            ub = constraintUbgs[k]
-            if all(lb==ub):
-                g.append(constraints[k]-lb) # constrain to be zero
-            else:
-                h.append(constraints[k])
-                hlbs.append(lb)
-                hubs.append(ub)
-        g = C.veccat(g)
+        gDyn = self._setupDynamicsConstraints()
+        gDynLb = gDynUb = [C.DMatrix.zeros(gg.shape) for gg in gDyn]
+        
+        g = C.veccat([g]+gDyn)
+        glb = C.veccat([glb]+gDynLb)
+        gub = C.veccat([gub]+gDynUb)
 
-        h = C.veccat(h)
-        hlbs = C.veccat(hlbs)
-        hubs = C.veccat(hubs)
+        self.glb = glb
+        self.gub = gub
 
         # design vars
         V = self._dvMap.vectorize()
@@ -125,20 +116,117 @@ class Nmhe(object):
         gradF = C.gradient(arbitraryObj,V)
         
         # hessian of lagrangian:
-        J = 0
+        J = C.DMatrix(0)
         for gnf in self._gaussNewtonObjF:
             J += C.jacobian(gnf,V)
         hessL = C.mul(J.T,J) + C.jacobian(gradF,V)
         
-        # equality constraint jacobian
-        jacobG = C.jacobian(g,V)
-
-        # inequality constraint jacobian
-        jacobH = C.jacobian(h,V)
+        # equality/inequality constraint jacobian
+        gfcn = C.MXFunction([V,self._U],[g])
+        gfcn.init()
+        jacobG = gfcn.jacobian(0,0)
+        jacobG.init()
 
         # function which generates everything needed
-        masterFun = C.MXFunction([V,self._U],[hessL, gradF, g, jacobG, h, jacobH])
-        masterFun.init()
+        f = sum(self._gaussNewtonObjF)
+        if hasattr(self,'_obj'):
+            f += self._obj
+        
+        self.masterFun = C.MXFunction([V,self._U],[hessL, gradF, g, jacobG.call([V,self._U])[0], f])
+        self.masterFun.init()
+
+        self.qp = C.CplexSolver(hessL.sparsity(),jacobG.output(0).sparsity())
+        self.qp.init()
+
+    def runSolver(self,U):
+        # make sure all bounds are set
+        (xMissing,pMissing) = self._guessMap.getMissing()
+        msg = []
+        for name in xMissing:
+            msg.append("you forgot to set a guess for \""+name+"\" at timesteps: "+str(xMissing[name]))
+        for name in pMissing:
+            msg.append("you forgot to set a guess for \""+name+"\"")
+        if len(msg)>0:
+            raise ValueError('\n'.join(msg))
+
+        lbx,ubx = zip(*(self._boundMap.vectorize()))
+        self.qp.setInput(lbx,C.QP_LBX)
+        self.qp.setInput(ubx,C.QP_UBX)
+        
+        x = list(self._guessMap.vectorize())
+        
+        from pylab import *
+        for k in range(10):
+            import nmheMaps
+            xOpt = np.array(x).squeeze()
+            traj = nmheMaps.VectorizedReadOnlyNmheMap(self.dae,self.nk,xOpt)
+            
+            xs =  np.array([traj.lookup('x',timestep=kk) for kk in range(self.nk+1)] )
+            zs =  np.array([traj.lookup('z',timestep=kk) for kk in range(self.nk+1)] )
+            dxs = np.array([traj.lookup('dx',timestep=kk) for kk in range(self.nk+1)])
+            dzs = np.array([traj.lookup('dz',timestep=kk) for kk in range(self.nk+1)])
+            m = traj.lookup('m')
+            
+            outputMap = nmheMaps.NmheOutputMap(self._outputMapGenerator, xOpt, U)
+            c = np.array([outputMap.lookup('c',timestep=kk) for kk in range(self.nk)])
+            cdot = np.array([outputMap.lookup('cdot',timestep=kk) for kk in range(self.nk)])
+            
+            print float(k)
+            figure()
+            title(str(float(k)))
+            subplot(2,2,1)
+            plot(xs,-zs)
+            ylabel('pos '+str(k))
+            axis('equal')
+            
+            subplot(2,2,2)
+            plot(dxs,-dzs)
+            ylabel('vel')
+
+            subplot(2,2,3)
+            plot(c)
+            ylabel('c')
+
+            subplot(2,2,4)
+            plot(cdot)
+            ylabel('cdot')
+
+            self.masterFun.setInput(x,0)
+            self.masterFun.setInput(U,1)
+            self.masterFun.evaluate()
+            hessL  = self.masterFun.output(0)
+            gradF  = self.masterFun.output(1)
+            g      = self.masterFun.output(2)
+            jacobG = self.masterFun.output(3)
+            f      = self.masterFun.output(4)
+            print "objective fun: ",f
+
+#            print np.linalg.eig(hessL)
+#
+#            import scipy.io
+#            scipy.io.savemat('hessL.mat',{'hessL':np.array(hessL),
+#                                          'gradF':np.array(gradF),
+#                                          'x':np.array(x),
+#                                          'lbx':lbx,
+#                                          'ubx':ubx,
+#                                          'jacobG':np.array(jacobG),
+#                                          'glb':np.array(self.glb),
+#                                          'gub':np.array(self.gub),
+#                                          'g':np.array(g)})
+#            import sys; sys.exit()
+            self.qp.setInput(x,      C.QP_X_INIT)
+            self.qp.setInput(hessL,  C.QP_H)
+            self.qp.setInput(jacobG, C.QP_A)
+            self.qp.setInput(gradF,  C.QP_G)
+
+            self.qp.setInput(self.glb-g, C.QP_LBA)
+            self.qp.setInput(self.gub-g, C.QP_UBA)
+
+            print "running!"
+            self.qp.evaluate()
+            x = self.qp.output(C.QP_PRIMAL)
+#
+        show()
 
         ##########  need to setup/solve the following qp:  #########
         #     min   1/2*x.T*hessL*x + gradF.T*x
