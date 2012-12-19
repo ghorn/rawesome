@@ -65,12 +65,8 @@ if __name__ == '__main__':
     # boundary conditions
     nmhe.bound('x',(r,r),timestep=0)
     nmhe.bound('z',(0,0),timestep=0)
-    nmhe.bound('x',(0,0),timestep=-1)
-    nmhe.bound('z',(-10*r,0.01*r),timestep=-1)
     nmhe.bound('dx',(0,0),timestep=0)
     nmhe.bound('dz',(0,0),timestep=0)
-    nmhe.bound('dx',(0,0),timestep=-1)
-    nmhe.bound('dz',(-0.5,0.5),timestep=-1)
 
     # make objective
     obj = 0
@@ -84,8 +80,8 @@ if __name__ == '__main__':
 #        obj += (ocp('z',timestep=k) - xTraj[k][1])**2
 #        obj += (ocp('dx',timestep=k) - xTraj[k][2])**2
 #        obj += (ocp('dz',timestep=k) - xTraj[k][3])**2
-    uTraj = C.DMatrix(np.concatenate(uTraj)).shape
-    nmhe.makeSolver(uTraj)
+    uTraj = C.DMatrix(np.concatenate(uTraj))
+    nmhe.makeSolver()
 
 
 

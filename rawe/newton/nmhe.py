@@ -5,6 +5,9 @@ import casadi as C
 import nmheMaps
 from ocputils import Constraints
 
+from newton import Newton
+from collocation import LagrangePoly
+
 class Nmhe(object):
     def __init__(self,dae,nk):
         self.dae = dae
@@ -54,10 +57,24 @@ class Nmhe(object):
         self._gaussNewtonObjF.append(gnF)
 
     def _setupDynamicsConstraints(self):
-        class JorisError(Exception): pass
-        raise JorisError('JORIS, please implement this function _setupDynamicsConstraints, then we can solve a QP!!!!!!!')
-
-    def makeSolver(self,U):
+        # Todo: add parallelization
+        # Todo: add initialization 
+        g = []
+        nicp = 10
+        deg = 4
+        p = self._dvMap.pVec()
+        for k in range(self.nk):
+            newton = Newton(LagrangePoly,self.dae,1,nicp,deg,'RADAU')
+            endTime = 0.05
+            newton.setupStuff(endTime)
+            
+            X0_i = self._dvMap.xVec(k)
+            U_i  = self._U[k,:].T
+            _, Xf_i = newton.isolver.call([X0_i,U_i,p])
+            X0_i_plus = self._dvMap.xVec(k+1)
+            g.append(Xf_i-X0_i_plus)
+            
+    def makeSolver(self):
         # make sure all bounds are set
         (xMissing,pMissing) = self._boundMap.getMissing()
         msg = []
@@ -116,12 +133,9 @@ class Nmhe(object):
         jacobH = C.jacobian(h,V)
 
         # function which generates everything needed
-        masterFun = C.SXFunction([V,self._U],[hessL, gradF, g, jacobG, h, jacobH])
+        masterFun = C.MXFunction([V,self._U],[hessL, gradF, g, jacobG, h, jacobH])
         masterFun.init()
 
-        class JorisError(Exception): pass
-        raise JorisError('JORIS, what to do with uTraj: '+str(U))
-        raise JorisError('JORIS, please read the following comment')
         ##########  need to setup/solve the following qp:  #########
         #     min   1/2*x.T*hessL*x + gradF.T*x
         #      x
