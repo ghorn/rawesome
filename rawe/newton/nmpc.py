@@ -44,6 +44,9 @@ class Nmpc(object):
     def bound(self,name,(lb,ub),timestep=None):
         self._boundMap.setVal(name,(lb,ub),timestep=timestep)
 
+    def guess(self,name,val,timestep=None):
+        self._guessMap.setVal(name,val,timestep=timestep)
+
     def constrain(self,lhs,comparison,rhs,tag='unnamed_constraint'):
         self._constraints.add(lhs,comparison,rhs,tag)
         
@@ -72,6 +75,7 @@ class Nmpc(object):
             _, Xf_i = newton.isolver.call([X0_i,U_i,p])
             X0_i_plus = self._dvMap.xVec(k+1)
             g.append(Xf_i-X0_i_plus)
+        return g
     
 
     def makeSolver(self):
