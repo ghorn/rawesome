@@ -16,6 +16,11 @@ class Trajectory(object):
         self.outputMap = collmaps.OutputMap(ocp._outputMapGenerator, v_opt)
         self.quadratureMap = collmaps.QuadratureMap(ocp._quadratureManager, v_opt)
 
+        self.nk = ocp.nk
+        self.nicp = ocp.nicp
+        self.deg = ocp.deg
+        self.collPoly = ocp.collPoly
+
         # make time grid
         ocp.hfun.setInput(v_opt)
         ocp.hfun.evaluate()
