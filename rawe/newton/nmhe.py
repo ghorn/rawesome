@@ -224,18 +224,16 @@ class Nmhe(object):
             print "qp delta time: %.3f ms" % ((t1-t0)*1000)
             print ""
             deltaX = self.qp.output(C.QP_PRIMAL)
-
 #            import scipy.io
 #            scipy.io.savemat('hessL.mat',{'hessL':np.array(hessL),
 #                                          'gradF':np.array(gradF),
-#                                          'x0':0,
+#                                          'x0':0*np.array(deltaX),
 #                                          'xopt':np.array(deltaX),
-#                                          'lbx':lbx-np.array(xk),
-#                                          'ubx':ubx-np.array(xk),
+#                                          'lbx':np.array(lbx-xk),
+#                                          'ubx':np.array(ubx-xk),
 #                                          'jacobG':np.array(jacobG),
-#                                          'glb':np.array(self.glb),
-#                                          'gub':np.array(self.gub),
-#                                          'g':np.array(g)})
+#                                          'lba':np.array(self.glb-g),
+#                                          'uba':np.array(self.gub-g)})
 #            import sys; sys.exit()
 
 #            print deltaX
