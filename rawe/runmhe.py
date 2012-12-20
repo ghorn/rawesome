@@ -16,7 +16,8 @@ if __name__ == '__main__':
     nicp = 1
     deg = 4
     newton = Newton(LagrangePoly,dae,nk,nicp,deg,'RADAU')
-    endTime = 0.025*nk
+    dt = 0.025
+    endTime = dt*nk
     newton.setupStuff(endTime)
 
     r = 0.3
@@ -94,7 +95,7 @@ if __name__ == '__main__':
 
     nmhe.setObj(obj)
     uTraj = C.DMatrix(np.concatenate(uTraj))
-    nmhe.makeSolver()
+    nmhe.makeSolver(dt)
     nmhe.runSolver(uTraj)
 
 

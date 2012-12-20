@@ -59,7 +59,7 @@ class Nmhe(object):
     def addGaussNewtonObjF(self,gnF):
         self._gaussNewtonObjF.append(gnF)
 
-    def _setupDynamicsConstraints(self):
+    def _setupDynamicsConstraints(self,endTime):
         # Todo: add parallelization
         # Todo: get endTime right
         g = []
@@ -68,7 +68,6 @@ class Nmhe(object):
         p = self._dvMap.pVec()
         for k in range(self.nk):
             newton = Newton(LagrangePoly,self.dae,1,nicp,deg,'RADAU')
-            endTime = 0.025
             newton.setupStuff(endTime)
             
             X0_i = self._dvMap.xVec(k)
@@ -79,7 +78,7 @@ class Nmhe(object):
             g.append(Xf_i-X0_i_plus)
         return g
             
-    def makeSolver(self):
+    def makeSolver(self,endTime):
         # make sure all bounds are set
         (xMissing,pMissing) = self._boundMap.getMissing()
         msg = []
@@ -95,7 +94,7 @@ class Nmhe(object):
         glb = self._constraints.getLb()
         gub = self._constraints.getUb()
 
-        gDyn = self._setupDynamicsConstraints()
+        gDyn = self._setupDynamicsConstraints(endTime)
         gDynLb = gDynUb = [C.DMatrix.zeros(gg.shape) for gg in gDyn]
         
         g = C.veccat([g]+gDyn)
@@ -157,9 +156,9 @@ class Nmhe(object):
 
         import time
 #        from pylab import *
-        for k in range(10):
+        for k in range(1000):
             ############# plot stuff ###############
-            print float(k)
+            print "iteration: ",k
 #            import nmheMaps
 #            xOpt = np.array(xk).squeeze()
 #            traj = nmheMaps.VectorizedReadOnlyNmheMap(self.dae,self.nk,xOpt)
