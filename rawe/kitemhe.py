@@ -21,7 +21,7 @@ if __name__=='__main__':
     print "creating model..."
     dae = models.crosswind(conf)#,extraParams=['endTime'])
     
-    nk = 20
+    nk = 30
 
     # setup MHE
     mhe = Nmhe(dae,nk)
@@ -54,8 +54,8 @@ if __name__=='__main__':
     mhe.bound('energy',(-1e6,1e6))
 
     # boundary conditions
-    mhe.bound('energy',(0,0),timestep=0)
-    mhe.bound('y',(0,0),timestep=0)
+#    mhe.bound('energy',(0,0),timestep=0)
+#    mhe.bound('y',(0,0),timestep=0)
 
     # guesses
 #    mhe.guess('endTime',5.4)
@@ -84,9 +84,11 @@ if __name__=='__main__':
 
     # make objective
     obj = 0
-    for name in ['x','y','z','w1','w2','w3']:
+    for name in ['x','y','z','dx','dy','dz','w1','w2','w3','aileron','elevator']:
         for k in range(nk+1):
-            mhe.addGaussNewtonObjF(mhe.lookup('x',timestep=k) - traj.lookup(name,timestep=k))
+            f = mhe.lookup(name,timestep=k) - traj.lookup(name,timestep=k)
+            mhe.addGaussNewtonObjF(f)
+#            obj += 0.5*f*f
 #    for name in dae.pNames():
 #        mhe.guess(name,traj.lookup(name))
 #        nmhe.addGaussNewtonObjF(nmhe('x',timestep=k) - xTraj[k][0])

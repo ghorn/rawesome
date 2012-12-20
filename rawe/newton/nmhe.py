@@ -1,4 +1,6 @@
 import numpy as np
+import time
+#from pylab import *
 
 import casadi as C
 
@@ -138,17 +140,20 @@ class Nmhe(object):
         jacobG.init()
 
         # function which generates everything needed
-        f = sum(self._gaussNewtonObjF)
+        f = sum([f_*f_ for f_ in self._gaussNewtonObjF])
         if hasattr(self,'_obj'):
             f += self._obj
         
         self.masterFun = C.MXFunction([V,self._U],[hessL, gradF, g, jacobG.call([V,self._U])[0], f])
         self.masterFun.init()
 
-        self.qp = C.CplexSolver(hessL.sparsity(),jacobG.output(0).sparsity())
+#        self.qp = C.CplexSolver(hessL.sparsity(),jacobG.output(0).sparsity())
+        self.qp = C.NLPQPSolver(hessL.sparsity(),jacobG.output(0).sparsity())
+        self.qp.setOption('nlp_solver',C.IpoptSolver)
+        self.qp.setOption('nlp_solver_options',{'print_level':0,'print_time':False})
         self.qp.init()
 
-    def runSolver(self,U):
+    def runSolver(self,U,trajTrue=None):
         # make sure all bounds are set
         (xMissing,pMissing) = self._guessMap.getMissing()
         msg = []
@@ -163,20 +168,20 @@ class Nmhe(object):
         lbx,ubx = zip(*(self._boundMap.vectorize()))
         xk = C.DMatrix(list(self._guessMap.vectorize()))
 
-        import time
-#        from pylab import *
-        for k in range(1000):
+        for k in range(100):
             ############# plot stuff ###############
             print "iteration: ",k
 #            import nmheMaps
 #            xOpt = np.array(xk).squeeze()
 #            traj = nmheMaps.VectorizedReadOnlyNmheMap(self.dae,self.nk,xOpt)
 #            
+#            xsT =  np.array([trajTrue.lookup('x',timestep=kk) for kk in range(self.nk+1)] )
+#            ysT =  np.array([trajTrue.lookup('y',timestep=kk) for kk in range(self.nk+1)] )
+#            zsT =  np.array([trajTrue.lookup('z',timestep=kk) for kk in range(self.nk+1)] )
+#
 #            xs =  np.array([traj.lookup('x',timestep=kk) for kk in range(self.nk+1)] )
+#            ys =  np.array([traj.lookup('y',timestep=kk) for kk in range(self.nk+1)] )
 #            zs =  np.array([traj.lookup('z',timestep=kk) for kk in range(self.nk+1)] )
-#            dxs = np.array([traj.lookup('dx',timestep=kk) for kk in range(self.nk+1)])
-#            dzs = np.array([traj.lookup('dz',timestep=kk) for kk in range(self.nk+1)])
-#            m = traj.lookup('m')
 #            
 #            outputMap = nmheMaps.NmheOutputMap(self._outputMapGenerator, xOpt, U)
 #            c = np.array([outputMap.lookup('c',timestep=kk) for kk in range(self.nk)])
@@ -184,21 +189,31 @@ class Nmhe(object):
 #
 #            figure()
 #            title(str(float(k)))
-#            subplot(2,2,1)
-#            plot(xs,-zs)
-#            ylabel('pos '+str(k))
-#            axis('equal')
+#            subplot(3,2,1)
+#            plot(xs)
+#            plot(xsT)
+#            ylabel('x '+str(k))
 #            
-#            subplot(2,2,2)
-#            plot(dxs,-dzs)
-#            ylabel('vel')
-#            axis('equal')
+#            subplot(3,2,3)
+#            plot(ys)
+#            plot(ysT)
+#            ylabel('y '+str(k))
+#            
+#            subplot(3,2,5)
+#            plot(zs)
+#            plot(zsT)
+#            ylabel('z '+str(k))
+#            
+##            subplot(2,2,2)
+##            plot(dxs,-dzs)
+##            ylabel('vel')
+##            axis('equal')
 #
-#            subplot(2,2,3)
+#            subplot(3,2,2)
 #            plot(c)
 #            ylabel('c')
 #
-#            subplot(2,2,4)
+#            subplot(3,2,4)
 #            plot(cdot)
 #            ylabel('cdot')
 #            ##########################################
@@ -207,9 +222,15 @@ class Nmhe(object):
             self.masterFun.setInput(xk,0)
             self.masterFun.setInput(U,1)
             t0 = time.time()
-            self.masterFun.evaluate()
+            try:
+                self.masterFun.evaluate()
+            except RuntimeError as e:
+                print "ERRRRRRRRRRRRROR"
+                show()
+                raise e
+
             t1 = time.time()
-            print "masterFun delta time: %.3f ms" % ((t1-t0)*1000)
+            masterFunTime = (t1-t0)*1000
             hessL  = self.masterFun.output(0)
             gradF  = self.masterFun.output(1)
             g      = self.masterFun.output(2)
@@ -221,6 +242,8 @@ class Nmhe(object):
             self.qp.setInput(jacobG, C.QP_A)
             self.qp.setInput(gradF,  C.QP_G)
 
+            assert all((lbx-xk) <= 0), "lower bounds violation"
+            assert all((ubx-xk) >= 0), "upper bounds violation"
             self.qp.setInput(lbx-xk,C.QP_LBX)
             self.qp.setInput(ubx-xk,C.QP_UBX)
             
@@ -230,9 +253,16 @@ class Nmhe(object):
             t0 = time.time()
             self.qp.evaluate()
             t1 = time.time()
+
+#            print "gradF: ",gradF
+#            print 'dim(jacobG): "gra
+#            print "rank: ",np.linalg.matrix_rank(jacobG)
+            print "masterFun delta time: %.3f ms" % masterFunTime
+            print "f: ",f,'\tmax constraint: ',max(C.fabs(g))
             print "qp delta time: %.3f ms" % ((t1-t0)*1000)
             print ""
             deltaX = self.qp.output(C.QP_PRIMAL)
+
 #            import scipy.io
 #            scipy.io.savemat('hessL.mat',{'hessL':np.array(hessL),
 #                                          'gradF':np.array(gradF),
