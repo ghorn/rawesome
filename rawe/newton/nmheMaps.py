@@ -161,7 +161,7 @@ class NmheOutputMapGenerator(object):
         for timestepIdx in range(self._nk):
             if f0 is not None:
                 outs += f0.call([ocp._dvMap.xVec(timestepIdx),
-                                 U[timestepIdx,:],
+                                 U[timestepIdx,:].T,
                                  ocp._dvMap.pVec()])
         # make the function
         self.fEveryOutput = C.MXFunction([ocp._dvMap.vectorize(),U],outs)
