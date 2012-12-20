@@ -4,47 +4,15 @@ import matplotlib.pyplot as plt
 import numpy
 from numpy import pi
 import zmq
-from fourier_fit import FourierFit
+from fourier_fit import FourierFit,TrajFit
 import pickle
 
-from collocation import Coll,boundsFeedback
+from collocation import Coll,boundsFeedback,trajectory
 from config import readConfig
 import kiteutils
 import kite_pb2
 import kiteproto
 import models
-
-def toFourierKiteProto(fits,k,kiteAlpha=1,lineAlpha=1,dz=0,zt=0,rArm=0):
-    cs = kite_pb2.CarouselState()
-
-    cs.kiteXyz.x = fits['x'].Mx[k]
-    cs.kiteXyz.y = fits['y'].Mx[k]
-    cs.kiteXyz.z = fits['z'].Mx[k]+dz
-
-    cs.kiteDcm.r11 = fits['e11'].Mx[k]
-    cs.kiteDcm.r12 = fits['e12'].Mx[k]
-    cs.kiteDcm.r13 = fits['e13'].Mx[k]
-
-    cs.kiteDcm.r21 = fits['e21'].Mx[k]
-    cs.kiteDcm.r22 = fits['e22'].Mx[k]
-    cs.kiteDcm.r23 = fits['e23'].Mx[k]
-
-    cs.kiteDcm.r31 = fits['e31'].Mx[k]
-    cs.kiteDcm.r32 = fits['e32'].Mx[k]
-    cs.kiteDcm.r33 = fits['e33'].Mx[k]
-
-    if 'delta' in fits:
-        cs.delta = fits['delta'].Mx[k]
-    else:
-        cs.delta = 0
-
-    cs.rArm = rArm
-    cs.zt = zt
-
-    cs.kiteTransparency = kiteAlpha
-    cs.lineTransparency = lineAlpha
-
-    return cs
 
 
 def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
@@ -120,72 +88,30 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
     def getFourierFit(filename,phase):
         # load the fourier fit
         f=open(filename,'r')
-        fits = pickle.load(f)
+        trajFits = pickle.load(f)
         f.close()
+        trajFits.setPhase(phase)
+        return trajFits
+    startup   = getFourierFit("data/carousel_opt_fourier.dat",ocp.lookup('phase0'))
+    crosswind = getFourierFit("data/crosswind_opt_fourier.dat",ocp.lookup('phaseF'))
 
-        # make all bases for polynomial/cos/sin
-        polyBases = {}
-        cosBases = {}
-        sinBases = {}
-            
-        for name in fits:
-            fit = fits[name]
-            assert isinstance(fit, FourierFit)
-            for po in fit.polyOrder:
-                if po not in polyBases:
-                    polyBases[po] = phase**po
-            for co in fit.cosOrder:
-                if co not in cosBases:
-                    cosBases[co] = C.cos(co*phase)
-            for so in fit.sinOrder:
-                if so not in sinBases:
-                    sinBases[so] = C.sin(so*phase)
-        
-        # construct the output functions
-        fourierFit = {}
-        for name in fits:
-            fit = fits[name]
-            
-            polys = [coeff*polyBases[order] for coeff,order in zip(fit.polyCoeffs, fit.polyOrder)]
-            coses = [coeff*cosBases[order]  for coeff,order in zip(fit.cosCoeffs,  fit.cosOrder)]
-            sins  = [coeff*sinBases[order]  for coeff,order in zip(fit.sinCoeffs,  fit.sinOrder)]
+    def getFourierDcm(vars):
+        return C.vertcat([C.horzcat([vars['e11'], vars['e12'], vars['e13']]),
+                          C.horzcat([vars['e21'], vars['e22'], vars['e23']]),
+                          C.horzcat([vars['e31'], vars['e32'], vars['e33']])])
 
-            fourierFit[name] = sum(polys+coses+sins)
-
-        return (fourierFit,fits)
-        
-    (startup,startupfits) = getFourierFit("data/carousel_opt_fourier.dat",ocp.lookup('phase0'))
-    (crosswind,crosswindfits) = getFourierFit("data/crosswind_opt_fourier.dat",ocp.lookup('phaseF'))
-
-#    def matchStartupEuler():
-#        (yaw0,pitch0,roll0) = kiteutils.getEuler(ocp, 0)
-#        ocp.constrain(yaw0,'==',startup['yaw'])
-#        ocp.constrain(pitch0,'==',startup['pitch'])
-#        ocp.constrain(roll0,'==',startup['roll'])
-#    matchStartupEuler()
     
-#    for name in ['e11','e22','e33','y','z','dy','dz','r','dr','w1','w2','w3','delta','ddelta']:
-    for name in ['e11','e22','e33','y','z','dy','dz','r','dr','delta','ddelta']:
+#    for name in ['y','z','dy','dz','r','dr','w1','w2','w3','delta','ddelta']:
+    for name in ['y','z','dy','dz','r','dr','delta','ddelta']:
         ocp.constrain(ocp.lookup(name,timestep=0), '==', startup[name])
     
-#    def matchFinalEuler():
-#        (yawf,pitchf,rollf) = kiteutils.getEuler(ocp, -1)
-#        ocp.constrain(yawf,'==',crosswind['yaw'])
-#        ocp.constrain(pitchf,'==',crosswind['pitch'])
-#        ocp.constrain(rollf,'==',crosswind['roll'])
-#    matchFinalEuler()
-#    for name in ['e11','e22','e33']:
-#        ocp.constrain(ocp.lookup(name,timestep=-1), '==', crosswind[name])
-    
-#    for name in ['e11','e22','e33','y','z','dy','dz','r','dr','w1','w2','w3']:
-    for name in ['e11','e22','e33','y','z','dy','dz','r','dr']:
+#    for name in ['y','z','dy','dz','r','dr','w1','w2','w3']:
+    for name in ['y','z','dy','dz','r','dr']:
         ocp.constrain(ocp.lookup(name,timestep=-1), '==', crosswind[name])
 
-    # make sure it doesn't find transposed-periodic DCM
-    # sign(eij(beginning) == sign(eij(end)) <--> eij(beginning)*eij(end) >= 0
-    for name in ['e12','e13','e23']:
-        ocp.constrain(ocp.lookup(name,timestep=0) *  startup[name],'>=',0)
-        ocp.constrain(ocp.lookup(name,timestep=-1)*crosswind[name],'>=',0)
+    # match DCMs
+    kiteutils.matchDcms(ocp, kiteutils.getDcm(ocp,0),  getFourierDcm(startup))
+    kiteutils.matchDcms(ocp, kiteutils.getDcm(ocp,-1), getFourierDcm(crosswind))
 
     # initial guess
     phase0Guess = -4.0*pi
@@ -262,10 +188,20 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
     ocp.setObjective( 1e1*obj/nk + ocp.lookup('endTime') )
 
     oldKiteProtos = []
-    for k in range(0,startupfits['x'].Mx.size):
-        oldKiteProtos.append( toFourierKiteProto(startupfits,k,zt=conf['kite']['zt'], rArm=conf['carousel']['rArm'],kiteAlpha=0.3,lineAlpha=0,dz=0) )
-    for k in range(0,crosswindfits['x'].Mx.size):
-        oldKiteProtos.append( toFourierKiteProto(crosswindfits,k,zt=conf['kite']['zt'], rArm=conf['carousel']['rArm'],kiteAlpha=0.3,lineAlpha=0,dz=0) )
+    mcc = kite_pb2.MultiCarousel().FromString(startup.multiCarousel)
+    oldKiteProtos.extend(mcc.css)
+    mcc = kite_pb2.MultiCarousel().FromString(crosswind.multiCarousel)
+    oldKiteProtos.extend(mcc.css)
+
+    for okp in oldKiteProtos:
+        okp.zt = conf['kite']['zt']
+        okp.rArm = conf['carousel']['rArm']
+        okp.lineTransparency = 0.0
+        okp.kiteTransparency = 0.3
+#    for k in range(0,startupfits['x'].Mx.size):
+#        oldKiteProtos.append( toFourierKiteProto(startupfits,k,zt=conf['kite']['zt'], rArm=conf['carousel']['rArm'],kiteAlpha=0.3,lineAlpha=0,dz=0) )
+#    for k in range(0,crosswindfits['x'].Mx.size):
+#        oldKiteProtos.append( toFourierKiteProto(crosswindfits,k,zt=conf['kite']['zt'], rArm=conf['carousel']['rArm'],kiteAlpha=0.3,lineAlpha=0,dz=0) )
 
     # callback function
     class MyCallback:
@@ -275,25 +211,16 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
             self.iter = self.iter + 1
             xOpt = numpy.array(f.input(C.NLP_X_OPT))
 
-            opt = ocp.devectorize(xOpt)
+            traj = trajectory.Trajectory(ocp,xOpt)
             
-#            kiteProtos = []
-#            for k in range(0,nk):
-#                j = nicp*(deg+1)*k
-#                kiteProtos.append( kiteproto.toKiteProto(C.DMatrix(opt['x'][:,j]),
-#                                                         C.DMatrix(opt['u'][:,j]),
-#                                                         C.DMatrix(opt['p']),
-#                                                         conf['kite']['zt'],
-#                                                         conf['carousel']['rArm'],
-#                                                         lineAlpha=0.2)
             kiteProtos = []
             for k in range(0,ocp.nk):
                 for nicpIdx in range(0,ocp.nicp):
                     for j in [0]:
 #                    for j in range(ocp.deg+1):
-                        kiteProtos.append( kiteproto.toKiteProto(C.DMatrix(opt.xVec(k,nicpIdx=nicpIdx,degIdx=j)),
-                                                                 C.DMatrix(opt.uVec(k)),
-                                                                 C.DMatrix(opt.pVec()),
+                        kiteProtos.append( kiteproto.toKiteProto(C.DMatrix(traj.dvMap.xVec(k,nicpIdx=nicpIdx,degIdx=j)),
+                                                                 C.DMatrix(traj.dvMap.uVec(k)),
+                                                                 C.DMatrix(traj.dvMap.pVec()),
                                                                  conf['kite']['zt'],
                                                                  conf['carousel']['rArm'],
                                                                  lineAlpha=0.2) )
@@ -301,12 +228,12 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
             mc = kite_pb2.MultiCarousel()
             mc.css.extend(list(kiteProtos))
             
-            mc.messages.append("w0: "+str(opt.lookup('w0')))
+            mc.messages.append("w0: "+str(traj.lookup('w0')))
             mc.messages.append("iter: "+str(self.iter))
-            mc.messages.append("endTime: "+str(opt.lookup('endTime')))
-            mc.messages.append("average power: "+str(opt.lookup('energy',timestep=-1)/opt.lookup('endTime'))+" W")
-            mc.messages.append("phase0: "+str(opt.lookup('phase0')/pi)+" * pi")
-            mc.messages.append("phaseF: "+str(opt.lookup('phaseF')/pi)+" * pi")
+            mc.messages.append("endTime: "+str(traj.lookup('endTime')))
+            mc.messages.append("average power: "+str(traj.lookup('energy',timestep=-1)/traj.lookup('endTime'))+" W")
+            mc.messages.append("phase0: "+str(traj.lookup('phase0')/pi)+" * pi")
+            mc.messages.append("phaseF: "+str(traj.lookup('phaseF')/pi)+" * pi")
 
 #            # bounds feedback
 #            lbx = ocp.solver.input(C.NLP_LBX)
@@ -354,42 +281,19 @@ if __name__=='__main__':
     print "creating model..."
     dae = models.carousel(conf,extraParams=['endTime','phase0','phaseF'])
 
-    # load initial guess
-    print "loading initial guess data..."
-    f = open('data/transition_guess.txt','r')
-    xutraj = []
-    for line in f:
-        xutraj.append([float(x) for x in line.strip('[]\n').split(',')])
-    f.close()
-    xutraj = numpy.array(xutraj)
-    xutraj = xutraj[220:-10,:]
-    xutraj[:,18] = xutraj[:,18] - 6*pi
-    # remove delta/ddelta/tc
-#    xutraj = numpy.hstack((xutraj[:,:23], xutraj[:,24:]))
-#    xutraj = numpy.hstack((xutraj[:,:18], xutraj[:,20:]))
-    # add aileron/elevator
-#    xutraj = numpy.hstack((xutraj[:,:23], xutraj[:,23:]))
-    xutraj = numpy.hstack((xutraj[:,:23], 0*xutraj[:,:2], xutraj[:,23:]))
-
     print "setting up ocp..."
     ocp = setupOcp(dae,conf,publisher,nk=80)
 
     print "interpolating initial guess..."
-    xuguess = numpy.array([numpy.interp(numpy.linspace(0,1,ocp.nk+1), numpy.linspace(0,1,xutraj.shape[0]), xutraj[:,k]) for k in range(xutraj.shape[1])])
-    for k in range(ocp.nk+1):
-        ocp.guessX(xuguess[:len(ocp.dae.xNames()),k],timestep=k,quiet=True)
-        if k < ocp.nk:
-            ocp.guessU(xuguess[len(ocp.dae.xNames()):,k],timestep=k,quiet=True)
-    ocp.guess('energy',0,quiet=True)
 
     # load old initial guess
-    f=open("data/transition_working_guess.dat",'r')
-    workingGuess = pickle.load(f)
-    f.close()
-    opt = ocp.solve(xInit=workingGuess['X_OPT'])
-    print "optimal power: "+str(opt['vardict']['energy'][-1]/opt['vardict']['endTime'])
+    ocp.interpolateInitialGuess("data/crosswind_opt.dat",force=True,quiet=True)
+    ocp.guess('delta',0)
+    ocp.guess('phase0',0,force=True)
     
-    traj = Trajectory(ocp,dvs=opt['X_OPT'])
+    traj = ocp.solve()
+#    print "optimal power: "+str(traj.lookup('energy',timestep=-1)/traj.lookup('endTime'))
+    
     print "saving optimal trajectory"
     traj.save("data/transition_opt.dat")
     

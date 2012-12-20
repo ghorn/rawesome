@@ -3,17 +3,137 @@ import pickle
 import numpy as np
 import sys
 import copy
-
 import zmq
+
+import casadi as C
 import kite_pb2
 import kiteproto
 
-def removeNans(ys_):
-    ys = []
-    for y in ys_:
-       if not np.isnan(y):
-           ys.append(y)
-    return np.array(ys)
+class TrajFit():
+    def __init__(self,orderMap,traj):
+        ts = [traj.tgrid[k,j,i] for k in range(traj.nk) for j in range(traj.nicp) for i in range(traj.deg+1)]
+        ts.append(traj.tgrid[traj.nk,0,0])
+        self.ts = np.array(ts)
+
+        self.fits = {}
+        
+        def getAllX(name):
+            xs = [traj.lookup(name,timestep=k,nicpIdx=j,degIdx=i) \
+                  for k in range(traj.nk) for j in range(traj.nicp) for i in range(traj.deg+1)]
+            xs.append(traj.lookup(name,timestep=traj.nk,nicpIdx=0,degIdx=0))
+            xs = np.array(xs)
+            return xs
+        
+        sys.stdout.write("fitting: ")
+        sys.stdout.flush()
+        for name in traj.dvMap._xNames:
+            sys.stdout.write(name+" ")
+            sys.stdout.flush()
+            
+            xs = getAllX(name)
+
+            polyOrder = orderMap[name]['poly']
+            sinOrder = orderMap[name]['sin']
+            cosOrder = orderMap[name]['cos']
+            self.fits[name] = FourierFit(name, polyOrder, cosOrder, sinOrder, self.ts, xs)
+            
+        sys.stdout.write('\n')
+        sys.stdout.flush()
+
+        # make kite protobufs
+        t0 = self.ts[0]
+        tf = self.ts[-1]
+        dt = tf-t0
+        ts_ = np.linspace(t0,tf,100)
+        kiteProtos = []
+        for t in ts_:
+            cs = kite_pb2.CarouselState()
+            
+            cs.kiteXyz.x = self.fits['x'].evaluate(t)
+            cs.kiteXyz.y = self.fits['y'].evaluate(t)
+            cs.kiteXyz.z = self.fits['z'].evaluate(t)
+        
+            cs.kiteDcm.r11 = self.fits['e11'].evaluate(t)
+            cs.kiteDcm.r12 = self.fits['e12'].evaluate(t)
+            cs.kiteDcm.r13 = self.fits['e13'].evaluate(t)
+
+            cs.kiteDcm.r21 = self.fits['e21'].evaluate(t)
+            cs.kiteDcm.r22 = self.fits['e22'].evaluate(t)
+            cs.kiteDcm.r23 = self.fits['e23'].evaluate(t)
+
+            cs.kiteDcm.r31 = self.fits['e31'].evaluate(t)
+            cs.kiteDcm.r32 = self.fits['e32'].evaluate(t)
+            cs.kiteDcm.r33 = self.fits['e33'].evaluate(t)
+        
+            if 'delta' in self.fits:
+                cs.delta = self.fits['delta'].evaluate(t)
+            else:
+                cs.delta = 0
+        
+            cs.rArm = 0
+            cs.zt = 0
+        
+            cs.kiteTransparency = 0.2
+            cs.lineTransparency = 0.2
+
+            kiteProtos.append(cs)
+        mc = kite_pb2.MultiCarousel()
+        mc.css.extend(list(kiteProtos))
+        self.multiCarousel = mc.SerializeToString()
+        #publisher.send_multipart(["multi-carousel", mc.SerializeToString()])
+             
+        
+    def plot(self,plotnames):
+        plt.figure()
+        plt.clf()
+        legend = []
+        for name in plotnames:
+            legend.append(name+" fit")
+    
+            t0 = self.ts[0]
+            tf = self.ts[-1]
+            dt = tf-t0
+    
+            t0 -= 0.2*dt
+            tf += 0.2*dt
+            ts_ = np.linspace(t0,tf,500)
+            plt.plot(ts_,[self.fits[name].evaluate(t) for t in ts_])
+    
+            legend.append(name)
+            plt.plot(self.ts,self.fits[name].xs,'--')
+            
+        plt.title("fourier fits")
+        plt.xlabel('time')
+        plt.legend(legend)
+        plt.grid()
+
+    def setPhase(self,phase):
+        maxPoly = max([max(self.fits[name].polyOrder) for name in self.fits])
+        maxCos = max([max(self.fits[name].cosOrder) for name in self.fits])
+        maxSin = max([max(self.fits[name].sinOrder) for name in self.fits])
+
+        # all bases
+        polyBases = [phase**po for po in range(maxPoly+1)]
+        cosBases = [C.cos(co*phase) for co in range(maxCos+1)]
+        sinBases = [C.sin(co*phase) for si in range(maxSin+1)]
+
+        self.fitsWithPhase = {}
+        for name in self.fits:
+            fit = self.fits[name]
+            
+            polys = [coeff*polyBases[order] for coeff,order in zip(fit.polyCoeffs, fit.polyOrder)]
+            coses = [coeff*cosBases[order]  for coeff,order in zip(fit.cosCoeffs,  fit.cosOrder)]
+            sins  = [coeff*sinBases[order]  for coeff,order in zip(fit.sinCoeffs,  fit.sinOrder)]
+
+            self.fitsWithPhase[name] = sum(polys+coses+sins)
+
+    def lookup(self,name):
+        if not hasattr(self,'fitsWithPhase'):
+            raise ValueError('need to call setPhase first')
+        return self.fitsWithPhase[name]
+
+    def __getitem__(self,name):
+        return self.lookup(name)
 
 class FourierFit():
     def __init__(self,name,polyOrder_,cosOrder_,sinOrder_,ts_, xs_):
@@ -22,10 +142,10 @@ class FourierFit():
         self.cosOrder  = cosOrder_
         self.sinOrder  = sinOrder_
         
-        self.ts = removeNans(copy.deepcopy(ts_))
+        self.ts = copy.deepcopy(ts_)
         self.timeScaling = float(2*np.pi/self.ts[-1])
         self.scaledTs = self.ts*self.timeScaling
-        self.xs = removeNans(copy.deepcopy(xs_))
+        self.xs = copy.deepcopy(xs_)
         self.M = []
 
         for k in range(self.ts.size):
@@ -133,80 +253,44 @@ if __name__=='__main__':
     
     # load saved trajectory
     loadfile = filename+".dat"
-    print "loading fourier coeffs: "+loadfile
+    print "loading saved trajectory: "+loadfile
     f=open(loadfile,'r')
-    opt = pickle.load(f)
+    traj = pickle.load(f)
     f.close()
     
-    polyOrder = [0,1]
-    cosOrder = range(1,14)
-    sinOrder = range(1,14)
-    
     # fit everything
-    fits = {}
-    
-    sys.stdout.write("fitting: ")
-    sys.stdout.flush()
-    for name in opt.x:
-        sys.stdout.write(name+" ")
-        sys.stdout.flush()
-        ts = opt.tgridX
-        xs = opt.x[name]
-        fits[name] = FourierFit(name, polyOrder, cosOrder, sinOrder, ts, xs)
-    sys.stdout.write('\n')
-    sys.stdout.flush()
+    orderMap = {}
+    for name in traj.dvMap._xNames:
+        orderMap[name] = {'poly':[0,1],
+                          'sin':range(1,14),
+                          'cos':range(1,14)}
+    trajFit = TrajFit(orderMap,traj)
     
     # send kite protos
-    tgrid = removeNans(opt.tgridX)
-    kiteProtos = []
-    for k in range(0,tgrid.size):
-        kiteProtos.append( npToKiteProto(opt.x,k,zt=0,kiteAlpha=0.2,lineAlpha=0.2) )
-        kiteProtos.append( fitToKiteProto(fits,k,zt=0, dz=1) )
-    mc = kite_pb2.MultiCarousel()
-    mc.css.extend(list(kiteProtos))
-    publisher.send_multipart(["multi-carousel", mc.SerializeToString()])
-    
-    def plot(plotnames):
-        plt.figure()
-        plt.clf()
-        legend = []
-        for name in plotnames:
-            legend.append(name+" fit")
-    
-            t0 = tgrid[0]
-            tf = tgrid[-1]
-            dt = tf-t0
-    
-            t0 -= 0.2*dt
-            tf += 0.2*dt
-            ts = np.linspace(t0,tf,500)
-            plt.plot(ts,[fits[name].evaluate(t) for t in ts])
-    
-            legend.append(name)
-            plt.plot(opt.tgridX,opt.x[name],'--')
-#            plt.plot(tgrid,removeNans(opt.x[name]),'--')
-            
-        plt.title("fourier fits")
-        plt.xlabel('time')
-        plt.legend(legend)
-        plt.grid()
-    
+#    kiteProtos = []
+#    for k in range(0,ts.size):
+#        kiteProtos.append( npToKiteProto(traj.x,k,zt=0,kiteAlpha=0.2,lineAlpha=0.2) )
+#        kiteProtos.append( fitToKiteProto(fits,k,zt=0, dz=1) )
+#    mc = kite_pb2.MultiCarousel()
+#    mc.css.extend(list(kiteProtos))
+#    publisher.send_multipart(["multi-carousel", mc.SerializeToString()])
+
     savefile = filename+"_fourier.dat"
     print "saving fourier coeffs: "+savefile
     f=open(savefile,'w')
-    pickle.dump(fits,f)
+    pickle.dump(trajFit,f)
     f.close()
     
     def mkPlots():
-        plot(['x','y','z'])
-        plot(['dx','dy','dz'])
-        plot(['w1','w2','w3'])
-        plot(['e11','e12','e13','e21','e22','e23','e31','e32','e33'])
-        plot(['r'])
-        plot(['dr'])
-        if 'delta' in opt.x:
-            plot(['delta'])
-        if 'ddelta' in opt.x:
-            plot(['ddelta'])
+        trajFit.plot(['x','y','z'])
+        trajFit.plot(['dx','dy','dz'])
+        trajFit.plot(['w1','w2','w3'])
+        trajFit.plot(['e11','e12','e13','e21','e22','e23','e31','e32','e33'])
+        trajFit.plot(['r'])
+        trajFit.plot(['dr'])
+        if 'delta' in traj.dvMap._xNames:
+            trajFit.plot(['delta'])
+        if 'ddelta' in traj.dvMap._xNames:
+            trajFit.plot(['ddelta'])
         plt.show()
     mkPlots()
