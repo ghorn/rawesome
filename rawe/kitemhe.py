@@ -104,17 +104,16 @@ if __name__=='__main__':
 #        obj += 1e-8*nmhe('dx',timestep=k)**2
 #        obj += 1e-8*nmhe('dz',timestep=k)**2
 #    obj += 1e-8*nmhe('m')**2
+    mhe.setObj(obj)
 
 
 #    nmhe.constrain(nmhe('dz',timestep=0)**2,'<=',1000)
 
-#    mhe.setObj(obj)
     # get u
     uTraj = C.DMatrix([[traj.lookup(name,timestep=k) for k in range(nk)] for name in dae.uNames()]).T
     endTime = traj.tgrid[1,0,0] - traj.tgrid[0,0,0]
-    print endTime
-    mhe.makeSolver(endTime)
-    mhe.runSolver(uTraj)
+    mhe.makeSolver(endTime,traj=traj)
+    mhe.runSolver(uTraj,traj)
 
 #    # callback function
 #    class MyCallback:

@@ -66,7 +66,6 @@ class Newton(object):
             for j in range(1,self.deg+1):
                 xf += self.lagrangePoly.lAtOne[j]*X_[:,j-1]
             x0_ = xf
-     
         ifcn = C.SXFunction([C.veccat([X,Z]),x0,u,p],[C.veccat(constraints),xf])
         ifcn.init()
         return ifcn

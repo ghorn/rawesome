@@ -59,7 +59,7 @@ class Nmhe(object):
     def addGaussNewtonObjF(self,gnF):
         self._gaussNewtonObjF.append(gnF)
 
-    def _setupDynamicsConstraints(self,endTime):
+    def _setupDynamicsConstraints(self,endTime,traj):
         # Todo: add parallelization
         # Todo: get endTime right
         g = []
@@ -72,13 +72,22 @@ class Nmhe(object):
             
             X0_i = self._dvMap.xVec(k)
             U_i  = self._U[k,:].T
-            newton.isolver.setOutput(1,0)
+
+            # guess
+            if traj is None:
+                newton.isolver.setOutput(1,0)
+            else:
+                X = C.DMatrix([[traj.lookup(name,timestep=k,degIdx=j) for j in range(1,traj.dvMap._deg+1)] \
+                               for name in traj.dvMap._xNames])
+                Z = C.DMatrix([[traj.lookup(name,timestep=k,degIdx=j) for j in range(1,traj.dvMap._deg+1)] \
+                               for name in traj.dvMap._zNames])
+                newton.isolver.setOutput(C.veccat([X,Z]),0)
             _, Xf_i = newton.isolver.call([X0_i,U_i,p])
             X0_i_plus = self._dvMap.xVec(k+1)
             g.append(Xf_i-X0_i_plus)
         return g
             
-    def makeSolver(self,endTime):
+    def makeSolver(self,endTime,traj=None):
         # make sure all bounds are set
         (xMissing,pMissing) = self._boundMap.getMissing()
         msg = []
@@ -94,7 +103,7 @@ class Nmhe(object):
         glb = self._constraints.getLb()
         gub = self._constraints.getUb()
 
-        gDyn = self._setupDynamicsConstraints(endTime)
+        gDyn = self._setupDynamicsConstraints(endTime,traj)
         gDynLb = gDynUb = [C.DMatrix.zeros(gg.shape) for gg in gDyn]
         
         g = C.veccat([g]+gDyn)
