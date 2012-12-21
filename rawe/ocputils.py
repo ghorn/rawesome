@@ -1,4 +1,4 @@
-import numpy
+import numpy as np
 import numbers
 
 #from models import Dae
@@ -27,37 +27,36 @@ class Constraints():
         #print "\n\nadding constraint\nlhs: "+str(lhs)+"\ncomparison: "+comparison+"\nrhs: "+str(rhs)
         if comparison=="==":
             g = lhs - rhs
-            glb = numpy.zeros(g.size())
-            gub = numpy.zeros(g.size())
+            glb = np.zeros(g.size())
+            gub = np.zeros(g.size())
             self.addBnds(g,(glb,gub),tag)
         elif comparison=="<=":
             g = lhs - rhs
-            glb = -numpy.inf*numpy.ones(g.size())
-            gub = numpy.zeros(g.size())
+            glb = -np.inf*np.ones(g.size())
+            gub = np.zeros(g.size())
             self.addBnds(g,(glb,gub),tag)
         elif comparison==">=":
             g = rhs - lhs
-            glb = -numpy.inf*numpy.ones(g.size())
-            gub = numpy.zeros(g.size())
+            glb = -np.inf*np.ones(g.size())
+            gub = np.zeros(g.size())
             self.addBnds(g,(glb,gub),tag)
         else:
             raise ValueError('Did not recognize comparison \"'+str(comparison)+'\"')
 
-    def addBnds(self,g,(glb,gub),tag):
-        assert isinstance(tag,str),'constraint tag must be a string'
+    def addBnds(self,g,(glb,gub),(tagName,tagIdx)):
         if (isinstance(glb,numbers.Real) and isinstance(gub,numbers.Real)):
-            glb = numpy.array(glb)
-            gub = numpy.array(gub)
+            glb = np.array(glb)
+            gub = np.array(gub)
 
-        assert isinstance(glb,numpy.ndarray)
-        assert isinstance(gub,numpy.ndarray)
+        assert isinstance(glb,np.ndarray)
+        assert isinstance(gub,np.ndarray)
         assert isinstance(g,C.SXMatrix) or isinstance(g,C.MX)
         assert g.size()==glb.size and g.size()==gub.size
         self._g.append(g)
         self._glb.append(glb)
         self._gub.append(gub)
         for k in range(g.size()):
-            self._tags.append( (tag,k) )
+            self._tags.append( (tagName,tagIdx,k) )
 
     def getG(self):
         return C.veccat(self._g)
@@ -66,6 +65,43 @@ class Constraints():
     def getUb(self):
         return C.veccat(self._gub)
 
+    def getViolations(self,g,lbg,ubg,reportThreshold=0):
+        """
+        Tests if g >= ubg + reportThreshold
+                 g <= lbg - reportThreshold
+        Positive reportThreshold supresses barely active bounds
+        Negative reportThreshold reports not-quite-active bounds
+        """
+        violations = {}
+
+        ubviols = g - ubg
+        lbviols = lbg - g
+        ubviolsIdx = np.where(ubviols >= reportThreshold)[0]
+        lbviolsIdx = np.where(lbviols >= reportThreshold)[0]
+        violations = {}
+        for k in ubviolsIdx:
+            (name,time,idx) = self._tags[k]
+            viol = ('ub',(time,idx),float(ubviols[k]))
+            if name not in violations:
+                violations[name] = [viol]
+            else:
+                violations[name].append(viol)
+        for k in lbviolsIdx:
+            (name,time,idx) = self._tags[k]
+            viol = ('lb',(time,idx),float(lbviols[k]))
+            if name not in violations:
+                violations[name] = [viol]
+            else:
+                violations[name].append(viol)
+        return violations
+
+    def printViolations(self,*args,**kwargs):
+#        from termcolor import colored
+        viols = self.getViolations(*args,**kwargs)
+        for name in viols:
+            vstrs = str(sorted(viols[name], key=lambda x: -x[2]))
+#            vstrs = ["("+str(degidx)+","+str(k)+","+colored(str(val))+")" for (degidx,k,val) in sorted(viols[name], key=lambda x: -x[2])]
+            print "constraint violation! \""+name+": "+vstrs[:150]
 
 class Bounds(DesignVarMap):
     descriptor = "bound"

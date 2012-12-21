@@ -27,9 +27,10 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
     def constrainInvariantErrs():
         dcm = ocp.lookup('dcm',timestep=0)
         err = C.mul(dcm.T,dcm)
-        ocp.constrain( C.veccat([err[0,0] - 1, err[1,1]-1, err[2,2] - 1, err[0,1], err[0,2], err[1,2]]), '==', 0)
-        ocp.constrain(ocp.lookup('c',timestep=0), '==', 0)
-        ocp.constrain(ocp.lookup('cdot',timestep=0), '==', 0)
+        ocp.constrain( C.veccat([err[0,0] - 1, err[1,1]-1, err[2,2] - 1, err[0,1], err[0,2], err[1,2]]), '==', 0,
+                       tag=('initial dcm',None))
+        ocp.constrain(ocp.lookup('c',timestep=0), '==', 0, tag=('initial c',None))
+        ocp.constrain(ocp.lookup('cdot',timestep=0), '==', 0, tag=('initial cdot',None))
     constrainInvariantErrs()
 
     # constrain line angle
@@ -39,15 +40,15 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
     # constrain airspeed
     def constrainAirspeedAlphaBeta():
         for k in range(0,nk):
-            ocp.constrain(ocp.lookup('airspeed',timestep=k), '>=', 5)
-            ocp.constrainBnds(ocp.lookup('alpha(deg)',timestep=k), (-5,10))
-            ocp.constrainBnds(ocp.lookup('beta(deg)', timestep=k), (-10,10))
+            ocp.constrain(ocp.lookup('airspeed',timestep=k), '>=', 5, tag=('airspeed',k))
+            ocp.constrainBnds(ocp.lookup('alpha(deg)',timestep=k), (-5,20), tag=('alpha(deg)',k))
+            ocp.constrainBnds(ocp.lookup('beta(deg)', timestep=k), (-10,10), tag=('beta(deg)',k))
     constrainAirspeedAlphaBeta()
 
     # constrain tether force
     for k in range(nk):
-        ocp.constrain( ocp.lookup('tether tension',timestep=k,degIdx=1), '>=', 0)
-        ocp.constrain( ocp.lookup('tether tension',timestep=k,degIdx=ocp.deg), '>=', 0)
+        ocp.constrain( ocp.lookup('tether tension',timestep=k,degIdx=1), '>=', 0, tag=('tether tension',(k,1)))
+        ocp.constrain( ocp.lookup('tether tension',timestep=k,degIdx=ocp.deg), '>=', 0, tag=('tether tension',(k,ocp.deg)))
 
     # bounds
     ocp.bound('aileron',(-0.04,0.04))
@@ -229,7 +230,7 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
             mc.messages.append("w0: "+str(traj.lookup('w0')))
             mc.messages.append("iter: "+str(self.iter))
             mc.messages.append("endTime: "+str(traj.lookup('endTime')))
-            mc.messages.append("average power: "+str(traj.lookup('energy',timestep=-1)/traj.lookup('endTime'))+" W")
+            mc.messages.append("average power: "+str(traj.lookup('quadrature energy',timestep=-1)/traj.lookup('endTime'))+" W")
             mc.messages.append("phase0: "+str(traj.lookup('phase0')/pi)+" * pi")
             mc.messages.append("phaseF: "+str(traj.lookup('phaseF')/pi)+" * pi")
 
@@ -237,6 +238,12 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
 #            lbx = ocp.solver.input(C.NLP_LBX)
 #            ubx = ocp.solver.input(C.NLP_UBX)
 #            ocp._bounds.printBoundsFeedback(xOpt,lbx,ubx,reportThreshold=0)
+
+            # constraints feedback
+#            lbg = ocp.solver.input(C.NLP_LBG)
+#            ubg = ocp.solver.input(C.NLP_UBG)
+#            g = numpy.array(f.input(C.NLP_G))
+#            ocp._constraints.printViolations(g,lbg,ubg,reportThreshold=0)
             
             publisher.send_multipart(["multi-carousel", mc.SerializeToString()])
 

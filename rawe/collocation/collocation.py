@@ -212,12 +212,10 @@ class Coll():
                                       self.pVec()])
                     
                     # impose system dynamics (for the differential states (eq 10.19b))
-                    self.constrain(fk[:ndiff],'==',0,tag=
-                                   "system dynamics, differential states, kIdx: %d,nicpIdx: %d, degIdx: %d" % (k,i,j))
+                    self.constrain(fk[:ndiff],'==',0,tag=("system dynamics, differential states",(k,i,j)))
                     
                     # impose system dynamics (for the algebraic states (eq 10.19b))
-                    self.constrain(fk[ndiff:],'==',0,tag=
-                                   "system dynamics, algebraic states, kIdx: %d,nicpIdx: %d, degIdx: %d" % (k,i,j))
+                    self.constrain(fk[ndiff:],'==',0,tag=("system dynamics, algebraic states",(k,i,j)))
                     
                 # Get an expression for the state at the end of the finite element
                 xf_k = 0
@@ -234,11 +232,9 @@ class Coll():
 
                 # Add continuity equation to NLP
                 if i==self.nicp-1:
-                    self.constrain(self.xVec(k+1,nicpIdx=0,degIdx=0), '==', xf_k,
-                                   tag="continuity, kIdx: %d,nicpIdx: %d" % (k,i))
+                    self.constrain(self.xVec(k+1,nicpIdx=0,degIdx=0), '==', xf_k, tag=("continuity",(k,i)))
                 else:
-                    self.constrain(self.xVec(k,nicpIdx=i+1,degIdx=0), '==', xf_k,
-                                   tag="continuity, kIdx: %d,nicpIdx: %d" % (k,i))
+                    self.constrain(self.xVec(k,nicpIdx=i+1,degIdx=0), '==', xf_k, tag=("continuity",(k,i)))
 
         # add outputs
         self._outputMapGenerator = collmaps.OutputMapGenerator(self, self._xDot)
@@ -253,10 +249,10 @@ class Coll():
     def pVec(self,*args,**kwargs):
         return self._dvMap.pVec(*args,**kwargs)
 
-    def constrain(self,lhs,comparison,rhs,tag='unnamed_constraint'):
+    def constrain(self,lhs,comparison,rhs,tag=('unnamed_constraint',None)):
         self._constraints.add(lhs,comparison,rhs,tag)
 
-    def constrainBnds(self,g,(lbg,ubg),tag='unnamed_constraint'):
+    def constrainBnds(self,g,(lbg,ubg),tag=('unnamed_constraint',None)):
         self._constraints.addBnds(g,(lbg,ubg),tag)
 
     def xSize(self):

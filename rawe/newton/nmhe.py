@@ -50,7 +50,7 @@ class Nmhe(object):
     def guess(self,name,val,timestep=None):
         self._guessMap.setVal(name,val,timestep=timestep)
 
-    def constrain(self,lhs,comparison,rhs,tag='unnamed_constraint'):
+    def constrain(self,lhs,comparison,rhs,tag=('unnamed_constraint',None)):
         self._constraints.add(lhs,comparison,rhs,tag)
         
     def setObj(self,obj):

@@ -62,12 +62,12 @@ def getOrthonormalizedDcm(ocp,k):
 
 def matchDcms(ocp,R0,Rf):
     err = C.mul(R0.T, Rf)
-    ocp.constrain(err[0,1], '==', 0)
-    ocp.constrain(err[0,2], '==', 0)
-    ocp.constrain(err[1,2], '==', 0)
+    ocp.constrain(err[0,1], '==', 0, tag=('dcm matching',"01"))
+    ocp.constrain(err[0,2], '==', 0, tag=('dcm matching',"02"))
+    ocp.constrain(err[1,2], '==', 0, tag=('dcm matching',"12"))
 
-    ocp.constrain(err[0,0], '>=', 0.5)
-    ocp.constrain(err[1,1], '>=', 0.5)
+    ocp.constrain(err[0,0], '>=', 0.5, tag=('dcm matching',"00"))
+    ocp.constrain(err[1,1], '>=', 0.5, tag=('dcm matching',"11"))
 #    ocp.constrain(err[2,2], '>=', 0.5)
 
 def periodicDcm(ocp):
