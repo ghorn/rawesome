@@ -262,7 +262,6 @@ def carouselModel(conf,nSteps=None,extraParams=[]):
               , "ddelta" # state 19
               , "r" # state 20
               , "dr" # state 21
-              , "energy" # state 22
               , "aileron"
               , "elevator"
               ] )
@@ -301,7 +300,6 @@ def carouselModel(conf,nSteps=None,extraParams=[]):
 #        dae.ddt('ddelta') - dae['dddelta'],
         dae.ddt('r') - dae['dr'],
         dae.ddt('dr') - dae['ddr'],
-        dae.ddt('energy') - dae['winch power'],
         dae.ddt('aileron') - dae['daileron'],
         dae.ddt('elevator') - dae['delevator']
         ])

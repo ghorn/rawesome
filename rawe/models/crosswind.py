@@ -248,7 +248,6 @@ def crosswindModel(conf,nSteps=None,extraParams=[]):
               , "w3"  # state 17
               , "r" # state 20
               , "dr" # state 21
-              , "energy" # state 22
               , "aileron"
               , "elevator"
               ] )
@@ -289,7 +288,6 @@ def crosswindModel(conf,nSteps=None,extraParams=[]):
 #        C.veccat([dae.ddt(name) for name in ['w1','w2','w3']]) - C.veccat([dae['dw1'],dae['dw2'],dae['dw3']]),
         dae.ddt('r') - dae['dr'],
         dae.ddt('dr') - dae['ddr'],
-        dae.ddt('energy') - dae['winch power'],
         dae.ddt('aileron') - dae['daileron'],
         dae.ddt('elevator') - dae['delevator']
         ])

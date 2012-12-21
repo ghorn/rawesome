@@ -21,6 +21,8 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
     print "setting up collocation..."
     ocp.setupCollocation(ocp.lookup('endTime'))
     
+    ocp.setQuadratureDdt('quadrature energy', 'winch power')
+    
     # constrain invariants
     def constrainInvariantErrs():
         dcm = ocp.lookup('dcm',timestep=0)
@@ -78,10 +80,7 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
     ocp.bound('phase0',(-12*pi,12*pi))
     ocp.bound('phaseF',(-12*pi,12*pi))
 
-    ocp.bound('energy',(-1e6,1e6))
-    
     # boundary conditions
-    ocp.bound('energy',(0,0),timestep=0,quiet=True)
     ocp.bound('delta',(0,0),timestep=-1,quiet=True)
     ocp.bound('ddelta',(0,0),timestep=-1,quiet=True)
 
@@ -153,7 +152,6 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
 #            finalval = float(finalfun.output(k)[0,0])) for k,name in enumerate(namesF)])
 #            ocp.guess(name,(1-alpha)*initvals[name] + alpha*finalvals[name], timestep=k)
     
-    ocp.guess('energy',0)
     ocp.guess('motor torque',0)
     ocp.guess('aileron',0)
     ocp.guess('elevator',0)
@@ -292,7 +290,7 @@ if __name__=='__main__':
     ocp.guess('phase0',0,force=True)
     
     traj = ocp.solve()
-#    print "optimal power: "+str(traj.lookup('energy',timestep=-1)/traj.lookup('endTime'))
+#    print "optimal power: "+str(traj.lookup('quadrature energy',timestep=-1)/traj.lookup('endTime'))
     
     print "saving optimal trajectory"
     traj.save("data/transition_opt.dat")
@@ -308,7 +306,7 @@ if __name__=='__main__':
         traj.subplot(['cL','cD','L/D'])
         traj.subplot(['winch power', 'tether tension'])
         traj.plot('motor torque')
-        traj.plot('energy')
+        traj.plot('quadrature energy')
 #        traj.subplot(['e11','e12','e13','e21','e22','e23','e31','e32','e33'])
         plt.show()
     plotResults()

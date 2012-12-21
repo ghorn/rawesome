@@ -31,7 +31,6 @@ x0 = C.DMatrix( [ 1.154244772411
                 , 0.137035790811
                 , 3.664945343102
                 , -1.249768772258
-                , 0.000000000000
                 , 3.874600000000
                 , 0.0
                 ])
@@ -110,12 +109,10 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
     ocp.bound('motor torque',(-1000,1000))
     ocp.bound('endTime',(0.5,7.0))
     ocp.bound('w0',(10,10))
-    ocp.bound('energy',(-1e6,1e6))
 
     # boundary conditions
     ocp.bound('delta',(0,0),timestep=0)
     ocp.bound('delta',(2*pi,2*pi),timestep=-1)
-    ocp.bound('energy',(0,0),timestep=0,quiet=True)
     
     # objective function
     obj = 0
@@ -253,8 +250,6 @@ if __name__=='__main__':
     print "saving optimal trajectory"
     traj.save("data/carousel_opt.dat")
 
-    print "optimal power: "+str(traj.lookup('energy',timestep=-1)/traj.lookup('endTime'))
-    
     # Plot the results
     def plotResults():
         traj.plot(['x','y','z'])
@@ -266,7 +261,6 @@ if __name__=='__main__':
         traj.subplot(['cL','cD','L/D'])
         traj.subplot(['motor torque','motor power'])
         traj.subplot(['winch power','tether tension'])
-        traj.plot('energy')
         traj.subplot(['e11','e12','e13','e21','e22','e23','e31','e32','e33'])
         plt.show()
     plotResults()

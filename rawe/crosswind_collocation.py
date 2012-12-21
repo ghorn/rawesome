@@ -59,8 +59,6 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4,collPoly='RADAU'):
         ocp.constrain(ocp.lookup(name,timestep=0),'==',ocp.lookup(name,timestep=-1))
 
     # periodic attitude
-#    kiteutils.periodicEulers(ocp)
-#    kiteutils.periodicOrthonormalizedDcm(ocp)
     kiteutils.periodicDcm(ocp)
 
     # bounds
@@ -90,10 +88,8 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4,collPoly='RADAU'):
 
     ocp.bound('endTime',(0.5,20))
     ocp.bound('w0',(10,10))
-    ocp.bound('energy',(-1e6,1e6))
 
     # boundary conditions
-    ocp.bound('energy',(0,0),timestep=0,quiet=True)
 #    ocp.bound('y',(0,0),timestep=0,quiet=True)
 
     # guesses
@@ -118,6 +114,7 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4,collPoly='RADAU'):
         
         obj += ailObj + eleObj + winchObj
     ocp.setObjective( 1e0*obj/nk + ocp.lookup('energy',timestep=-1)/ocp.lookup('endTime') )
+    ocp.setQuadratureDdt('quadrature energy', 'winch power')
 
     return ocp
 
@@ -164,7 +161,7 @@ if __name__=='__main__':
             mc.messages.append("w0: "+str(traj.lookup('w0')))
             mc.messages.append("iter: "+str(self.iter))
             mc.messages.append("endTime: "+str(traj.lookup('endTime')))
-            mc.messages.append("average power: "+str(traj.lookup('energy',timestep=-1)/traj.lookup('endTime'))+" W")
+            mc.messages.append("average power: "+str(traj.lookup('quadrature energy',timestep=-1)/traj.lookup('endTime'))+" W")
 
             # bounds feedback
 #            lbx = ocp.solver.input(C.NLP_LBX)
@@ -203,7 +200,7 @@ if __name__=='__main__':
     traj = ocp.solve()
 
     
-    print "optimal power: "+str(traj.lookup('energy',-1)/traj.lookup('endTime'))
+    print "optimal power: "+str(traj.lookup('quadrature energy',-1)/traj.lookup('endTime'))
     print "endTime: "+str(traj.lookup('endTime'))
 
     print "saving optimal trajectory"
@@ -233,6 +230,9 @@ if __name__=='__main__':
         traj.plot('energy')
         traj.subplot(['w1','w2','w3'])
         traj.subplot(['e11','e12','e13','e21','e22','e23','e31','e32','e33'])
+        traj.plot('quadrature energy')
+#        traj.subplot(['energy','quadrature energy'])
+#        traj.plot(['energy','quadrature energy'])
         
         plt.show()
     plotResults()
