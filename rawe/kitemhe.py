@@ -51,10 +51,8 @@ if __name__=='__main__':
 #    mhe.bound('endTime',(0.5,10))
 #    mhe.bound('endTime',(0.5,numLoops*7))
     mhe.bound('w0',(10,10))
-    mhe.bound('energy',(-1e6,1e6))
 
     # boundary conditions
-#    mhe.bound('energy',(0,0),timestep=0)
 #    mhe.bound('y',(0,0),timestep=0)
 
     # guesses
@@ -145,7 +143,7 @@ if __name__=='__main__':
 #            mc.messages.append("w0: "+str(traj.lookup('w0')))
 #            mc.messages.append("iter: "+str(self.iter))
 #            mc.messages.append("endTime: "+str(traj.lookup('endTime')))
-#            mc.messages.append("average power: "+str(traj.lookup('energy',timestep=-1)/traj.lookup('endTime'))+" W")
+#            mc.messages.append("average power: "+str(traj.lookup('quadrature energy',timestep=-1)/traj.lookup('endTime'))+" W")
 #
 #            # bounds feedback
 ##            lbx = mhe.solver.input(C.NLP_LBX)
