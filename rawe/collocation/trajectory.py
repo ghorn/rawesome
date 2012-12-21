@@ -50,7 +50,7 @@ class Trajectory(object):
             return self.quadratureMap.lookup(name,timestep,nicpIdx,degIdx)
         except NameError:
             pass
-        raise NameError("lookup fail, unrecognized name "+args[0])
+        raise NameError("lookup fail, unrecognized name \""+name+"\"")
 
     def save(self,filename):
         assert isinstance(filename,str), "filename must be a string"
