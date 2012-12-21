@@ -64,40 +64,68 @@ class LagrangePoly(object):
             
         return ret
 
-def boundsFeedback(x,lbx,ubx,bndtags,tolerance=0):
-    violations = {}
-    
-    length = None
-    if hasattr(x,'size'):
-        if isinstance(x,list):
-            length = len(x)
-        elif hasattr(x,'size'):
-            if hasattr(x.size,'__call__'):
-                length = x.size()
-            else:
-                length = x.size
-    if length is None:
-        raise ValueError("couldn't determine length of x")
+class BoundsMap(collmaps.WriteableCollMap):
+    def __init__(self,ocp,name):
+        collmaps.WriteableCollMap.__init__(self,ocp,name)
+        
+        # tags for the bounds
+        bndtags = []
+        for name in ocp.dae.pNames():
+            bndtags.append((name,None))
+        for k in range(ocp.nk):  
+            for i in range(ocp.nicp):
+                for j in range(ocp.deg+1):
+                    if k==0 and j==0 and i==0:
+                        for name in ocp.dae.xNames():
+                            bndtags.append((name,(k,i,j)))
+                    else:
+                        if j!=0:
+                            for name in ocp.dae.xNames()+ocp.dae.zNames():
+                                bndtags.append((name,(k,i,j)))
+                        else:
+                            for name in ocp.dae.xNames():
+                                bndtags.append((name,(k,i,j)))
+            for name in ocp.dae.uNames():
+                bndtags.append((name,(k,i,j)))
+        for name in ocp.dae.xNames():
+            bndtags.append((name,(ocp.nk,0,0)))
 
-    for k in range(0,length):
-        ubviol = x[k] - ubx[k]
-        if ubviol > tolerance:
-            (tagname,tagstep) = bndtags[k]
-            err = (tagstep,'ub',float(ubviol))
-            if tagname in violations:
-                violations[tagname].append(err)
+        self.bndtags = bndtags
+        
+    def boundsFeedback(self,x,lbx,ubx,reportThreshold=0):
+        """
+        Tests if x >= ub + reportThreshold
+                 x <= lb - reportThreshold
+        Positive reportThreshold supresses barely active bounds
+        Negative reportThreshold reports not-quite-active bounds
+        """
+        violations = {}
+
+        ubviols = x - ubx
+        lbviols = lbx - x
+        ubviolsIdx = np.where(ubviols >= reportThreshold)[0]
+        lbviolsIdx = np.where(lbviols >= reportThreshold)[0]
+        violations = {}
+        for k in ubviolsIdx:
+            (name,time) = self.bndtags[k]
+            viol = ('ub',time,float(ubviols[k]))
+            if name not in violations:
+                violations[name] = [viol]
             else:
-                violations[tagname] = [err]
-        else:
-            lbviol = lbx[k] - x[k]
-            if lbviol > tolerance:
-                (tagname,tagstep) = bndtags[k]
-                err = (tagstep,'lb',float(lbviol))
-                if tagname in violations:
-                    violations[tagname].append(err)
-                else:
-                    violations[tagname] = [err]
-    return violations
+                violations[name].append(viol)
+        for k in lbviolsIdx:
+            (name,time) = self.bndtags[k]
+            viol = ('lb',time,float(lbviols[k]))
+            if name not in violations:
+                violations[name] = [viol]
+            else:
+                violations[name].append(viol)
+        return violations
+
+    def printBoundsFeedback(self,*args,**kwargs):
+        viols = self.boundsFeedback(*args,**kwargs)
+        for name in viols:
+            print "bound violation! \"",name,": ",viols[name]
 
 class Coll():
     collocationIsSetup = False
@@ -112,7 +140,7 @@ class Coll():
         self.deg = deg
         self.collPoly = collPoly
 
-        self._bounds = collmaps.WriteableCollMap(self,"bounds")
+        self._bounds = BoundsMap(self,"bounds")
         self._guess = collmaps.WriteableCollMap(self,"guess")
 
         self._constraints = Constraints()
@@ -122,30 +150,6 @@ class Coll():
 
         # quadratures
         self._quadratureManager = collmaps.QuadratureManager(self)
-
-        # tags for the bounds
-        bndtags = []
-        for name in self.dae.pNames():
-            bndtags.append((name,None))
-        for k in range(nk):  
-            for i in range(nicp):
-                for j in range(deg+1):
-                    if k==0 and j==0 and i==0:
-                        for name in self.dae.xNames():
-                            bndtags.append((name,(k,i,j)))
-                    else:
-                        if j!=0:
-                            for name in self.dae.xNames()+self.dae.zNames():
-                                bndtags.append((name,(k,i,j)))
-                        else:
-                            for name in self.dae.xNames():
-                                bndtags.append((name,(k,i,j)))
-            for name in self.dae.uNames():
-                bndtags.append((name,(k,i,j)))
-        for name in self.dae.xNames():
-            bndtags.append((name,(nk,0,0)))
-
-        self.bndtags = bndtags
 
 
     def setQuadratureDdt(self,quadratureStateName,quadratureStateDotName):

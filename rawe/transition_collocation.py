@@ -7,7 +7,7 @@ import zmq
 from fourier_fit import FourierFit,TrajFit
 import pickle
 
-from collocation import Coll,boundsFeedback,trajectory
+from collocation import Coll,trajectory
 from config import readConfig
 import kiteutils
 import kite_pb2
@@ -233,13 +233,10 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
             mc.messages.append("phase0: "+str(traj.lookup('phase0')/pi)+" * pi")
             mc.messages.append("phaseF: "+str(traj.lookup('phaseF')/pi)+" * pi")
 
-#            # bounds feedback
+             # bounds feedback
 #            lbx = ocp.solver.input(C.NLP_LBX)
 #            ubx = ocp.solver.input(C.NLP_UBX)
-#            violations = boundsFeedback(xOpt,lbx,ubx,ocp.bndtags,tolerance=1e-9)
-#            for name in violations:
-#                violmsg = "violation!: "+name+": "+str(violations[name])
-#                mc.messages.append(violmsg)
+#            ocp._bounds.printBoundsFeedback(xOpt,lbx,ubx,reportThreshold=0)
             
             publisher.send_multipart(["multi-carousel", mc.SerializeToString()])
 

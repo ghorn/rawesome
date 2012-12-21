@@ -6,7 +6,7 @@ from numpy import pi
 import zmq
 import pickle
 
-from collocation import Coll,boundsFeedback,trajectory
+from collocation import Coll,trajectory
 from config import readConfig
 import kiteutils
 import kite_pb2
@@ -166,14 +166,10 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
             mc.messages.append("endTime: "+str(traj.lookup('endTime')))
             mc.messages.append("iter: "+str(self.iter))
 
-#            # bounds feedback
+             # bounds feedback
 #            lbx = ocp.solver.input(C.NLP_LBX)
 #            ubx = ocp.solver.input(C.NLP_UBX)
-#
-#            violations = boundsFeedback(xOpt,lbx,ubx,ocp.bndtags)
-#            for name in violations:
-#                print "violation!: "+name+": "+str(violations[name])
-#                mc.messages.append(name+": "+str(violations[name]))
+#            ocp._bounds.printBoundsFeedback(xOpt,lbx,ubx,reportThreshold=0)
             
             publisher.send_multipart(["multi-carousel", mc.SerializeToString()])
 

@@ -7,7 +7,7 @@ import zmq
 import pickle
 
 import crosswind_collocation
-from collocation import Coll,boundsFeedback,trajectory
+from collocation import Coll,trajectory
 from config import readConfig
 import kiteutils
 import kite_pb2
@@ -261,13 +261,10 @@ if __name__=='__main__':
             mc.messages.append("average power: "+str(traj.lookup('energy',timestep=-1)/traj.lookup('endTime'))+" W")
             mc.messages.append("homotopy gamma: "+str(traj.lookup('gamma_homotopy')))
 
-            # bounds feedback
+             # bounds feedback
 #            lbx = ocp.solver.input(C.NLP_LBX)
 #            ubx = ocp.solver.input(C.NLP_UBX)
-#            violations = boundsFeedback(xOpt,lbx,ubx,ocp.bndtags,tolerance=1e-9)
-#            for name in violations:
-#                violmsg = "violation!: "+name+": "+str(violations[name])
-#                mc.messages.append(violmsg)
+#            ocp._bounds.printBoundsFeedback(xOpt,lbx,ubx,reportThreshold=0)
             
             publisher.send_multipart(["multi-carousel", mc.SerializeToString()])
 
@@ -310,12 +307,10 @@ if __name__=='__main__':
     traj.save("data/crosswind_homotopy.dat")
 
     def printBoundsFeedback():
-#        (_,lbx,ubx) = ocp._vectorizeBoundsAndGuess( ocp._parseBoundsAndGuess(False,False) )
+        # bounds feedback
         lbx = ocp.solver.input(C.NLP_LBX)
         ubx = ocp.solver.input(C.NLP_UBX)
-        violations = boundsFeedback(opt['X_OPT'],lbx,ubx,ocp.bndtags,tolerance=0.5)
-        for name in violations:
-            print "violation!: "+name+": "+str(violations[name])
+        ocp._bounds.printBoundsFeedback(xOpt,lbx,ubx,reportThreshold=0)
 #    printBoundsFeedback()
 
     # Plot the results
