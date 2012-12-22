@@ -16,8 +16,13 @@ executable kitesim
                      hmatrix,
                      protocol-buffers,
                      bytestring,
-                     zeromq-haskell,
                      ekg
+  if os(OSX)
+    cpp-options:     -DOSX
+    build-depends:   zeromq3-haskell
+  else
+    build-depends:   zeromq-haskell
+
   ghc-options:       -O2 -threaded -with-rtsopts=-T
 
 executable multicarousel
@@ -32,8 +37,13 @@ executable multicarousel
                      hmatrix,
                      protocol-buffers,
                      bytestring,
-                     zeromq-haskell,
                      ekg
+  if os(OSX)
+    cpp-options:     -DOSX
+    build-depends:   zeromq3-haskell
+  else
+    build-depends:   zeromq-haskell
+
   ghc-options:       -O2 -threaded -with-rtsopts=-T
 
 executable pendopt
@@ -45,6 +55,11 @@ executable pendopt
                      spatial-math,
                      protocol-buffers,
                      bytestring,
-                     zeromq-haskell,
                      ekg
+  if os(OSX)
+    cpp-options:     -DOSX
+    build-depends:   zeromq3-haskell
+  else
+    build-depends:   zeromq-haskell
+
   ghc-options:       -O2 -threaded -with-rtsopts=-T

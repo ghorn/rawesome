@@ -1,12 +1,17 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# Language DoAndIfThenElse #-}
 {-# Language OverloadedStrings #-}
+{-# Language CPP #-}
 
 module Main where
 
 import Data.Foldable ( toList )
 import Data.Maybe ( fromMaybe )
+#if OSX
+import qualified System.ZMQ3 as ZMQ
+#else
 import qualified System.ZMQ as ZMQ
+#endif
 import Control.Concurrent ( MVar, forkIO, modifyMVar_, newMVar, readMVar)
 import Control.Monad ( forever )
 import qualified Data.ByteString.Lazy as BL
@@ -168,15 +173,20 @@ updateState ko _ = return $ Just ko
 
 sub :: String -> MVar State -> IO ()
 sub ip m = ZMQ.withContext 1 $ \context -> do
+#if OSX
+  let receive = ZMQ.receive
+#else
+  let receive = flip ZMQ.receive []
+#endif
   ZMQ.withSocket context ZMQ.Sub $ \subscriber -> do
     ZMQ.connect subscriber ip
     ZMQ.subscribe subscriber "multi-carousel"
     forever $ do
-      _ <- ZMQ.receive subscriber []
+      _ <- receive subscriber
       mre <- ZMQ.moreToReceive subscriber
       if mre
       then do
-        msg <- ZMQ.receive subscriber []
+        msg <- receive subscriber
         let cs = case messageGet (BL.fromChunks [msg]) of
               Left err -> error err
               Right (cs',_) -> cs'
