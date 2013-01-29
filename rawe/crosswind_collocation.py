@@ -30,8 +30,8 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4,collPoly='RADAU'):
     constrainInvariantErrs()
 
     # constrain line angle
-    for k in range(0,nk+1):
-        ocp.constrain(kiteutils.getCosLineAngle(ocp,k),'>=',C.cos(55*pi/180), tag=('line angle',k))
+    for k in range(0,nk):
+        ocp.constrain(ocp.lookup('cos(line angle)',timestep=k),'>=',C.cos(55*pi/180), tag=('line angle',k))
 
     # constrain airspeed
     def constrainAirspeedAlphaBeta():

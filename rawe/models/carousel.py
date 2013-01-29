@@ -287,6 +287,11 @@ def carouselModel(conf,nSteps=None,extraParams=[]):
                             C.horzcat([dae['e21'],dae['e22'],dae['e23']]),
                             C.horzcat([dae['e31'],dae['e32'],dae['e33']])])
     
+    # line angle
+    dae['cos(line angle)'] = \
+      (dae['e31']*dae['x'] + dae['e32']*dae['y'] + dae['e33']*dae['z']) / C.sqrt(dae['x']**2 + dae['y']**2 + dae['z']**2)
+    dae['line angle (deg)'] = C.arccos(dae['cos(line angle)'])*180.0/C.pi
+
     (massMatrix, rhs, dRexp) = setupModel(dae, conf)
 
     ode = C.veccat([

@@ -307,6 +307,10 @@ def crosswindModel(conf,nSteps=None,extraParams=[]):
     dae['accel'] = C.sqrt(ddx**2 + ddy**2 + (ddz+9.8)**2)
     dae['accel without gravity'] = C.sqrt(ddx**2 + ddy**2 + ddz**2)
 
+    # line angle
+    dae['cos(line angle)'] = \
+      (dae['e31']*dae['x'] + dae['e32']*dae['y'] + dae['e33']*dae['z']) / C.sqrt(dae['x']**2 + dae['y']**2 + dae['z']**2)
+    dae['line angle (deg)'] = C.arccos(dae['cos(line angle)'])*180.0/C.pi
 
     # add local loyd's limit
     def addLoydsLimit():
