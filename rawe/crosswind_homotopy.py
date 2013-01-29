@@ -88,10 +88,8 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
     ocp.bound('endTime',(1.8,1.8))
     ocp.guess('endTime',1.8)
     ocp.bound('w0',(10,10))
-    ocp.bound('energy',(-1e6,1e6))
 
     # boundary conditions
-    ocp.bound('energy',(0,0),timestep=0,quiet=True)
     ocp.bound('y',(0,0),timestep=0,quiet=True)
     
     return ocp
@@ -258,7 +256,6 @@ if __name__=='__main__':
             mc.messages.append("w0: "+str(traj.lookup('w0')))
             mc.messages.append("iter: "+str(self.iter))
             mc.messages.append("endTime: "+str(traj.lookup('endTime')))
-            mc.messages.append("average power: "+str(traj.lookup('energy',timestep=-1)/traj.lookup('endTime'))+" W")
             mc.messages.append("homotopy gamma: "+str(traj.lookup('gamma_homotopy')))
 
              # bounds feedback
@@ -290,7 +287,6 @@ if __name__=='__main__':
     print "setting up solver..."
     ocp.setupSolver( solverOpts=solverOptions,
                      callback=MyCallback() )
-    ocp.guess('energy',0)
 
     xInit = None
     ocp.bound('gamma_homotopy',(1e-4,1e-4),force=True)
@@ -326,7 +322,6 @@ if __name__=='__main__':
         traj.subplot([['alpha(deg)','alphaTail(deg)'],['beta(deg)','betaTail(deg)']])
         traj.subplot(['cL','cD','L/D'])
         traj.subplot(['winch power', 'tether tension'])
-        traj.plot('energy')
         traj.subplot(['w1','w2','w3'])
         traj.subplot(['e11','e12','e13','e21','e22','e23','e31','e32','e33'])
         plt.show()
