@@ -23,31 +23,32 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4,collPoly='RADAU'):
     def constrainInvariantErrs():
         dcm = ocp.lookup('dcm',timestep=0)
         err = C.mul(dcm.T,dcm)
-        ocp.constrain( C.veccat([err[0,0] - 1, err[1,1]-1, err[2,2] - 1, err[0,1], err[0,2], err[1,2]]), '==', 0)
-        ocp.constrain(ocp.lookup('c',timestep=0), '==', 0)
-        ocp.constrain(ocp.lookup('cdot',timestep=0), '==', 0)
+        ocp.constrain( C.veccat([err[0,0] - 1, err[1,1]-1, err[2,2] - 1, err[0,1], err[0,2], err[1,2]]), '==', 0, tag=
+                       ("initial dcm orthonormal",None))
+        ocp.constrain(ocp.lookup('c',timestep=0), '==', 0, tag=('c(0)==0',None))
+        ocp.constrain(ocp.lookup('cdot',timestep=0), '==', 0, tag=('cdot(0)==0',None))
     constrainInvariantErrs()
 
     # constrain line angle
     for k in range(0,nk+1):
-        ocp.constrain(kiteutils.getCosLineAngle(ocp,k),'>=',C.cos(55*pi/180))
+        ocp.constrain(kiteutils.getCosLineAngle(ocp,k),'>=',C.cos(55*pi/180), tag=('line angle',k))
 
     # constrain airspeed
     def constrainAirspeedAlphaBeta():
         for k in range(0,nk):
-            ocp.constrain(ocp.lookup('airspeed',timestep=k), '>=', 10)
-            ocp.constrainBnds(ocp.lookup('alpha(deg)',timestep=k), (-5,20))
-            ocp.constrainBnds(ocp.lookup('beta(deg)', timestep=k), (-10,10))
+            ocp.constrain(ocp.lookup('airspeed',timestep=k), '>=', 10, tag=('airspeed',k))
+            ocp.constrainBnds(ocp.lookup('alpha(deg)',timestep=k), (-10,30), tag=('alpha(deg)',k))
+            ocp.constrainBnds(ocp.lookup('beta(deg)', timestep=k), (-10,10), tag=('beta(deg)',k))
     constrainAirspeedAlphaBeta()
     def constrainCl():
         for k in range(0,nk):
-            ocp.constrain(ocp.lookup('cL',timestep=k), '<=', 1.4)
+            ocp.constrain(ocp.lookup('cL',timestep=k), '<=', 2.0, tag=('cL',k))
     constrainCl()
 
     # constrain tether force
     for k in range(nk):
-        ocp.constrain( ocp.lookup('tether tension',timestep=k,degIdx=1), '>=', 0)
-        ocp.constrain( ocp.lookup('tether tension',timestep=k,degIdx=ocp.deg), '>=', 0)
+        ocp.constrain( ocp.lookup('tether tension',timestep=k,degIdx=1), '>=', 0, tag=('tether tension',k))
+        ocp.constrain( ocp.lookup('tether tension',timestep=k,degIdx=ocp.deg), '>=', 0, tag=('tether tension',k))
 
     # make it periodic
     for name in [ "y","z",
@@ -56,7 +57,7 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4,collPoly='RADAU'):
                   "r","dr",
                   'aileron','elevator'
                   ]:
-        ocp.constrain(ocp.lookup(name,timestep=0),'==',ocp.lookup(name,timestep=-1))
+        ocp.constrain(ocp.lookup(name,timestep=0),'==',ocp.lookup(name,timestep=-1), tag=('periodic diff state \"'+name+'"',None))
 
     # periodic attitude
     kiteutils.periodicDcm(ocp)
