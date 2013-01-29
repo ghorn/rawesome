@@ -235,15 +235,15 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
             mc.messages.append("phaseF: "+str(traj.lookup('phaseF')/pi)+" * pi")
 
              # bounds feedback
-#            lbx = ocp.solver.input(C.NLP_LBX)
-#            ubx = ocp.solver.input(C.NLP_UBX)
-#            ocp._bounds.printBoundsFeedback(xOpt,lbx,ubx,reportThreshold=0)
+            lbx = ocp.solver.input(C.NLP_LBX)
+            ubx = ocp.solver.input(C.NLP_UBX)
+            ocp._bounds.printBoundsFeedback(xOpt,lbx,ubx,reportThreshold=0)
 
             # constraints feedback
-#            lbg = ocp.solver.input(C.NLP_LBG)
-#            ubg = ocp.solver.input(C.NLP_UBG)
-#            g = numpy.array(f.input(C.NLP_G))
-#            ocp._constraints.printViolations(g,lbg,ubg,reportThreshold=0)
+            lbg = ocp.solver.input(C.NLP_LBG)
+            ubg = ocp.solver.input(C.NLP_UBG)
+            g = numpy.array(f.input(C.NLP_G))
+            ocp._constraints.printViolations(g,lbg,ubg,reportThreshold=0)
             
             publisher.send_multipart(["multi-carousel", mc.SerializeToString()])
 

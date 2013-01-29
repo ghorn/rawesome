@@ -204,11 +204,19 @@ if __name__=='__main__':
     traj.save("data/crosswind_opt.dat")
 
     def printBoundsFeedback():
+        xOpt = traj.dvMap.vectorize()
         lbx = ocp.solver.input(C.NLP_LBX)
         ubx = ocp.solver.input(C.NLP_UBX)
         ocp._bounds.printBoundsFeedback(xOpt,lbx,ubx,reportThreshold=0)
     printBoundsFeedback()
 
+    lbg = ocp.solver.input(C.NLP_LBG)
+    ubg = ocp.solver.input(C.NLP_UBG)
+    ocp._gfcn.setInput(traj.getDvs(),0)
+    ocp._gfcn.evaluate()
+    g = ocp._gfcn.output()
+    
+    ocp._constraints.printViolations(g,lbg,ubg,reportThreshold=0)
     # Plot the results
     def plotResults():
         traj.subplot(['x','y','z'])

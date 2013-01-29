@@ -459,6 +459,8 @@ class Coll():
         self.solver.setInput(lbg,CS.NLP_LBG)
         self.solver.setInput(ubg,CS.NLP_UBG)
 
+        self._gfcn = gfcn
+
     def solve(self,xInit=None,warnZBounds=False,warnZGuess=False):
         for name in self.dae.zNames():
             for k in range(self.nk):
