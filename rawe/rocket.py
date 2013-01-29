@@ -15,8 +15,8 @@ if __name__ == "__main__":
     dae['vel*vel'] = vel*vel
 
     dae.setOdeRes([dae.ddt('pos') - vel,
-                   dae.ddt('vel') - (thrust - 0.05*vel*vel)/mass,
-                   dae.ddt('mass') - -0.1*thrust*thrust])
+                   dae.ddt('vel') - thrust/mass,
+                   dae.ddt('mass') - 0.1*thrust*thrust])
 
     dae.setAlgRes([zdummy])
 
@@ -31,7 +31,7 @@ if __name__ == "__main__":
     ocp.bound('thrust',(-0.9,0.8))
     ocp.bound('pos',(-10,10))
     ocp.bound('vel',(-10,10))
-    ocp.bound('mass',(0,1000))
+    ocp.bound('mass',(0.001,1000))
 
     # boundary conditions
     ocp.bound('pos',(0,0),timestep=0)
@@ -47,7 +47,8 @@ if __name__ == "__main__":
     ocp.guess("mass",1)
     ocp.guess("thrust",0)
     
-    ocp.setQuadratureDdt('integral vel*vel','vel*vel')
+#    ocp.setQuadratureDdt('integral vel*vel','vel*vel')
+#    ocp.setQuadratureDdt('integral vel*vel2','vel*vel')
 
     # lookup states/actions/outputs/params
     thrust4 = ocp.lookup('thrust',timestep=4)
@@ -57,14 +58,15 @@ if __name__ == "__main__":
 #    posvel4_2 = ocp('pos*vel',timestep=4, degIdx=2)
 
     # add nonlinear constraint
-#    ocp.constrain(thrust4, '<=', posvel4_2**2)
+    ocp.constrain(thrust4, '<=', posvel4_2**2)
+    thrust4 <= posvel4_2**2
 
     # fix objective and setup solver
     obj = sum([ocp('thrust',timestep=k)**2
                for k in range(ocp.nk)])
     ocp.setObjective(obj)
 #    ocp.setObjective(ocp.lookup('integral vel*vel',timestep=-1))
-    
+
     solverOptions = [ ("expand_f",True)
                     , ("expand_g",True)
                     , ("generate_hessian",True)
@@ -75,15 +77,33 @@ if __name__ == "__main__":
 #    ocp.interpolateInitialGuess("data/rocket_opt.dat",force=True,quiet=True,numLoops=1)
     traj = ocp.solve()
 
+#    maxErr = 0.0
+#    for k in range(ocp.nk):
+#        for d in range(ocp.deg+1):
+#            n1 = traj.lookup('integral vel*vel',timestep=k,nicpIdx=0,degIdx=d)
+#            n2 = traj.lookup('integral vel*vel2',timestep=k,nicpIdx=0,degIdx=d)
+#            err = 100.0*(n1-n2)/(n1+1e-12)
+#            if abs(err) > abs(maxErr):
+#                maxErr = float(err)
+#    n1 = traj.lookup('integral vel*vel',timestep=-1)
+#    n2 = traj.lookup('integral vel*vel2',timestep=-1)
+#    err = 100.0*(n1-n2)/(n1+1e-12)
+#    if abs(err) > abs(maxErr):
+#        maxErr = float(err)
+#    print "maxErr: "+str(err)+" %"
+
+
     print "final position: "+str(traj.lookup('pos',-1))
     
     # save trajectory
     traj.save("data/rocket_opt.dat")
 
     # plot results
-    traj.plot('pos')
+#    traj.plot('pos')
     traj.plot(['pos','vel'])
-    traj.subplot([['pos','vel'],['thrust']])
-    traj.plot('pos*vel')
-    traj.plot('integral vel*vel')
+    traj.plot('thrust')
+#    traj.subplot([['pos','vel'],['thrust']])
+#    traj.plot('pos*vel')
+#    traj.subplot(['integral vel*vel','integral vel*vel2'])
+#    traj.plot(['integral vel*vel','integral vel*vel2'])
     plt.show()
