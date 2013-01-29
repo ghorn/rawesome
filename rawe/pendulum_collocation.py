@@ -87,6 +87,14 @@ def main():
                     , ("max_iter",10000)
                     , ("tol",1e-8)
                     ]
+#    solverOptions = [ ("Timeout", 1e6),
+#                      ("UserHM", True)]
+#                      ("ScaleConIter",True),
+#                      ("ScaledFD",True),
+#                      ("ScaledKKT",True),
+#                      ("ScaledObj",True),
+#                      ("ScaledQP",True)]
+    
     constraintFunOptions = [('numeric_jacobian',False)]
 
     # initial conditions

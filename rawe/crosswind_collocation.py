@@ -189,21 +189,25 @@ if __name__=='__main__':
 
 
     # solver
-    solverOptions = [ ("expand_f",True)
-                    , ("expand_g",True)
-                    , ("generate_hessian",True)
-#                     ,("qp_solver",C.NLPQPSolver)
-#                     ,("qp_solver_options",{'nlp_solver': C.IpoptSolver, "nlp_solver_options":{"linear_solver":"ma57"}})
-                    , ("linear_solver","ma57")
-                    , ("max_iter",1000)
-                    , ("tol",1e-8)
-#                    , ("Timeout", 1e6)
-#                    , ("UserHM", True)
-#                    , ("ScaleConIter",True)
-#                    , ("ScaledFD",True)
-#                    , ("ScaledKKT",True)
-#                    , ("ScaledObj",True)
-#                    , ("ScaledQP",True)
+    solverOptions = [("expand_f",True),
+                     ("expand_g",True),
+                     ("generate_hessian",True),
+                    ("linear_solver","ma57"),
+                    ("max_iter",1000),
+                    ("tol",1e-12),
+#                     ("qp_solver",C.NLPQPSolver),
+#                     ("qp_solver_options",{'nlp_solver': C.IpoptSolver, "nlp_solver_options":{"linear_solver":"ma57"}}),
+#                    ("warm_start_init_point","yes"),
+#                    ("warm_start_bound_push",1e-11),
+#                    ("warm_start_mult_bound_push",1e-11),
+#                    ("mu_init",1e-11),
+#                    ("Timeout", 1e6),
+#                    ("UserHM", True),
+#                    ("ScaleConIter",True),
+#                    ("ScaledFD",True),
+#                    ("ScaledKKT",True),
+#                    ("ScaledObj",True),
+#                    ("ScaledQP",True)
                     ]
     
     print "setting up solver..."
