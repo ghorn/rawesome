@@ -12,6 +12,22 @@ import kiteproto
 import models
 
 def setupOcp(dae,conf,publisher,nk,nicp,deg,collPoly):
+    def addCosts():
+        ddr = dae['ddr']
+        daileron = dae['daileron']
+        delevator = dae['delevator']
+
+        daileronSigma = 0.01
+        delevatorSigma = 0.8
+        ddrSigma = 20.0
+
+        nkf = float(nk)
+
+        dae['daileronCost'] = 1e2*daileron*daileron / (daileronSigma*daileronSigma*nkf)
+        dae['delevatorCost'] = 1e2*delevator*delevator / (delevatorSigma*delevatorSigma*nkf)
+        dae['ddrCost'] = 1e2*ddr*ddr / (ddrSigma*ddrSigma*nkf)
+    addCosts()
+
     ocp = Coll(dae, nk=nk, nicp=nicp, deg=deg, collPoly=collPoly)
     
     print "setting up collocation..."
@@ -127,6 +143,8 @@ if __name__=='__main__':
 
     print "reading config..."
     conf = readConfig('config.ini','configspec.ini')
+#    nk = 60*numLoops
+    nk = 70
     
     print "creating model..."
     dae = models.crosswind(conf,extraParams=['endTime'])
@@ -137,7 +155,7 @@ if __name__=='__main__':
     deg = 4
     collPoly='RADAU'
     #collPoly='LEGENDRE'
-    ocp = setupOcp(dae,conf,publisher,conf['nk'],nicp,deg,collPoly)
+    ocp = setupOcp(dae,conf,publisher,nk,nicp,deg,collPoly)
 
     # callback function
     class MyCallback:

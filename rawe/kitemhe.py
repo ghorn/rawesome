@@ -16,7 +16,6 @@ if __name__=='__main__':
     print "reading config..."
 #    conf = readConfig('stingray.ini','configspec.ini')
     conf = readConfig('config.ini','configspec.ini')
-    conf['nk'] = 40
     
     print "creating model..."
     dae = models.crosswind(conf)#,extraParams=['endTime'])
