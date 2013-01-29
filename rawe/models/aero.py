@@ -42,12 +42,10 @@ def aeroForcesTorques(dae, conf, we, wE, (w1,w2,w3), (eTe1, eTe2, eTe3), (ailero
 
     #TAIL LENGTH
     lT = conf['kite']['lT']
-    
-    AR = conf['kite']['AR']
-    area = conf['kite']['area']
-    
-    span = C.sqrt(area*AR)
-    chord = C.sqrt(area/AR)
+
+    sref = conf['kite']['sref']
+    bref = conf['kite']['bref']
+    cref = conf['kite']['cref']
     
     ##### more model_integ ###########
     # EFFECTIVE WIND IN THE KITE`S SYSTEM :
@@ -123,7 +121,7 @@ def aeroForcesTorques(dae, conf, we, wE, (w1,w2,w3), (eTe1, eTe2, eTe3), (ailero
     cP = -pD*w2 + cPA*alphaTail + cPe*elevator + cP0
     cY = -yD*w3 + cYB*betaTail + cYAB*alphaTail*betaTail
 
-    cD += 0.25*dae['r']*0.004/area
+    cD += 0.25*dae['r']*0.004/sref
 
     dae['cL'] = cL
     dae['cD'] = cD
@@ -154,7 +152,7 @@ def aeroForcesTorques(dae, conf, we, wE, (w1,w2,w3), (eTe1, eTe2, eTe3), (ailero
     # TORQUES (AERO)
     # ###############################
      
-    t1 =  0.5*rho*vKite2*span*cR
-    t2 =  0.5*rho*vKite2*chord*cP
-    t3 =  0.5*rho*vKite2*span*cY
+    t1 =  0.5*rho*vKite2*bref*cR
+    t2 =  0.5*rho*vKite2*cref*cP
+    t3 =  0.5*rho*vKite2*bref*cY
     return (f1, f2, f3, t1, t2, t3)
