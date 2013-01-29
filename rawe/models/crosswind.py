@@ -314,7 +314,7 @@ def crosswindModel(conf,nSteps=None,extraParams=[]):
         cL = dae['cL']
         cD = dae['cD']
         rho = conf['env']['rho']
-        S = conf['kite']['area']
+        S = conf['kite']['sref']
         loyds = 2/27.0*rho*S*w**3*cL**3/cD**2
         loyds2 = 2/27.0*rho*S*w**3*(cL**2/cD**2 + 1)**(1.5)*cD
         dae["loyd's limit"] = loyds
