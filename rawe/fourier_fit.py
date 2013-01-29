@@ -181,71 +181,7 @@ class FourierFit():
         
 if __name__=='__main__':
     filename = "data/crosswind_opt"
-#    filename = "data/carousel_opt"
-    
-    def fitToKiteProto(fits,k,zt=0,kiteAlpha=1,lineAlpha=1, dz=0):
-        cs = kite_pb2.CarouselState()
-    
-        cs.kiteXyz.x = fits['x'].Mx[k]
-        cs.kiteXyz.y = fits['y'].Mx[k]
-        cs.kiteXyz.z = fits['z'].Mx[k]+dz
-    
-        cs.kiteDcm.r11 = fits['e11'].Mx[k]
-        cs.kiteDcm.r12 = fits['e12'].Mx[k]
-        cs.kiteDcm.r13 = fits['e13'].Mx[k]
-    
-        cs.kiteDcm.r21 = fits['e21'].Mx[k]
-        cs.kiteDcm.r22 = fits['e22'].Mx[k]
-        cs.kiteDcm.r23 = fits['e23'].Mx[k]
-    
-        cs.kiteDcm.r31 = fits['e31'].Mx[k]
-        cs.kiteDcm.r32 = fits['e32'].Mx[k]
-        cs.kiteDcm.r33 = fits['e33'].Mx[k]
-    
-        if 'delta' in fits:
-            cs.delta = fits['delta'].Mx[k]
-        else:
-            cs.delta = 0
-    
-        cs.rArm = 0
-        cs.zt = zt
-    
-        cs.kiteTransparency = kiteAlpha
-        cs.lineTransparency = lineAlpha
-    
-        return cs
-    
-    def npToKiteProto(x,k,zt=0,kiteAlpha=1,lineAlpha=1, dz=0):
-        cs = kite_pb2.CarouselState()
-    
-        cs.kiteXyz.x = x['x'][k]
-        cs.kiteXyz.y = x['y'][k]
-        cs.kiteXyz.z = x['z'][k]+dz
-    
-        cs.kiteDcm.r11 = x['e11'][k]
-        cs.kiteDcm.r12 = x['e12'][k]
-        cs.kiteDcm.r13 = x['e13'][k]
-    
-        cs.kiteDcm.r21 = x['e21'][k]
-        cs.kiteDcm.r22 = x['e22'][k]
-        cs.kiteDcm.r23 = x['e23'][k]
-    
-        cs.kiteDcm.r31 = x['e31'][k]
-        cs.kiteDcm.r32 = x['e32'][k]
-        cs.kiteDcm.r33 = x['e33'][k]
-    
-        if 'delta' in x:
-            cs.delta = x['delta'][k]
-        else:
-            cs.delta = 0
-    
-        cs.rArm = 0
-        cs.zt = zt
-    
-        cs.kiteTransparency = kiteAlpha
-        cs.lineTransparency = lineAlpha
-    
-        return cs
+    filename = "data/carousel_opt"
     
     context   = zmq.Context(1)
     publisher = context.socket(zmq.PUB)
@@ -259,11 +195,54 @@ if __name__=='__main__':
     f.close()
     
     # fit everything
-    orderMap = {}
-    for name in traj.dvMap._xNames:
-        orderMap[name] = {'poly':[0,1],
-                          'sin':range(1,14),
-                          'cos':range(1,14)}
+    xyzOrders = {'poly':[0],
+                 'sin':range(1,6),
+                 'cos':range(1,6)}
+    xyzDotOrders = {'poly':[0],
+                    'sin':range(1,8),
+                    'cos':range(1,8)}
+    dcmOrders = {'poly':[0],
+                 'sin':range(1,10),
+                 'cos':range(1,10)}
+    omegaOrders = {'poly':[0],
+                   'sin':range(1,7),
+                   'cos':range(1,7)}
+    controlSurfaceOrders = {'poly':[0],
+                            'sin':range(1,5),
+                            'cos':range(1,5)}
+    deltaOrders = {'poly':[0,1],
+                   'sin':range(1,5),
+                   'cos':range(1,5)}
+    ddeltaOrders = {'poly':[0],
+                    'sin':range(1,5),
+                    'cos':range(1,5)}
+    orderMap = {'x':xyzOrders,
+                'y':xyzOrders,
+                'z':xyzOrders,
+                'r':xyzOrders,
+                'dx':xyzDotOrders,
+                'dy':xyzDotOrders,
+                'dz':xyzDotOrders,
+                'dr':xyzDotOrders,
+                'w1':omegaOrders,
+                'w2':omegaOrders,
+                'w3':omegaOrders,
+                'e11':dcmOrders,
+                'e12':dcmOrders,
+                'e13':dcmOrders,
+                'e21':dcmOrders,
+                'e22':dcmOrders,
+                'e23':dcmOrders,
+                'e31':dcmOrders,
+                'e32':dcmOrders,
+                'e33':dcmOrders,
+                'aileron':controlSurfaceOrders,
+                'elevator':controlSurfaceOrders,
+                'delta':deltaOrders,
+                'ddelta':ddeltaOrders
+                }
+#    for name in traj.dvMap._xNames:
+#        orderMap[name] = 
     trajFit = TrajFit(orderMap,traj)
     
     # send kite protos
@@ -283,11 +262,11 @@ if __name__=='__main__':
     
     def mkPlots():
         trajFit.plot(['x','y','z'])
-        trajFit.plot(['dx','dy','dz'])
-        trajFit.plot(['w1','w2','w3'])
-        trajFit.plot(['e11','e12','e13','e21','e22','e23','e31','e32','e33'])
         trajFit.plot(['r'])
+        trajFit.plot(['dx','dy','dz'])
         trajFit.plot(['dr'])
+        trajFit.plot(['e11','e12','e13','e21','e22','e23','e31','e32','e33'])
+        trajFit.plot(['w1','w2','w3'])
         if 'delta' in traj.dvMap._xNames:
             trajFit.plot(['delta'])
         if 'ddelta' in traj.dvMap._xNames:
