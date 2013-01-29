@@ -103,8 +103,8 @@ class BoundsMap(collmaps.WriteableCollMap):
 
         ubviols = x - ubx
         lbviols = lbx - x
-        ubviolsIdx = np.where(ubviols >= reportThreshold)[0]
-        lbviolsIdx = np.where(lbviols >= reportThreshold)[0]
+        ubviolsIdx = np.where(CS.logic_and(ubviols >= reportThreshold, ubx > lbx))[0]
+        lbviolsIdx = np.where(CS.logic_and(lbviols >= reportThreshold, ubx > lbx))[0]
         violations = {}
         for k in ubviolsIdx:
             (name,time) = self.bndtags[k]
@@ -125,7 +125,7 @@ class BoundsMap(collmaps.WriteableCollMap):
     def printBoundsFeedback(self,*args,**kwargs):
         viols = self.boundsFeedback(*args,**kwargs)
         for name in viols:
-            print "bound violation! \"",name,": ",viols[name]
+            print "bound violation! \""+name+": "+str(viols[name])
 
 class Coll():
     collocationIsSetup = False

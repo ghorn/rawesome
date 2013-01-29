@@ -76,19 +76,19 @@ class Constraints():
 
         ubviols = g - ubg
         lbviols = lbg - g
-        ubviolsIdx = np.where(ubviols >= reportThreshold)[0]
-        lbviolsIdx = np.where(lbviols >= reportThreshold)[0]
+        ubviolsIdx = np.where(C.logic_and(ubviols >= reportThreshold, ubg > lbg))[0]
+        lbviolsIdx = np.where(C.logic_and(lbviols >= reportThreshold, ubg > lbg))[0]
         violations = {}
         for k in ubviolsIdx:
             (name,time,idx) = self._tags[k]
-            viol = ('ub',(time,idx),float(ubviols[k]))
+            viol = ('ub',(time,idx),float(ubviols[k]))#,g[k],ubg[k])
             if name not in violations:
                 violations[name] = [viol]
             else:
                 violations[name].append(viol)
         for k in lbviolsIdx:
             (name,time,idx) = self._tags[k]
-            viol = ('lb',(time,idx),float(lbviols[k]))
+            viol = ('lb',(time,idx),float(lbviols[k]))#,g[k],lbg[k])
             if name not in violations:
                 violations[name] = [viol]
             else:
@@ -101,7 +101,7 @@ class Constraints():
         for name in viols:
             vstrs = str(sorted(viols[name], key=lambda x: -x[2]))
 #            vstrs = ["("+str(degidx)+","+str(k)+","+colored(str(val))+")" for (degidx,k,val) in sorted(viols[name], key=lambda x: -x[2])]
-            print "constraint violation! \""+name+": "+vstrs[:150]
+            print "constraint violation! \""+name+": "+vstrs[:250]
 
 class Bounds(DesignVarMap):
     descriptor = "bound"
