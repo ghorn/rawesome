@@ -55,6 +55,7 @@ class Trajectory(object):
     def save(self,filename):
         assert isinstance(filename,str), "filename must be a string"
 
+        print "saving trajectory as \"%s\"" % filename
         f=open(filename,'w')
         pickle.dump(self,f)
         f.close()

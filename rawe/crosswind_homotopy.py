@@ -303,7 +303,6 @@ if __name__=='__main__':
     ocp.bound('endTime',(4.0,4.0),force=True)
     traj = ocp.solve(xInit=traj.getDvs())
 
-    print "saving optimal trajectory"
     traj.save("data/crosswind_homotopy.dat")
 
     def printBoundsFeedback():

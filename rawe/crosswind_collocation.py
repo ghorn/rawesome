@@ -200,7 +200,6 @@ if __name__=='__main__':
     print "optimal power: "+str(traj.lookup('quadrature energy',-1)/traj.lookup('endTime'))
     print "endTime: "+str(traj.lookup('endTime'))
 
-    print "saving optimal trajectory"
     traj.save("data/crosswind_opt.dat")
 
     def printBoundsFeedback():
