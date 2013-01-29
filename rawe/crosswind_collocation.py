@@ -116,22 +116,15 @@ def setupOcp(dae,conf,publisher,nk,nicp,deg,collPoly):
     # objective function
     obj = 0
     for k in range(nk):
-        # control regularization
-        ddr = ocp.lookup('ddr',timestep=k)
-        daileron = ocp.lookup('daileron',timestep=k)
-        delevator = ocp.lookup('delevator',timestep=k)
-        
-        daileronSigma = 0.1
-        delevatorSigma = 0.1
-        ddrSigma = 1.0
-        
-        ailObj = daileron*daileron / (daileronSigma*daileronSigma)
-        eleObj = delevator*delevator / (delevatorSigma*delevatorSigma)
-        winchObj = ddr*ddr / (ddrSigma*ddrSigma)
-        
-        obj += ailObj + eleObj + winchObj
-    ocp.setObjective( 1e0*obj/nk + ocp.lookup('energy',timestep=-1)/ocp.lookup('endTime') )
+#        # control regularization
+        obj += ocp.lookup('daileronCost',timestep=k)
+        obj += ocp.lookup('delevatorCost',timestep=k)
+        for j in range(1,ocp.deg):
+            obj += ocp.lookup('ddrCost',timestep=k,degIdx=j)
+
     ocp.setQuadratureDdt('quadrature energy', 'winch power')
+
+    ocp.setObjective( obj + ocp.lookup('quadrature energy',timestep=-1)/ocp.lookup('endTime') )
 
     return ocp
 
