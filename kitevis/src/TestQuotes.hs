@@ -33,16 +33,19 @@ printVarInfo (VarInfo name type' mv) = do
 
 go :: IO ()
 go = do
-  (updateFun, infos) <- $(setupTelem "position." ''Axyz)
-  mapM_ printVarInfo infos
-  let myLoop :: Int -> Axyz -> IO ()
-      myLoop 0 _ = return ()
-      myLoop n anAxyz' = do
-        updateFun anAxyz'
+  (receiveNewMessage, infos) <- $(setupTelem "position." ''Axyz)
+
+  let printLog = mapM_ printVarInfo infos
+
+      updateLoop 0 _ = return ()
+      updateLoop n anAxyz' = do
+        receiveNewMessage anAxyz'
         putStrLn ""
-        mapM_ printVarInfo infos
-        myLoop (n-1) (increment anAxyz')
-  myLoop 4 anAxyz
+        printLog
+        updateLoop (n-1::Int) (increment anAxyz')
+
+  printLog
+  updateLoop 4 anAxyz
   --woo <- $(f ''KiteXyz.Xyz)
   --woo <- $(f ''Dcm.Dcm)
   --woo <- $(f ''CS.CarouselState)
