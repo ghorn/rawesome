@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -Wall #-}
+{-# Language MultiWayIf #-}
 {-# Language TemplateHaskell #-}
 
 module Quotes where
@@ -8,7 +9,6 @@ import Language.Haskell.TH
 import Language.Haskell.TH.Syntax ( Lift(..) )
 import Data.Sequence ( Seq, (|>) )
 import qualified Data.Sequence as S
---import qualified GHC.Types
 
 -- keep this abstract so that we can use a Seq or Vector later
 type ContainerType a = Seq a
@@ -19,13 +19,19 @@ appendContainer :: a -> ContainerType a -> ContainerType a
 appendContainer x xs = xs |> x
 
 data MyType = MyDouble
-            | MyString
+            | MyFloat
+--            | MyInt32
+--            | MyString
               deriving Show
+
 instance Lift MyType where
   lift MyDouble = [| MyDouble |]
-  lift MyString = [| MyString |]
+  lift MyFloat = [| MyFloat |]
+--  lift MyInt32  = [| MyInt32 |]
+--  lift MyString = [| MyString |]
 
 data VarInfo = VarInfo String MyType (MVar (ContainerType Double))
+--             | VarInfoF String MyType (MVar (ContainerType Float))
 
 data Output = Output { outputName :: Name
                      , outputMVarName :: Name
@@ -36,39 +42,47 @@ instance Show Output where
   show (Output a b c d) = "Output " ++ show a ++ " " ++ show b ++ " " ++ show c ++ " " ++ show d
 
 -- | take a record syntax field and return usable stuff
-handleField :: String -> (Name, Type) -> Q (Pat, [Output])
+handleField :: String -> (Name, Type) -> Q (PatQ, [Output])
 handleField prefix (name, ConT type') = do
   (TyConI (DataD _ _dataName _ [constructor] _)) <- reify type'
---  let msg = init $ unlines
---            [ "---------------- handlefield: -----------------"
---            , "    name: " ++ show name
---            , "    dataName: " ++ show _dataName
---            , "    constructor: " ++ show constructor
---            ]
+  let msg = init $ unlines
+            [ "---------------- handlefield: -----------------"
+            , "    name: " ++ show name
+            , "    dataName: " ++ show _dataName
+            , "    constructor: " ++ show constructor
+            ]
 --  reportWarning msg
   case constructor of
     -- recursive protobuf
     (RecC {}) -> handleConstructor (prefix ++ nameBase name ++ ".") constructor
-    -- recursive protobuf
-    (NormalC {}) -> case show type' of
-      "GHC.Types.Double" -> do
-        mn <- newName ("m_" ++ nameBase name)
-        patternName <- newName (nameBase name)
-        let pattern = VarP patternName
-        return (pattern, [Output patternName mn (prefix ++ nameBase name) MyDouble])
-      _ -> error $ "handleField: only handles Double prims now (" ++ show constructor ++ ")"
+    -- normal constructor
+    (NormalC {}) -> do
+      -- make the mvar name and pattern name
+      mn <- newName ("m_" ++ nameBase name)
+      patternName <- newName (nameBase name)
+      let pattern = varP patternName
+
+      -- lookup some type names
+      (Just doubleName) <- lookupTypeName "Double"
+      (Just floatName) <- lookupTypeName "Float"
+--      (Just int32Name) <- lookupTypeName "Int32"
+--      reportWarning $ "typeName: " ++ show int32Name
+
+      if | type' == doubleName -> return (pattern, [Output patternName mn (prefix ++ nameBase name) MyDouble])
+         | type' == floatName -> return (pattern, [Output patternName mn (prefix ++ nameBase name) MyFloat])
+         | otherwise -> error $ "handleField: unhandled type (" ++ show constructor ++ ")"++"\n    "++msg
     _ -> error $ "handleField: unrecognized constructor " ++ show constructor
 handleField _ x = error $ "handleField: the \"impossible\" happened" ++ show x
 
 
 -- | Take a constructor with multiple fields, call handleFields on each of them,
 --   assemble the result
-handleConstructor :: String -> Con -> Q (Pat, [Output])
+handleConstructor :: String -> Con -> Q (PatQ, [Output])
 handleConstructor prefix (RecC conName varStrictTypes) = do
   let varTypes = map (\(x,_,z) -> (x,z)) varStrictTypes
   (fieldPatterns,outputs)  <- fmap unzip $ mapM (handleField prefix) varTypes
   let cOutputs = concat outputs
-  let conPattern = ConP conName fieldPatterns
+  let conPattern = conP conName fieldPatterns
 --  let msg = init $ unlines
 --            [ "---------------- handleConstructor: ----------------------"
 --            , "    conName: " ++ show conName ++ " ("++nameBase conName++")"
@@ -85,29 +99,33 @@ handleConstructor _ x = fail $ "\"" ++ show x ++ "\" is not a record syntax cons
 
 setupTelem :: String -> Name -> Q Exp
 setupTelem prefix typ = do
-  -- get the info
+  -- get the type info
   TyConI (DataD _ _typeName _ [constructor] _ ) <- reify typ
+
+  -- get the pattern and the names in a nice list of outputs
   (pattern, outputs) <- handleConstructor prefix constructor
-  -- what to do with these outputs
+
+  -- split the outputs
   let outMVs = map outputMVarName outputs
   let outStrings = map outputString outputs
   let outMyTypes = map outputMyType outputs
   let outNames = map outputName outputs
 
-  newMVar' <- [| newMVar |]
-  emptyContainer' <- [| emptyContainer |]
-  let makeMVars = map (\mv -> BindS (VarP mv) $ AppE newMVar' emptyContainer') outMVs
-  updateFunName <- newName ("update_" ++ nameBase _typeName)
-  modmvar <- [| \mv x -> modifyMVar_ mv (return . (appendContainer x)) |]
-  let defUpdate = LetS [FunD updateFunName [Clause [pattern] (NormalB updates) []]]
-        where
-          updates :: Exp
-          updates = DoE $ zipWith gg outMVs outNames
-            where
-              gg :: Name -> Name -> Stmt
-              gg mv x = NoBindS $ AppE (AppE modmvar (VarE mv)) (VarE x)
+  -- define all the newMVars
+  let makeMVars = map (\mv -> bindS (varP mv) [| newMVar emptyContainer |]) outMVs
 
-  retStuff <- [| return ( $(varE updateFunName)
-                        , zipWith3 VarInfo outStrings outMyTypes $(listE (map varE outMVs))
-                        ) |]
-  return (DoE $ makeMVars ++ [defUpdate, NoBindS retStuff])
+  -- define the function to take new data and update the MVars
+  updateFunName <- newName ("update_" ++ nameBase _typeName)
+  let defUpdate = letS [funD updateFunName [clause [pattern] (normalB updates) []]]
+        where
+          updates :: ExpQ
+          updates = doE $ zipWith gg outMVs outNames
+            where
+              gg :: Name -> Name -> StmtQ
+              gg mv x = noBindS [| modifyMVar_ $(varE mv) (return . appendContainer $(varE x)) |]
+
+  -- return (...)
+  let retStuff = [| return ( $(varE updateFunName)
+                           , zipWith3 VarInfo outStrings outMyTypes $(listE (map varE outMVs))
+                           ) |]
+  doE $ makeMVars ++ [defUpdate, noBindS retStuff]
