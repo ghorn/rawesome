@@ -10,9 +10,10 @@ import Quotes
 import Data.Typeable
 import Data.Data
 import qualified Text.ProtocolBuffers.Header as P'
+import qualified Data.Sequence as Seq
 
 --import Kite.TestMessages ( TestMessages )
---import qualified Kite.CarouselState as CS
+import qualified Kite.CarouselState as CS
 --import qualified Kite.Dcm as Dcm
 --import qualified Kite.Xyz as KiteXyz
 
@@ -40,6 +41,8 @@ data TestMessages = TestMessages
                     , a_bool :: !P'.Bool
                     , a_string :: !P'.Utf8
                     , a_bytes :: !P'.ByteString
+                    , a_maybeDouble :: !(P'.Maybe P'.Double)
+                    , a_repeatedDouble :: !(P'.Seq P'.Double)
                     } deriving ( Show, Eq, Ord, Typeable, Data )
 
 anTestMessages :: TestMessages
@@ -59,6 +62,9 @@ anTestMessages = TestMessages
                     , a_bool = True
                     , a_string = P'.uFromString "hi"
                     , a_bytes = "234554"
+                    , a_maybeDouble = Just 3
+--                    , a_maybeDouble = Nothing
+                    , a_repeatedDouble = Seq.fromList [1,2,3]
                     }
 
 anAxyz :: Axyz
@@ -69,30 +75,34 @@ increment (MkAxyz a (MkXyz x y z)) = MkAxyz (a-1) (MkXyz (x + 1) (y + 2) (z + 3)
 
 
 
+go :: IO ()
+go = do
+  (receiveNewMessage, infos) <- $(setupTelem "position" ''Axyz)
+  putStrLn "yay"
 
---go :: IO ()
---go = do
---  (receiveNewMessage, infos) <- $(setupTelem "position." ''Axyz)
---  putStrLn "yay"
---
---  let printLog = mapM_ printVarInfo infos
---
---      updateLoop 0 _ = return ()
---      updateLoop n anAxyz' = do
---        receiveNewMessage anAxyz'
---        putStrLn ""
---        printLog
---        updateLoop (n-1::Int) (increment anAxyz')
---
---  printLog
---  updateLoop 4 anAxyz
---  --woo <- $(f ''KiteXyz.Xyz)
---  --woo <- $(f ''Dcm.Dcm)
---  --woo <- $(f ''CS.CarouselState)
+  let printLog = mapM_ printVarInfo infos
+
+      updateLoop 0 _ = return ()
+      updateLoop n anAxyz' = do
+        receiveNewMessage anAxyz'
+        putStrLn ""
+        printLog
+        updateLoop (n-1::Int) (increment anAxyz')
+
+  printLog
+  updateLoop 4 anAxyz
+  --woo <- $(f ''KiteXyz.Xyz)
+  --woo <- $(f ''Dcm.Dcm)
+  --woo <- $(f ''CS.CarouselState)
+
+cs :: IO ()
+cs = do
+  (receiveNewMessage, infos) <- $(setupTelem "carousel" ''CS.CarouselState)
+  return ()
 
 wo :: IO ()
 wo = do
-  (receiveNewMessage, infos) <- $(setupTelem "position." ''TestMessages)
+  (receiveNewMessage, infos) <- $(setupTelem "test" ''TestMessages)
   mapM_ printVarInfo infos
   
   receiveNewMessage anTestMessages

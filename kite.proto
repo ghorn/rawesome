@@ -71,5 +71,7 @@ message TestMessages {
   required bool	    a_bool = 13;
   required string   a_string = 14;
   required bytes    a_bytes = 15;
+  optional double   a_maybeDouble = 16;
+  repeated double   a_repeatedDouble = 17;
 }
 

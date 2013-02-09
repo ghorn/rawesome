@@ -34,31 +34,31 @@ data VarInfo = VarInfo String PContainer
 printVarInfo :: VarInfo -> IO ()
 printVarInfo (VarInfo name (PCDouble mv)) = do
   vals <- readMVar mv
-  putStrLn $ "(Double) "++ name ++ ": " ++ show vals
+  putStrLn $ "(Double)     "++ name ++ ": " ++ show vals
 printVarInfo (VarInfo name (PCFloat mv)) = do
   vals <- readMVar mv
-  putStrLn $ "(Float)  "++ name ++ ": " ++ show vals
+  putStrLn $ "(Float)      "++ name ++ ": " ++ show vals
 printVarInfo (VarInfo name (PCInt32 mv)) = do
   vals <- readMVar mv
-  putStrLn $ "(Int32)  "++ name ++ ": " ++ show vals
+  putStrLn $ "(Int32)      "++ name ++ ": " ++ show vals
 printVarInfo (VarInfo name (PCInt64 mv)) = do
   vals <- readMVar mv
-  putStrLn $ "(Int64)  "++ name ++ ": " ++ show vals
+  putStrLn $ "(Int64)      "++ name ++ ": " ++ show vals
 printVarInfo (VarInfo name (PCWord32 mv)) = do
   vals <- readMVar mv
-  putStrLn $ "(Word32)  "++ name ++ ": " ++ show vals
+  putStrLn $ "(Word32)     "++ name ++ ": " ++ show vals
 printVarInfo (VarInfo name (PCWord64 mv)) = do
   vals <- readMVar mv
-  putStrLn $ "(Word64)  "++ name ++ ": " ++ show vals
+  putStrLn $ "(Word64)     "++ name ++ ": " ++ show vals
 printVarInfo (VarInfo name (PCBool mv)) = do
   vals <- readMVar mv
-  putStrLn $ "(Bool)  "++ name ++ ": " ++ show vals
+  putStrLn $ "(Bool)       "++ name ++ ": " ++ show vals
 printVarInfo (VarInfo name (PCUtf8 mv)) = do
   vals <- readMVar mv
-  putStrLn $ "(Utf8)  "++ name ++ ": " ++ show vals
+  putStrLn $ "(Utf8)       "++ name ++ ": " ++ show vals
 printVarInfo (VarInfo name (PCByteString mv)) = do
   vals <- readMVar mv
-  putStrLn $ "(ByteString)  "++ name ++ ": " ++ show vals
+  putStrLn $ "(ByteString) "++ name ++ ": " ++ show vals
 
 data Output = Output { outputString :: String
                      , outputNewMvStmt :: StmtQ
@@ -97,6 +97,7 @@ handleField prefix (name, ConT type') = do
       let pattern = varP patternName
 
       -- lookup some type names
+--      reportWarning $ "============= dataName: " ++ show dataName
       (Just doubleName) <- lookupTypeName "Double"
       (Just floatName) <- lookupTypeName "Float"
       (Just int32Name) <- lookupTypeName "P'.Int32"
@@ -114,9 +115,10 @@ handleField prefix (name, ConT type') = do
           updatemvStmt =
             noBindS [| modifyMVar_ $(varE mn) (return . appendContainer $(varE patternName)) |]
 
-          -- container variable
+          -- human readable name
           stringName = prefix ++ nameBase name
       
+          -- container variable
           containerExp = if | type' == doubleName -> [| PCDouble $(varE mn) |]
                             | type' == floatName -> [| PCFloat $(varE mn) |]
                             | type' == int32Name -> [| PCInt32 $(varE mn) |]
@@ -128,7 +130,16 @@ handleField prefix (name, ConT type') = do
                             | type' == byteStringName -> [| PCByteString $(varE mn) |]
                             | otherwise -> error $ "handleField: unhandled type ("++show constructors++")"++"\n    "++msg
       return (pattern, [Output stringName mkmvarStmt updatemvStmt containerExp])
-handleField _ x = error $ "handleField: the \"impossible\" happened" ++ show x
+-- handle optional fields
+handleField prefix x@(name, AppT (ConT con) (ConT type')) = do
+  (Just maybeName) <- lookupTypeName "Maybe"
+  (Just seqName) <- lookupTypeName "P'.Seq"
+  if | con == maybeName -> do reportWarning $ "ignoring optional field \"" ++ prefix ++ nameBase name ++ "\" ("++show type'++")"
+                              return (wildP, [])
+     | con == seqName -> do reportWarning $ "ignoring repeated field \"" ++ prefix ++ nameBase name ++ "\" ("++show type'++")"
+                            return (wildP, [])
+     | otherwise -> error $ "handleField: the \"impossible\" happened in AppT " ++ show x
+handleField _ x = error $ "handleField: the \"impossible\" happened in AppT " ++ show x
 
 
 -- | Take a constructor with multiple fields, call handleFields on each of them,
@@ -166,7 +177,7 @@ setupTelem prefix typ = do
   TyConI (DataD _ _typeName _ [constructor] _ ) <- safeGetInfo
 
   -- get the pattern and the names in a nice list of outputs
-  (pattern, outputs) <- handleConstructor prefix constructor
+  (pattern, outputs) <- handleConstructor (prefix ++ ".") constructor
 
   -- split the outputs
   let outStrings = map outputString outputs

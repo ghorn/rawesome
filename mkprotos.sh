@@ -2,7 +2,7 @@
 
 if ! builtin type -P protoc &>/dev/null; 
 then
-	echo "Can't find protoc; try something like: sudo apt-get install libprotoc5"
+	echo "Can't find protoc; try something like: sudo apt-get install protobuf-compiler"
 	exit 1
 else
 	mkdir -p carousel-cpp
