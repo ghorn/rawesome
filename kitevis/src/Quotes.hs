@@ -4,11 +4,12 @@
 
 module Quotes where
 
-import Control.Concurrent ( MVar, newMVar, modifyMVar_ )
+import Control.Concurrent ( MVar, newMVar, modifyMVar_, readMVar )
 import Language.Haskell.TH
-import Language.Haskell.TH.Syntax ( Lift(..) )
 import Data.Sequence ( Seq, (|>) )
 import qualified Data.Sequence as S
+import qualified Data.ByteString.Lazy as BSL
+import qualified Text.ProtocolBuffers.Header as P'
 
 -- keep this abstract so that we can use a Seq or Vector later
 type ContainerType a = Seq a
@@ -18,45 +19,78 @@ emptyContainer = S.empty
 appendContainer :: a -> ContainerType a -> ContainerType a
 appendContainer x xs = xs |> x
 
-data MyType = MyDouble
-            | MyFloat
---            | MyInt32
---            | MyString
-              deriving Show
+data PContainer = PCDouble (MVar (ContainerType Double))
+                | PCFloat (MVar (ContainerType Float))
+                | PCInt32 (MVar (ContainerType P'.Int32))
+                | PCInt64 (MVar (ContainerType P'.Int64))
+                | PCWord32 (MVar (ContainerType P'.Word32))
+                | PCWord64 (MVar (ContainerType P'.Word64))
+                | PCBool (MVar (ContainerType Bool))
+                | PCUtf8 (MVar (ContainerType P'.Utf8))
+--                | PCByteString (MVar (ContainerType (P'.ByteString)))
+                | PCByteString (MVar (ContainerType (BSL.ByteString)))
 
-instance Lift MyType where
-  lift MyDouble = [| MyDouble |]
-  lift MyFloat = [| MyFloat |]
---  lift MyInt32  = [| MyInt32 |]
---  lift MyString = [| MyString |]
+data VarInfo = VarInfo String PContainer
+printVarInfo :: VarInfo -> IO ()
+printVarInfo (VarInfo name (PCDouble mv)) = do
+  vals <- readMVar mv
+  putStrLn $ "(Double) "++ name ++ ": " ++ show vals
+printVarInfo (VarInfo name (PCFloat mv)) = do
+  vals <- readMVar mv
+  putStrLn $ "(Float)  "++ name ++ ": " ++ show vals
+printVarInfo (VarInfo name (PCInt32 mv)) = do
+  vals <- readMVar mv
+  putStrLn $ "(Int32)  "++ name ++ ": " ++ show vals
+printVarInfo (VarInfo name (PCInt64 mv)) = do
+  vals <- readMVar mv
+  putStrLn $ "(Int64)  "++ name ++ ": " ++ show vals
+printVarInfo (VarInfo name (PCWord32 mv)) = do
+  vals <- readMVar mv
+  putStrLn $ "(Word32)  "++ name ++ ": " ++ show vals
+printVarInfo (VarInfo name (PCWord64 mv)) = do
+  vals <- readMVar mv
+  putStrLn $ "(Word64)  "++ name ++ ": " ++ show vals
+printVarInfo (VarInfo name (PCBool mv)) = do
+  vals <- readMVar mv
+  putStrLn $ "(Bool)  "++ name ++ ": " ++ show vals
+printVarInfo (VarInfo name (PCUtf8 mv)) = do
+  vals <- readMVar mv
+  putStrLn $ "(Utf8)  "++ name ++ ": " ++ show vals
+printVarInfo (VarInfo name (PCByteString mv)) = do
+  vals <- readMVar mv
+  putStrLn $ "(ByteString)  "++ name ++ ": " ++ show vals
 
-data VarInfo = VarInfo String MyType (MVar (ContainerType Double))
---             | VarInfoF String MyType (MVar (ContainerType Float))
-
-data Output = Output { outputName :: Name
-                     , outputMVarName :: Name
-                     , outputString :: String
-                     , outputMyType :: MyType
+data Output = Output { outputString :: String
+                     , outputNewMvStmt :: StmtQ
+                     , outputUpdateStmt :: StmtQ
+                     , outputContainerExp :: ExpQ
                      }
 instance Show Output where
-  show (Output a b c d) = "Output " ++ show a ++ " " ++ show b ++ " " ++ show c ++ " " ++ show d
+  show (Output str _ _ _) = "Output " ++ show str
 
--- | take a record syntax field and return usable stuff
+-- | take a constructor field and return usable stuff
 handleField :: String -> (Name, Type) -> Q (PatQ, [Output])
 handleField prefix (name, ConT type') = do
-  (TyConI (DataD _ _dataName _ [constructor] _)) <- reify type'
+  let safeGetInfo :: Q (Name, [Con])
+      safeGetInfo = do
+      info <- reify type'
+      case info of
+        (TyConI (DataD _ dataName _ [constructor] _ )) -> return (dataName, [constructor])
+        (TyConI (NewtypeD _ dataName _ constructor _ )) -> return (dataName, [constructor])
+        (TyConI (DataD _ dataName _ constructors _ )) -> return (dataName, constructors)
+        d -> error $ "handleField: safeGetInfo got unsafe info: " ++ show d
+  (dataName,constructors) <- safeGetInfo
   let msg = init $ unlines
-            [ "---------------- handlefield: -----------------"
+            [ "---------------- handleField: -----------------"
             , "    name: " ++ show name
-            , "    dataName: " ++ show _dataName
-            , "    constructor: " ++ show constructor
+            , "    dataName: " ++ show dataName
+            , "    constructors: " ++ show constructors
             ]
---  reportWarning msg
-  case constructor of
+  case constructors of
     -- recursive protobuf
-    (RecC {}) -> handleConstructor (prefix ++ nameBase name ++ ".") constructor
-    -- normal constructor
-    (NormalC {}) -> do
+    [c@(RecC {})] -> handleConstructor (prefix ++ nameBase name ++ ".") c
+    -- everything else
+    _ -> do
       -- make the mvar name and pattern name
       mn <- newName ("m_" ++ nameBase name)
       patternName <- newName (nameBase name)
@@ -65,13 +99,35 @@ handleField prefix (name, ConT type') = do
       -- lookup some type names
       (Just doubleName) <- lookupTypeName "Double"
       (Just floatName) <- lookupTypeName "Float"
---      (Just int32Name) <- lookupTypeName "Int32"
---      reportWarning $ "typeName: " ++ show int32Name
+      (Just int32Name) <- lookupTypeName "P'.Int32"
+      (Just int64Name) <- lookupTypeName "P'.Int64"
+      (Just word32Name) <- lookupTypeName "P'.Word32"
+      (Just word64Name) <- lookupTypeName "P'.Word64"
+      (Just boolName) <- lookupTypeName "Bool"
+      (Just utf8Name) <- lookupTypeName "P'.Utf8"
+      (Just byteStringName) <- lookupTypeName "P'.ByteString"
 
-      if | type' == doubleName -> return (pattern, [Output patternName mn (prefix ++ nameBase name) MyDouble])
-         | type' == floatName -> return (pattern, [Output patternName mn (prefix ++ nameBase name) MyFloat])
-         | otherwise -> error $ "handleField: unhandled type (" ++ show constructor ++ ")"++"\n    "++msg
-    _ -> error $ "handleField: unrecognized constructor " ++ show constructor
+      let -- create a new mvar
+          mkmvarStmt = bindS (varP mn) [| newMVar emptyContainer |]
+
+          -- update mvar when new measurement comes in
+          updatemvStmt =
+            noBindS [| modifyMVar_ $(varE mn) (return . appendContainer $(varE patternName)) |]
+
+          -- container variable
+          stringName = prefix ++ nameBase name
+      
+          containerExp = if | type' == doubleName -> [| PCDouble $(varE mn) |]
+                            | type' == floatName -> [| PCFloat $(varE mn) |]
+                            | type' == int32Name -> [| PCInt32 $(varE mn) |]
+                            | type' == int64Name -> [| PCInt64 $(varE mn) |]
+                            | type' == word32Name -> [| PCWord32 $(varE mn) |]
+                            | type' == word64Name -> [| PCWord64 $(varE mn) |]
+                            | type' == boolName -> [| PCBool $(varE mn) |]
+                            | type' == utf8Name -> [| PCUtf8 $(varE mn) |]
+                            | type' == byteStringName -> [| PCByteString $(varE mn) |]
+                            | otherwise -> error $ "handleField: unhandled type ("++show constructors++")"++"\n    "++msg
+      return (pattern, [Output stringName mkmvarStmt updatemvStmt containerExp])
 handleField _ x = error $ "handleField: the \"impossible\" happened" ++ show x
 
 
@@ -96,36 +152,34 @@ handleConstructor prefix (RecC conName varStrictTypes) = do
   return (conPattern, cOutputs)
 handleConstructor _ x = fail $ "\"" ++ show x ++ "\" is not a record syntax constructor"
 
-
 setupTelem :: String -> Name -> Q Exp
 setupTelem prefix typ = do
   -- get the type info
-  TyConI (DataD _ _typeName _ [constructor] _ ) <- reify typ
+  let safeGetInfo :: Q Info
+      safeGetInfo = do
+      info <- reify typ
+      case info of
+        d@(TyConI (DataD _ _ _ [_] _ )) -> return d
+        (TyConI (DataD _ typeName _ constructors _ )) ->
+           error $ "setupTelem: too many constructors: " ++ show (typeName, constructors)
+        d -> error $ "setupTelem: safeGetInfo got unsafe info: " ++ show d
+  TyConI (DataD _ _typeName _ [constructor] _ ) <- safeGetInfo
 
   -- get the pattern and the names in a nice list of outputs
   (pattern, outputs) <- handleConstructor prefix constructor
 
   -- split the outputs
-  let outMVs = map outputMVarName outputs
   let outStrings = map outputString outputs
-  let outMyTypes = map outputMyType outputs
-  let outNames = map outputName outputs
-
-  -- define all the newMVars
-  let makeMVars = map (\mv -> bindS (varP mv) [| newMVar emptyContainer |]) outMVs
+  let makeMVars = map outputNewMvStmt outputs
+  let updateMVars = map outputUpdateStmt outputs
+  let containers = map outputContainerExp outputs
 
   -- define the function to take new data and update the MVars
   updateFunName <- newName ("update_" ++ nameBase _typeName)
-  let defUpdate = letS [funD updateFunName [clause [pattern] (normalB updates) []]]
-        where
-          updates :: ExpQ
-          updates = doE $ zipWith gg outMVs outNames
-            where
-              gg :: Name -> Name -> StmtQ
-              gg mv x = noBindS [| modifyMVar_ $(varE mv) (return . appendContainer $(varE x)) |]
+  let defUpdate = letS [funD updateFunName [clause [pattern] (normalB (doE updateMVars)) []]]
 
-  -- return (...)
+  -- define the return (...)
   let retStuff = [| return ( $(varE updateFunName)
-                           , zipWith3 VarInfo outStrings outMyTypes $(listE (map varE outMVs))
+                           , zipWith VarInfo outStrings $(listE containers)
                            ) |]
   doE $ makeMVars ++ [defUpdate, noBindS retStuff]

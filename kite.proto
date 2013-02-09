@@ -54,3 +54,22 @@ message MultiCarousel {
   repeated CarouselState css = 1;
   repeated string messages = 2;
 }
+
+message TestMessages {
+  required double   a_double = 1;
+  required float    a_float = 2;
+  required int32    a_int32 = 3;
+  required int64    a_int64 = 4;
+  required uint32   a_uint32 = 5;
+  required uint64   a_uint64 = 6;
+  required sint32   a_sint32 = 7;
+  required sint64   a_sint64 = 8;
+  required fixed32  a_fixed32 = 9;
+  required fixed64  a_fixed64 = 10;
+  required sfixed32 a_sfixed32 = 11;
+  required sfixed64 a_sfixed64 = 12;
+  required bool	    a_bool = 13;
+  required string   a_string = 14;
+  required bytes    a_bytes = 15;
+}
+
