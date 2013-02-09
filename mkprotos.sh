@@ -17,7 +17,7 @@ then
 	exit 1
 else
 	(
-	cd kitevis
+	cd wtfviz
 	hprotoc -I.. --haskell_out=src kite.proto
 	)
 	(
