@@ -55,6 +55,7 @@ data VarInfo' = VarInfo' { name :: String
                          , pc' :: PContainer
                          , marked :: Bool
                          }
+
 main :: IO ()
 main = do
   (_receiveNewMessage, infos) <- $(setupTelem "position" ''Axyz)

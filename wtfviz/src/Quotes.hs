@@ -5,10 +5,11 @@
 module Quotes where
 
 import Control.Concurrent ( MVar, newMVar, modifyMVar_, readMVar )
-import Language.Haskell.TH
+import Data.Maybe ( fromMaybe )
 import Data.Sequence ( Seq, (|>) )
 import qualified Data.Sequence as S
 import qualified Data.ByteString.Lazy as BSL
+import Language.Haskell.TH
 import qualified Text.ProtocolBuffers.Header as P'
 
 -- keep this abstract so that we can use a Seq or Vector later
@@ -98,15 +99,20 @@ handleField prefix (name, ConT type') = do
 
       -- lookup some type names
 --      reportWarning $ "============= dataName: " ++ show dataName
-      (Just doubleName) <- lookupTypeName "Double"
-      (Just floatName) <- lookupTypeName "Float"
-      (Just int32Name) <- lookupTypeName "P'.Int32"
-      (Just int64Name) <- lookupTypeName "P'.Int64"
-      (Just word32Name) <- lookupTypeName "P'.Word32"
-      (Just word64Name) <- lookupTypeName "P'.Word64"
-      (Just boolName) <- lookupTypeName "Bool"
-      (Just utf8Name) <- lookupTypeName "P'.Utf8"
-      (Just byteStringName) <- lookupTypeName "P'.ByteString"
+
+      let lookupTypeName' :: String -> Q Name
+          lookupTypeName' str = fmap (fromMaybe (error msg')) (lookupTypeName str)
+            where
+              msg' = "can't lookup \""++show type'++"\" with lookupTypeName \""++str++"\""
+      doubleName <- lookupTypeName' "Double"
+      floatName <- lookupTypeName' "Float"
+      int32Name <- lookupTypeName' "P'.Int32"
+      int64Name <- lookupTypeName' "P'.Int64"
+      word32Name <- lookupTypeName' "P'.Word32"
+      word64Name <- lookupTypeName' "P'.Word64"
+      boolName <- lookupTypeName' "Bool"
+      utf8Name <- lookupTypeName' "P'.Utf8"
+      byteStringName <- lookupTypeName' "P'.ByteString"
 
       let -- create a new mvar
           mkmvarStmt = bindS (varP mn) [| newMVar emptyContainer |]
