@@ -1,4 +1,4 @@
-RAWESOME Airborne Wind Energy Simulation, Optimization and Modeling Environment
+the RAWESOME Airborne Wind Energy Simulation, Optimization and Modeling Environment
 
 This is the top level folder. Items of interest:
 
