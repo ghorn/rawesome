@@ -340,8 +340,14 @@ class OutputMapGenerator(object):
         self._outputNames0 = outputNames0
         self._outputNames = ocp.dae.outputNames()
 
-        assert (len(self._outputNames0) == f0.getNumOutputs())
-        assert (len(self._outputNames) == fAll.getNumOutputs())
+        if f0 is None:
+            assert (len(self._outputNames0) == 0)
+        else:
+            assert (len(self._outputNames0) == f0.getNumOutputs())
+        if fAll is None:
+            assert (len(self._outputNames) == 0)
+        else:
+            assert (len(self._outputNames) == fAll.getNumOutputs())
 
         self._nk = ocp.nk
         self._nicp = ocp.nicp

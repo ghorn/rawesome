@@ -4,23 +4,22 @@ from models.dae import Dae
 from collocation import Coll
 
 if __name__ == "__main__":
-    # make the Dae
+    ######## make the Dae #######
     dae = Dae()
 
     [pos,vel,mass] = dae.addX( ["pos","vel","mass"] )
-    [zdummy] = dae.addZ( ["zdummy"] )
     thrust = dae.addU( "thrust" )
     
+    # some extra outputs for the dae model
     dae['pos*vel'] = pos*vel
     dae['vel*vel'] = vel*vel
 
+    # specify the ode residual
     dae.setOdeRes([dae.ddt('pos') - vel,
                    dae.ddt('vel') - thrust/mass,
                    dae.ddt('mass') - 0.1*thrust*thrust])
 
-    dae.setAlgRes([zdummy])
-
-    # make the collocation scheme
+    ######## make the collocation scheme ########
     N = 100
     ocp = Coll(dae, nk=N, nicp=1, collPoly="RADAU", deg=4)
 
@@ -28,7 +27,7 @@ if __name__ == "__main__":
     ocp.setupCollocation( endTime )
 
     # bounds
-    ocp.bound('thrust',(-0.9,0.8))
+    ocp.bound('thrust',(-1.3,0.9))
     ocp.bound('pos',(-10,10))
     ocp.bound('vel',(-10,10))
     ocp.bound('mass',(0.001,1000))
@@ -55,11 +54,10 @@ if __name__ == "__main__":
     thrust4 = ocp('thrust',timestep=4)
     
     # can specify index of collocation point
-#    posvel4_2 = ocp('pos*vel',timestep=4, degIdx=2)
+    posvel4_2 = ocp('pos*vel',timestep=4, degIdx=2)
 
     # add nonlinear constraint
     ocp.constrain(thrust4, '<=', posvel4_2**2)
-    thrust4 <= posvel4_2**2
 
     # fix objective and setup solver
     obj = sum([ocp('thrust',timestep=k)**2
