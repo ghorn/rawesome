@@ -167,16 +167,16 @@ def generateModel(dae,ag):
 
 def generateSimExport(dae):
     return \
-    '\n'.join(['DifferentialState '+xn for xn in dae.xNames()]) + \
+    '\n'.join(['DifferentialState '+xn+';' for xn in dae.xNames()]) + \
     '\n'+\
-    '\n'.join(['DifferentialState '+pn+' /* really a parameter */' for pn in dae.pNames()]) + \
+    '\n'.join(['DifferentialState '+pn+'; /* really a parameter */' for pn in dae.pNames()]) + \
     '\n'+\
-    '\n'.join(['AlgebraicState '+zn for zn in dae.zNames()]) + \
+    '\n'.join(['AlgebraicState '+zn+';' for zn in dae.zNames()]) + \
     '\n'+\
-    '\n'.join(['Control '+un+' /* really a parameter */' for un in dae.uNames()]) + \
-    '\n'+\
-    '''\
-SIMexport sim();   
+    '\n'.join(['Control '+un+';' for un in dae.uNames()]) + \
+    '''
+
+SIMexport sim();
 sim.set( INTEGRATOR_TYPE, INT_IRK_RIIA3 );
 sim.set( NUM_INTEGRATOR_STEPS, 4 );
 sim.set( MEASUREMENT_GRID, EQUIDISTANT_GRID );
