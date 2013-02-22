@@ -332,6 +332,3 @@ def crosswindModel(conf,nSteps=None,extraParams=[]):
     dae.setAlgRes( C.mul(massMatrix, psuedoZVec) - rhs )
     
     return dae
-
-if __name__=='__main__':
-    (f,others) = crosswindModel()

@@ -1,5 +1,6 @@
 
 import casadi as C
+import acadoExport
 
 class Dae(object):
     """
@@ -213,6 +214,28 @@ class Dae(object):
                                       p=C.veccat([self.uVec(),self.pVec()]),
                                       xdot=xdot ),
                              C.daeOut( alg=algRes, ode=odeRes) )
+
+    def acadoGen(self):
+        self._freezeXzup('agadoGen()')
+
+        f = self._odeRes
+        if isinstance(f,list):
+            f = C.veccat(f)
+        if hasattr(self,'_algRes'):
+            algRes = self._algRes
+            if isinstance(algRes,list):
+                algRes = C.veccat(algRes)
+            f = C.veccat([f,algRes])
+            
+        xdot = C.veccat([self.ddt(name) for name in self.xNames()])
+
+        info = { 'x':self.xVec(),
+                 'z':self.zVec(),
+                 'p':self.pVec(),
+                 'u':self.uVec(),
+                 'xdot':xdot,
+                 'f':f }
+        return acadoExport.simExport(self, info)
 
 if __name__=='__main__':
     dae = Dae()
