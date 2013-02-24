@@ -42,6 +42,23 @@ message CarouselState {
   // transparency: between 0 (invisible) and 1 (fully visible)
   optional double kiteTransparency = 8;
   optional double lineTransparency = 9;
+  optional KiteOutputs outputs = 10;
+}
+
+message KiteOutputs {
+  required double CL = 1;
+  required double CD = 2;
+  required double L_over_D = 3;
+  required double alpha_deg = 4;
+  required double beta_deg = 5;
+  required double airspeed = 6;
+  optional double tension = 7;
+  optional double power = 8;
+  optional double energy = 9;
+  required double line_angle_deg = 10;
+  required double r = 11;
+  required double dr = 12;
+  optional double ddr = 13;
 }
 
 message PendulumOpt {

@@ -1,5 +1,6 @@
 import casadi as C
 import matplotlib.pyplot as plt
+import pickle
 import numpy
 from numpy import pi
 import zmq
@@ -10,6 +11,8 @@ import kiteutils
 import kite_pb2
 import kiteproto
 import models
+
+numLoops=4
 
 def setupOcp(dae,conf,publisher,nk,nicp,deg,collPoly):
     def addCosts():
@@ -150,6 +153,7 @@ if __name__=='__main__':
     #collPoly='LEGENDRE'
     ocp = setupOcp(dae,conf,publisher,nk,nicp,deg,collPoly)
 
+    allProtos = []
     # callback function
     class MyCallback:
         def __init__(self):
@@ -172,18 +176,32 @@ if __name__=='__main__':
                                                                  lineAlpha=0.2) )
             mc = kite_pb2.MultiCarousel()
             mc.css.extend(list(kiteProtos))
-
+      
             mc.messages.append("w0: "+str(traj.lookup('w0')))
             mc.messages.append("iter: "+str(self.iter))
             mc.messages.append("endTime: "+str(traj.lookup('endTime')))
             mc.messages.append("average power: "+str(traj.lookup('quadrature energy',timestep=-1)/traj.lookup('endTime'))+" W")
-
-            # bounds feedback
+      
+#            # bounds feedback
 #            lbx = ocp.solver.input(C.NLP_LBX)
 #            ubx = ocp.solver.input(C.NLP_UBX)
-#            ocp._bounds.printBoundsFeedback(xOpt,lbx,ubx,reportThreshold=0)
-            
-            publisher.send_multipart(["multi-carousel", mc.SerializeToString()])
+#            s1 = ocp._bounds.boundsFeedbackStr(xOpt,lbx,ubx,reportThreshold=0)
+#     
+#            # constraints feedback
+#            lbg = ocp.solver.input(C.NLP_LBG)
+#            ubg = ocp.solver.input(C.NLP_UBG)
+#            ocp._gfcn.setInput(traj.getDvs(),0)
+#            ocp._gfcn.evaluate()
+#            g = ocp._gfcn.output()
+#            s2 = ocp._constraints.getViolationsStr(g,lbg,ubg,reportThreshold=0)
+#     
+#            raise ValueError(s1+'\n-------------------------\n'+s2)
+      
+            mcStr = mc.SerializeToString()
+            allProtos.append(mcStr)
+            publisher.send_multipart(["multi-carousel", mcStr])
+
+
 
 
     # solver
@@ -212,14 +230,22 @@ if __name__=='__main__':
     ocp.setupSolver( solverOpts=solverOptions,
                      callback=MyCallback() )
 
-    ocp.interpolateInitialGuess("data/crosswind_homotopy.dat",force=True,quiet=True)
+    ocp.interpolateInitialGuess("data/crosswind_homotopy.dat",force=True,quiet=True,numLoops=numLoops)
+#    ocp.interpolateInitialGuess("data/crosswind_opt.dat",force=True,quiet=True,numLoops=numLoops)
+
     traj = ocp.solve()
 
-    
+    print "num loops: "+str(numLoops)
     print "optimal power: "+str(traj.lookup('quadrature energy',-1)/traj.lookup('endTime'))
     print "endTime: "+str(traj.lookup('endTime'))
 
-    traj.save("data/crosswind_opt.dat")
+    traj.save("data/crosswind_opt_4_loops.dat")
+    def saveProtos(filename):
+        print "saving protos as \"%s\"" % filename
+        f=open(filename,'w')
+        pickle.dump(allProtos,f)
+        f.close()
+    saveProtos('data/crosswind_protos_4_loops_unconstrainedCl_sparse.dat')
 
     def printBoundsFeedback():
         xOpt = traj.dvMap.vectorize()
