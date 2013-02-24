@@ -375,6 +375,8 @@ class Coll():
                 for nicpIdx in range(self.nicp):
                     for degIdx in range(self.deg+1):
                         time = t0 + h*self.lagrangePoly.tau_root[degIdx]
+                        if time > traj.tgrid[-1,0,0]:
+                            time -= traj.tgrid[-1,0,0]
                         self.guess(name,pps[name](time),timestep=timestepIdx,nicpIdx=nicpIdx,degIdx=degIdx,force=force,quiet=quiet)
                     t0 += h
                     if t0 > traj.tgrid[-1,0,0]:
@@ -393,6 +395,8 @@ class Coll():
                 for nicpIdx in range(self.nicp):
                     for degIdx in range(1,self.deg+1):
                         time = t0 + h*self.lagrangePoly.tau_root[degIdx]
+                        if time > traj.tgrid[-1,0,0]:
+                            time -= traj.tgrid[-1,0,0]
                         self.guess(name,pps[name](time),timestep=timestepIdx,nicpIdx=nicpIdx,degIdx=degIdx,force=force,quiet=quiet)
                     t0 += h
 
