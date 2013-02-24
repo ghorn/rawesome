@@ -95,13 +95,19 @@ class Constraints():
                 violations[name].append(viol)
         return violations
 
-    def printViolations(self,*args,**kwargs):
-#        from termcolor import colored
+    def getViolationsStr(self,*args,**kwargs):
         viols = self.getViolations(*args,**kwargs)
+        ret = []
+#        from termcolor import colored
         for name in viols:
             vstrs = str(sorted(viols[name], key=lambda x: -x[2]))
 #            vstrs = ["("+str(degidx)+","+str(k)+","+colored(str(val))+")" for (degidx,k,val) in sorted(viols[name], key=lambda x: -x[2])]
-            print "constraint violation! \""+name+": "+vstrs[:250]
+            ret.append("constraint violation! \""+name+": "+vstrs[:250])
+        return '\n'.join(ret)
+
+    def printViolations(self,*args,**kwargs):
+        viols = self.getViolationsStr(*args,**kwargs)
+        print viols
 
 class Bounds(DesignVarMap):
     descriptor = "bound"

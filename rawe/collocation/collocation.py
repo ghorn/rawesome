@@ -122,10 +122,15 @@ class BoundsMap(collmaps.WriteableCollMap):
                 violations[name].append(viol)
         return violations
 
-    def printBoundsFeedback(self,*args,**kwargs):
+    def boundsFeedbackStr(self,*args,**kwargs):
         viols = self.boundsFeedback(*args,**kwargs)
+        ret = []
         for name in viols:
-            print "bound violation! \""+name+": "+str(viols[name])
+            ret.append("bound violation! \""+name+": "+str(viols[name]))
+        return '\n'.join(ret)
+
+    def printBoundsFeedback(self,*args,**kwargs):
+        print self.boundsFeedbackStr(*args,**kwargs)
 
 class Coll():
     collocationIsSetup = False
