@@ -88,12 +88,12 @@ def setupModel(dae, conf):
                                                  )
     if 'runHomotopy' in conf and conf['runHomotopy']:
         gamma_homotopy = dae.addP('gamma_homotopy')
-        f1 = f1 * gamma_homotopy + dae.addU('f1_homotopy')          * (1 - gamma_homotopy)
-        f2 = f2 * gamma_homotopy + dae.addU('f2_homotopy')          * (1 - gamma_homotopy)
-        f3 = f3 * gamma_homotopy + (dae.addU('f3_homotopy') - g*m)  * (1 - gamma_homotopy)
-        t1 = t1 * gamma_homotopy + dae.addU('t1_homotopy')          * (1 - gamma_homotopy)
-        t2 = t2 * gamma_homotopy + dae.addU('t2_homotopy')          * (1 - gamma_homotopy)
-        t3 = t3 * gamma_homotopy + dae.addU('t3_homotopy')          * (1 - gamma_homotopy)
+        f1 = f1 * gamma_homotopy + dae.addZ('f1_homotopy')          * (1 - gamma_homotopy)
+        f2 = f2 * gamma_homotopy + dae.addZ('f2_homotopy')          * (1 - gamma_homotopy)
+        f3 = f3 * gamma_homotopy + (dae.addZ('f3_homotopy') - g*m)  * (1 - gamma_homotopy)
+        t1 = t1 * gamma_homotopy + dae.addZ('t1_homotopy')          * (1 - gamma_homotopy)
+        t2 = t2 * gamma_homotopy + dae.addZ('t2_homotopy')          * (1 - gamma_homotopy)
+        t3 = t3 * gamma_homotopy + dae.addZ('t3_homotopy')          * (1 - gamma_homotopy)
 
     # mass matrix
     mm = C.SXMatrix(7, 7)

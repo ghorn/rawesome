@@ -199,13 +199,15 @@ if __name__=='__main__':
     # homotopy forces/torques regularization
     homoReg = 0
     for k in range(ocp.nk):
-        homoReg += ocp.lookup('f1_homotopy',timestep=k)**2
-        homoReg += ocp.lookup('f2_homotopy',timestep=k)**2
-        homoReg += ocp.lookup('f3_homotopy',timestep=k)**2
-        homoReg += ocp.lookup('t1_homotopy',timestep=k)**2
-        homoReg += ocp.lookup('t2_homotopy',timestep=k)**2
-        homoReg += ocp.lookup('t3_homotopy',timestep=k)**2
-    obj += 1e-2*homoReg/float(ocp.nk)
+        for nicpIdx in range(ocp.nicp):
+            for degIdx in range(1,ocp.deg+1):
+                homoReg += ocp.lookup('f1_homotopy',timestep=k,nicpIdx=nicpIdx,degIdx=degIdx)**2
+                homoReg += ocp.lookup('f2_homotopy',timestep=k,nicpIdx=nicpIdx,degIdx=degIdx)**2
+                homoReg += ocp.lookup('f3_homotopy',timestep=k,nicpIdx=nicpIdx,degIdx=degIdx)**2
+                homoReg += ocp.lookup('t1_homotopy',timestep=k,nicpIdx=nicpIdx,degIdx=degIdx)**2
+                homoReg += ocp.lookup('t2_homotopy',timestep=k,nicpIdx=nicpIdx,degIdx=degIdx)**2
+                homoReg += ocp.lookup('t3_homotopy',timestep=k,nicpIdx=nicpIdx,degIdx=degIdx)**2
+    obj += 1e-2*homoReg/float(ocp.nk)/float(ocp.nicp*(ocp.deg+1))
 
     ocp.setObjective( obj )
 
@@ -215,16 +217,6 @@ if __name__=='__main__':
     
     for name in ['w1','w2','w3','dr','ddr','aileron','elevator','daileron','delevator']:
         ocp.guess(name,0)
-
-    # homotopy forces/torques bounds/guess
-    for k in [1,2,3]:
-        f = 'f'+str(k)+'_homotopy'
-        t = 't'+str(k)+'_homotopy'
-        ocp.guess(f,0)
-        ocp.guess(t,0)
-
-        ocp.bound(f,(-1e4,1e4))
-        ocp.bound(t,(-1e4,1e4))
         
     ocp.guess('gamma_homotopy',0)
         
