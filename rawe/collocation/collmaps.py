@@ -385,9 +385,13 @@ class OutputMap(object):
         elif type(dvs) == C.SXMatrix:
             allOutputs = outputMapGenerator.fEveryOutput.eval([dvs])
         elif type(dvs) in [np.ndarray,C.DMatrix]:
+            def scalarToFloat(val):
+                if val.size == 1:
+                    return val.item()
+                return val
             outputMapGenerator.fEveryOutput.setInput(dvs,0)
             outputMapGenerator.fEveryOutput.evaluate()
-            allOutputs = [np.array(outputMapGenerator.fEveryOutput.output(k)).squeeze()
+            allOutputs = [scalarToFloat(np.array(outputMapGenerator.fEveryOutput.output(k)).squeeze())
                           for k in range(outputMapGenerator.fEveryOutput.getNumOutputs())]
         else:
             raise TypeError("OutputMap got unrecognized design vector type: "+str(type(dvs)))
