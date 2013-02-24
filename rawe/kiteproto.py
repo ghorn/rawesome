@@ -1,28 +1,28 @@
 import kite_pb2
 
-def toKiteProto(x,u,p,zt,rArm,w0=None,zeroDelta=False,kiteAlpha=1.0,lineAlpha=1.0):
+def toKiteProto(lookup,zt,rArm,w0=None,kiteAlpha=1.0,lineAlpha=1.0):
     cs = kite_pb2.CarouselState()
 
-    cs.kiteXyz.x = x.at(0)
-    cs.kiteXyz.y = x.at(1)
-    cs.kiteXyz.z = x.at(2)
+    cs.kiteXyz.x = lookup('x')
+    cs.kiteXyz.y = lookup('y')
+    cs.kiteXyz.z = lookup('z')
 
-    cs.kiteDcm.r11 = x.at(3)
-    cs.kiteDcm.r12 = x.at(4)
-    cs.kiteDcm.r13 = x.at(5)
+    cs.kiteDcm.r11 = lookup('e11')
+    cs.kiteDcm.r12 = lookup('e12')
+    cs.kiteDcm.r13 = lookup('e13')
 
-    cs.kiteDcm.r21 = x.at(6)
-    cs.kiteDcm.r22 = x.at(7)
-    cs.kiteDcm.r23 = x.at(8)
+    cs.kiteDcm.r21 = lookup('e21')
+    cs.kiteDcm.r22 = lookup('e22')
+    cs.kiteDcm.r23 = lookup('e23')
 
-    cs.kiteDcm.r31 = x.at(9)
-    cs.kiteDcm.r32 = x.at(10)
-    cs.kiteDcm.r33 = x.at(11)
+    cs.kiteDcm.r31 = lookup('e31')
+    cs.kiteDcm.r32 = lookup('e32')
+    cs.kiteDcm.r33 = lookup('e33')
 
-    if zeroDelta:
+    try:
+        cs.delta = lookup('delta')
+    except NameError:
         cs.delta = 0
-    else:
-        cs.delta = x.at(18)
 
     cs.rArm = rArm
     cs.zt = zt

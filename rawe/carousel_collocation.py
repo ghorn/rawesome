@@ -151,11 +151,10 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
             kiteProtos = []
             for k in range(0,ocp.nk):
                 for nicpIdx in range(0,ocp.nicp):
-                    for j in [0]:
-#                    for j in range(ocp.deg+1):
-                        kiteProtos.append( kiteproto.toKiteProto(C.DMatrix(traj.dvMap.xVec(k,nicpIdx=nicpIdx,degIdx=j)),
-                                                                 C.DMatrix(traj.dvMap.uVec(k)),
-                                                                 C.DMatrix(traj.dvMap.pVec()),
+                    for degIdx in [0]:
+#                    for degIdx in range(ocp.deg+1):
+                        lookup = lambda name: traj.lookup(name,timestep=k,nicpIdx=nicpIdx,degIdx=degIdx)
+                        kiteProtos.append( kiteproto.toKiteProto(lookup,
                                                                  conf['kite']['zt'],
                                                                  conf['carousel']['rArm'],
                                                                  lineAlpha=0.2) )
@@ -234,11 +233,10 @@ if __name__=='__main__':
         
         for k in range(0,ocp.nk):
             for nicpIdx in range(0,ocp.nicp):
-                for j in [0]:
-#                for j in range(ocp.deg+1):
-                    oldKites.append( kiteproto.toKiteProto(C.DMatrix(traj.dvMap.xVec(k,nicpIdx=nicpIdx,degIdx=j)),
-                                                           C.DMatrix(traj.dvMap.uVec(k)),
-                                                           C.DMatrix(traj.dvMap.pVec()),
+                for degIdx in [0]:
+#                for degIdx in range(ocp.deg+1):
+                    lookup = lambda name: traj.lookup(name,timestep=k,nicpIdx=nicpIdx,degIdx=degIdx)
+                    oldKites.append( kiteproto.toKiteProto(lookup,
                                                            conf['kite']['zt'],
                                                            conf['carousel']['rArm'],
                                                            lineAlpha=0.2) )
