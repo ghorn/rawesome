@@ -61,8 +61,15 @@ updateState po _ =
         len = length xs
         dy = 0.3 / realToFrac len
     
+withContext :: (ZMQ.Context -> IO a) -> IO a
+#if OSX
+withContext = ZMQ.withContext
+#else
+withContext = ZMQ.withContext 1
+#endif
+
 sub :: MVar (Maybe State) -> IO ()
-sub m = ZMQ.withContext 1 $ \context -> do
+sub m = withContext $ \context -> do
 #if OSX
   let receive = ZMQ.receive
 #else

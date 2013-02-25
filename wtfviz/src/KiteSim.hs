@@ -157,8 +157,15 @@ updateState cs x0 =
     (pos,q,_,_) = toNice cs
     (_,trails) = drawAc 1 pos q
     
+withContext :: (ZMQ.Context -> IO a) -> IO a
+#if OSX
+withContext = ZMQ.withContext
+#else
+withContext = ZMQ.withContext 1
+#endif
+
 sub :: MVar State -> IO ()
-sub m = ZMQ.withContext 1 $ \context -> do
+sub m = withContext $ \context -> do
 #if OSX
   let receive = ZMQ.receive
 #else

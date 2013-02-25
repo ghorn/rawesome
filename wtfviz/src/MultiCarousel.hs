@@ -171,8 +171,15 @@ boundParticle xyz@(Xyz x y z)
 updateState :: MC.MultiCarousel -> State -> IO State
 updateState ko _ = return $ Just ko
 
+withContext :: (ZMQ.Context -> IO a) -> IO a
+#if OSX
+withContext = ZMQ.withContext
+#else
+withContext = ZMQ.withContext 1
+#endif
+
 sub :: String -> MVar State -> IO ()
-sub ip m = ZMQ.withContext 1 $ \context -> do
+sub ip m = withContext $ \context -> do
 #if OSX
   let receive = ZMQ.receive
 #else
