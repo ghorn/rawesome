@@ -1,19 +1,24 @@
-
 import casadi as C
 
-def convertAlgorithm(funname, f):
+replace0 = {'real':'IntermediateState',
+            'work':'_work',
+            'init':'',
+            'output':'_output'
+            }
+def writeAcadoAlgorithm(dae, f):
+    xdot = C.veccat([dae.ddt(name) for name in dae.xNames()])
+    inputs = [dae.xVec(), dae.zVec(), dae.uVec(), dae.pVec(), xdot]
+    outputs = [dae[name] for name in dae.outputNames()]
+    f = C.SXFunction( inputs, [f]+outputs )
+    f.init()
+
+    inputNames = [dae.xNames(), dae.zNames(), dae.uNames(), dae.pNames(), ['dot( '+name+' )' for name in dae.xNames()]]
+
     # error dictionary
     errorMap = {}
     for key,value in C.__dict__.iteritems():
         if key[0:3] == "OP_":
             errorMap[value] = key
-
-    inputStr = 'input'
-    outputStr = 'output'
-    realStr = 'real_t'
-    spacesStr = '    '
-    replace0 = {'spaces':spacesStr, 'real':realStr, 'work':'work','init':'',
-                'input':inputStr, 'output':outputStr, 'funname':funname}
 
     algStrings = []
     initializedWorkVars = set();
@@ -21,15 +26,13 @@ def convertAlgorithm(funname, f):
         algStrings.append(blah)
     def makeUnary(op, replace):
         replace['op'] = op
-        write( '%(spaces)s%(init)s%(work)s_%(i1)d = %(op)s( %(work)s_%(i2)d );' %  replace)
+        write( '%(init)s%(work)s_%(i1)d = %(op)s( %(work)s_%(i2)d );' %  replace)
     def makeInfixBinary(op, replace):
         replace['op'] = op
-        write( '%(spaces)s%(init)s%(work)s_%(i1)d = %(work)s_%(i2)d %(op)s %(work)s_%(i3)d;' %  replace)
+        write( '%(init)s%(work)s_%(i1)d = %(work)s_%(i2)d %(op)s %(work)s_%(i3)d;' %  replace)
     def makePrefixBinary(op, replace):
         replace['op'] = op
-        write( '%(spaces)s%(init)s%(work)s_%(i1)d = %(op)s( %(work)s_%(i2)d, %(work)s_%(i3)d );' %  replace)
-
-    write( 'void %(funname)s( %(real)s * %(input)s, %(real)s * %(output)s ){' % replace0 )
+        write( '%(init)s%(work)s_%(i1)d = %(op)s( %(work)s_%(i2)d, %(work)s_%(i3)d );' %  replace)
     # Loop over the algorithm
     for i in range(f.getAlgorithmSize()):
       
@@ -44,17 +47,24 @@ def convertAlgorithm(funname, f):
                 replace['init'] = replace['real']+' '
         if(op==C.OP_CONST):
             replace['const'] = repr(f.getAtomicInputReal(i))
-            write( '%(spaces)s%(init)s%(work)s_%(i1)d = %(const)s;' % replace )
+            write( '%(init)s%(work)s_%(i1)d = %(const)s;' % replace )
         else:
             i2,i3 = f.getAtomicInput(i)
             replace['i2'] = i2
             replace['i3'] = i3
             if op==C.OP_INPUT:
-                assert i2==0, "oh noes, INPUT IS MULTIDIMENSIONAL!!!"
-                write( '%(spaces)s%(init)s%(work)s_%(i1)d = %(input)s[%(i3)d];' % replace)
+                #assert i2==0, "oh noes, INPUT IS MULTIDIMENSIONAL!!!"
+                replace['input'] = inputNames[i2][i3]
+                write( '%(init)s%(work)s_%(i1)d = %(input)s;' % replace)
             elif op==C.OP_OUTPUT:
-                assert i1==0, "oh noes, INPUT IS MULTIDIMENSIONAL!!!"
-                write( '%(spaces)s%(output)s[%(i3)d] = %(work)s_%(i2)d;' % replace )
+#                assert i1==0, "oh noes, OUTPUT IS MULTIDIMENSIONAL!!!"
+#                write( '%(spaces)sf << 0 == %(work)s_%(i2)d;' % replace )
+                if i1==0:
+                    write( '_f << 0 == %(work)s_%(i2)d;' % replace )
+                else:
+                    replace['i1'] = i1-1
+                    replace['outputname'] = dae.outputNames()[i1-1]
+                    write( '%(real)s %(output)s_%(i1)d_%(i3)d = %(work)s_%(i2)d; /* Output "%(outputname)s" */' % replace )
             
             ########## BINARY ########
             elif op==C.OP_ADD:
@@ -119,79 +129,43 @@ def convertAlgorithm(funname, f):
                 raise KeyError('Oh man, there is a free parameter in your SXFunction')
             else:
                 raise KeyError('Unknown operation: '+ errorMap[op])
-    write( '}' )
+
     return algStrings
 
-def generateModel(dae,ag):
+def generateAcadoCodegenModel(dae,f):
+    lines = []
+    lines.append('/* Differential States */')
+    for name in dae.xNames():
+        lines.append('DifferentialState '+name+';')
+    lines.append('')
+    lines.append('/* Parameters posing as Differential States */')
+    for name in dae.pNames():
+        lines.append('DifferentialState '+name+'; /* REALLY A PARAMETER */')
+    lines.append('')
+    lines.append('/* Algebraic States */')
+    for name in dae.zNames():
+        lines.append('AlgebraicState '+name+';')
+    lines.append('')
+    lines.append('/* Control Inputs */')
+    for name in dae.uNames():
+        lines.append('Control '+name+';')
+    lines.append('')
 
-    dummyParamDots = C.veccat( [C.ssym(p+'__PARAMDOT_DUMMY_ACADO_DOESNT_HANDLE_PARAMS_UUUUGH')
-                                for p in dae.pNames()] )
-    inputs = C.veccat([ag['x'], ag['p'], ag['z'], ag['u'], ag['xdot'], dummyParamDots])
+    lines.append('/* The Differential Equation */')
+    lines.append('DifferentialEquation _f;')
 
     # dae residual
-    f = C.veccat([ag['f'], dummyParamDots])
-    rhs = C.SXFunction( [inputs], [f] )
-    rhs.init()
-    rhs_string = convertAlgorithm('rhs', rhs)
+    lines.extend( writeAcadoAlgorithm(dae, f) )
+    lines.append('')
+    lines.append('/* hack to make parameters differential states: */')
+    for p in dae.pNames():
+        lines.append('_f << 0 == dot( '+p+' );')
+    lines.append('')
+    lines.append('/* the outputs */')
+    lines.append('OutputFcn _h;')
+    for k,name in enumerate(dae.outputNames()):
+        for j in range(dae[name].size()):
+            replace = dict(replace0.items() + {'k':k,'j':j,'outputname':name}.items())
+            lines.append('_h << %(output)s_%(k)d_%(j)d; /* %(outputname)s (%(j)d)*/' % replace)
 
-    # dae residual jacobian
-    jf = C.veccat( [ C.jacobian(f,inputs) ] )
-    rhs_jacob = C.SXFunction( [inputs], [jf] )
-    rhs_jacob.init()
-    rhs_jacob_string = convertAlgorithm('rhs_jac', rhs_jacob)
-
-    # outputs
-    o = C.veccat( [dae[outname] for outname in dae.outputNames()] )
-    outputs = C.SXFunction( [inputs], [o] )
-    outputs.init()
-    outputs_string = convertAlgorithm('out', outputs)
-
-    # outputs jacobian
-    jo = C.veccat( [ C.jacobian(o,inputs) ] )
-    outputs_jacob = C.SXFunction( [inputs], [jo] )
-    outputs_jacob.init()
-    outputs_jacob_string = convertAlgorithm('out_jac', outputs_jacob)
-
-    # model file
-    modelFile = ['#include "acado.h"']
-    modelFile.append('')
-    modelFile.extend(rhs_string)
-    modelFile.append('')
-    modelFile.extend(rhs_jacob_string)
-    modelFile.append('')
-    modelFile.append('')
-    modelFile.extend(outputs_string)
-    modelFile.append('')
-    modelFile.extend(outputs_jacob_string)
-    return '\n'.join(modelFile)
-
-def generateSimExport(dae):
-    return \
-    '\n'.join(['DifferentialState '+xn+';' for xn in dae.xNames()]) + \
-    '\n'+\
-    '\n'.join(['DifferentialState '+pn+'; /* really a parameter */' for pn in dae.pNames()]) + \
-    '\n'+\
-    '\n'.join(['AlgebraicState '+zn+';' for zn in dae.zNames()]) + \
-    '\n'+\
-    '\n'.join(['Control '+un+';' for un in dae.uNames()]) + \
-    '''
-
-SIMexport sim();
-sim.set( INTEGRATOR_TYPE, INT_IRK_RIIA3 );
-sim.set( NUM_INTEGRATOR_STEPS, 4 );
-sim.set( MEASUREMENT_GRID, EQUIDISTANT_GRID );
-
-sim.setModel( "model", "rhs", "rhs_jac" );
-sim.setDimensions( %d, %d, %d, %d );
-
-sim.addOutput( "out", "out_jac", 2 );
-sim.setMeasurements( Meas );
-sim.setTimingSteps( 10000 );
-sim.exportAndRun( "externModel_export", "init_externModel.txt", "controls_externModel.txt" );
-''' % (len(dae.xNames()+dae.pNames()), len(dae.xNames()+dae.pNames()), len(dae.zNames()), len(dae.uNames()))
-
-def simExport(dae, ag):
-    modelFile = generateModel(dae, ag)
-    simExportFile = generateSimExport(dae)
-
-    return (modelFile, simExportFile)
+    return ('\n'.join(lines))

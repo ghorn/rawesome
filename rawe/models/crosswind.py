@@ -214,7 +214,7 @@ def setupModel(dae, conf):
     dae['cddot'] = cddot
     return (mm, rhs, dRexp)
         
-def crosswindModel(conf,nSteps=None,extraParams=[]):
+def crosswindModel(conf,extraParams=[]):
     dae = Dae()
     for ep in extraParams:
         dae.addP(ep)
@@ -291,9 +291,6 @@ def crosswindModel(conf,nSteps=None,extraParams=[]):
         dae.ddt('aileron') - dae['daileron'],
         dae.ddt('elevator') - dae['delevator']
         ])
-
-    if nSteps is not None:
-        dae.addP('endTime')
 
     # acceleration
 #    ddx = dae['ddx']
