@@ -236,10 +236,11 @@ class Dae(object):
                  'u':self.uVec(),
                  'xdot':xdot,
                  'f':f }
-        return acadoExport.simExport(self, info)
+        return acadoSimExport.simExport(self, info)
 
     def acadoModelGen(self):
         self._freezeXzup('agadoModelGen()')
+        self._freezeOutputs('agadoModelGen()')
 
         f = self._odeRes
         if isinstance(f,list):
@@ -250,15 +251,8 @@ class Dae(object):
                 algRes = C.veccat(algRes)
             f = C.veccat([f,algRes])
             
-        xdot = C.veccat([self.ddt(name) for name in self.xNames()])
+        return acadoModelExport.generateAcadoCodegenModel(self,f)
 
-        info = { 'x':self.xVec(),
-                 'z':self.zVec(),
-                 'p':self.pVec(),
-                 'u':self.uVec(),
-                 'xdot':xdot,
-                 'f':f }
-        return acadoExport.generateAcadoCodegenModel(self, info)
 
 if __name__=='__main__':
     dae = Dae()
