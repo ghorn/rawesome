@@ -31,6 +31,7 @@ if __name__=='__main__':
             try:
                 x = sim.step(x,u,p)
             except RuntimeError:
+                communicator.close()
                 raise Exception('OH NOES, IDAS CHOKED')
     except KeyboardInterrupt:
         print "closing..."
