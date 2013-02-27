@@ -11,10 +11,10 @@ if __name__=='__main__':
     print "creating model..."
     dae = models.crosswind(conf)
     
-#    (modelFile, simExportFile) = dae.acadoGen()
-##    print modelFile
-##    print simExportFile
-#
+    (modelFile, simExportFile) = dae.acadoSimGen()
+    print modelFile
+    print simExportFile
+
 #    f = open('auto_model.c','w')
 #    f.write(modelFile)
 #    f.close()
@@ -23,11 +23,10 @@ if __name__=='__main__':
 #    f.write(simExportFile)
 #    f.close()
 
-
     modelFile = dae.acadoModelGen()
-#    print modelFile
-#    print simExportFile
+    print modelFile
+    print simExportFile
 
-    f = open('auto_model.cpp','w')
-    f.write(modelFile)
-    f.close()
+#    f = open('auto_model.cpp','w')
+#    f.write(modelFile)
+#    f.close()

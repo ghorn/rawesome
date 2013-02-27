@@ -268,25 +268,33 @@ def generateCModel(dae,ag):
     f = C.veccat([ag['f'], dummyParamDots])
     rhs = C.SXFunction( [inputs], [f] )
     rhs.init()
-    rhs_string = writer.convertAlgorithm('rhs', rhs)
+    rhs_string = [writer.writePrototype('rhs')]
+    rhs_string.extend(writer.convertAlgorithm(rhs))
+    rhs_string.append('}')
 
     # dae residual jacobian
     jf = C.veccat( [ C.jacobian(f,inputs) ] )
     rhs_jacob = C.SXFunction( [inputs], [jf] )
     rhs_jacob.init()
-    rhs_jacob_string = writer.convertAlgorithm('rhs_jac', rhs_jacob)
+    rhs_jacob_string = [writer.writePrototype('rhs_jac')]
+    rhs_jacob_string.extend(writer.convertAlgorithm(rhs_jacob))
+    rhs_jacob_string.append('}')
 
     # outputs
     o = C.veccat( [dae[outname] for outname in dae.outputNames()] )
     outputs = C.SXFunction( [inputs], [o] )
     outputs.init()
-    outputs_string = writer.convertAlgorithm('out', outputs)
+    outputs_string = [writer.writePrototype('out')]
+    outputs_string.extend(writer.convertAlgorithm(outputs))
+    outputs_string.append('}')
 
     # outputs jacobian
     jo = C.veccat( [ C.jacobian(o,inputs) ] )
     outputs_jacob = C.SXFunction( [inputs], [jo] )
     outputs_jacob.init()
-    outputs_jacob_string = writer.convertAlgorithm('out_jac', outputs_jacob)
+    outputs_jacob_string = [writer.writePrototype('out_jac')]
+    outputs_jacob_string.extend(writer.convertAlgorithm(outputs_jacob))
+    outputs_jacob_string.append('}')
 
     # model file
     modelFile = ['#include "acado.h"']
