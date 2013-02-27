@@ -1,6 +1,7 @@
 
 import casadi as C
-import acadoExport
+import acadoSimExport
+import acadoModelExport
 
 class Dae(object):
     """
