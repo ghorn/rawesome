@@ -23,7 +23,7 @@ class Constraints():
         self._glb = []
         self._gub = []
         
-    def add(self,lhs,comparison,rhs,tag):
+    def add(self,lhs,comparison,rhs,tag=('unnamed_constraint',None)):
         #print "\n\nadding constraint\nlhs: "+str(lhs)+"\ncomparison: "+comparison+"\nrhs: "+str(rhs)
         if comparison=="==":
             g = lhs - rhs
@@ -43,7 +43,9 @@ class Constraints():
         else:
             raise ValueError('Did not recognize comparison \"'+str(comparison)+'\"')
 
-    def addBnds(self,g,(glb,gub),(tagName,tagIdx)):
+    def addBnds(self,g,(glb,gub),tag=('unnamed_constraint',None)):
+        (tagName, tagIdx) = tag
+
         if (isinstance(glb,numbers.Real) and isinstance(gub,numbers.Real)):
             glb = np.array(glb)
             gub = np.array(gub)

@@ -255,10 +255,10 @@ class Coll():
         return self._dvMap.pVec(*args,**kwargs)
 
     def constrain(self,lhs,comparison,rhs,tag=('unnamed_constraint',None)):
-        self._constraints.add(lhs,comparison,rhs,tag)
+        self._constraints.add(lhs,comparison,rhs,tag=tag)
 
     def constrainBnds(self,g,(lbg,ubg),tag=('unnamed_constraint',None)):
-        self._constraints.addBnds(g,(lbg,ubg),tag)
+        self._constraints.addBnds(g,(lbg,ubg),tag=tag)
 
     def xSize(self):
         return len(self.dae.xNames())
