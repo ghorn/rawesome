@@ -20,7 +20,7 @@ class Dae(object):
         self._outputNames = []
 
         # list of illegal names
-        self._illegalNames = []
+        self._illegalNames = ['']
 
         # dictionaries of SXMatrix symbols
         self._syms = {}
@@ -47,6 +47,9 @@ class Dae(object):
         if name in allNames:
             raise ValueError('name "'+name+'" is not unique or illegal')
 
+        if name[0]=='_':
+            raise ValueError("underscores before names are illegal")
+
     def _addVar(self,name,namelist):
         self.assertXzupNotFrozen()
         if isinstance(name,list):
@@ -67,7 +70,7 @@ class Dae(object):
         try:
             return self._dummyDdtMap[name]
         except KeyError:
-            self._dummyDdtMap[name] = C.ssym(name+"DotDummy_____")
+            self._dummyDdtMap[name] = C.ssym('_DotDummy_'+name)
             return self.ddt(name)
 
     def setAlgRes(self,res):
@@ -120,6 +123,9 @@ class Dae(object):
     def pVec(self):
         self._freezeXzup('pVec()')
         return C.veccat([self._syms[n] for n in self._pNames])
+    def xDotVec(self):
+        self._freezeXzup('xDotVec()')
+        return C.veccat([self.ddt(n) for n in self._xNames])
 
     def xNames(self):
         self._freezeXzup('xNames()')
@@ -197,24 +203,41 @@ class Dae(object):
 
         return (fAll,(f0,outputs0))
 
-    def sxFun(self):
-        self._freezeXzup('sxFun()')
-        algRes = None
+    def getResidual(self):
+        self._freezeXzup('getResidual()')
+        if not hasattr(self,'_odeRes'):
+            raise ValueError('need to set the residual')
+        f = self._odeRes
+        if isinstance(f,list):
+            f = C.veccat(f)
+
         if hasattr(self,'_algRes'):
             algRes = self._algRes
-        odeRes = self._odeRes
+            if isinstance(algRes,list):
+                algRes = C.veccat(algRes)
+            f = C.veccat([f,algRes])
+        return f
 
-        if isinstance(odeRes,list):
-            odeRes = C.veccat(odeRes)
-        if isinstance(algRes,list):
-            algRes = C.veccat(algRes)
+    def casadiDae(self):
+#       I have:
+#       0 = f(xdot,x,z)
+#
+#       I need dot(x') = f'(x',z')
+#                    0 = g'(x',z')
+#
+#       let x' = x
+#           z' = [z,xdot]
+#           dot(x') = xdot
+#           0 = g'(x',z') = f(xdot,x,z)
+        self._freezeXzup('casadiDae()')
+        f = self.getResidual()
             
         xdot = C.veccat([self.ddt(name) for name in self.xNames()])
         return C.SXFunction( C.daeIn( x=self.xVec(),
-                                      z=self.zVec(),
-                                      p=C.veccat([self.uVec(),self.pVec()]),
-                                      xdot=xdot ),
-                             C.daeOut( alg=algRes, ode=odeRes) )
+                                      z=C.veccat([self.zVec(),xdot]),
+                                      p=C.veccat([self.uVec(),self.pVec()])
+                                      ),
+                             C.daeOut( alg=f, ode=xdot) )
 
     def acadoSimGen(self):
         self._freezeXzup('agadoSimGen()')

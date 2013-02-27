@@ -138,5 +138,5 @@ def getSteadyState(dae,conf,omega0,r0):
         dotSol[name] = xOpt[k].at(0)
         k += 1
 #        print 'DDT('+name+'):\t',dotSol[name]
-    return (sol, dotSol)
+    return sol
 

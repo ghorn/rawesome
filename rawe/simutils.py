@@ -9,36 +9,47 @@ import casadi as C
 
 import kiteproto
 import joy
+import time
 
-class Communicator():
-    def __init__(self, fOutputs, outputNames):
+class Timer(object):
+    def __init__(self,dt):
+        self.dt = dt
+
+    def start(self):
+        self.nextTime = time.time() + self.dt
+        
+    def sleep(self):
+        tToWait = self.nextTime - time.time()
+        if tToWait > 0:
+            time.sleep(tToWait)
+        self.nextTime = self.nextTime + self.dt
+
+class Communicator(object):
+    def __init__(self):
         self.context   = zmq.Context(1)
         self.publisher = self.context.socket(zmq.PUB)
         self.publisher.bind("tcp://*:5563")
-        self.fOutputs = fOutputs
-        self.outputNames = outputNames
+#        self.fOutputs = fOutputs
+#        self.outputNames = outputNames
 
-    def sendKite(self,sim,(x,u,p),zt,rArm,w0,otherMessages=[]):
-        assert isinstance(otherMessages,list)
-        pb = kiteproto.toKiteProto(x,u,p,zt,rArm,w0=w0,zeroDelta=True)
-        pb.messages.append("sloMoFactor: "+str(sim.sloMoFactor))
-        pb.messages.append("-------------------------")
+    def sendKite(self,x,u,p,outs,conf,otherMessages=[]):
+        pb = kiteproto.toKiteProto(dict(x.items()+u.items()+p.items()).__getitem__,
+                                   conf['kite']['zt'],
+                                   conf['carousel']['rArm'],
+                                   lineAlpha=0.2)
 
-        self.fOutputs.setInput(x,0)
-        self.fOutputs.setInput(u,1)
-        self.fOutputs.setInput(p,2)
-        self.fOutputs.evaluate()
-        for k,n in enumerate(self.outputNames):
-            if n != "dcm":
-                pb.messages.append(n+": "+str(self.fOutputs.output(k)))
+        for name in outs:
+            pb.messages.append(name+": "+str(outs[name]))
         if len(otherMessages)>0:
             pb.messages.append("-------------------------")
             for om in otherMessages:
-                assert isinstance(om,str)
                 pb.messages.append(om)
-
         self.publisher.send_multipart(["carousel", pb.SerializeToString()])
         
+    def close(self):
+        self.publisher.close()
+        self.context.term()
+
 
 class SimState():
     def __init__(self,pdOn=None, x=None):

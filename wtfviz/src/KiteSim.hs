@@ -101,7 +101,8 @@ drawFun state@(State {sCS=Just cs}) =
           zipWith (\s k -> Text2d (uToString s) (30,fromIntegral $ 30*k) TimesRoman24 (makeColor 1 1 1 1)) messages (reverse [1..length messages])
     messages = toList $ CS.messages cs
 
-    (ac,_) = drawAc kiteAlpha pos quat
+    ac = Trans pos $ Scale (1,1,1) ac'
+    (ac',_) = drawAc kiteAlpha (Xyz 0 0 0) quat
     lineAlpha = realToFrac $ fromMaybe 1 (CS.lineTransparency cs)
     kiteAlpha = realToFrac $ fromMaybe 1 (CS.kiteTransparency cs)
 
