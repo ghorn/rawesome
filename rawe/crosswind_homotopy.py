@@ -3,18 +3,15 @@ import casadi as C
 import matplotlib.pyplot as plt
 import numpy
 from numpy import pi
-import zmq
 import pickle
 
-import crosswind_collocation
-from collocation import Coll,trajectory
+from collocation import Coll
 from config import readConfig
 import kiteutils
-import kite_pb2
-import kiteproto
 import models
+from kiteTelemetry import startKiteTelemetry
 
-def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
+def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
     ocp = Coll(dae, nk=nk,nicp=nicp,deg=deg)
     
     print "setting up collocation..."
@@ -96,10 +93,6 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
 
 
 if __name__=='__main__':
-    context   = zmq.Context(1)
-    publisher = context.socket(zmq.PUB)
-    publisher.bind("tcp://*:5563")
-
     print "reading config..."
     conf = readConfig('config.ini','configspec.ini')
     conf['runHomotopy'] = True
@@ -109,7 +102,7 @@ if __name__=='__main__':
     dae = models.crosswind(conf,extraParams=['endTime'])
 
     print "setting up ocp..."
-    ocp = setupOcp(dae,conf,publisher,nk=40)
+    ocp = setupOcp(dae,conf,nk=nk)
 
     lineRadiusGuess = 70.0
     circleRadiusGuess = 10.0
@@ -172,6 +165,7 @@ if __name__=='__main__':
         ocp.guess('e32',e3[1],timestep=k)
         ocp.guess('e33',e3[2],timestep=k)
         
+    ocp.guess('w3', 2*pi/ocp._guess.lookup('endTime'))
     
     # objective function
     obj = -1e6*ocp.lookup('gamma_homotopy')
@@ -179,6 +173,7 @@ if __name__=='__main__':
         obj += (homotopyTraj['x'][k] - ocp.lookup('x',timestep=k))**2
         obj += (homotopyTraj['y'][k] - ocp.lookup('y',timestep=k))**2
         obj += (homotopyTraj['z'][k] - ocp.lookup('z',timestep=k))**2
+    ocp.setQuadratureDdt('quadrature energy', 'winch power')
 
     # control regularization
     for k in range(ocp.nk):
@@ -215,45 +210,13 @@ if __name__=='__main__':
     ocp.guess('w0',10)
     ocp.guess('r',lineRadiusGuess)
     
-    for name in ['w1','w2','w3','dr','ddr','aileron','elevator','daileron','delevator']:
+    for name in ['w1','w2','dr','ddr','aileron','elevator','daileron','delevator']:
         ocp.guess(name,0)
         
     ocp.guess('gamma_homotopy',0)
         
-    # callback function
-    class MyCallback:
-        def __init__(self):
-            self.iter = 0 
-        def __call__(self,f,*args):
-            self.iter = self.iter + 1
-            xOpt = numpy.array(f.input(C.NLP_X_OPT))
-
-            traj = trajectory.Trajectory(ocp,xOpt)
-            
-            kiteProtos = []
-            for k in range(0,ocp.nk):
-                for nicpIdx in range(0,ocp.nicp):
-#                    for degIdx in [0]:
-                    for degIdx in range(ocp.deg+1):
-                        lookup = lambda name: traj.lookup(name,timestep=k,nicpIdx=nicpIdx,degIdx=degIdx)
-                        kiteProtos.append( kiteproto.toKiteProto(lookup,
-                                                                 conf['kite']['zt'],
-                                                                 conf['carousel']['rArm'],
-                                                                 lineAlpha=0.2 ) )
-            mc = kite_pb2.MultiCarousel()
-            mc.css.extend(list(kiteProtos))
-            
-            mc.messages.append("w0: "+str(traj.lookup('w0')))
-            mc.messages.append("iter: "+str(self.iter))
-            mc.messages.append("endTime: "+str(traj.lookup('endTime')))
-            mc.messages.append("homotopy gamma: "+str(traj.lookup('gamma_homotopy')))
-
-             # bounds feedback
-#            lbx = ocp.solver.input(C.NLP_LBX)
-#            ubx = ocp.solver.input(C.NLP_UBX)
-#            ocp._bounds.printBoundsFeedback(xOpt,lbx,ubx,reportThreshold=0)
-            
-            publisher.send_multipart(["multi-carousel", mc.SerializeToString()])
+    # spawn telemetry thread
+    callback = startKiteTelemetry(ocp, conf)
 
     # solver
     solverOptions = [ ("expand_f",True)

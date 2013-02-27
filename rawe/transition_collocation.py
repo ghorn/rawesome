@@ -3,19 +3,18 @@ import casadi as C
 import matplotlib.pyplot as plt
 import numpy
 from numpy import pi
-import zmq
 from fourier_fit import FourierFit,TrajFit
 import pickle
 
-from collocation import Coll,trajectory
+from collocation import Coll
 from config import readConfig
 import kiteutils
-import kite_pb2
-import kiteproto
 import models
+import kiteproto
+import kite_pb2
+from kiteTelemetry import startKiteTelemetry
 
-
-def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
+def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
     ocp = Coll(dae, nk=nk,nicp=nicp,deg=deg)
     
     print "setting up collocation..."
@@ -203,48 +202,41 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
 #        oldKiteProtos.append( toFourierKiteProto(crosswindfits,k,zt=conf['kite']['zt'], rArm=conf['carousel']['rArm'],kiteAlpha=0.3,lineAlpha=0,dz=0) )
 
     # callback function
-    class MyCallback:
-        def __init__(self):
-            self.iter = 0 
-        def __call__(self,f,*args):
-            self.iter = self.iter + 1
-            xOpt = numpy.array(f.input(C.NLP_X_OPT))
+    def myCallback(traj,myiter,ocp_,conf_):
+        kiteProtos = []
+        for k in range(0,ocp.nk):
+            for nicpIdx in range(0,ocp.nicp):
+                for degIdx in [0]:
+#                for degIdx in range(ocp.deg+1):
+                    lookup = lambda name: traj.lookup(name,timestep=k,nicpIdx=nicpIdx,degIdx=degIdx)
+                    kiteProtos.append( kiteproto.toKiteProto(lookup,
+                                                             conf['kite']['zt'],
+                                                             conf['carousel']['rArm'],
+                                                             lineAlpha=0.2) )
+        kiteProtos += oldKiteProtos
+        mc = kite_pb2.MultiCarousel()
+        mc.css.extend(list(kiteProtos))
+        
+        mc.messages.append("w0: "+str(traj.lookup('w0')))
+        mc.messages.append("iter: "+str(myiter))
+        mc.messages.append("endTime: "+str(traj.lookup('endTime')))
+        mc.messages.append("average power: "+str(traj.lookup('quadrature energy',timestep=-1)/traj.lookup('endTime'))+" W")
+        mc.messages.append("phase0: "+str(traj.lookup('phase0')/pi)+" * pi")
+        mc.messages.append("phaseF: "+str(traj.lookup('phaseF')/pi)+" * pi")
 
-            traj = trajectory.Trajectory(ocp,xOpt)
-            
-            kiteProtos = []
-            for k in range(0,ocp.nk):
-                for nicpIdx in range(0,ocp.nicp):
-                    for degIdx in [0]:
-#                    for degIdx in range(ocp.deg+1):
-                        lookup = lambda name: traj.lookup(name,timestep=k,nicpIdx=nicpIdx,degIdx=degIdx)
-                        kiteProtos.append( kiteproto.toKiteProto(lookup,
-                                                                 conf['kite']['zt'],
-                                                                 conf['carousel']['rArm'],
-                                                                 lineAlpha=0.2) )
-            kiteProtos += oldKiteProtos
-            mc = kite_pb2.MultiCarousel()
-            mc.css.extend(list(kiteProtos))
-            
-            mc.messages.append("w0: "+str(traj.lookup('w0')))
-            mc.messages.append("iter: "+str(self.iter))
-            mc.messages.append("endTime: "+str(traj.lookup('endTime')))
-            mc.messages.append("average power: "+str(traj.lookup('quadrature energy',timestep=-1)/traj.lookup('endTime'))+" W")
-            mc.messages.append("phase0: "+str(traj.lookup('phase0')/pi)+" * pi")
-            mc.messages.append("phaseF: "+str(traj.lookup('phaseF')/pi)+" * pi")
-
-             # bounds feedback
-            lbx = ocp.solver.input(C.NLP_LBX)
-            ubx = ocp.solver.input(C.NLP_UBX)
-            ocp._bounds.printBoundsFeedback(xOpt,lbx,ubx,reportThreshold=0)
-
-            # constraints feedback
-            lbg = ocp.solver.input(C.NLP_LBG)
-            ubg = ocp.solver.input(C.NLP_UBG)
-            g = numpy.array(f.input(C.NLP_G))
-            ocp._constraints.printViolations(g,lbg,ubg,reportThreshold=0)
-            
-            publisher.send_multipart(["multi-carousel", mc.SerializeToString()])
+#         # bounds feedback
+#        lbx = ocp.solver.input(C.NLP_LBX)
+#        ubx = ocp.solver.input(C.NLP_UBX)
+#        ocp._bounds.printBoundsFeedback(xOpt,lbx,ubx,reportThreshold=0)
+#
+#        # constraints feedback
+#        lbg = ocp.solver.input(C.NLP_LBG)
+#        ubg = ocp.solver.input(C.NLP_UBG)
+#        g = numpy.array(f.input(C.NLP_G))
+#        ocp._constraints.printViolations(g,lbg,ubg,reportThreshold=0)
+        
+        return mc.SerializeToString()
+    callback = startKiteTelemetry(ocp, conf, userCallback=myCallback)
 
 
     # solver
@@ -267,15 +259,11 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
 
     print "setting up solver..."
     ocp.setupSolver( solverOpts=solverOptions,
-                     callback=MyCallback() )
+                     callback=callback )
     return ocp
 
 
 if __name__=='__main__':
-    context   = zmq.Context(1)
-    publisher = context.socket(zmq.PUB)
-    publisher.bind("tcp://*:5563")
-
     print "reading config..."
     conf = readConfig('config.ini','configspec.ini')
     
@@ -283,9 +271,7 @@ if __name__=='__main__':
     dae = models.carousel(conf,extraParams=['endTime','phase0','phaseF'])
 
     print "setting up ocp..."
-    ocp = setupOcp(dae,conf,publisher,nk=80)
-
-    print "interpolating initial guess..."
+    ocp = setupOcp(dae,conf,nk=50)
 
     # load old initial guess
     ocp.interpolateInitialGuess("data/crosswind_opt.dat",force=True,quiet=True)

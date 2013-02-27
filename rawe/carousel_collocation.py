@@ -3,15 +3,13 @@ import casadi as C
 import matplotlib.pyplot as plt
 import numpy
 from numpy import pi
-import zmq
 import pickle
 
-from collocation import Coll,trajectory
+from collocation import Coll
 from config import readConfig
 import kiteutils
-import kite_pb2
-import kiteproto
 import models
+from kiteTelemetry import startKiteTelemetry
 
 x0 = C.DMatrix( [ 1.154244772411
                 , -0.103540608242
@@ -36,9 +34,7 @@ x0 = C.DMatrix( [ 1.154244772411
                 ])
 x0=C.veccat([x0,C.sqrt(C.sumAll(x0[0:2]*x0[0:2])),0,0,0])
 
-oldKites = []
-
-def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
+def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
     ocp = Coll(dae, nk=nk,nicp=nicp,deg=deg)
     ocp.setupCollocation(ocp.lookup('endTime'))
                    
@@ -138,40 +134,10 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
         obj += ailObj + eleObj + winchObj + torqueObj
     ocp.setObjective( obj/nk )
 
-    # callback function
-    class MyCallback:
-        def __init__(self):
-            self.iter = 0 
-        def __call__(self,f,*args):
-            self.iter = self.iter + 1
-            xOpt = numpy.array(f.input(C.NLP_X_OPT))
+    ocp.setQuadratureDdt('quadrature energy', 'winch power')
 
-            traj = trajectory.Trajectory(ocp,xOpt)
-            
-            kiteProtos = []
-            for k in range(0,ocp.nk):
-                for nicpIdx in range(0,ocp.nicp):
-                    for degIdx in [0]:
-#                    for degIdx in range(ocp.deg+1):
-                        lookup = lambda name: traj.lookup(name,timestep=k,nicpIdx=nicpIdx,degIdx=degIdx)
-                        kiteProtos.append( kiteproto.toKiteProto(lookup,
-                                                                 conf['kite']['zt'],
-                                                                 conf['carousel']['rArm'],
-                                                                 lineAlpha=0.2) )
-            mc = kite_pb2.MultiCarousel()
-            mc.css.extend(list(kiteProtos+oldKites))
-            
-            mc.messages.append("w0: "+str(traj.lookup('w0')))
-            mc.messages.append("endTime: "+str(traj.lookup('endTime')))
-            mc.messages.append("iter: "+str(self.iter))
-
-             # bounds feedback
-#            lbx = ocp.solver.input(C.NLP_LBX)
-#            ubx = ocp.solver.input(C.NLP_UBX)
-#            ocp._bounds.printBoundsFeedback(xOpt,lbx,ubx,reportThreshold=0)
-            
-            publisher.send_multipart(["multi-carousel", mc.SerializeToString()])
-
+    # spawn telemetry thread
+    callback = startKiteTelemetry(ocp, conf)
 
     # solver
     solverOptions = [ ("expand_f",True)
@@ -206,16 +172,12 @@ def setupOcp(dae,conf,publisher,nk=50,nicp=1,deg=4):
     ocp.guess('w0',10)
 
     ocp.setupSolver( solverOpts=solverOptions,
-                     callback=MyCallback() )
+                     callback=callback )
 
     return ocp
 
 
 if __name__=='__main__':
-    context   = zmq.Context(1)
-    publisher = context.socket(zmq.PUB)
-    publisher.bind("tcp://*:5563")
-
     print "reading config..."
     conf = readConfig('config.ini','configspec.ini')
     
@@ -223,23 +185,13 @@ if __name__=='__main__':
     dae = models.carousel(conf,extraParams=['endTime'])
 
     print "setting up ocp..."
-    ocp = setupOcp(dae,conf,publisher,nk=30)
+    ocp = setupOcp(dae,conf,nk=30)
 
     ocp.interpolateInitialGuess("data/carousel_opt.dat",force=True,quiet=True)
 
     for w0 in [10]:
         ocp.bound('w0',(w0,w0),force=True)
         traj = ocp.solve()
-        
-        for k in range(0,ocp.nk):
-            for nicpIdx in range(0,ocp.nicp):
-                for degIdx in [0]:
-#                for degIdx in range(ocp.deg+1):
-                    lookup = lambda name: traj.lookup(name,timestep=k,nicpIdx=nicpIdx,degIdx=degIdx)
-                    oldKites.append( kiteproto.toKiteProto(lookup,
-                                                           conf['kite']['zt'],
-                                                           conf['carousel']['rArm'],
-                                                           lineAlpha=0.2) )
 
     print "saving optimal trajectory"
     traj.save("data/carousel_opt.dat")

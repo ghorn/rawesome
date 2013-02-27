@@ -3,18 +3,16 @@ import matplotlib.pyplot as plt
 import pickle
 import numpy
 from numpy import pi
-import zmq
 
-from collocation import Coll,trajectory
+from collocation import Coll
 from config import readConfig
 import kiteutils
-import kite_pb2
-import kiteproto
 import models
+from kiteTelemetry import startKiteTelemetry
 
 numLoops=4
 
-def setupOcp(dae,conf,publisher,nk,nicp,deg,collPoly):
+def setupOcp(dae,conf,nk,nicp,deg,collPoly):
     def addCosts():
         ddr = dae['ddr']
         daileron = dae['daileron']
@@ -133,10 +131,6 @@ def setupOcp(dae,conf,publisher,nk,nicp,deg,collPoly):
 
 
 if __name__=='__main__':
-    context   = zmq.Context(1)
-    publisher = context.socket(zmq.PUB)
-    publisher.bind("tcp://*:5563")
-
     print "reading config..."
     conf = readConfig('config.ini','configspec.ini')
 #    nk = 60*numLoops
@@ -151,58 +145,10 @@ if __name__=='__main__':
     deg = 4
     collPoly='RADAU'
     #collPoly='LEGENDRE'
-    ocp = setupOcp(dae,conf,publisher,nk,nicp,deg,collPoly)
+    ocp = setupOcp(dae,conf,nk,nicp,deg,collPoly)
 
-    allProtos = []
-    # callback function
-    class MyCallback:
-        def __init__(self):
-            self.iter = 0 
-        def __call__(self,f,*args):
-            self.iter = self.iter + 1
-            xOpt = numpy.array(f.input(C.NLP_X_OPT))
-
-            traj = trajectory.Trajectory(ocp,xOpt)
-            
-            kiteProtos = []
-            for k in range(0,ocp.nk):
-                for nicpIdx in range(0,ocp.nicp):
-                    for degIdx in [0]:
-#                    for degIdx in range(ocp.deg+1):
-                        lookup = lambda name: traj.lookup(name,timestep=k,nicpIdx=nicpIdx,degIdx=degIdx)
-                        kiteProtos.append( kiteproto.toKiteProto(lookup,
-                                                                 conf['kite']['zt'],
-                                                                 conf['carousel']['rArm'],
-                                                                 lineAlpha=0.2) )
-            mc = kite_pb2.MultiCarousel()
-            mc.css.extend(list(kiteProtos))
-      
-            mc.messages.append("w0: "+str(traj.lookup('w0')))
-            mc.messages.append("iter: "+str(self.iter))
-            mc.messages.append("endTime: "+str(traj.lookup('endTime')))
-            mc.messages.append("average power: "+str(traj.lookup('quadrature energy',timestep=-1)/traj.lookup('endTime'))+" W")
-      
-#            # bounds feedback
-#            lbx = ocp.solver.input(C.NLP_LBX)
-#            ubx = ocp.solver.input(C.NLP_UBX)
-#            s1 = ocp._bounds.boundsFeedbackStr(xOpt,lbx,ubx,reportThreshold=0)
-#     
-#            # constraints feedback
-#            lbg = ocp.solver.input(C.NLP_LBG)
-#            ubg = ocp.solver.input(C.NLP_UBG)
-#            ocp._gfcn.setInput(traj.getDvs(),0)
-#            ocp._gfcn.evaluate()
-#            g = ocp._gfcn.output()
-#            s2 = ocp._constraints.getViolationsStr(g,lbg,ubg,reportThreshold=0)
-#     
-#            raise ValueError(s1+'\n-------------------------\n'+s2)
-      
-            mcStr = mc.SerializeToString()
-            allProtos.append(mcStr)
-            publisher.send_multipart(["multi-carousel", mcStr])
-
-
-
+    # spawn telemetry thread
+    callback = startKiteTelemetry(ocp, conf)
 
     # solver
     solverOptions = [("expand_f",True),
@@ -228,7 +174,7 @@ if __name__=='__main__':
     
     print "setting up solver..."
     ocp.setupSolver( solverOpts=solverOptions,
-                     callback=MyCallback() )
+                     callback=callback )
 
     ocp.interpolateInitialGuess("data/crosswind_homotopy.dat",force=True,quiet=True,numLoops=numLoops)
 #    ocp.interpolateInitialGuess("data/crosswind_opt.dat",force=True,quiet=True,numLoops=numLoops)
@@ -240,12 +186,6 @@ if __name__=='__main__':
     print "endTime: "+str(traj.lookup('endTime'))
 
     traj.save("data/crosswind_opt_4_loops.dat")
-    def saveProtos(filename):
-        print "saving protos as \"%s\"" % filename
-        f=open(filename,'w')
-        pickle.dump(allProtos,f)
-        f.close()
-    saveProtos('data/crosswind_protos_4_loops_unconstrainedCl_sparse.dat')
 
     def printBoundsFeedback():
         xOpt = traj.dvMap.vectorize()
@@ -261,6 +201,7 @@ if __name__=='__main__':
     g = ocp._gfcn.output()
     
     ocp._constraints.printViolations(g,lbg,ubg,reportThreshold=0)
+
     # Plot the results
     def plotResults():
         traj.subplot(['x','y','z'])
