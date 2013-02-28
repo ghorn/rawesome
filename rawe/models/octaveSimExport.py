@@ -53,6 +53,7 @@ def writeAcadoAlgorithm(dae, fm):
             if op==C.OP_INPUT:
                 #assert i2==0, "oh noes, INPUT IS MULTIDIMENSIONAL!!!"
                 replace['input'] = inputNames[i2]
+                replace['i3'] += 1
                 write( '%(init)s%(work)s_%(i1)d = %(input)s(%(i3)d);' % replace)
             elif op==C.OP_OUTPUT:
                 rowidx = fm.output(i1).sparsity().getRow()[i3]
