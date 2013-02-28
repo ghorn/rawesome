@@ -1,18 +1,15 @@
 import casadi as C
 
-replace0 = {'real':'IntermediateState',
-            'work':'_work',
-            'init':'',
-            'output':'_output'
+replace0 = {'real':'',
+            'work':'work',
+            'init':''
             }
-def writeAcadoAlgorithm(dae, f):
-    xdot = C.veccat([dae.ddt(name) for name in dae.xNames()])
-    inputs = [dae.xVec(), dae.zVec(), dae.uVec(), dae.pVec(), xdot]
-    outputs = [dae[name] for name in dae.outputNames()]
-    f = C.SXFunction( inputs, [f]+outputs )
-    f.init()
+def writeAcadoAlgorithm(dae, fm):
+#    xdot = C.veccat([dae.ddt(name) for name in dae.xNames()])
+#    inputs = [dae.xVec(), dae.zVec(), dae.uVec(), dae.pVec(), xdot]
+#    outputs = [dae[name] for name in dae.outputNames()]
 
-    inputNames = [dae.xNames(), dae.zNames(), dae.uNames(), dae.pNames(), ['dot( '+name+' )' for name in dae.xNames()]]
+    inputNames = ['x','u','p']
 
     # error dictionary
     errorMap = {}
@@ -33,42 +30,43 @@ def writeAcadoAlgorithm(dae, f):
     def makePrefixBinary(op, replace):
         replace['op'] = op
         write( '%(init)s%(work)s_%(i1)d = %(op)s( %(work)s_%(i2)d, %(work)s_%(i3)d );' %  replace)
+
     # Loop over the algorithm
-    for i in range(f.getAlgorithmSize()):
+    for i in range(fm.getAlgorithmSize()):
       
         # Get the atomic operation
-        op = f.getAtomicOperation(i)
-        i1 = f.getAtomicOutput(i)
+        op = fm.getAtomicOperation(i)
+        i1 = fm.getAtomicOutput(i)
 
         replace = dict(replace0.items() + {'i1':i1}.items())
         if op != C.OUTPUT:
             if i1 not in initializedWorkVars:
                 initializedWorkVars.add(i1)
-                replace['init'] = replace['real']+' '
+                replace['init'] = replace['real']+''
         if(op==C.OP_CONST):
-            replace['const'] = repr(f.getAtomicInputReal(i))
+            replace['const'] = repr(fm.getAtomicInputReal(i))
             write( '%(init)s%(work)s_%(i1)d = %(const)s;' % replace )
         else:
-            i2,i3 = f.getAtomicInput(i)
+            i2,i3 = fm.getAtomicInput(i)
             replace['i2'] = i2
             replace['i3'] = i3
             if op==C.OP_INPUT:
                 #assert i2==0, "oh noes, INPUT IS MULTIDIMENSIONAL!!!"
-                replace['input'] = inputNames[i2][i3]
-                write( '%(init)s%(work)s_%(i1)d = %(input)s;' % replace)
+                replace['input'] = inputNames[i2]
+                write( '%(init)s%(work)s_%(i1)d = %(input)s(%(i3)d);' % replace)
             elif op==C.OP_OUTPUT:
-#                assert i1==0, "oh noes, OUTPUT IS MULTIDIMENSIONAL!!!"
-#                write( '%(spaces)sf << 0 == %(work)s_%(i2)d;' % replace )
-                rowidx = f.output(i1).sparsity().getRow()[i3]
-                colidx = f.output(i1).sparsity().col()[i3]
+                rowidx = fm.output(i1).sparsity().getRow()[i3]
+                colidx = fm.output(i1).sparsity().col()[i3]
+                replace['row'] = rowidx+1
+                replace['col'] = colidx+1
                 if i1==0:
-                    assert colidx==0
-                    replace['row'] = rowidx
-                    write( '_f << 0 == %(work)s_%(i2)d; /* %(row)dth residual */' % replace )
+                    # blah
+                    write( 'f(%(row)d,%(col)d) = %(work)s_%(i2)d;' % replace )
+                elif i1==1:
+                    # mass matrix
+                    write( 'MM(%(row)d,%(col)d) = %(work)s_%(i2)d;' % replace )
                 else:
-                    replace['i1'] = i1-1
-                    replace['outputname'] = dae.outputNames()[i1-1]
-                    write( '%(real)s %(output)s_%(i1)d_%(i3)d = %(work)s_%(i2)d; /* Output "%(outputname)s" */' % replace )
+                    raise Exception('too many outputs....')
             
             ########## BINARY ########
             elif op==C.OP_ADD:
@@ -136,40 +134,46 @@ def writeAcadoAlgorithm(dae, f):
 
     return algStrings
 
-def generateAcadoCodegenModel(dae,f):
+def generateOctaveSim(dae, functionName):
+#    return C.SXFunction( C.daeIn( x=self.xVec(),
+#                                  z=C.veccat([self.zVec(),xdot]),
+#                                  p=C.veccat([self.uVec(),self.pVec()])
+#                                  ),
+#                         C.daeOut( alg=f, ode=xdot) )
+
+    # get the residual fg(xdot,x,z)
+    fg = dae.getResidual()
+
+    # take the jacobian w.r.t. xdot,z
+    z = dae.zVec()
+    jac = C.jacobian(fg,C.veccat([dae.xDotVec(), z]))
+
+    # make sure that it was linear in {xdot,z}, i.e. the jacobian is not a function of {xdot,z}
+    testJac = C.SXFunction([dae.xVec(),dae.uVec(),dae.pVec()], [jac])
+    testJac.init()
+    assert len(testJac.getFree()) == 0, "can't generate octave sim, jacobian a function of {xdot,z}"
+
+    # it was linear, so export the jacobian
+    fg_fun = C.SXFunction([dae.xVec(),dae.zVec(),dae.uVec(),dae.pVec(),dae.xDotVec()], [fg])
+    fg_fun.init()
+
+    # get the constant term
+    [fg_zero] = fg_fun.eval([dae.xVec(),0*dae.zVec(),dae.uVec(),dae.pVec(),0*dae.xDotVec()])
+    testFun = C.SXFunction([dae.xVec(),dae.uVec(),dae.pVec()], [jac])
+    testFun.init()
+    assert len(testFun.getFree()) == 0, "can't generate octave sim, function line linear in {xdot,z}"
+
+    fm = C.SXFunction([dae.xVec(), dae.uVec(), dae.pVec()],[fg_zero, jac])
+    fm.init()
     lines = []
-    lines.append('/* Differential States */')
-    for name in dae.xNames():
-        lines.append('DifferentialState '+name+';')
+    lines.append('function [f,MM] = '+functionName+'_modelAndJacob(x,u,p)')
     lines.append('')
-    lines.append('/* Parameters posing as Differential States */')
-    for name in dae.pNames():
-        lines.append('DifferentialState '+name+'; /* REALLY A PARAMETER */')
+    lines.append('MM = zeros'+str(jac.shape)+';')
+    lines.append('f = zeros('+str(fg_zero.size())+',1);')
     lines.append('')
-    lines.append('/* Algebraic States */')
-    for name in dae.zNames():
-        lines.append('AlgebraicState '+name+';')
-    lines.append('')
-    lines.append('/* Control Inputs */')
-    for name in dae.uNames():
-        lines.append('Control '+name+';')
-    lines.append('')
-
-    lines.append('/* The Differential Equation */')
-    lines.append('DifferentialEquation _f;')
-
     # dae residual
-    lines.extend( writeAcadoAlgorithm(dae, f) )
+    lines.extend( writeAcadoAlgorithm(dae, fm) )
     lines.append('')
-    lines.append('/* hack to make parameters differential states: */')
-    for p in dae.pNames():
-        lines.append('_f << 0 == dot( '+p+' );')
-    lines.append('')
-    lines.append('/* the outputs */')
-    lines.append('OutputFcn _h;')
-    for k,name in enumerate(dae.outputNames()):
-        for j in range(dae[name].size()):
-            replace = dict(replace0.items() + {'k':k,'j':j,'outputname':name}.items())
-            lines.append('_h << %(output)s_%(k)d_%(j)d; /* %(outputname)s (%(j)d)*/' % replace)
+    lines.append('end\n')
 
     return ('\n'.join(lines))

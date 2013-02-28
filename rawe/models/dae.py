@@ -2,6 +2,7 @@
 import casadi as C
 import acadoSimExport
 import acadoModelExport
+from octaveSimExport import generateOctaveSim
 
 class Dae(object):
     """
@@ -220,15 +221,15 @@ class Dae(object):
 
     def casadiDae(self):
 #       I have:
-#       0 = f(xdot,x,z)
+#       0 = fg(xdot,x,z)
 #
-#       I need dot(x') = f'(x',z')
-#                    0 = g'(x',z')
+#       I need dot(x') = f(x',z')
+#                    0 = g(x',z')
 #
 #       let x' = x
 #           z' = [z,xdot]
 #           dot(x') = xdot
-#           0 = g'(x',z') = f(xdot,x,z)
+#           0 = g(x',z') = g(x,[z,xdot]) = fg(xdot,x,z)
         self._freezeXzup('casadiDae()')
         f = self.getResidual()
             
@@ -238,6 +239,10 @@ class Dae(object):
                                       p=C.veccat([self.uVec(),self.pVec()])
                                       ),
                              C.daeOut( alg=f, ode=xdot) )
+
+    def octaveSimGen(self,functionName):
+        self._freezeXzup('octaveSimGen()')
+        return generateOctaveSim(self,functionName)
 
     def acadoSimGen(self):
         self._freezeXzup('agadoSimGen()')
