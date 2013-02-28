@@ -35,33 +35,22 @@ def toKiteProto(lookup,zt,rArm,w0=None,kiteAlpha=1.0,lineAlpha=1.0):
     cs.kiteTransparency = kiteAlpha
     cs.lineTransparency = lineAlpha
 
-#    cs.outputs.CL = lookup('cL')
-#    cs.outputs.CD = lookup('cD')
-#    cs.outputs.L_over_D = lookup('L/D')
-#    cs.outputs.alpha_deg = lookup('alpha(deg)')
-#    cs.outputs.beta_deg = lookup('beta(deg)')
-#    cs.outputs.airspeed = lookup('airspeed')
-#    # the next two aren't defined at degIdx==0
-#    try:
-#        cs.outputs.tension = lookup('tether tension')
-#    except:
-#        pass
-#    try:
-#        cs.outputs.power = lookup('winch power')
-#    except:
-#        pass
-#    # this isn't defined for the homotopy
-#    try:
-#        cs.outputs.energy = lookup('quadrature energy')
-#    except:
-#        pass
-#    cs.outputs.line_angle_deg = lookup('line angle (deg)')
-#    cs.outputs.r   = lookup('r')
-#    cs.outputs.dr  = lookup('dr')
-#    # controls are only defined at the beginning of the interval
-#    try:
-#        cs.outputs.ddr = lookup('ddr')
-#    except:
-#        pass
-
+    for (attrName,lookupName) in [('CL','cL'),
+                                  ('CD','cD'),
+                                  ('L_over_D','L/D'),
+                                  ('alpha_deg','alpha(deg)'),
+                                  ('beta_deg','beta(deg)'),
+                                  ('tension','tether tension'),
+                                  ('power','winch power'),
+                                  ('energy','quadrature energy'),
+                                  ('line_angle_deg', 'line angle (deg)'),
+                                  ('r',  'r'),
+                                  ('dr', 'dr'),
+                                  ('ddr','ddr'),
+                                  ('c','c'),
+                                  ('cdot','cdot')]:
+        try:
+            cs.outputs.__setattr__(attrName,lookup(lookupName))
+        except Exception:
+            pass
     return cs

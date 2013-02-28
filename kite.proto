@@ -46,19 +46,21 @@ message CarouselState {
 }
 
 message KiteOutputs {
-  required double CL = 1;
-  required double CD = 2;
-  required double L_over_D = 3;
-  required double alpha_deg = 4;
-  required double beta_deg = 5;
-  required double airspeed = 6;
+  optional double CL = 1;
+  optional double CD = 2;
+  optional double L_over_D = 3;
+  optional double alpha_deg = 4;
+  optional double beta_deg = 5;
+  optional double airspeed = 6;
   optional double tension = 7;
   optional double power = 8;
   optional double energy = 9;
-  required double line_angle_deg = 10;
-  required double r = 11;
-  required double dr = 12;
+  optional double line_angle_deg = 10;
+  optional double r = 11;
+  optional double dr = 12;
   optional double ddr = 13;
+  optional double c = 14;
+  optional double cdot= 15;
 }
 
 message PendulumOpt {

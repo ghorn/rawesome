@@ -33,13 +33,15 @@ class Communicator(object):
 #        self.outputNames = outputNames
 
     def sendKite(self,x,u,p,outs,conf,otherMessages=[]):
-        pb = kiteproto.toKiteProto(dict(x.items()+u.items()+p.items()).__getitem__,
+        pb = kiteproto.toKiteProto(dict(x.items()+u.items()+p.items()+outs.items()).__getitem__,
                                    conf['kite']['zt'],
                                    conf['carousel']['rArm'],
                                    lineAlpha=0.2)
 
         for name in outs:
-            pb.messages.append(name+": "+str(outs[name]))
+            v = outs[name]
+            if type(v) is float:
+                pb.messages.append(name+": "+str(v))
         if len(otherMessages)>0:
             pb.messages.append("-------------------------")
             for om in otherMessages:
