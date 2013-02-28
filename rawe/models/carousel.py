@@ -60,7 +60,7 @@ def setupModel(dae, conf):
     
     ddr = dae['ddr']
     
-    tc = dae['motor torque'] #Carousel motor torque
+    tc = dae['motor_torque'] #Carousel motor torque
 
     # wind
     z0 = conf['wind shear']['z0']
@@ -267,7 +267,7 @@ def carouselModel(conf,nSteps=None,extraParams=[]):
               ] )
     dae.addU( [ "daileron"
               , "delevator"
-              , "motor torque"
+              , "motor_torque"
               , 'ddr'
               ] )
     dae.addP( ['w0'] )
@@ -278,7 +278,7 @@ def carouselModel(conf,nSteps=None,extraParams=[]):
     dae['daileron(deg/s)'] = dae['daileron']*180/C.pi
     dae['delevator(deg/s)'] = dae['delevator']*180/C.pi
     
-    dae['motor power'] = dae['motor torque']*dae['ddelta']
+    dae['motor power'] = dae['motor_torque']*dae['ddelta']
 
     dae['tether tension'] = dae['r']*dae['nu']
     dae['winch power'] = -dae['tether tension']*dae['dr']

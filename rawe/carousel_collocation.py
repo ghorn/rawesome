@@ -102,7 +102,7 @@ def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
 
     ocp.bound('delta',(-0.01,1.01*2*pi))
     ocp.bound('ddelta',(-pi/8,8*pi))
-    ocp.bound('motor torque',(-1000,1000))
+    ocp.bound('motor_torque',(-1000,1000))
     ocp.bound('endTime',(0.5,7.0))
     ocp.bound('w0',(10,10))
 
@@ -115,7 +115,7 @@ def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
     for k in range(nk):
         # control regularization
         ddr = ocp.lookup('ddr',timestep=k)
-        tc = ocp.lookup('motor torque',timestep=k)
+        tc = ocp.lookup('motor_torque',timestep=k)
         daileron = ocp.lookup('daileron',timestep=k)
         delevator = ocp.lookup('delevator',timestep=k)
         
@@ -163,7 +163,7 @@ def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
         val = 2.0*pi*k/nk
         ocp.guess('delta',val,timestep=k,quiet=True)
 
-    ocp.guess('motor torque',0)
+    ocp.guess('motor_torque',0)
     ocp.guess('endTime',1.5)
     ocp.guess('daileron',0)
     ocp.guess('delevator',0)
@@ -205,7 +205,7 @@ if __name__=='__main__':
         traj.plot('airspeed')
         traj.subplot([['alpha(deg)','alphaTail(deg)'],['beta(deg)','betaTail(deg)']])
         traj.subplot(['cL','cD','L/D'])
-        traj.subplot(['motor torque','motor power'])
+        traj.subplot(['motor_torque','motor power'])
         traj.subplot(['winch power','tether tension'])
         traj.subplot(['e11','e12','e13','e21','e22','e23','e31','e32','e33'])
         plt.show()

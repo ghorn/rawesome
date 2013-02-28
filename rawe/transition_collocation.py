@@ -54,7 +54,7 @@ def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
     ocp.bound('elevator',(-0.1,0.1))
     ocp.bound('daileron',(-2.0,2.0))
     ocp.bound('delevator',(-2.0,2.0))
-    ocp.bound('motor torque',(-10000,10000))
+    ocp.bound('motor_torque',(-10000,10000))
 
     ocp.bound('x',(-200,200))
     ocp.bound('y',(-200,200))
@@ -152,10 +152,10 @@ def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
 #            finalval = float(finalfun.output(k)[0,0])) for k,name in enumerate(namesF)])
 #            ocp.guess(name,(1-alpha)*initvals[name] + alpha*finalvals[name], timestep=k)
     
-    ocp.guess('motor torque',0)
     ocp.guess('aileron',0)
     ocp.guess('elevator',0)
     ocp.guess('ddr',0)
+    ocp.guess('motor_torque',0)
     ocp.guess('phase0',phase0Guess)
     ocp.guess('phaseF',phaseFGuess)
     ocp.guess('endTime',8)
@@ -166,7 +166,7 @@ def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
     for k in range(nk):
         u = ocp.uVec(k)
         ddr = ocp.lookup('ddr',timestep=k)
-        tc = ocp.lookup('motor torque',timestep=k)
+        tc = ocp.lookup('motor_torque',timestep=k)
         torqueSigma = 1000.0
         aileron = ocp.lookup('aileron',timestep=k)
         elevator = ocp.lookup('elevator',timestep=k)
@@ -294,7 +294,7 @@ if __name__=='__main__':
         traj.subplot([['alpha(deg)','alphaTail(deg)'],['beta(deg)','betaTail(deg)']])
         traj.subplot(['cL','cD','L/D'])
         traj.subplot(['winch power', 'tether tension'])
-        traj.plot('motor torque')
+        traj.plot('motor_torque')
         traj.plot('quadrature energy')
 #        traj.subplot(['e11','e12','e13','e21','e22','e23','e31','e32','e33'])
         plt.show()

@@ -36,7 +36,7 @@ def getSteadyState(dae,conf,omega0,r0):
              'delta':0,'ddelta':omega0,
              'aileron':0,'elevator':0,
              'daileron':0,'delevator':0,
-             'nu':300,'motor torque':10,
+             'nu':300,'motor_torque':10,
              'ddr':0.0,'w0':0.0}
     dotGuess = {'x':0,'y':0,'z':0,'dx':0,'dy':0,'dz':0,
                 'r':0,'dr':0,
@@ -60,7 +60,7 @@ def getSteadyState(dae,conf,omega0,r0):
              'delta':(0,0),'ddelta':(omega0,omega0),
              'aileron':(-0.1,0.1),'elevator':(-0.1,0.1),
              'daileron':(0,0),'delevator':(0,0),
-             'nu':(0,3000),'motor torque':(0,1000),
+             'nu':(0,3000),'motor_torque':(0,1000),
              'ddr':(0,0),'w0':(0,0)}
     dotBounds = {'x':(-50,50),'y':(-50,50),'z':(-50,50)
                  ,'dx':(0,0),'dy':(0,0),'dz':(0,0),
