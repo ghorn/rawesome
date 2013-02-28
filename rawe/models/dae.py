@@ -281,6 +281,59 @@ class Dae(object):
             
         return acadoModelExport.generateAcadoCodegenModel(self,f)
 
+    def convertToOde(self):
+        # get the residual fg(xdot,x,z)
+        fg = self.getResidual()
+
+        # take the jacobian w.r.t. xdot,z
+        jac = C.jacobian(fg,C.veccat([self.xDotVec(), self.zVec()]))
+
+        # make sure that it was linear in {xdot,z}, i.e. the jacobian is not a function of {xdot,z}
+        testJac = C.SXFunction([self.xVec(),self.uVec(),self.pVec()], [jac])
+        testJac.init()
+        assert len(testJac.getFree()) == 0, \
+            "can't convert dae to ode, residual jacobian is a function of {xdot,z}"
+
+        # get the constant term
+        fg_fun = C.SXFunction([self.xVec(),self.zVec(),self.uVec(),self.pVec(),self.xDotVec()], [fg])
+        fg_fun.init()
+        [fg_zero] = fg_fun.eval([self.xVec(),0*self.zVec(),self.uVec(),self.pVec(),0*self.xDotVec()])
+        testFun = C.SXFunction([self.xVec(),self.uVec(),self.pVec()], [fg_zero])
+        testFun.init()
+        assert len(testFun.getFree()) == 0, \
+            "the \"impossible\" happened in Dae -> Ode conversion"
+
+        xDotAndZ = C.solve(jac, -fg_zero)
+        xDot = xDotAndZ[0:len(self.xNames())]
+        z = xDotAndZ[len(self.xNames()):]
+
+        # construct outputs and residual as a function of x/z/u/p/xdot
+        oldFunctions = C.SXFunction([self.xVec(), self.zVec(), self.uVec(), self.pVec(), self.xDotVec()],
+                                    [xDot,z]+[self[name] for name in self.outputNames()])
+        oldFunctions.init()
+
+        # construct outputs and residual as a function of x/u/p only
+        newOutputs = oldFunctions.eval([self.xVec(), z, self.uVec(), self.pVec(), xDot])
+        newFunctions = C.SXFunction([self.xVec(),self.uVec(),self.pVec()], newOutputs)
+        newFunctions.init()
+
+        # use this to construct a new Dae which has no algebraic states
+        dae = Dae()
+        xs = C.veccat([dae.addX(name) for name in self.xNames()])
+        us = C.veccat([dae.addU(name) for name in self.uNames()])
+        ps = C.veccat([dae.addP(name) for name in self.pNames()])
+        outs = newFunctions.eval([xs,us,ps])
+        newXdot = outs[0]
+        newZ = outs[1]
+        odeRes = []
+        for k,name in enumerate(self.xNames()):
+            odeRes.append( dae.ddt(name) - newXdot[k] )
+        dae.setOdeRes(C.veccat(odeRes))
+        for k,name in enumerate(self.zNames()):
+            dae[name] = newZ[k]
+        for k,name in enumerate(self.outputNames()):
+            dae[name] = outs[k+2]
+        return dae
 
 if __name__=='__main__':
     dae = Dae()

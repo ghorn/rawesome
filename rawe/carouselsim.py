@@ -15,10 +15,16 @@ if __name__=='__main__':
     dt = 0.02
     sim = Sim(dae,dt)
     communicator = simutils.Communicator()
-    js = joy.Joy()
-    x = steadyState
-    u = {'daileron':0,'delevator':0,'motor torque':steadyState['motor torque'],'ddr':0}
-    p = {'w0':0}
+#    js = joy.Joy()
+    x = {}
+    for name in dae.xNames():
+        x[name] = steadyState[name]
+    u = {}
+    for name in dae.uNames():
+        u[name] = steadyState[name]
+    p = {}
+    for name in dae.pNames():
+        p[name] = steadyState[name]
 
     print "simulating..."
     timer = simutils.Timer(dt)
