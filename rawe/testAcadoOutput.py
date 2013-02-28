@@ -9,7 +9,7 @@ if __name__=='__main__':
     conf = readConfig('config.ini','configspec.ini')
     
     print "creating model..."
-    dae = models.crosswind(conf)
+    dae = models.carousel(conf)
     
     blah = dae.octaveSimGen('carouselOde')
     f = open('carouselOde_modelAndJacob.m','w')
