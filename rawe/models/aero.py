@@ -102,7 +102,7 @@ def aeroForcesTorques(dae, conf, we, wE, (w1,w2,w3), (eTe1, eTe2, eTe3), (ailero
     alphaTail = alpha0-vT3/vT1
 #    alphaTail = alpha0 + C.arctan2(-vT3,vT1)
     betaTail = vT2/vT1
--#    betaTail = vT2/C.sqrt(vT1*vT1 + vT3*vT3)
+#    betaTail = vT2/C.sqrt(vT1*vT1 + vT3*vT3)
 #    betaTail = C.arcsin(vT2/vKite)
     
     dae['alpha(deg)'] = alpha*180/C.pi
