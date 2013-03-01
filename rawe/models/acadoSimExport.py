@@ -44,7 +44,7 @@ class AlgorithmWriter(object):
             i1 = f.getAtomicOutput(i)
     
             replace = dict(self.replace0.items() + {'i1':i1}.items())
-            if op != C.OUTPUT:
+            if op != C.OP_OUTPUT:
                 if i1 not in initializedWorkVars:
                     initializedWorkVars.add(i1)
                     replace['init'] = replace['real']+' '
@@ -165,7 +165,7 @@ def writeAcadoAlgorithm(dae, f, inputs):
         i1 = f.getAtomicOutput(i)
 
         replace = dict(replace0.items() + {'i1':i1}.items())
-        if op != C.OUTPUT:
+        if op != C.OP_OUTPUT:
             if i1 not in initializedWorkVars:
                 initializedWorkVars.add(i1)
                 replace['init'] = replace['real']+' '
