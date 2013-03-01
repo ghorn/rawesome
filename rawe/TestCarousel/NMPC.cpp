@@ -110,14 +110,14 @@ int main( int argc, char * const argv[] ){
 	
 	// CONTROL
 	double AccRate = 30*PI/180;
-	ocp.subjectTo( -AccRate <= dddelta <= AccRate );
+	ocp.subjectTo( -600 <= motor_torque <= 600 );
 	ocp.subjectTo( -0.5 <= ddr <= 0.5 );
     
 //     ocp.subjectTo( dddelta == 0 );
 // 	ocp.subjectTo( ddr == 0 );
     
-	ocp.subjectTo(  -1 <= up  <= 1 );
-	ocp.subjectTo(  -3.2767 <= ur  <= 3.2767 );
+	ocp.subjectTo(  -1 <= delevator  <= 1 );
+	ocp.subjectTo(  -3.2767 <= daileron  <= 3.2767 );
 	
 	// STATE
 	ocp.subjectTo( -1 <= z );
