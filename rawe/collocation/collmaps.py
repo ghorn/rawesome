@@ -123,8 +123,8 @@ class ReadOnlyCollMap(object):
 
         elif name in self._uMap:
             assert timestep is not None, "must give timestep for control input lookup ("+self._name+")"
-            assert nicpIdx is None, "nicpIdx invalid for control input ("+self._name+")"
-            assert degIdx is None, "degIdx invalid for control input ("+self._name+")"
+#            assert nicpIdx is None, "nicpIdx invalid for control input ("+self._name+")"
+#            assert degIdx is None, "degIdx invalid for control input ("+self._name+")"
             assert timestep < self._nk, \
                    "timestep: "+str(timestep)+" out of range in "+self._name+" map (nk: "+str(nk)+")"
             if setVal is None:
@@ -137,9 +137,9 @@ class ReadOnlyCollMap(object):
                 self._uMap[name][timestep] = setVal
 
         elif name in self._pMap:
-            assert timestep is None, "timestep invalid for parameter lookup ("+self._name+")"
-            assert nicpIdx is None, "nicpIdx invalid for parameter lookup ("+self._name+")"
-            assert degIdx is None, "degIdx invalid for parameter lookup ("+self._name+")"
+#            assert timestep is None, "timestep invalid for parameter lookup ("+self._name+")"
+#            assert nicpIdx is None, "nicpIdx invalid for parameter lookup ("+self._name+")"
+#            assert degIdx is None, "degIdx invalid for parameter lookup ("+self._name+")"
             if setVal is None:
                 return self._pMap[name]
             else:
