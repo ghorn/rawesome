@@ -171,5 +171,6 @@ def generateAcadoCodegenModel(dae,f):
         for j in range(dae[name].size()):
             replace = dict(replace0.items() + {'k':k,'j':j,'outputname':name}.items())
             lines.append('_h << %(output)s_%(k)d_%(j)d; /* %(outputname)s (%(j)d)*/' % replace)
+    lines.append('')
 
     return ('\n'.join(lines))
