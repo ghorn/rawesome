@@ -77,7 +77,8 @@ int main( int argc, char * const argv[] ){
 
 	
 	#include "model.cpp"
-
+	
+	const double PI = M_PI;
 
 	// ===============================================================
 	//                        END OF MODEL EQUATIONS

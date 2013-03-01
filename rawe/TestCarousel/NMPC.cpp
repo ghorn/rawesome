@@ -85,7 +85,9 @@ int main( int argc, char * const argv[] ){
 	//                        END OF MODEL EQUATIONS
 	// ===============================================================
 	
-	
+	const double PI = M_PI;
+	const int n_XD = 25;
+	const int n_U = 4;
 	
 	// DEFINE AN OPTIMAL CONTROL PROBLEM:
 	// ----------------------------------
@@ -101,7 +103,7 @@ int main( int argc, char * const argv[] ){
 	ocp.minimizeLSQEndTerm( QT );
 	
 	
-	ocp.subjectTo( f );
+	ocp.subjectTo( _f );
 	
 	// BOUNDS:
 	// ---------------------------------

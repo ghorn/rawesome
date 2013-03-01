@@ -90,19 +90,6 @@ INCLUDE_DIRECTORIES(
 ################################################################################
 
 #
-# Build MHE
-#
-ADD_EXECUTABLE(
-    MHE
-    MHE.cpp
-)
-TARGET_LINK_LIBRARIES(
-	MHE
-	${ACADO_SHARED_LIBRARIES}
-	${MHE_EXPORT_SHARED_LIBRARIES}
-)
-
-#
 # Build NMPC
 #
 ADD_EXECUTABLE(
@@ -114,6 +101,19 @@ TARGET_LINK_LIBRARIES(
 	${ACADO_SHARED_LIBRARIES}
 	${MHE_EXPORT_SHARED_LIBRARIES}
 )
+
+#
+# Build MHE
+#
+#ADD_EXECUTABLE(
+#    MHE
+#    MHE.cpp
+#)
+#TARGET_LINK_LIBRARIES(
+#	MHE
+#	${ACADO_SHARED_LIBRARIES}
+#	${MHE_EXPORT_SHARED_LIBRARIES}
+#)
 
 #
 # Build eq

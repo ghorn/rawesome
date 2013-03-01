@@ -11,7 +11,7 @@ cd build
 cd ..
 
 recompileMHE = 0;
-recompileMPC = 0;
+recompileMPC = 1;
 
 % MPC settings
 MPC.Tc = 1.0; % horizon in seconds
