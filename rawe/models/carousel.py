@@ -66,7 +66,7 @@ def setupModel(dae, conf):
     z0 = conf['wind shear']['z0']
     zt_roughness = conf['wind shear']['zt_roughness']
     zsat = 0.5*(z+C.sqrt(z*z))
-    wind_x = dae['w0']*C.log((zsat+zt_roughness+2)/zt_roughness)/C.log(z0/zt_roughness)
+    wind_x = dae['w0']#*C.log((zsat+zt_roughness+2)/zt_roughness)/C.log(z0/zt_roughness)
     dae['wind at altitude'] = wind_x
 
     dp_carousel_frame = C.veccat( [ dx - ddelta*y

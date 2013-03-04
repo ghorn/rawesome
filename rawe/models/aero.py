@@ -91,18 +91,19 @@ def aeroForcesTorques(dae, conf, we, wE, (w1,w2,w3), (eTe1, eTe2, eTe3), (ailero
     vT2 = -lT*w3 + wE2
     vT3 =  lT*w2 + wE3
     
-    
-#    alpha = alpha0-wE3/wE1
+    alpha = alpha0-wE3/wE1
+#    alpha = alpha0 + C.arctan2(-wE3,wE1)
+    beta = wE2/wE1
 #    beta = wE2/C.sqrt(wE1*wE1 + wE3*wE3)
-    alpha = alpha0 + C.arctan2(-wE3,wE1)
-    beta = C.arcsin(wE2/vKite)
+#    beta = C.arcsin(wE2/vKite)
 
     #NOTE: beta & alphaTail are compensated for the tail motion induced by
     #omega @>@>
-#    alphaTail = alpha0-vT3/vT1
+    alphaTail = alpha0-vT3/vT1
+#    alphaTail = alpha0 + C.arctan2(-vT3,vT1)
+    betaTail = vT2/vT1
 #    betaTail = vT2/C.sqrt(vT1*vT1 + vT3*vT3)
-    alphaTail = alpha0 + C.arctan2(-vT3,vT1)
-    betaTail = C.arcsin(vT2/vKite)
+#    betaTail = C.arcsin(vT2/vKite)
     
     dae['alpha(deg)'] = alpha*180/C.pi
     dae['alphaTail(deg)'] = alphaTail*180/C.pi
