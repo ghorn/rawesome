@@ -34,7 +34,7 @@ end
     steadyState = getSteadyState(dae,conf,2*pi,1.2)
     x = {}
     lines = []
-    lines.append('function [x,z,u,p] = carouselOde_steadyState();')
+    lines.append('function [x,z,u,p] = carouselOde_steadyState()')
     lines.append('x = zeros('+str(len(dae.xNames()))+',1);')
     lines.append('u = zeros('+str(len(dae.uNames()))+',1);')
     lines.append('p = zeros('+str(len(dae.pNames()))+',1);')
