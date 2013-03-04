@@ -13,7 +13,7 @@ def normalCallback(traj,myiter,ocp,conf):
     for k in range(0,ocp.nk):
         for nicpIdx in range(0,ocp.nicp):
             for degIdx in [0]:
-             for degIdx in range(ocp.deg+1):
+#            for degIdx in range(ocp.deg+1):
                 lookup = lambda name: traj.lookup(name,timestep=k,nicpIdx=nicpIdx,degIdx=degIdx)
                 kiteProtos.append( kiteproto.toKiteProto(lookup,
                                                          conf['kite']['zt'],
