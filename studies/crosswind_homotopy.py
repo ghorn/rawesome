@@ -5,14 +5,11 @@ import numpy
 from numpy import pi
 import pickle
 
-from collocation import Coll
+import rawe
 from config import readConfig
-import kiteutils
-import models
-from kiteTelemetry import startKiteTelemetry
 
 def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
-    ocp = Coll(dae, nk=nk,nicp=nicp,deg=deg)
+    ocp = rawe.collocation.Coll(dae, nk=nk,nicp=nicp,deg=deg)
     
     print "setting up collocation..."
     ocp.setupCollocation(ocp.lookup('endTime'))
@@ -53,9 +50,9 @@ def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
         ocp.constrain(ocp.lookup(name,timestep=0),'==',ocp.lookup(name,timestep=-1))
 
     # periodic attitude
-#    kiteutils.periodicEulers(ocp)
-#    kiteutils.periodicOrthonormalizedDcm(ocp)
-    kiteutils.periodicDcm(ocp)
+#    rawe.kiteutils.periodicEulers(ocp)
+#    rawe.kiteutils.periodicOrthonormalizedDcm(ocp)
+    rawe.kiteutils.periodicDcm(ocp)
 
     # bounds
     ocp.bound('aileron',(-0.04,0.04))
@@ -99,7 +96,7 @@ if __name__=='__main__':
     conf['minAltitude'] = 0.5
     
     print "creating model..."
-    dae = models.crosswind(conf,extraParams=['endTime'])
+    dae = rawe.models.crosswind(conf,extraParams=['endTime'])
 
     print "setting up ocp..."
     ocp = setupOcp(dae,conf,nk=nk)
@@ -214,9 +211,9 @@ if __name__=='__main__':
         ocp.guess(name,0)
         
     ocp.guess('gamma_homotopy',0)
-        
+    
     # spawn telemetry thread
-    callback = startKiteTelemetry(ocp, conf)
+    callback = rawe.kiteTelemetry.startKiteTelemetry(ocp, conf, printBoundViolation=True, printConstraintViolation=True)
 
     # solver
     solverOptions = [ ("expand_f",True)

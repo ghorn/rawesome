@@ -6,8 +6,7 @@ import copy
 import zmq
 
 import casadi as C
-import kite_pb2
-import kiteproto
+import rawe
 
 class TrajFit():
     def __init__(self,orderMap,traj):
@@ -47,7 +46,7 @@ class TrajFit():
         ts_ = np.linspace(t0,tf,100)
         kiteProtos = []
         for t in ts_:
-            cs = kite_pb2.CarouselState()
+            cs = rawe.kite_pb2.CarouselState()
             
             cs.kiteXyz.x = self.fits['x'].evaluate(t)
             cs.kiteXyz.y = self.fits['y'].evaluate(t)
@@ -77,7 +76,7 @@ class TrajFit():
             cs.lineTransparency = 0.2
 
             kiteProtos.append(cs)
-        mc = kite_pb2.MultiCarousel()
+        mc = rawe.kite_pb2.MultiCarousel()
         mc.css.extend(list(kiteProtos))
         self.multiCarousel = mc.SerializeToString()
         #publisher.send_multipart(["multi-carousel", mc.SerializeToString()])
@@ -250,7 +249,7 @@ if __name__=='__main__':
 #    for k in range(0,ts.size):
 #        kiteProtos.append( npToKiteProto(traj.x,k,zt=0,kiteAlpha=0.2,lineAlpha=0.2) )
 #        kiteProtos.append( fitToKiteProto(fits,k,zt=0, dz=1) )
-#    mc = kite_pb2.MultiCarousel()
+#    mc = rawe.kite_pb2.MultiCarousel()
 #    mc.css.extend(list(kiteProtos))
 #    publisher.send_multipart(["multi-carousel", mc.SerializeToString()])
 

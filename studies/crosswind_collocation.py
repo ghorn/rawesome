@@ -4,11 +4,9 @@ import pickle
 import numpy
 from numpy import pi
 
-from collocation import Coll
+import rawe
+
 from config import readConfig
-import kiteutils
-import models
-from kiteTelemetry import startKiteTelemetry
 
 numLoops=4
 
@@ -29,7 +27,7 @@ def setupOcp(dae,conf,nk,nicp,deg,collPoly):
         dae['ddrCost'] = 1e2*ddr*ddr / (ddrSigma*ddrSigma*nkf)
     addCosts()
 
-    ocp = Coll(dae, nk=nk, nicp=nicp, deg=deg, collPoly=collPoly)
+    ocp = rawe.collocation.Coll(dae, nk=nk, nicp=nicp, deg=deg, collPoly=collPoly)
     
     print "setting up collocation..."
     ocp.setupCollocation(ocp.lookup('endTime'))
@@ -77,7 +75,7 @@ def setupOcp(dae,conf,nk,nicp,deg,collPoly):
         ocp.constrain(ocp.lookup(name,timestep=0),'==',ocp.lookup(name,timestep=-1), tag=('periodic diff state \"'+name+'"',None))
 
     # periodic attitude
-    kiteutils.periodicDcm(ocp)
+    rawe.kiteutils.periodicDcm(ocp)
 
     # bounds
     ocp.bound('aileron',(-0.04,0.04))
@@ -137,8 +135,7 @@ if __name__=='__main__':
     nk = 70
     
     print "creating model..."
-    dae = models.crosswind(conf,extraParams=['endTime'])
-
+    dae = rawe.models.crosswind(conf,extraParams=['endTime'])
     
     print "setting up ocp..."
     nicp = 1
@@ -148,7 +145,7 @@ if __name__=='__main__':
     ocp = setupOcp(dae,conf,nk,nicp,deg,collPoly)
 
     # spawn telemetry thread
-    callback = startKiteTelemetry(ocp, conf)
+    callback = rawe.kiteTelemetry.startKiteTelemetry(ocp, conf)
 
     # solver
     solverOptions = [("expand_f",True),

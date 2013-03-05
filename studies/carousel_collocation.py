@@ -5,11 +5,8 @@ import numpy
 from numpy import pi
 import pickle
 
-from collocation import Coll
+import rawe
 from config import readConfig
-import kiteutils
-import models
-from kiteTelemetry import startKiteTelemetry
 
 x0 = C.DMatrix( [ 1.154244772411
                 , -0.103540608242
@@ -35,7 +32,7 @@ x0 = C.DMatrix( [ 1.154244772411
 x0=C.veccat([x0,C.sqrt(C.sumAll(x0[0:2]*x0[0:2])),0,0,0])
 
 def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
-    ocp = Coll(dae, nk=nk,nicp=nicp,deg=deg)
+    ocp = rawe.collocation.Coll(dae, nk=nk,nicp=nicp,deg=deg)
     ocp.setupCollocation(ocp.lookup('endTime'))
                    
     # constrain invariants
@@ -74,9 +71,9 @@ def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
         ocp.constrain(ocp.lookup(name,timestep=0),'==',ocp.lookup(name,timestep=-1))
 
     # periodic attitude
-#    kiteutils.periodicEulers(ocp)
-#    kiteutils.periodicOrthonormalizedDcm(ocp)
-    kiteutils.periodicDcm(ocp)
+#    rawe.kiteutils.periodicEulers(ocp)
+#    rawe.kiteutils.periodicOrthonormalizedDcm(ocp)
+    rawe.kiteutils.periodicDcm(ocp)
 
     # bounds
     ocp.bound('aileron',(-0.04,0.04))
@@ -137,7 +134,7 @@ def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
     ocp.setQuadratureDdt('quadrature energy', 'winch power')
 
     # spawn telemetry thread
-    callback = startKiteTelemetry(ocp, conf)
+    callback = rawe.kiteTelemetry.startKiteTelemetry(ocp, conf)
 
     # solver
     solverOptions = [ ("expand_f",True)
@@ -182,7 +179,7 @@ if __name__=='__main__':
     conf = readConfig('config.ini','configspec.ini')
     
     print "creating model..."
-    dae = models.carousel(conf,extraParams=['endTime'])
+    dae = rawe.models.carousel(conf,extraParams=['endTime'])
 
     print "setting up ocp..."
     ocp = setupOcp(dae,conf,nk=30)

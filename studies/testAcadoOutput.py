@@ -1,7 +1,8 @@
-import models
-import casadi as C
-from casadi import *
 import numpy
+
+import casadi as C
+
+import rawe
 from config import readConfig
 
 if __name__=='__main__':
@@ -9,7 +10,7 @@ if __name__=='__main__':
     conf = readConfig('config.ini','configspec.ini')
     
     print "creating model..."
-    dae = models.carousel(conf)
+    dae = rawe.models.carousel(conf)
     
     blah = dae.octaveSimGen('carouselOde')
     f = open('carouselOde_modelAndJacob.m','w')

@@ -1,25 +1,22 @@
 import matplotlib.pyplot as plt
 import zmq
-
 import numpy
 from numpy import pi
 import copy
 
-import kite_pb2
 import casadi as C
 
-import models
-from collocation import Coll,trajectory
+import rawe
 
 def main():
     nk = 50
 
     print "creating model"
-    dae = models.pendulum2()
+    dae = rawe.models.pendulum2()
     dae.addP('endTime')
 
     print "setting up OCP"
-    ocp = Coll(dae, nk=nk,nicp=1,deg=4, collPoly='RADAU')
+    ocp = rawe.collocation.Coll(dae, nk=nk,nicp=1,deg=4, collPoly='RADAU')
     print "setting up collocation"
     ocp.setupCollocation( ocp.lookup('endTime') )
     
@@ -68,9 +65,9 @@ def main():
             xOpt = numpy.array(f.input(C.NLP_X_OPT))
         
             self.iter = self.iter + 1
-            traj = trajectory.Trajectory(ocp,xOpt)
+            traj = rawe.collocation.trajectory.Trajectory(ocp,xOpt)
             
-            po = kite_pb2.PendulumOpt()
+            po = rawe.kite_pb2.PendulumOpt()
             po.x.extend(list([traj.lookup('x',timestep=k) for k in range(ocp.nk+1)]))
             po.z.extend(list([traj.lookup('z',timestep=k) for k in range(ocp.nk+1)]))
             po.messages.append('endTime: %.3f'% traj.lookup('endTime'))

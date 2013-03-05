@@ -1,7 +1,8 @@
 import pickle
-import collocation.trajectory as trajectory
 from scipy.interpolate import PiecewisePolynomial
 import zmq
+
+import rawe
 
 def loadPps(filename):
     print "loading ",filename
@@ -9,7 +10,7 @@ def loadPps(filename):
     traj = pickle.load(f)
     f.close()
 
-    assert isinstance(traj,trajectory.Trajectory), "the file \""+filename+"\" doean't have a pickled Trajectory"
+    assert isinstance(traj,rawe.collocation.trajectory.Trajectory), "the file \""+filename+"\" doean't have a pickled Trajectory"
 
 #    h = (traj.tgrid[-1,0,0] - traj.tgrid[0,0,0])/float(traj.dvMap._nk*traj.dvMap._nicp)
 #    h *= traj.dvMap._nk*traj.dvMap._nicp/float(self.nk*self.nicp)
@@ -130,10 +131,8 @@ def loadPps(filename):
 #        msg += ", all fields found"
 #    print msg
 
-import kiteproto
-import kite_pb2
-
-filename = 'data/crosswind_opt_4_loops.dat'
+#filename = 'data/crosswind_opt_4_loops.dat'
+filename = 'data/crosswind_opt.dat'
 (traj,pps) = loadPps(filename)
 dt = 1.0/30.0
 
@@ -146,9 +145,9 @@ while time < 100:
     while t>traj.tgrid[-1,0,0]:
         t -= traj.tgrid[-1,0,0]
     lookup = lambda name: pps[name](t)
-    kp = kiteproto.toKiteProto(lookup,0,0,lineAlpha=0.2)
+    kp = rawe.kiteproto.toKiteProto(lookup,0,0,lineAlpha=0.2)
 
-    mc = kite_pb2.MultiCarousel()
+    mc = rawe.kite_pb2.MultiCarousel()
     mc.css.extend([kp])
     mc.messages.append('time: %.3f' % time)
 

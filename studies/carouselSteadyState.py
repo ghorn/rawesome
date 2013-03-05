@@ -1,9 +1,9 @@
 import zmq
 import casadi as C
 
-from ocputils import Constraints
-import kiteproto
-import kite_pb2
+from rawe.ocputils import Constraints
+import rawe.kiteproto as kiteproto
+import rawe.kite_pb2 as kite_pb2
 
 pi = C.pi
 

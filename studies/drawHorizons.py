@@ -1,7 +1,8 @@
 import zmq
-import kite_pb2
 import time
 import numpy
+
+import rawe.kite_pb2
 
 # zero mq setup
 context   = zmq.Context(1)

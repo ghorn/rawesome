@@ -4,10 +4,10 @@ import numbers
 import pickle
 from scipy.interpolate import PiecewisePolynomial
 
-from ocputils import Constraints,setFXOptions
+from rawe.ocputils import Constraints,setFXOptions
 import collmaps
 from collpoints import mkCollocationPoints
-from models import Dae
+from rawe.models import Dae
 import trajectory
 
 class LagrangePoly(object):

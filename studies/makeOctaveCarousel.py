@@ -1,16 +1,16 @@
 from config import readConfig
-import models
-from carouselSteadyState import getSteadyState
 from casadi import pi
-#from casadi import *
-#import numpy
+
+import rawe
+from carouselSteadyState import getSteadyState
 
 if __name__=='__main__':
     print "reading config..."
     conf = readConfig('config.ini','configspec.ini')
     
     print "creating model..."
-    dae = models.carousel(conf)
+    dae = rawe.models.carousel(conf)
+    dae.convertToOde()
 
     name = 'carouselOde'
     # write the file that computes f,MM in 0 == f(x,u,p) + MM(x,u,p)*[xdot;z]

@@ -1,20 +1,18 @@
 import casadi as C
+
 from carouselSteadyState import getSteadyState
 from config import readConfig
-import models
-from sim import Sim
-import simutils
-import joy
+import rawe
 
 if __name__=='__main__':
     print "creating model"
     conf = readConfig('config.ini','configspec.ini')
-    dae = models.carousel(conf)
+    dae = rawe.models.carousel(conf)
     steadyState = getSteadyState(dae,conf,2*C.pi,1.2)
 
     dt = 0.02
-    sim = Sim(dae,dt)
-    communicator = simutils.Communicator()
+    sim = rawe.sim.Sim(dae,dt)
+    communicator = rawe.simutils.Communicator()
 #    js = joy.Joy()
     x = {}
     for name in dae.xNames():
@@ -27,7 +25,7 @@ if __name__=='__main__':
         p[name] = steadyState[name]
 
     print "simulating..."
-    timer = simutils.Timer(dt)
+    timer = rawe.simutils.Timer(dt)
     timer.start()
     try:
         while True:

@@ -6,16 +6,11 @@ from numpy import pi
 from fourier_fit import FourierFit,TrajFit
 import pickle
 
-from collocation import Coll
 from config import readConfig
-import kiteutils
-import models
-import kiteproto
-import kite_pb2
-from kiteTelemetry import startKiteTelemetry
+import rawe
 
 def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
-    ocp = Coll(dae, nk=nk,nicp=nicp,deg=deg)
+    ocp = rawe.collocation.Coll(dae, nk=nk,nicp=nicp,deg=deg)
     
     print "setting up collocation..."
     ocp.setupCollocation(ocp.lookup('endTime'))
@@ -109,8 +104,8 @@ def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
         ocp.constrain(ocp.lookup(name,timestep=-1), '==', crosswind[name])
 
     # match DCMs
-    kiteutils.matchDcms(ocp, kiteutils.getDcm(ocp,0),  getFourierDcm(startup))
-    kiteutils.matchDcms(ocp, kiteutils.getDcm(ocp,-1), getFourierDcm(crosswind))
+    rawe.kiteutils.matchDcms(ocp, rawe.kiteutils.getDcm(ocp,0),  getFourierDcm(startup))
+    rawe.kiteutils.matchDcms(ocp, rawe.kiteutils.getDcm(ocp,-1), getFourierDcm(crosswind))
 
     # initial guess
     phase0Guess = -4.0*pi
@@ -186,9 +181,9 @@ def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
     ocp.setObjective( 1e1*obj/nk + ocp.lookup('endTime') )
 
     oldKiteProtos = []
-    mcc = kite_pb2.MultiCarousel().FromString(startup.multiCarousel)
+    mcc = rawe.kite_pb2.MultiCarousel().FromString(startup.multiCarousel)
     oldKiteProtos.extend(mcc.css)
-    mcc = kite_pb2.MultiCarousel().FromString(crosswind.multiCarousel)
+    mcc = rawe.kite_pb2.MultiCarousel().FromString(crosswind.multiCarousel)
     oldKiteProtos.extend(mcc.css)
 
     for okp in oldKiteProtos:
@@ -236,7 +231,7 @@ def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
 #        ocp._constraints.printViolations(g,lbg,ubg,reportThreshold=0)
         
         return mc.SerializeToString()
-    callback = startKiteTelemetry(ocp, conf, userCallback=myCallback)
+    callback = rawe.kiteTelemetry.startKiteTelemetry(ocp, conf, userCallback=myCallback)
 
 
     # solver
@@ -268,7 +263,7 @@ if __name__=='__main__':
     conf = readConfig('config.ini','configspec.ini')
     
     print "creating model..."
-    dae = models.carousel(conf,extraParams=['endTime','phase0','phaseF'])
+    dae = rawe.models.carousel(conf,extraParams=['endTime','phase0','phaseF'])
 
     print "setting up ocp..."
     ocp = setupOcp(dae,conf,nk=50)

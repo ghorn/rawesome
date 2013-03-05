@@ -4,9 +4,7 @@ import os
 
 import casadi as C
 
-import kite_pb2
-import models
-import joy
+import rawe
 
 ts = 0.02
 r = 0.3
@@ -42,7 +40,7 @@ def toProto(x,u):
 
 if __name__=='__main__':
     print "creating model"
-    dae = models.pendulum()
+    dae = rawe.models.pendulum()
 
 
 #    # compile model code
@@ -65,7 +63,7 @@ if __name__=='__main__':
     f.setOption("tf",ts)
     f.init()
     
-    js = joy.Joy()
+    js = rawe.joy.Joy()
 
     context   = zmq.Context(1)
     publisher = context.socket(zmq.PUB)

@@ -1,12 +1,12 @@
 import matplotlib.pyplot as plt
 import zmq
-
 import numpy
 from numpy import pi
 import copy
 
-import kite_pb2
 import casadi as C
+
+import rawe
 
 from multipleShooting import MultipleShootingStage
 import models
@@ -81,7 +81,7 @@ def main():
           self.iter = self.iter + 1
           xup = ocp.devectorize(xOpt)
           
-          po = kite_pb2.PendulumOpt()
+          po = rawe.kite_pb2.PendulumOpt()
           po.x.extend(list(xup['x']))
           po.z.extend(list(xup['z']))
           po.endTime = xup['endTime']

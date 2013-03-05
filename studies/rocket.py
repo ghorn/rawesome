@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 
-from models.dae import Dae
-from collocation import Coll
+from rawe.models.dae import Dae
+from rawe.collocation import Coll
 
 if __name__ == "__main__":
     ######## make the Dae #######
