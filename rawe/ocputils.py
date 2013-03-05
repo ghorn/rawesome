@@ -109,7 +109,8 @@ class Constraints():
 
     def printViolations(self,*args,**kwargs):
         viols = self.getViolationsStr(*args,**kwargs)
-        print viols
+        if viols != '':
+            print viols
 
 class Bounds(DesignVarMap):
     descriptor = "bound"

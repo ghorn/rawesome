@@ -18,9 +18,9 @@ def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
     def constrainInvariantErrs():
         dcm = ocp.lookup('dcm',timestep=0)
         err = C.mul(dcm.T,dcm)
-        ocp.constrain( C.veccat([err[0,0] - 1, err[1,1]-1, err[2,2] - 1, err[0,1], err[0,2], err[1,2]]), '==', 0)
-        ocp.constrain(ocp.lookup('c',timestep=0), '==', 0)
-        ocp.constrain(ocp.lookup('cdot',timestep=0), '==', 0)
+        ocp.constrain( C.veccat([err[0,0] - 1, err[1,1]-1, err[2,2] - 1, err[0,1], err[0,2], err[1,2]]), '==', 0, tag=('initial dcm orthonormal',None))
+        ocp.constrain(ocp.lookup('c',timestep=0), '==', 0, tag=('initial c 0',None))
+        ocp.constrain(ocp.lookup('cdot',timestep=0), '==', 0, tag=('initial cdot 0',None))
     constrainInvariantErrs()
 
     # constrain line angle
@@ -30,15 +30,15 @@ def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
     # constrain airspeed
     def constrainAirspeedAlphaBeta():
         for k in range(0,nk):
-            ocp.constrain(ocp.lookup('airspeed',timestep=k), '>=', 1)
-            ocp.constrainBnds(ocp.lookup('alpha(deg)',timestep=k), (-5,10))
-            ocp.constrainBnds(ocp.lookup('beta(deg)', timestep=k), (-10,10))
+            ocp.constrain(ocp.lookup('airspeed',timestep=k), '>=', 10, tag=('airspeed',nk))
+            ocp.constrainBnds(ocp.lookup('alpha(deg)',timestep=k), (-5,10), tag=('alpha',nk))
+            ocp.constrainBnds(ocp.lookup('beta(deg)', timestep=k), (-10,10), tag=('beta',nk))
     constrainAirspeedAlphaBeta()
 
     # constrain tether force
     for k in range(nk):
-        ocp.constrain( ocp.lookup('tether tension',timestep=k,degIdx=1), '>=', 0)
-        ocp.constrain( ocp.lookup('tether tension',timestep=k,degIdx=ocp.deg), '>=', 0)
+        ocp.constrain( ocp.lookup('tether tension',timestep=k,degIdx=1), '>=', 0, tag=('tether tension',(nk,0)))
+        ocp.constrain( ocp.lookup('tether tension',timestep=k,degIdx=ocp.deg), '>=', 0, tag=('tether tension',(nk,1)))
 
     # make it periodic
     for name in [ "y","z",
@@ -113,7 +113,7 @@ if __name__=='__main__':
         
         # path following
         theta = nTurns*2*pi*k/float(ocp.nk)
-        thetaDot = nTurns*2*pi/(float(ocp.nk)*ocp._guess.lookup('endTime'))
+        thetaDot = nTurns*2*pi/(ocp._guess.lookup('endTime'))
         xyzCircleFrame    = numpy.array([h, r*numpy.sin(theta),          -r*numpy.cos(theta)])
         xyzDotCircleFrame = numpy.array([0, r*numpy.cos(theta)*thetaDot,  r*numpy.sin(theta)*thetaDot])
 

@@ -28,31 +28,31 @@ def normalCallback(traj,myiter,ocp,conf):
     mc.messages.append("endTime: "+str(traj.lookup('endTime')))
     mc.messages.append("average power: "+str(traj.lookup('quadrature energy',timestep=-1)/traj.lookup('endTime'))+" W")
     
-#      # bounds feedback
-#      lbx = ocp.solver.input(C.NLP_LBX)
-#      ubx = ocp.solver.input(C.NLP_UBX)
-#      s1 = ocp._bounds.boundsFeedbackStr(xOpt,lbx,ubx,reportThreshold=0)
-#   
-#      # constraints feedback
-#      lbg = ocp.solver.input(C.NLP_LBG)
-#      ubg = ocp.solver.input(C.NLP_UBG)
-#      ocp._gfcn.setInput(traj.getDvs(),0)
-#      ocp._gfcn.evaluate()
-#      g = ocp._gfcn.output()
-#      s2 = ocp._constraints.getViolationsStr(g,lbg,ubg,reportThreshold=0)
-#   
-#      raise ValueError(s1+'\n-------------------------\n'+s2)
-    
     return mc.SerializeToString()
     
 
-def startKiteTelemetry(ocp, conf,userCallback=normalCallback):
+def startKiteTelemetry(ocp, conf,userCallback=normalCallback, printBoundViolation=False,printConstraintViolation=False):
     xOptQueue = Manager().Queue()
     KiteTelemetry(ocp, xOptQueue, conf, userCallback).start()
 
     class MyCallback:
         def __call__(self,f,*args):
-            xOptQueue.put(numpy.array(f.input(C.NLP_X_OPT)))
+            xOpt = numpy.array(f.input(C.NLP_X_OPT))
+
+            if printBoundViolation:
+                lbx = numpy.array(ocp.solver.input(C.NLP_LBX))
+                ubx = numpy.array(ocp.solver.input(C.NLP_UBX))
+                ocp._bounds.printBoundsFeedback(xOpt,lbx,ubx,reportThreshold=0)
+
+            if printConstraintViolation:
+                lbg = numpy.array(ocp.solver.input(C.NLP_LBG))
+                ubg = numpy.array(ocp.solver.input(C.NLP_UBG))
+                ocp._gfcn.setInput(xOpt,0)
+                ocp._gfcn.evaluate()
+                g = ocp._gfcn.output()
+                s2 = ocp._constraints.printViolations(g,lbg,ubg,reportThreshold=0)
+
+            xOptQueue.put(xOpt)
 
     return MyCallback()
 

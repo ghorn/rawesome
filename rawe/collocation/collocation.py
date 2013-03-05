@@ -130,7 +130,9 @@ class BoundsMap(collmaps.WriteableCollMap):
         return '\n'.join(ret)
 
     def printBoundsFeedback(self,*args,**kwargs):
-        print self.boundsFeedbackStr(*args,**kwargs)
+        s = self.boundsFeedbackStr(*args,**kwargs)
+        if s != '':
+            print s
 
 class Coll():
     collocationIsSetup = False

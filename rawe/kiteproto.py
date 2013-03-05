@@ -39,6 +39,7 @@ def toKiteProto(lookup,zt,rArm,kiteAlpha=1.0,lineAlpha=1.0):
                                   ('L_over_D','L/D'),
                                   ('alpha_deg','alpha(deg)'),
                                   ('beta_deg','beta(deg)'),
+                                  ('airspeed','airspeed'),
                                   ('tension','tether tension'),
                                   ('power','winch power'),
                                   ('energy','quadrature energy'),
