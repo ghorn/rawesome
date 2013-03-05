@@ -130,15 +130,15 @@ def aeroForcesTorques(dae, conf, we, wE, (w1,w2,w3), (eTe1, eTe2, eTe3), (ailero
     
     # LIFT :
     # ###############################
-    fL1 =  rho*cL*eLe1*vKite/2.0
-    fL2 =  rho*cL*eLe2*vKite/2.0
-    fL3 =  rho*cL*eLe3*vKite/2.0
+    fL1 =  sref*rho*cL*eLe1*vKite/2.0
+    fL2 =  sref*rho*cL*eLe2*vKite/2.0
+    fL3 =  sref*rho*cL*eLe3*vKite/2.0
     
     # DRAG :
     # #############################
-    fD1 = -rho*vKite*cD*we1/2.0
-    fD2 = -rho*vKite*cD*we2/2.0 
-    fD3 = -rho*vKite*cD*we3/2.0 
+    fD1 = -sref*rho*vKite*cD*we1/2.0
+    fD2 = -sref*rho*vKite*cD*we2/2.0 
+    fD3 = -sref*rho*vKite*cD*we3/2.0 
     
     
     
