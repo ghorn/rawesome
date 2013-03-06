@@ -237,7 +237,7 @@ if __name__=='__main__':
     
     print "setting up solver..."
     ocp.setupSolver( solverOpts=solverOptions,
-                     callback=MyCallback() )
+                     callback=callback )
 
     xInit = None
     ocp.bound('gamma_homotopy',(1e-4,1e-4),force=True)
