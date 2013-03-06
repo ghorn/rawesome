@@ -204,8 +204,6 @@ def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
 #                for degIdx in range(ocp.deg+1):
                     lookup = lambda name: traj.lookup(name,timestep=k,nicpIdx=nicpIdx,degIdx=degIdx)
                     kiteProtos.append( kiteproto.toKiteProto(lookup,
-                                                             conf['kite']['zt'],
-                                                             conf['carousel']['rArm'],
                                                              lineAlpha=0.2) )
         kiteProtos += oldKiteProtos
         mc = kite_pb2.MultiCarousel()

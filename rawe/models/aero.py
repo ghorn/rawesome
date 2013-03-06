@@ -2,7 +2,6 @@ import casadi as C
 
 def aeroForcesTorques(dae, conf, we, wE, (w1,w2,w3), (eTe1, eTe2, eTe3), (aileron,elevator)):
     rho = conf['rho']
-    rA = conf['rArm']
     alpha0 = conf['alpha0deg']*C.pi/180
     
     #ROLL DAMPING

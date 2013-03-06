@@ -34,8 +34,6 @@ class Communicator(object):
 
     def sendKite(self,x,u,p,outs,conf,otherMessages=[]):
         pb = kiteproto.toKiteProto(dict(x.items()+u.items()+p.items()+outs.items()).__getitem__,
-                                   conf['zt'],
-                                   conf['rArm'],
                                    lineAlpha=0.2)
 
         for name in outs:

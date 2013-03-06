@@ -145,7 +145,7 @@ while time < 100:
     while t>traj.tgrid[-1,0,0]:
         t -= traj.tgrid[-1,0,0]
     lookup = lambda name: pps[name](t)
-    kp = rawe.kiteproto.toKiteProto(lookup,0,0,lineAlpha=0.2)
+    kp = rawe.kiteproto.toKiteProto(lookup,lineAlpha=0.2)
 
     mc = rawe.kite_pb2.MultiCarousel()
     mc.css.extend([kp])

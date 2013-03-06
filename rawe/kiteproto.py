@@ -1,7 +1,7 @@
 import kite_pb2
 import numpy
 
-def toKiteProto(lookup,zt,rArm,kiteAlpha=1.0,lineAlpha=1.0):
+def toKiteProto(lookup,kiteAlpha=1.0,lineAlpha=1.0):
     cs = kite_pb2.CarouselState()
 
     cs.kiteXyz.x = lookup('x')
@@ -26,8 +26,16 @@ def toKiteProto(lookup,zt,rArm,kiteAlpha=1.0,lineAlpha=1.0):
         cs.delta = 0
         pass
 
-    cs.rArm = rArm
-    cs.zt = zt
+    try:
+        cs.rArm = lookup['rArm']
+    except Exception:
+        cs.rArm = 0.0
+        pass
+    try:
+        cs.zt = lookup['zt']
+    except Exception:
+        cs.zt = 0
+        pass
 
     cs.w0 = lookup('w0')
         

@@ -21,11 +21,7 @@ def setupModel(dae, conf):
     j3 =  conf['j3']
     
     #Carousel Friction & inertia
-    jCarousel = conf['jCarousel']
-    cfric = conf['cfric']
-
     zt = conf['zt']
-    rA = conf['rArm']
 
     ###########     model integ ###################
     e11 = dae['e11']
@@ -54,10 +50,10 @@ def setupModel(dae, conf):
 
     delta = 0
     ddelta = 0
+    rA = 0
 
     r = dae['r']
     dr = dae['dr']
-    
     ddr = dae['ddr']
     
     # wind
