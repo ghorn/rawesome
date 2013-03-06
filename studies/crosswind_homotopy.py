@@ -30,7 +30,7 @@ def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
     def constrainAirspeedAlphaBeta():
         for k in range(0,nk):
             ocp.constrain(ocp.lookup('airspeed',timestep=k), '>=', 10, tag=('airspeed',nk))
-            ocp.constrainBnds(ocp.lookup('alpha(deg)',timestep=k), (-5,10), tag=('alpha',nk))
+            ocp.constrainBnds(ocp.lookup('alpha(deg)',timestep=k), (-5,15), tag=('alpha',nk))
             ocp.constrainBnds(ocp.lookup('beta(deg)', timestep=k), (-10,10), tag=('beta',nk))
     constrainAirspeedAlphaBeta()
 
@@ -59,15 +59,15 @@ def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
     ocp.bound('daileron',(-2.0,2.0))
     ocp.bound('delevator',(-2.0,2.0))
 
-    ocp.bound('x',(-200,200))
-    ocp.bound('y',(-200,200))
+    ocp.bound('x',(-2000,2000))
+    ocp.bound('y',(-2000,2000))
     if 'minAltitude' in conf:
-        ocp.bound('z',(conf['minAltitude'],200))
+        ocp.bound('z',(conf['minAltitude'],2000))
     else:
-        ocp.bound('z',(0.5,200))
-    ocp.bound('r',(1,200))
+        ocp.bound('z',(0.5,2000))
+    ocp.bound('r',(1,2000))
     ocp.bound('dr',(-30,30))
-    ocp.bound('ddr',(-500,500))
+    ocp.bound('ddr',(-15,15))
 
     for e in ['e11','e21','e31','e12','e22','e32','e13','e23','e33']:
         ocp.bound(e,(-1.1,1.1))
@@ -78,8 +78,8 @@ def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
     for w in ['w1','w2','w3']:
         ocp.bound(w,(-4*pi,4*pi))
 
-    ocp.bound('endTime',(1.8,1.8))
-    ocp.guess('endTime',1.8)
+    ocp.bound('endTime',(4.0,7.0))
+    ocp.guess('endTime',4.0)
     ocp.bound('w0',(10,10))
 
     # boundary conditions
@@ -90,10 +90,11 @@ def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
 
 if __name__=='__main__':
     print "reading config..."
-    from conf import conf
+    from carousel_conf import conf
+    #from stingray_conf import conf
     conf['runHomotopy'] = True
     conf['minAltitude'] = 0.5
-    nk = 70
+    nk = 40
 
     print "creating model..."
     dae = rawe.models.crosswind(conf,extraParams=['endTime'])
@@ -101,8 +102,8 @@ if __name__=='__main__':
     print "setting up ocp..."
     ocp = setupOcp(dae,conf,nk=nk)
 
-    lineRadiusGuess = 70.0
-    circleRadiusGuess = 10.0
+    lineRadiusGuess = 120.0
+    circleRadiusGuess = 40.0
 
     # trajectory for homotopy
     homotopyTraj = {'x':[],'y':[],'z':[]}
@@ -178,7 +179,7 @@ if __name__=='__main__':
         daileron = ocp.lookup('daileron',timestep=k)
         delevator = ocp.lookup('delevator',timestep=k)
         
-        daileronSigma = 0.1
+        daileronSigma = 0.01
         delevatorSigma = 0.1
         ddrSigma = 1.0
         
@@ -199,7 +200,7 @@ if __name__=='__main__':
                 homoReg += ocp.lookup('t1_homotopy',timestep=k,nicpIdx=nicpIdx,degIdx=degIdx)**2
                 homoReg += ocp.lookup('t2_homotopy',timestep=k,nicpIdx=nicpIdx,degIdx=degIdx)**2
                 homoReg += ocp.lookup('t3_homotopy',timestep=k,nicpIdx=nicpIdx,degIdx=degIdx)**2
-    obj += 1e-2*homoReg/float(ocp.nk)/float(ocp.nicp*(ocp.deg+1))
+    obj += 1e-2*homoReg/float(ocp.nk*ocp.nicp*ocp.deg)
 
     ocp.setObjective( obj )
 
@@ -239,14 +240,14 @@ if __name__=='__main__':
                      callback=callback )
 
     xInit = None
-    ocp.bound('gamma_homotopy',(1e-4,1e-4),force=True)
+    ocp.bound('gamma_homotopy',(0,0),force=True)
     traj = ocp.solve(xInit=xInit)
 
     ocp.bound('gamma_homotopy',(0,1),force=True)
     traj = ocp.solve(xInit=traj.getDvs())
     
     ocp.bound('gamma_homotopy',(1,1),force=True)
-    ocp.bound('endTime',(4.0,4.0),force=True)
+#    ocp.bound('endTime',(4.0,4.0),force=True)
     traj = ocp.solve(xInit=traj.getDvs())
 
     traj.save("data/crosswind_homotopy.dat")

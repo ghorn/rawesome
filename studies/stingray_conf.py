@@ -19,7 +19,7 @@ conf = {#[env]
      #Drag (report p. 70)
      'cDA': -0.195,
      'cDA2': 4.268,
-     'cDB2': 5,
+     'cDB2': 0,
 
      'cD0': 0.026,
 
@@ -45,7 +45,6 @@ conf = {#[env]
      #TAIL LENGTH
      'lT': 0.4,
 
-     'AR': 9.6,
      'sref': 0.66,
      'bref': 2.5171, #sqrt(sref*AR),
      'cref': 0.2622, #sqrt(sref/AR),
