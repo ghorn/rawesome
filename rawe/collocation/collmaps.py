@@ -88,7 +88,7 @@ class ReadOnlyCollMap(object):
             if degIdx is None:
                 degIdx = 0
             assert timestep <= self._nk, \
-                "timestep: "+str(timestep)+" out of range in "+self._name+" map (nk: "+str(nk)+")"
+                "timestep: "+str(timestep)+" out of range in "+self._name+" map (nk: "+str(self._nk)+")"
             assert degIdx >=0 and degIdx < (self._deg+1), \
                 "degIdx: "+str(deg)+" out of range in "+self._name+" map (deg: "+str(self._deg)+")"
             if timestep is self._nk:
