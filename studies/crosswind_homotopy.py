@@ -94,7 +94,8 @@ if __name__=='__main__':
     conf = readConfig('config.ini','configspec.ini')
     conf['runHomotopy'] = True
     conf['minAltitude'] = 0.5
-    
+    nk = 70
+
     print "creating model..."
     dae = rawe.models.crosswind(conf,extraParams=['endTime'])
 
