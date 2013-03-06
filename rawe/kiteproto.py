@@ -56,7 +56,9 @@ def toKiteProto(lookup,kiteAlpha=1.0,lineAlpha=1.0):
                                   ('dr', 'dr'),
                                   ('ddr','ddr'),
                                   ('c','c'),
-                                  ('cdot','cdot')]:
+                                  ('cdot','cdot'),
+                                  ('elevator_deg','elevator(deg)'),
+                                  ('aileron_deg','aileron(deg)')]:
         try:
             cs.outputs.__setattr__(attrName,lookup(lookupName))
         except Exception:

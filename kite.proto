@@ -61,6 +61,8 @@ message KiteOutputs {
   optional double ddr = 13;
   optional double c = 14;
   optional double cdot= 15;
+  optional double aileron_deg = 16;
+  optional double elevator_deg = 17;
 }
 
 message PendulumOpt {
