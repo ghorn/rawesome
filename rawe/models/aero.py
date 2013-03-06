@@ -140,8 +140,6 @@ def aeroForcesTorques(dae, conf, we, wE, (w1,w2,w3), (eTe1, eTe2, eTe3), (ailero
     fD2 = -sref*rho*vKite*cD*we2/2.0 
     fD3 = -sref*rho*vKite*cD*we3/2.0 
     
-    
-    
     # FORCES (AERO)
     # ###############################
     f1 = fL1 + fD1

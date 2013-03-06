@@ -6,7 +6,6 @@ from numpy import pi
 import pickle
 
 import rawe
-from config import readConfig
 
 x0 = C.DMatrix( [ 1.154244772411
                 , -0.103540608242
@@ -176,7 +175,7 @@ def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
 
 if __name__=='__main__':
     print "reading config..."
-    conf = readConfig('config.ini','configspec.ini')
+    from conf import conf
     
     print "creating model..."
     dae = rawe.models.carousel(conf,extraParams=['endTime'])
