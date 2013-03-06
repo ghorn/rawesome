@@ -1,12 +1,10 @@
-from config import readConfig
 from casadi import pi
 
 import rawe
 from carouselSteadyState import getSteadyState
 
 if __name__=='__main__':
-    print "reading config..."
-    conf = readConfig('config.ini','configspec.ini')
+    from conf import conf
     
     print "creating model..."
     dae = rawe.models.carousel(conf)

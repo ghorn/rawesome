@@ -1,12 +1,11 @@
 import casadi as C
 
 from carouselSteadyState import getSteadyState
-from config import readConfig
 import rawe
 
 if __name__=='__main__':
     print "creating model"
-    conf = readConfig('config.ini','configspec.ini')
+    from highwind_carousel_conf import conf
     dae = rawe.models.carousel(conf)
     steadyState = getSteadyState(dae,conf,2*C.pi,1.2)
 

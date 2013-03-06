@@ -99,8 +99,8 @@ def getSteadyState(dae,conf,omega0,r0):
                 sol[name] = x[k].at(0)
             lookup = lambda name: sol[name]
             kp = kiteproto.toKiteProto(lookup,
-                                       conf['kite']['zt'],
-                                       conf['carousel']['rArm'],
+                                       conf['zt'],
+                                       conf['rArm'],
                                        lineAlpha=0.2)
             mc = kite_pb2.MultiCarousel()
             mc.css.extend([kp])

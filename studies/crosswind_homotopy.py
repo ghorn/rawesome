@@ -6,7 +6,6 @@ from numpy import pi
 import pickle
 
 import rawe
-from config import readConfig
 
 def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
     ocp = rawe.collocation.Coll(dae, nk=nk,nicp=nicp,deg=deg)
@@ -91,7 +90,7 @@ def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
 
 if __name__=='__main__':
     print "reading config..."
-    conf = readConfig('config.ini','configspec.ini')
+    from conf import conf
     conf['runHomotopy'] = True
     conf['minAltitude'] = 0.5
     nk = 70

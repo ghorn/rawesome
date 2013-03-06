@@ -3,11 +3,9 @@ import numpy
 import casadi as C
 
 import rawe
-from config import readConfig
 
 if __name__=='__main__':
-    print "reading config..."
-    conf = readConfig('config.ini','configspec.ini')
+    from conf import conf
     
     print "creating model..."
     dae = rawe.models.carousel(conf)

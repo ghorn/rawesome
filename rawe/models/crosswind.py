@@ -5,27 +5,27 @@ from aero import aeroForcesTorques
 def setupModel(dae, conf):
     #  PARAMETERS OF THE KITE :
     #  ##############
-    m =  conf['kite']['mass'] #  mass of the kite               #  [ kg    ]
+    m =  conf['mass'] #  mass of the kite               #  [ kg    ]
                  
     #   PHYSICAL CONSTANTS :
     #  ##############
-    g = conf['env']['g'] #  gravitational constant         #  [ m /s^2]
+    g = conf['g'] #  gravitational constant         #  [ m /s^2]
     
     #  PARAMETERS OF THE CABLE :
     #  ##############
      
     #INERTIA MATRIX (Kurt's direct measurements)
-    j1 =  conf['kite']['j1']
-    j31 = conf['kite']['j31']
-    j2 =  conf['kite']['j2']
-    j3 =  conf['kite']['j3']
+    j1 =  conf['j1']
+    j31 = conf['j31']
+    j2 =  conf['j2']
+    j3 =  conf['j3']
     
     #Carousel Friction & inertia
-    jCarousel = conf['carousel']['jCarousel']
-    cfric = conf['carousel']['cfric']
+    jCarousel = conf['jCarousel']
+    cfric = conf['cfric']
 
-    zt = conf['kite']['zt']
-    rA = conf['carousel']['rArm']
+    zt = conf['zt']
+    rA = conf['rArm']
 
     ###########     model integ ###################
     e11 = dae['e11']
@@ -61,8 +61,8 @@ def setupModel(dae, conf):
     ddr = dae['ddr']
     
     # wind
-    z0 = conf['wind shear']['z0']
-    zt_roughness = conf['wind shear']['zt_roughness']
+    z0 = conf['z0']
+    zt_roughness = conf['zt_roughness']
     zsat = 0.5*(z+C.sqrt(z*z))
     wind_x = dae['w0']*C.log((zsat+zt_roughness+2)/zt_roughness)/C.log(z0/zt_roughness)
 #    wind_x = dae['w0']
@@ -314,8 +314,8 @@ def crosswindModel(conf,extraParams=[]):
         w = dae['wind at altitude']
         cL = dae['cL']
         cD = dae['cD']
-        rho = conf['env']['rho']
-        S = conf['kite']['sref']
+        rho = conf['rho']
+        S = conf['sref']
         loyds = 2/27.0*rho*S*w**3*cL**3/cD**2
         loyds2 = 2/27.0*rho*S*w**3*(cL**2/cD**2 + 1)**(1.5)*cD
         dae["loyd's limit"] = loyds

@@ -6,7 +6,6 @@ from numpy import pi
 from fourier_fit import FourierFit,TrajFit
 import pickle
 
-from config import readConfig
 import rawe
 
 def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
@@ -187,8 +186,8 @@ def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
     oldKiteProtos.extend(mcc.css)
 
     for okp in oldKiteProtos:
-        okp.zt = conf['kite']['zt']
-        okp.rArm = conf['carousel']['rArm']
+        okp.zt = conf['zt']
+        okp.rArm = conf['rArm']
         okp.lineTransparency = 0.0
         okp.kiteTransparency = 0.3
 #    for k in range(0,startupfits['x'].Mx.size):
@@ -260,7 +259,7 @@ def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
 
 if __name__=='__main__':
     print "reading config..."
-    conf = readConfig('config.ini','configspec.ini')
+    from conf import conf
     
     print "creating model..."
     dae = rawe.models.carousel(conf,extraParams=['endTime','phase0','phaseF'])

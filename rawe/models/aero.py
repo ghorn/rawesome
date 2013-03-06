@@ -1,51 +1,51 @@
 import casadi as C
 
 def aeroForcesTorques(dae, conf, we, wE, (w1,w2,w3), (eTe1, eTe2, eTe3), (aileron,elevator)):
-    rho = conf['env']['rho']
-    rA = conf['carousel']['rArm']
-    alpha0 = conf['aero']['alpha0deg']*C.pi/180
+    rho = conf['rho']
+    rA = conf['rArm']
+    alpha0 = conf['alpha0deg']*C.pi/180
     
     #ROLL DAMPING
-    rD = conf['aero']['rD']
-    pD = conf['aero']['pD']
-    yD = conf['aero']['yD']
+    rD = conf['rD']
+    pD = conf['pD']
+    yD = conf['yD']
     
     #WIND-TUNNEL PARAMETERS
     #Lift (report p. 67)
-    cLA = conf['aero']['cLA']
+    cLA = conf['cLA']
     
-    cLe = conf['aero']['cLe']
+    cLe = conf['cLe']
 
-    cL0 = conf['aero']['cL0']
+    cL0 = conf['cL0']
     
     #Drag (report p. 70)
-    cDA = conf['aero']['cDA']
-    cDA2 = conf['aero']['cDA2']
-    cDB2 = conf['aero']['cDB2']
+    cDA = conf['cDA']
+    cDA2 = conf['cDA2']
+    cDB2 = conf['cDB2']
 
-    cD0 = conf['aero']['cD0']
+    cD0 = conf['cD0']
     
     #Roll (report p. 72)
-    cRB  = conf['aero']['cRB']
-    cRAB = conf['aero']['cRAB']
-    cRr  = conf['aero']['cRr']
+    cRB  = conf['cRB']
+    cRAB = conf['cRAB']
+    cRr  = conf['cRr']
     
     #Pitch (report p. 74)
-    cPA = conf['aero']['cPA']
-    cPe = conf['aero']['cPe']
+    cPA = conf['cPA']
+    cPe = conf['cPe']
     
-    cP0 = conf['aero']['cP0']
+    cP0 = conf['cP0']
     
     #Yaw (report p. 76)
-    cYB = conf['aero']['cYB']
-    cYAB = conf['aero']['cYAB']
+    cYB = conf['cYB']
+    cYAB = conf['cYAB']
 
     #TAIL LENGTH
-    lT = conf['kite']['lT']
+    lT = conf['lT']
 
-    sref = conf['kite']['sref']
-    bref = conf['kite']['bref']
-    cref = conf['kite']['cref']
+    sref = conf['sref']
+    bref = conf['bref']
+    cref = conf['cref']
     
     ##### more model_integ ###########
     # EFFECTIVE WIND IN THE KITE`S SYSTEM :
