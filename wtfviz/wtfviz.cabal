@@ -16,8 +16,8 @@ executable kitesim
                      spatial-math,
                      hmatrix,
                      protocol-buffers,
-                     bytestring,
-                     ekg
+                     bytestring
+--                     ekg
   if os(OSX)
     cpp-options:     -DOSX
     build-depends:   zeromq3-haskell
@@ -37,8 +37,8 @@ executable multicarousel
                      spatial-math,
                      hmatrix,
                      protocol-buffers,
-                     bytestring,
-                     ekg
+                     bytestring
+--                     ekg
   if os(OSX)
     cpp-options:     -DOSX
     build-depends:   zeromq3-haskell
@@ -55,8 +55,8 @@ executable pendopt
                      not-gloss >= 0.5.0,
                      spatial-math,
                      protocol-buffers,
-                     bytestring,
-                     ekg
+                     bytestring
+--                     ekg
   if os(OSX)
     cpp-options:     -DOSX
     build-depends:   zeromq3-haskell

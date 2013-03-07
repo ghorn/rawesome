@@ -16,7 +16,7 @@ import Control.Monad ( forever )
 import qualified Data.ByteString.Lazy as BL
 import Text.ProtocolBuffers ( messageGet )
 import Text.ProtocolBuffers.Basic ( uToString )
-import System.Remote.Monitoring ( forkServer )
+--import System.Remote.Monitoring ( forkServer )
 
 import qualified Kite.PendulumOpt as PO
 
@@ -95,7 +95,7 @@ ts = 0.02
 
 main :: IO ()
 main = do
-  _ <- forkServer "localhost" 8000
+--  _ <- forkServer "localhost" 8000
   m <- newMVar Nothing
   _ <- forkIO (sub m)
   

@@ -19,7 +19,7 @@ import qualified Data.ByteString.Lazy as BL
 import Data.Packed ( fromLists )
 import Text.ProtocolBuffers ( messageGet )
 import Text.ProtocolBuffers.Basic ( uToString )
-import System.Remote.Monitoring ( forkServer )
+--import System.Remote.Monitoring ( forkServer )
 
 import qualified Kite.CarouselState as CS
 import qualified Kite.Dcm as Dcm
@@ -192,7 +192,7 @@ ts = 0.02
 
 main :: IO ()
 main = do
-  _ <- forkServer "localhost" 8000
+--  _ <- forkServer "localhost" 8000
   m <- newMVar state0
   _ <- forkIO (sub m)
   
