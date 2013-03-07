@@ -37,6 +37,9 @@ conf = {'g':9.81,  #  gravitational constant #  [ m /s^2]
 
         'zt': -0.01,
 
+        # how alpha/beta computed
+        'alpha_beta_computation':'closed_form',
+
         #INERTIA MATRIX (Kurt's direct measurements)
         'j1': 0.0163,
         'j31': 0.0006,

@@ -36,8 +36,11 @@ conf = {'g': 9.81,  #  gravitational constant #  [ m /s^2]
 	#TAIL LENGTH
 	'lT': 0.4,
 
+        # use aerodynamic approximations instead of triginometry
+        'alpha_beta_computation':'first_order',
+
 	#'sref': 0.096,
-	'sref': 1.0,
+	'sref': 1.0, # dummy value because coeffs are normalized to 1 not sref
 	'bref': 0.96, #sqrt(sref*AR)
 	'cref': 0.1, #sqrt(sref/AR)
 

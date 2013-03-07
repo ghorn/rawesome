@@ -45,6 +45,9 @@ conf = {#[env]
      #TAIL LENGTH
      'lT': 0.4,
 
+     # how alpha/beta computed
+     'alpha_beta_computation':'closed_form',
+
      'sref': 0.66,
      'bref': 2.5171, #sqrt(sref*AR),
      'cref': 0.2622, #sqrt(sref/AR),
