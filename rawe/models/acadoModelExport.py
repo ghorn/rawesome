@@ -168,7 +168,10 @@ def generateAcadoCodegenModel(dae,f):
     lines.append('/* the outputs */')
     lines.append('OutputFcn _h;')
     for k,name in enumerate(dae.outputNames()):
-        for j in range(dae[name].size()):
+        size = 1
+        if hasattr(dae[name], 'size'):
+            size = dae[name].size()
+        for j in range(size):
             replace = dict(replace0.items() + {'k':k,'j':j,'outputname':name}.items())
             lines.append('_h << %(output)s_%(k)d_%(j)d; /* %(outputname)s (%(j)d)*/' % replace)
     lines.append('')

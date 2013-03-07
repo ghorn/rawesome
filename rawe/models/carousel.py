@@ -52,7 +52,6 @@ def setupModel(dae, conf):
     w2  =  dae['w2']
     w3  =  dae['w3']
 
-    delta = dae['delta']
     ddelta = dae['ddelta']
 
     r = dae['r']
@@ -63,16 +62,19 @@ def setupModel(dae, conf):
     tc = dae['motor_torque'] #Carousel motor torque
 
     # wind
-    z0 = conf['z0']
-    zt_roughness = conf['zt_roughness']
-    zsat = 0.5*(z+C.sqrt(z*z))
-    wind_x = dae['w0']#*C.log((zsat+zt_roughness+2)/zt_roughness)/C.log(z0/zt_roughness)
+    if 'w0' in dae:
+        z0 = conf['z0']
+        zt_roughness = conf['zt_roughness']
+        zsat = 0.5*(z+C.sqrt(z*z))
+        wind_x = dae['w0']*C.log((zsat+zt_roughness+2)/zt_roughness)/C.log(z0/zt_roughness)
+    else:
+        wind_x = 0
     dae['wind at altitude'] = wind_x
 
     dp_carousel_frame = C.veccat( [ dx - ddelta*y
                                   , dy + ddelta*(rA + x)
                                   , dz
-                                  ]) - C.veccat([C.cos(delta)*wind_x,C.sin(delta)*wind_x,0])
+                                  ]) - C.veccat([dae['cos_delta']*wind_x, dae['sin_delta']*wind_x, 0])
     R_c2b = C.veccat( [dae[n] for n in ['e11', 'e12', 'e13',
                                         'e21', 'e22', 'e23',
                                         'e31', 'e32', 'e33']]
@@ -240,37 +242,53 @@ def carouselModel(conf,nSteps=None,extraParams=[]):
 #              , "nu"
 #              ] )
     dae.addZ("nu")
-    dae.addX( [ "x"   # state 0
-              , "y"   # state 1
-              , "z"   # state 2
-              , "e11" # state 3
-              , "e12" # state 4
-              , "e13" # state 5
-              , "e21" # state 6
-              , "e22" # state 7
-              , "e23" # state 8
-              , "e31" # state 9
-              , "e32" # state 10
-              , "e33" # state 11
-              , "dx"  # state 12
-              , "dy"  # state 13
-              , "dz"  # state 14
-              , "w1"  # state 15
-              , "w2"  # state 16
-              , "w3"  # state 17
-              , "delta" # state 18
-              , "ddelta" # state 19
-              , "r" # state 20
-              , "dr" # state 21
+    dae.addX( [ "x"
+              , "y"
+              , "z"
+              , "e11"
+              , "e12"
+              , "e13"
+              , "e21"
+              , "e22"
+              , "e23"
+              , "e31"
+              , "e32"
+              , "e33"
+              , "dx"
+              , "dy"
+              , "dz"
+              , "w1"
+              , "w2"
+              , "w3"
+              , "ddelta"
+              , "r"
+              , "dr"
               , "aileron"
               , "elevator"
               ] )
+    if conf['delta_parameterization'] == 'linear':
+        dae.addX('delta')
+        dae['cos_delta'] = C.cos(dae['delta'])
+        dae['sin_delta'] = C.sin(dae['delta'])
+        dae_delta_residual = dae.ddt('delta') - dae['ddelta'],
+
+    elif conf['delta_parameterization'] == 'cos_sin':
+        dae.addX("cos_delta")
+        dae.addX("sin_delta")
+        dae_delta_residual = C.veccat([dae.ddt('cos_delta') - (-dae['sin_delta']*dae['ddelta']),
+                                       dae.ddt('sin_delta') - dae['cos_delta']*dae['ddelta']])
+    else:
+        raise ValueErorr('unrecognized delta_parameterization "'+conf['delta_parameterization']+'"')
+
     dae.addU( [ "daileron"
               , "delevator"
               , "motor_torque"
               , 'ddr'
               ] )
-    dae.addP( ['w0'] )
+    # add wind parameter if wind shear is in configuration
+    if 'z0' in conf and 'zt_roughness' in conf:
+        dae.addP( ['w0'] )
+
     
     dae['RPM'] = dae['ddelta']*60/(2*C.pi)
     dae['aileron(deg)'] = dae['aileron']*180/C.pi
@@ -299,7 +317,7 @@ def carouselModel(conf,nSteps=None,extraParams=[]):
         C.veccat([dae.ddt(name) for name in ["e11","e12","e13",
                                              "e21","e22","e23",
                                              "e31","e32","e33"]]) - dRexp.trans().reshape([9,1]),
-        dae.ddt('delta') - dae['ddelta'],
+        dae_delta_residual,
 #        C.veccat([dae.ddt(name) for name in ['dx','dy','dz']]) - C.veccat([dae['ddx'],dae['ddy'],dae['ddz']]),
 #        C.veccat([dae.ddt(name) for name in ['w1','w2','w3']]) - C.veccat([dae['dw1'],dae['dw2'],dae['dw3']]),
 #        dae.ddt('ddelta') - dae['dddelta'],

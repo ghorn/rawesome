@@ -1,5 +1,4 @@
 from carousel import carouselModel as carousel
-from highwind_carousel import carouselModel as highwind_carousel
 from crosswind import crosswindModel as crosswind
 from pendulum import pendulumModel as pendulum
 from pendulum2 import pendulumModel as pendulum2

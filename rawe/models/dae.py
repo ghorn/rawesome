@@ -35,6 +35,9 @@ class Dae(object):
     def _freezeOutputs(self,msg):
         self._outputsFrozen.add(msg)
 
+    def _getAllNames(self):
+        return self._xNames + self._zNames + self._uNames + self._pNames + self._outputNames
+
     def assertXzupNotFrozen(self):
         if len(self._xzupFrozen) > 0:
             raise ValueError("can't perform this operation because Dae has been frozen by: "+str([n for n in self._xzupFrozen]))
@@ -44,8 +47,7 @@ class Dae(object):
             raise ValueError("can't perform this operation because Dae has been frozen by: "+str([n for n in self._outputsFrozen]))
 
     def assertUniqueName(self, name):
-        allNames = self._xNames + self._zNames + self._uNames + self._pNames + self._outputNames + self._illegalNames
-        if name in allNames:
+        if name in (self._getAllNames() + self._illegalNames):
             raise ValueError('name "'+name+'" is not unique or illegal')
 
         if name[0]=='_':
@@ -143,6 +145,13 @@ class Dae(object):
     def outputNames(self):
         self._freezeOutputs('outputNames()')
         return self._outputNames
+
+    def __contains__(self,name):
+        if not isinstance(name,str):
+            raise KeyError('Dae key must be a string')
+        if name in self._getAllNames():
+            return True
+        return False
 
     def __getitem__(self,name):
         """

@@ -39,6 +39,9 @@ conf = {'g': 9.81,  #  gravitational constant #  [ m /s^2]
         # use aerodynamic approximations instead of triginometry
         'alpha_beta_computation':'first_order',
 
+        # use cos(delta), sin(delta) as states
+        'delta_parameterization':'cos_sin',
+
 	#'sref': 0.096,
 	'sref': 1.0, # dummy value because coeffs are normalized to 1 not sref
 	'bref': 0.96, #sqrt(sref*AR)
@@ -59,8 +62,4 @@ conf = {'g': 9.81,  #  gravitational constant #  [ m /s^2]
 	#Carousel Friction & inertia
 	'jCarousel': 1e2,
 	'cfric': 0,#100
-
-	#[wind shear]
-	'z0': 0,
-	'zt_roughness': 0.1
 	}
