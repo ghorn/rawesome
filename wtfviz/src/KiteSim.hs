@@ -34,8 +34,8 @@ data State = State { sTrails :: [[Xyz Double]]
                    , sParticles :: [Xyz Double]
                    }
 
-toNice :: CS.CarouselState -> (Xyz Double, Quat Double, Xyz Double, Xyz Double)
-toNice cs = (xyz, q'n'b, r'n0'a0, r'n0't0)
+toNice :: CS.CarouselState -> (Xyz Double, Quat Double, Xyz Double, Xyz Double, Double)
+toNice cs = (xyz, q'n'b, r'n0'a0, r'n0't0, fromMaybe 1 $ CS.visSpan cs)
   where
     x = KiteXyz.x $ CS.kiteXyz cs
     y = KiteXyz.y $ CS.kiteXyz cs
@@ -81,7 +81,7 @@ drawFun (State {sCS=Nothing}) = VisObjects []
 drawFun state@(State {sCS=Just cs}) =
   VisObjects [axes, txt, ac, plane, trailLines, arm, line, zLine, xyLine, points]
   where
-    (pos@(Xyz x y z), quat, r'n0'a0, r'n0't0) = toNice cs
+    (pos@(Xyz x y z), quat, r'n0'a0, r'n0't0, visSpan) = toNice cs
 
     points = Points (sParticles state) (Just 2) $ makeColor 1 1 1 0.5
     zLine = Line [Xyz x y (planeZ-0.01), pos]            $ makeColor 0.1 0.2 1 0.5
@@ -101,7 +101,7 @@ drawFun state@(State {sCS=Just cs}) =
           zipWith (\s k -> Text2d (uToString s) (30,fromIntegral $ 30*k) TimesRoman24 (makeColor 1 1 1 1)) messages (reverse [1..length messages])
     messages = toList $ CS.messages cs
 
-    ac = Trans pos $ Scale (1,1,1) ac'
+    ac = Trans pos $ Scale (visSpan,visSpan,visSpan) ac'
     (ac',_) = drawAc kiteAlpha (Xyz 0 0 0) quat
     lineAlpha = realToFrac $ fromMaybe 1 (CS.lineTransparency cs)
     kiteAlpha = realToFrac $ fromMaybe 1 (CS.kiteTransparency cs)
@@ -155,7 +155,7 @@ updateState cs x0 =
   where
     w0 = fromMaybe 0 (CS.w0 cs)
     trails0 = sTrails x0
-    (pos,q,_,_) = toNice cs
+    (pos,q,_,_,_) = toNice cs
     (_,trails) = drawAc 1 pos q
     
 withContext :: (ZMQ.Context -> IO a) -> IO a

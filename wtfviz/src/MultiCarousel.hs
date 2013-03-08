@@ -39,6 +39,7 @@ data NiceKite = NiceKite { nk_xyz :: Xyz Double
                          , nk_r'n0't0 :: Xyz Double
                          , nk_lineAlpha :: Float
                          , nk_kiteAlpha :: Float
+                         , nk_visSpan :: Double
                          }
 
 toNice :: CS.CarouselState -> NiceKite
@@ -48,6 +49,7 @@ toNice cs = NiceKite { nk_xyz = xyz
                      , nk_r'n0't0 = r'n0't0
                      , nk_lineAlpha = realToFrac $ fromMaybe 1 (CS.lineTransparency cs)
                      , nk_kiteAlpha = realToFrac $ fromMaybe 1 (CS.kiteTransparency cs)
+                     , nk_visSpan = fromMaybe 1 (CS.visSpan cs)
                      }
   where
     x = KiteXyz.x $ CS.kiteXyz cs
@@ -111,7 +113,9 @@ drawOneKite minLineLength niceKite
         normDr = Xyz.norm dr
         
 
-    (ac,_) = drawAc (nk_kiteAlpha niceKite) pos quat
+    s = nk_visSpan niceKite
+    ac = Trans pos $ Scale (s,s,s) ac'
+    (ac',_) = drawAc (nk_kiteAlpha niceKite) (Xyz 0 0 0) quat
 
 drawFun :: State -> VisObject Double
 drawFun Nothing = VisObjects []

@@ -42,7 +42,9 @@ message CarouselState {
   // transparency: between 0 (invisible) and 1 (fully visible)
   optional double kiteTransparency = 8;
   optional double lineTransparency = 9;
-  optional KiteOutputs outputs = 10;
+  // how big to draw the kite
+  optional double visSpan = 10;
+  optional KiteOutputs outputs = 11;
 }
 
 message KiteOutputs {
