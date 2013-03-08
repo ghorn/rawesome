@@ -24,10 +24,6 @@ else
 	cd plotter
 	hprotoc -I.. --haskell_out=src kite.proto
 	)
-	(
-	cd trajectory-gui
-	hprotoc -I.. --haskell_out=src kite.proto
-	)
 	echo "Successfully generated haskell protobuf message interface"
 fi
 
