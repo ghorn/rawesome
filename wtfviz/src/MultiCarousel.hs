@@ -12,6 +12,7 @@ import qualified System.ZMQ3 as ZMQ
 #else
 import qualified System.ZMQ as ZMQ
 #endif
+import Control.Applicative ( (<$>) )
 import Control.Concurrent ( MVar, forkIO, modifyMVar_, newMVar, readMVar)
 import Control.Monad ( forever )
 import qualified Data.ByteString.Lazy as BL
@@ -117,13 +118,16 @@ drawOneKite minLineLength niceKite
     ac = Trans pos $ Scale (s,s,s) ac'
     (ac',_) = drawAc (nk_kiteAlpha niceKite) (Xyz 0 0 0) quat
 
-drawFun :: State -> VisObject Double
-drawFun Nothing = VisObjects []
-drawFun (Just ko) = cameraRot $ VisObjects $ [axes,txt] ++ [plane] ++ kites
+drawFun :: Bool -> State -> VisObject Double
+drawFun _ Nothing = VisObjects []
+drawFun followkite (Just ko) = cameraRot $ VisObjects $ [axes,txt] ++ [plane] ++ kites
   where
-    cameraRot = case MC.cameraRotRads ko of
-      Nothing -> id
-      Just theta -> RotQuat $ Quat (cos (0.5*theta)) 0 0 (sin (0.5*theta))
+    cameraRot = case (followkite, CS.delta <$> MC.currentState ko) of
+      -- user wants to follow kite and we have a rotation, great
+      (True, Just delta) -> RotQuat $ Quat (cos (0.5*delta)) 0 0 (sin (0.5*delta))
+      -- user doesn't wants to follow kite, who cares whether or not we have delta
+      (False, _) -> id
+      (True, Nothing) -> error "you specified --followkite but did not provide a kite rotation by setting MultiCarousel.currentState, shame on you"
 
     niceKites = map toNice (toList (MC.css ko))
 
@@ -214,7 +218,7 @@ ts = 0.02
 main :: IO ()
 main = do
 --  _ <- forkServer "localhost" 8000
-  ip <- getip "multicarousel" "tcp://localhost:5563"
+  (ip,followkite) <- getip "multicarousel" "tcp://localhost:5563"
   putStrLn $ "using ip \""++ip++"\""
 
   m <- newMVar Nothing
@@ -222,5 +226,5 @@ main = do
   
 --  threadDelay 5000000
   let simFun _ _ = return ()
-      df _ = fmap drawFun (readMVar m)
+      df _ = fmap (drawFun followkite) (readMVar m)
   simulateIO (Just ((1260,940),(1930,40))) "multi-carousel" ts () df simFun
