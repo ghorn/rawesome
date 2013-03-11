@@ -99,3 +99,64 @@ message TestMessages {
   repeated double   a_repeatedDouble = 17;
 }
 
+package MheMpc;
+message DifferentialStates {
+  required double x = 1;
+  required double y = 2;
+  required double z = 3;
+  required double dx = 4;
+  required double dy = 5;
+  required double dz = 6;
+  required double e11 = 7;
+  required double e12 = 8;
+  required double e13 = 9;
+  required double e21 = 10;
+  required double e22 = 11;
+  required double e23 = 12;
+  required double e31 = 13;
+  required double e32 = 14;
+  required double e33 = 15;
+  required double wx = 16;
+  required double wy = 17;
+  required double wz = 18;
+  required double delta = 19;
+  required double ddelta = 20;
+  required double ur = 21;
+  required double up = 22;
+}
+
+message AlgebraicVars {
+}
+
+message Controls {
+  required double dddelta = 1;
+  required double dur = 2;
+  required double dup = 3;
+}
+
+message Parameters {
+}
+
+message Dae {
+  required DifferentialStates diffStates = 1;
+  required AlgebraicVars algVars = 2;
+  required Controls controls = 3;
+  required Parameters params = 4;
+}
+
+message DaePlus {
+  required Dae dae = 1;
+  required double kiteTransparency = 2;
+  required double lineTransparency = 3;
+}
+
+message MheMpcHorizons {
+  repeated DaePlus mheHorizon = 1;
+  repeated DaePlus mpcHorizon = 2;
+  required Dae currentState = 3;
+  repeated string messages = 4;
+  required double carouselArmHeight = 5;
+  required double visSpan = 6;
+  required double rArm = 7;
+  required double zt = 8;
+}

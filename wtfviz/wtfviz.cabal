@@ -16,6 +16,7 @@ executable kitesim
                      spatial-math,
                      hmatrix,
                      protocol-buffers,
+                     protocol-buffers-descriptor,
                      bytestring
 --                     ekg
   if os(OSX)
@@ -37,8 +38,30 @@ executable multicarousel
                      spatial-math,
                      hmatrix,
                      protocol-buffers,
+                     protocol-buffers-descriptor,
                      bytestring
 --                     ekg
+  if os(OSX)
+    cpp-options:     -DOSX
+    build-depends:   zeromq3-haskell
+  else
+    build-depends:   zeromq-haskell
+
+  ghc-options:       -O2 -threaded -with-rtsopts=-T
+
+executable mhe-mpc
+  hs-source-dirs:    src
+  main-is:           MheMpcViz.hs
+  other-modules:     DrawAC, ParseArgs
+  build-depends:     base >= 4.5.0 && < 4.7,
+                     cmdargs >= 0.10,
+                     random,
+                     not-gloss >= 0.5.0,
+                     spatial-math,
+                     hmatrix,
+                     protocol-buffers,
+                     protocol-buffers-descriptor,
+                     bytestring
   if os(OSX)
     cpp-options:     -DOSX
     build-depends:   zeromq3-haskell
@@ -55,6 +78,7 @@ executable pendopt
                      not-gloss >= 0.5.0,
                      spatial-math,
                      protocol-buffers,
+                     protocol-buffers-descriptor,
                      bytestring
 --                     ekg
   if os(OSX)
