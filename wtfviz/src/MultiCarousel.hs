@@ -119,8 +119,12 @@ drawOneKite minLineLength niceKite
 
 drawFun :: State -> VisObject Double
 drawFun Nothing = VisObjects []
-drawFun (Just ko) = VisObjects $ [axes,txt] ++ [plane] ++ kites
+drawFun (Just ko) = cameraRot $ VisObjects $ [axes,txt] ++ [plane] ++ kites
   where
+    cameraRot = case MC.cameraRotRads ko of
+      Nothing -> id
+      Just theta -> RotQuat $ Quat (cos (0.5*theta)) 0 0 (sin (0.5*theta))
+
     niceKites = map toNice (toList (MC.css ko))
 
     minLineLength = minimum $ map lineLength niceKites

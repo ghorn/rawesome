@@ -77,6 +77,7 @@ message MultiCarousel {
   repeated CarouselState css = 1;
   repeated string messages = 2;
   optional CarouselState currentState = 3;
+  optional double cameraRotRads = 4;
 }
 
 message TestMessages {
