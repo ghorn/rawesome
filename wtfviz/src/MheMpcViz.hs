@@ -196,7 +196,7 @@ sub ip m = withContext $ \context -> do
 #endif
   ZMQ.withSocket context ZMQ.Sub $ \subscriber -> do
     ZMQ.connect subscriber ip
-    ZMQ.subscribe subscriber "multi-carousel"
+    ZMQ.subscribe subscriber "mhe-mpc-horizons"
     forever $ do
       _ <- receive subscriber
       mre <- ZMQ.moreToReceive subscriber
