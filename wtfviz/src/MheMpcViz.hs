@@ -58,15 +58,15 @@ toNice visSpan rArm' zt daeplus =
 
     -- transpose going on here
     e11 = DS.e11 ds
-    e12 = DS.e12 ds
-    e13 = DS.e13 ds
+    e12 = DS.e21 ds
+    e13 = DS.e31 ds
 
-    e21 = DS.e21 ds
+    e21 = DS.e12 ds
     e22 = DS.e22 ds
-    e23 = DS.e23 ds
+    e23 = DS.e32 ds
 
-    e31 = DS.e31 ds
-    e32 = DS.e32 ds
+    e31 = DS.e13 ds
+    e32 = DS.e23 ds
     e33 = DS.e33 ds
 
     delta = DS.delta ds
