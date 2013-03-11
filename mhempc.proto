@@ -49,13 +49,51 @@ message DaePlus {
   required double lineTransparency = 3;
 }
 
+message MeasurementsX {
+  required double uvC1M1_0 = 1;
+  required double uvC1M1_1 = 2;
+  required double uvC1M2_0 = 3;
+  required double uvC1M2_1 = 4;
+  required double uvC1M3_0 = 5;
+  required double uvC1M3_1 = 6;
+  required double uvC2M1_0 = 7;
+  required double uvC2M1_1 = 8;
+  required double uvC2M2_0 = 9;
+  required double uvC2M2_1 = 10;
+  required double uvC2M3_0 = 11;
+  required double uvC2M3_1 = 12;
+  required double wIMU_0 = 13;
+  required double wIMU_1 = 14;
+  required double wIMU_2 = 15;
+  required double aIMU_0 = 16;
+  required double aIMU_1 = 17;
+  required double aIMU_2 = 18;
+  required double delta = 19;
+  required double ur = 20;
+  required double up = 21;
+}
+
+message MeasurementsU {
+  required double dddelta = 1;
+  required double dur = 2;
+  required double dup = 3;
+}
+
+message Measurements {
+  required MeasurementsX measurementsX = 1;
+  optional MeasurementsU measurementsU = 2;
+}
+
 message MheMpcHorizons {
   repeated DaePlus mheHorizon = 1;
   repeated DaePlus mpcHorizon = 2;
   required Dae currentState = 3;
-  repeated string messages = 4;
-  required double carouselArmHeight = 5;
-  required double visSpan = 6;
-  required double rArm = 7;
-  required double zt = 8;
+  repeated Measurements measurementsHorizon = 4;
+  required MeasurementsX measurementsCurrentX = 5;
+  required Measurements measurementsLastLatest = 6;
+  repeated string messages = 7;
+  required double carouselArmHeight = 8;
+  required double visSpan =9;
+  required double rArm = 10;
+  required double zt = 11;
 }
