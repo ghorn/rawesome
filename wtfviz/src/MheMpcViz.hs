@@ -5,7 +5,7 @@
 module Main where
 
 import Data.Foldable ( toList )
-import Data.Maybe ( isJust )
+import Data.Maybe ( isNothing )
 #if OSX
 import qualified System.ZMQ3 as ZMQ
 #else
@@ -141,7 +141,7 @@ drawFun' deltaRot mmh = cameraRot $ VisObjects $ [axes,txt] ++ maybeplane ++ [mh
     mpcKites = drawSomeKites $ map toNice' (toList (MMH.mpcHorizon mmh))
     
     axes = Axes (0.5, 15)
-    maybeplane = if isJust deltaRot then [plane] else []
+    maybeplane = if isNothing deltaRot then [plane] else []
     plane = Trans (Xyz 0 0 planeZ') $ Plane (Xyz 0 0 1) (makeColor 1 1 1 1) (makeColor 0.2 0.3 0.32 1)
 
     planeZ' = MMH.carouselArmHeight mmh
