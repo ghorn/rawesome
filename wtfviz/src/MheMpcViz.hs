@@ -19,6 +19,7 @@ import Text.ProtocolBuffers ( messageGet )
 import Text.ProtocolBuffers.Basic ( uToString )
 
 import qualified MheMpc.MheMpcHorizons as MMH
+import qualified MheMpc.VisConf as VC
 import qualified MheMpc.Dae as Dae
 import qualified MheMpc.DaePlus as DaePlus
 import qualified MheMpc.DifferentialStates as DS
@@ -133,9 +134,10 @@ drawFun' deltaRot mmh = cameraRot $ VisObjects $ [axes,txt] ++ maybeplane ++ [mh
       Nothing -> id
       Just delta -> RotQuat $ Quat (cos (0.5*delta)) 0 0 (sin (0.5*delta))
 
-    visSpan = MMH.visSpan mmh
-    rArm = MMH.rArm mmh
-    zt = MMH.zt mmh
+    vc = MMH.visConf mmh
+    visSpan = VC.visSpan vc
+    rArm = VC.rArm vc
+    zt = VC.zt vc
     toNice' = toNice visSpan rArm zt
     mheKites = drawSomeKites $ map toNice' (toList (MMH.mheHorizon mmh))
     mpcKites = drawSomeKites $ map toNice' (toList (MMH.mpcHorizon mmh))
@@ -144,7 +146,7 @@ drawFun' deltaRot mmh = cameraRot $ VisObjects $ [axes,txt] ++ maybeplane ++ [mh
     maybeplane = if isNothing deltaRot then [plane] else []
     plane = Trans (Xyz 0 0 planeZ') $ Plane (Xyz 0 0 1) (makeColor 1 1 1 1) (makeColor 0.2 0.3 0.32 1)
 
-    planeZ' = MMH.carouselArmHeight mmh
+    planeZ' = VC.carouselArmHeight vc
 --    boxText = 3dText "I'm a plane" (Xyz 0 0 (x-0.2)) TimesRoman24 (makeColor 1 0 0 1)
     txt = VisObjects $
           zipWith (\s k -> Text2d (uToString s) (30,fromIntegral $ 30*k) TimesRoman24 (makeColor 1 1 1 1)) messages (reverse [1..length messages])
