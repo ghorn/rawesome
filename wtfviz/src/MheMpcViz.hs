@@ -141,6 +141,7 @@ drawFun' deltaRot mmh = cameraRot $ VisObjects $ [axes,txt] ++ maybeplane ++ [mh
     toNice' = toNice visSpan rArm zt
     mheKites = drawSomeKites $ map toNice' (toList (MMH.mheHorizon mmh))
     mpcKites = drawSomeKites $ map toNice' (toList (MMH.mpcHorizon mmh))
+    referenceTrajKites = drawSomeKites $ map toNice' (toList (MMH.referenceTrajectory mmh))
     
     axes = Axes (0.5, 15)
     maybeplane = if isNothing deltaRot then [plane] else []
