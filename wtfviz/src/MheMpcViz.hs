@@ -211,7 +211,7 @@ ts = 0.02
 main :: IO ()
 main = do
 --  _ <- forkServer "localhost" 8000
-  (ip,followkite) <- getip "multicarousel" "tcp://localhost:5563"
+  (ip,followkite) <- getip "mhe-mpc" "tcp://localhost:5563"
   putStrLn $ "using ip \""++ip++"\""
 
   m <- newMVar Nothing
@@ -220,4 +220,4 @@ main = do
 --  threadDelay 5000000
   let simFun _ _ = return ()
       df _ = fmap (drawFun followkite) (readMVar m)
-  simulateIO (Just ((1260,940),(1930,40))) "multi-carousel" ts () df simFun
+  simulateIO (Just ((1260,940),(1930,40))) "mhe-mpc" ts () df simFun
