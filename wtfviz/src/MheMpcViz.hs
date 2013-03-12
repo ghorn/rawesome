@@ -58,17 +58,17 @@ toNice visSpan rArm' zt daeplus =
     z = DS.z ds
 
     -- transpose going on here
-    e11 = DS.e11 ds
-    e12 = DS.e21 ds
-    e13 = DS.e31 ds
+    r11 = DS.e11 ds
+    r12 = DS.e21 ds
+    r13 = DS.e31 ds
 
-    e21 = DS.e12 ds
-    e22 = DS.e22 ds
-    e23 = DS.e32 ds
+    r21 = DS.e12 ds
+    r22 = DS.e22 ds
+    r23 = DS.e32 ds
 
-    e31 = DS.e13 ds
-    e32 = DS.e23 ds
-    e33 = DS.e33 ds
+    r31 = DS.e13 ds
+    r32 = DS.e23 ds
+    r33 = DS.e33 ds
 
     delta = DS.delta ds
 
@@ -76,9 +76,9 @@ toNice visSpan rArm' zt daeplus =
 
     q'n'a = Quat (cos(0.5*delta)) 0 0 (sin(-0.5*delta))
 
-    q'aNWU'bNWU = quatOfDcm $ fromLists [ [e11, e12, e13]
-                                        , [e21, e22, e23]
-                                        , [e31, e32, e33]
+    q'aNWU'bNWU = quatOfDcm $ fromLists [ [r11, r12, r13]
+                                        , [r21, r22, r23]
+                                        , [r31, r32, r33]
                                         ]
     q'a'b = q'nwu'ned * q'aNWU'bNWU * q'nwu'ned
     q'n'b = q'n'a * q'a'b

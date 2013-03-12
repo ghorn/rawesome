@@ -57,17 +57,17 @@ toNice cs = NiceKite { nk_xyz = xyz
     y = KiteXyz.y $ CS.kiteXyz cs
     z = KiteXyz.z $ CS.kiteXyz cs
     
-    e11 = Dcm.r11 $ CS.kiteDcm cs
-    e12 = Dcm.r12 $ CS.kiteDcm cs
-    e13 = Dcm.r13 $ CS.kiteDcm cs
+    r11 = Dcm.r11 $ CS.kiteDcm cs
+    r12 = Dcm.r12 $ CS.kiteDcm cs
+    r13 = Dcm.r13 $ CS.kiteDcm cs
 
-    e21 = Dcm.r21 $ CS.kiteDcm cs
-    e22 = Dcm.r22 $ CS.kiteDcm cs
-    e23 = Dcm.r23 $ CS.kiteDcm cs
+    r21 = Dcm.r21 $ CS.kiteDcm cs
+    r22 = Dcm.r22 $ CS.kiteDcm cs
+    r23 = Dcm.r23 $ CS.kiteDcm cs
 
-    e31 = Dcm.r31 $ CS.kiteDcm cs
-    e32 = Dcm.r32 $ CS.kiteDcm cs
-    e33 = Dcm.r33 $ CS.kiteDcm cs
+    r31 = Dcm.r31 $ CS.kiteDcm cs
+    r32 = Dcm.r32 $ CS.kiteDcm cs
+    r33 = Dcm.r33 $ CS.kiteDcm cs
 
     delta = CS.delta cs
 
@@ -75,9 +75,9 @@ toNice cs = NiceKite { nk_xyz = xyz
 
     q'n'a = Quat (cos(0.5*delta)) 0 0 (sin(-0.5*delta))
 
-    q'aNWU'bNWU = quatOfDcm $ fromLists [ [e11, e12, e13]
-                                        , [e21, e22, e23]
-                                        , [e31, e32, e33]
+    q'aNWU'bNWU = quatOfDcm $ fromLists [ [r11, r12, r13]
+                                        , [r21, r22, r23]
+                                        , [r31, r32, r33]
                                         ]
     q'a'b = q'nwu'ned * q'aNWU'bNWU * q'nwu'ned
     q'n'b = q'n'a * q'a'b
