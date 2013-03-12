@@ -96,27 +96,38 @@ drawOneKite minLineLength niceKite
   | nk_lineAlpha niceKite > 0 = (VisObjects [ac, arm, line], z)
   | otherwise = (ac, z)
   where
-    pos@(Xyz _ _ z) = nk_xyz niceKite
-    quat = nk_q'n'b niceKite
-    r'n0'a0 = nk_r'n0'a0 niceKite
-    r'n0't0 = nk_r'n0't0 niceKite
+    z = (\(Xyz _ _ z') -> z') $ nk_xyz niceKite
+    lineAlpha = nk_lineAlpha niceKite
+    kiteAlpha = nk_kiteAlpha niceKite
     
-    arm  = Line [Xyz 0 0 0, r'n0'a0] $ makeColor 1 1 0 (nk_lineAlpha niceKite)
-    line = VisObjects [ line1 $ makeColor 1 0.2 0 (nk_lineAlpha niceKite)
-                      , line2 $ makeColor 0 1 1 (nk_lineAlpha niceKite)
-                      ]
+    (arm,line) =
+      if lineAlpha == 0
+      then (VisObjects [], VisObjects [])
+      else (arm',line')
       where
-        line1 = Line [r'n0'a0, rMid] 
-        line2 = Line [rMid, r'n0't0] 
+        r'n0'a0 = nk_r'n0'a0 niceKite
+        r'n0't0 = nk_r'n0't0 niceKite
+        arm' = Line [Xyz 0 0 0, r'n0'a0] $ makeColor 1 1 0 lineAlpha
+        line' = VisObjects [ line1 $ makeColor 1 0.2 0 lineAlpha
+                           , line2 $ makeColor 0 1 1 lineAlpha
+                           ]
+          where
+            line1 = Line [r'n0'a0, rMid]
+            line2 = Line [rMid, r'n0't0]
 
-        rMid = r'n0'a0 + fmap (* (1 - minLineLength/normDr)) dr
-        dr = r'n0't0 - r'n0'a0
-        normDr = Xyz.norm dr
+            rMid = r'n0'a0 + fmap (* (1 - minLineLength/normDr)) dr
+            dr = r'n0't0 - r'n0'a0
+            normDr = Xyz.norm dr
         
-
-    s = nk_visSpan niceKite
-    ac = Trans pos $ Scale (s,s,s) ac'
-    (ac',_) = drawAc (nk_kiteAlpha niceKite) (Xyz 0 0 0) quat
+    ac =
+      if kiteAlpha == 0
+      then VisObjects []
+      else Trans pos $ Scale (s,s,s) ac'
+      where
+        s = nk_visSpan niceKite
+        (ac',_) = drawAc kiteAlpha (Xyz 0 0 0) quat
+        pos = nk_xyz niceKite
+        quat = nk_q'n'b niceKite
 
 drawFun :: Bool -> State -> VisObject Double
 drawFun _ Nothing = VisObjects []
