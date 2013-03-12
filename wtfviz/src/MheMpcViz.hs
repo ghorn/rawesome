@@ -127,7 +127,7 @@ drawFun followKite (Just mmh) = drawFun' kiteDelta mmh
       else Nothing
 
 drawFun' :: Maybe Double -> MMH.MheMpcHorizons -> VisObject Double
-drawFun' deltaRot mmh = cameraRot $ VisObjects $ [axes,txt] ++ maybeplane ++ [mheKites,Trans (Xyz 0 0 (-4)) mpcKites]
+drawFun' deltaRot mmh = cameraRot $ VisObjects $ [axes,txt] ++ maybeplane ++ [mheKites,Trans (Xyz 0 0 (-2)) mpcKites]
   where
     cameraRot = case deltaRot of
       Nothing -> id
