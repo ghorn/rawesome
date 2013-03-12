@@ -133,12 +133,14 @@ def aeroForcesTorques(dae, conf, we, wE, (w1,w2,w3), (eTe1, eTe2, eTe3), (ailero
     
     # LIFT :
     # ###############################
+    dae['fL'] = sref*rho*cL*vKite2/2.0
     fL1 =  sref*rho*cL*eLe1*vKite/2.0
     fL2 =  sref*rho*cL*eLe2*vKite/2.0
     fL3 =  sref*rho*cL*eLe3*vKite/2.0
     
     # DRAG :
     # #############################
+    dae['fD'] = sref*rho*vKite*cD*2.0
     fD1 = -sref*rho*vKite*cD*we1/2.0
     fD2 = -sref*rho*vKite*cD*we2/2.0 
     fD3 = -sref*rho*vKite*cD*we3/2.0 
@@ -153,8 +155,15 @@ def aeroForcesTorques(dae, conf, we, wE, (w1,w2,w3), (eTe1, eTe2, eTe3), (ailero
        
     # TORQUES (AERO)
     # ###############################
-     
+    
     t1 =  0.5*rho*vKite2*bref*cR
     t2 =  0.5*rho*vKite2*cref*cP
     t3 =  0.5*rho*vKite2*bref*cY
+
+    dae['aero_fx'] = f1
+    dae['aero_fy'] = f2
+    dae['aero_fz'] = f3
+    dae['aero_mx'] = t1
+    dae['aero_my'] = t2
+    dae['aero_mz'] = t3
     return (f1, f2, f3, t1, t2, t3)

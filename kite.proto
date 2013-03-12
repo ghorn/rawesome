@@ -44,27 +44,45 @@ message CarouselState {
   optional double lineTransparency = 9;
   // how big to draw the kite
   optional double visSpan = 10;
-  optional KiteOutputs outputs = 11;
+  required Aero aero = 11;
+  optional KiteOutputs outputs = 12;
+}
+
+message Aero {
+  optional double alpha_deg = 1;
+  optional double beta_deg = 2;
+  optional double airspeed = 3;
+  optional double CL = 4;
+  optional double CD = 5;
+  optional double L_over_D = 6;
+  optional double fLift = 7;
+  optional double fDrag = 8;
+  optional ForcesTorques forcesTorques = 9;
+}
+
+message ForcesTorques {
+  required double fx = 1;
+  required double fy = 2;
+  required double fz = 3;
+  required double mx = 4;
+  required double my = 5;
+  required double mz = 6;
 }
 
 message KiteOutputs {
-  optional double CL = 1;
-  optional double CD = 2;
-  optional double L_over_D = 3;
-  optional double alpha_deg = 4;
-  optional double beta_deg = 5;
-  optional double airspeed = 6;
-  optional double tension = 7;
-  optional double power = 8;
-  optional double energy = 9;
-  optional double line_angle_deg = 10;
-  optional double r = 11;
-  optional double dr = 12;
-  optional double ddr = 13;
-  optional double c = 14;
-  optional double cdot= 15;
-  optional double aileron_deg = 16;
-  optional double elevator_deg = 17;
+  optional double tension = 1;
+  optional double winch_power = 2;
+  optional double prop_power = 3;
+  optional double energy = 4;
+  optional double line_angle_deg = 5;
+  optional double r = 6;
+  optional double dr = 7;
+  optional double ddr = 8;
+  optional double c = 9;
+  optional double cdot= 10;
+  optional double aileron_deg = 11;
+  optional double elevator_deg = 12;
+  optional double prop_drag = 13;
 }
 
 message PendulumOpt {

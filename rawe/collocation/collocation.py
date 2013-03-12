@@ -293,7 +293,7 @@ class Coll():
                 raise ValueError("you've added algebraic states but haven't set the algebraic residual")
 
         if (residual.size() != self.zSize()+self.xSize()):
-            print "WARNING: residual.size() != self.zSize()+self.xSize()"
+            print 'WARNING: residual.size() != self.zSize() + self.xSize() ==> (%d != %d + %d)' % (residual.size(),self.zSize(), self.xSize())
     
         # residual function
         u = self.dae.uVec()

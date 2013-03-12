@@ -42,14 +42,29 @@ def toKiteProto(lookup,kiteAlpha=1.0,lineAlpha=1.0):
     cs.kiteTransparency = kiteAlpha
     cs.lineTransparency = lineAlpha
 
-    for (attrName,lookupName) in [('CL','cL'),
-                                  ('CD','cD'),
-                                  ('L_over_D','L/D'),
-                                  ('alpha_deg','alpha(deg)'),
+    # set forces torques
+    for (attrName,lookupName) in [('fx','aero_fx'),
+                                  ('fy','aero_fy'),
+                                  ('fz','aero_fz'),
+                                  ('mx','aero_mx'),
+                                  ('my','aero_my'),
+                                  ('mz','aero_mz')]:
+        cs.aero.forcesTorques.__setattr__(attrName,lookup(lookupName))
+    for (attrName,lookupName) in [('alpha_deg','alpha(deg)'),
                                   ('beta_deg','beta(deg)'),
                                   ('airspeed','airspeed'),
-                                  ('tension','tether tension'),
-                                  ('power','winch power'),
+                                  ('CL','cL'),
+                                  ('CD','cD'),
+                                  ('L_over_D','L/D'),
+                                  ('fLift','fLift'),
+                                  ('fDrag','fDrag')]:
+        try:
+            cs.aero.__setattr__(attrName,lookup(lookupName))
+        except Exception:
+            pass
+    for (attrName,lookupName) in [('tension','tether tension'),
+                                  ('winch_power','winch power'),
+                                  ('prop_power','prop_power'),
                                   ('energy','quadrature energy'),
                                   ('line_angle_deg', 'line angle (deg)'),
                                   ('r',  'r'),
@@ -58,6 +73,7 @@ def toKiteProto(lookup,kiteAlpha=1.0,lineAlpha=1.0):
                                   ('c','c'),
                                   ('cdot','cdot'),
                                   ('elevator_deg','elevator(deg)'),
+                                  ('prop_drag','prop_drag'),
                                   ('aileron_deg','aileron(deg)')]:
         try:
             cs.outputs.__setattr__(attrName,lookup(lookupName))
