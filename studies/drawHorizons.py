@@ -77,7 +77,7 @@ for (mhe,mpc) in zip(mhes[N0:NF],mpcs[N0:NF]):
 #        print alpha
     
     mc = kite_pb2.MultiCarousel()
-    mc.css.extend(list(mheProtos)+list(mpcProtos))
+    mc.horizon.extend(list(mheProtos)+list(mpcProtos))
 
     mc.messages.append("number: "+str(k+1)+"/"+str(len(mhes)))
     publisher.send_multipart(["multi-carousel", mc.SerializeToString()])

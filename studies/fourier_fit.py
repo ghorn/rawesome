@@ -77,7 +77,7 @@ class TrajFit():
 
             kiteProtos.append(cs)
         mc = rawe.kite_pb2.MultiCarousel()
-        mc.css.extend(list(kiteProtos))
+        mc.horizon.extend(list(kiteProtos))
         self.multiCarousel = mc.SerializeToString()
         #publisher.send_multipart(["multi-carousel", mc.SerializeToString()])
              
@@ -250,7 +250,7 @@ if __name__=='__main__':
 #        kiteProtos.append( npToKiteProto(traj.x,k,zt=0,kiteAlpha=0.2,lineAlpha=0.2) )
 #        kiteProtos.append( fitToKiteProto(fits,k,zt=0, dz=1) )
 #    mc = rawe.kite_pb2.MultiCarousel()
-#    mc.css.extend(list(kiteProtos))
+#    mc.horizon.extend(list(kiteProtos))
 #    publisher.send_multipart(["multi-carousel", mc.SerializeToString()])
 
     savefile = filename+"_fourier.dat"

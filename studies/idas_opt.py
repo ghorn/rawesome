@@ -144,7 +144,7 @@ def main():
           kiteProtos = [kiteproto.toKiteProto(xs[k],us[k],p,rArm,zt) for k in range(0,nSteps)]
 
           mc = kite_pb2.KiteOpt()
-          mc.css.extend(list(kiteProtos))
+          mc.horizon.extend(list(kiteProtos))
 
           xup = ocp.devectorize(xOpt)
           mc.messages.append("endTime: "+str(xup['endTime']))

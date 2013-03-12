@@ -148,7 +148,7 @@ while time < 100:
     kp = rawe.kiteproto.toKiteProto(lookup,lineAlpha=0.2)
 
     mc = rawe.kite_pb2.MultiCarousel()
-    mc.css.extend([kp])
+    mc.horizon.extend([kp])
     mc.messages.append('time: %.3f' % time)
 
     protos.append( mc.SerializeToString() )

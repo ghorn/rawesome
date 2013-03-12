@@ -19,8 +19,8 @@ def normalCallback(traj,myiter,ocp,conf):
                                                          lineAlpha=0.2) )
     t2 = time.time()
     mc = kite_pb2.MultiCarousel()
-    mc.css.extend(list(kiteProtos))
-    
+    mc.horizon.extend(list(kiteProtos))
+
     mc.messages.append("w0: "+str(traj.lookup('w0')))
     mc.messages.append("iter: "+str(myiter))
     mc.messages.append("endTime: "+str(traj.lookup('endTime')))

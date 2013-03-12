@@ -74,9 +74,8 @@ message PendulumOpt {
 }
 
 message MultiCarousel {
-  repeated CarouselState css = 1;
+  repeated CarouselState horizon = 1;
   repeated string messages = 2;
-  optional CarouselState currentState = 3;
 }
 
 message TestMessages {

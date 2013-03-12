@@ -103,7 +103,7 @@ def getSteadyState(dae,conf,omega0,r0):
                                        conf['rArm'],
                                        lineAlpha=0.2)
             mc = kite_pb2.MultiCarousel()
-            mc.css.extend([kp])
+            mc.horizon.extend([kp])
             mc.messages.append("iter: "+str(self.iter))
             self.iter += 1
             publisher.send_multipart(["multi-carousel", mc.SerializeToString()])

@@ -181,9 +181,9 @@ def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
 
     oldKiteProtos = []
     mcc = rawe.kite_pb2.MultiCarousel().FromString(startup.multiCarousel)
-    oldKiteProtos.extend(mcc.css)
+    oldKiteProtos.extend(mcc.horizon)
     mcc = rawe.kite_pb2.MultiCarousel().FromString(crosswind.multiCarousel)
-    oldKiteProtos.extend(mcc.css)
+    oldKiteProtos.extend(mcc.horizon)
 
     for okp in oldKiteProtos:
         okp.zt = conf['zt']
@@ -207,7 +207,7 @@ def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
                                                              lineAlpha=0.2) )
         kiteProtos += oldKiteProtos
         mc = kite_pb2.MultiCarousel()
-        mc.css.extend(list(kiteProtos))
+        mc.horizon.extend(list(kiteProtos))
         
         mc.messages.append("w0: "+str(traj.lookup('w0')))
         mc.messages.append("iter: "+str(myiter))
