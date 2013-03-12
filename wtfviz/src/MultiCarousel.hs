@@ -3,7 +3,7 @@
 {-# Language OverloadedStrings #-}
 {-# Language CPP #-}
 
-module Main where
+module Main ( main ) where
 
 import Data.Foldable ( toList )
 import Data.Maybe ( fromMaybe )
@@ -161,24 +161,6 @@ drawFun followkite (Just ko) = cameraRot $ VisObjects $ [axes,txt] ++ [plane] ++
           zipWith (\s k -> Text2d (uToString s) (30,fromIntegral $ 30*k) TimesRoman24 (makeColor 1 1 1 1)) messages (reverse [1..length messages])
     messages = toList $ MC.messages ko
 
-
-particleBox :: Double
-particleBox = 4
-
-updateTrail :: [Xyz a] -> Xyz a -> [Xyz a]
-updateTrail trail0 xyz
-  | length trail0 < 65 = xyz:trail0
-  | otherwise = take 65 (xyz:trail0)
-
-boundParticle :: Xyz Double -> Xyz Double
-boundParticle xyz@(Xyz x y z)
-  | x >  particleBox = boundParticle (Xyz (x-2*particleBox) y z)
-  | x < -particleBox = boundParticle (Xyz (x+2*particleBox) y z)
-  | y >  particleBox = boundParticle (Xyz x (y-2*particleBox) z)
-  | y < -particleBox = boundParticle (Xyz x (y+2*particleBox) z)
-  | z >  particleBox = boundParticle (Xyz x y (z-2*particleBox))
-  | z < -particleBox = boundParticle (Xyz x y (z+2*particleBox))
-  | otherwise = xyz
 
 updateState :: MC.MultiCarousel -> State -> IO State
 updateState ko _ = return $ Just ko

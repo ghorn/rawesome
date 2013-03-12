@@ -3,7 +3,7 @@
 {-# Language OverloadedStrings #-}
 {-# Language CPP #-}
 
-module Main where
+module Main ( main ) where
 
 import Data.Foldable ( toList )
 #if OSX
