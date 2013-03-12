@@ -95,9 +95,10 @@ message MheMpcHorizons {
   required Dae currentState = 1;
   repeated DaePlus mheHorizon = 2;
   repeated DaePlus mpcHorizon = 3;
-  repeated Measurements measurementsHorizon = 4;
-  required MeasurementsX measurementsCurrentX = 5;
-  required Measurements measurementsLastLatest = 6;
-  required VisConf visConf = 7;
-  repeated string messages = 8;
+  repeated DaePlus referenceTrajectory = 4;
+  repeated Measurements measurementsHorizon = 5;
+  required MeasurementsX measurementsCurrentX = 6;
+  required Measurements measurementsLastLatest = 7;
+  required VisConf visConf = 8;
+  repeated string messages = 9;
 }
