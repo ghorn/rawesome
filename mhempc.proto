@@ -91,6 +91,18 @@ message VisConf {
   required double zt = 4;
 }
 
+message Debug {
+  optional double d0 = 1;
+  optional double d1 = 2;
+  optional double d2 = 3;
+  optional double d3 = 4;
+  optional double d4 = 5;
+  optional double d5 = 6;
+  optional double d6 = 7;
+  optional double d7 = 8;
+  optional double d8 = 9;
+  optional double d9 = 10;
+}
 message MheMpcHorizons {
   required Dae currentState = 1;
   repeated DaePlus mheHorizon = 2;
@@ -101,4 +113,5 @@ message MheMpcHorizons {
   required Measurements measurementsLastLatest = 7;
   required VisConf visConf = 8;
   repeated string messages = 9;
+  required Debug debug = 10;
 }
