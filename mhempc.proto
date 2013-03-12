@@ -84,16 +84,20 @@ message Measurements {
   optional MeasurementsU measurementsU = 2;
 }
 
+message VisConf {
+  required double carouselArmHeight = 1;
+  required double visSpan = 2;
+  required double rArm = 3;
+  required double zt = 4;
+}
+
 message MheMpcHorizons {
-  repeated DaePlus mheHorizon = 1;
-  repeated DaePlus mpcHorizon = 2;
-  required Dae currentState = 3;
+  required Dae currentState = 1;
+  repeated DaePlus mheHorizon = 2;
+  repeated DaePlus mpcHorizon = 3;
   repeated Measurements measurementsHorizon = 4;
   required MeasurementsX measurementsCurrentX = 5;
   required Measurements measurementsLastLatest = 6;
-  repeated string messages = 7;
-  required double carouselArmHeight = 8;
-  required double visSpan =9;
-  required double rArm = 10;
-  required double zt = 11;
+  required VisConf visConf = 7;
+  repeated string messages = 8;
 }
