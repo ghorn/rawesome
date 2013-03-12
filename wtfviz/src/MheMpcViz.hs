@@ -2,7 +2,7 @@
 {-# Language DoAndIfThenElse #-}
 {-# Language CPP #-}
 
-module Main where
+module Main ( main ) where
 
 import Data.Foldable ( toList )
 import Data.Maybe ( isNothing )
@@ -158,24 +158,6 @@ drawSomeKites niceKites = VisObjects kitelist
       where
         lineLength nk = Xyz.norm (nk_r'n0't0 nk - nk_r'n0'a0 nk)
     
-
-particleBox :: Double
-particleBox = 4
-
-updateTrail :: [Xyz a] -> Xyz a -> [Xyz a]
-updateTrail trail0 xyz
-  | length trail0 < 65 = xyz:trail0
-  | otherwise = take 65 (xyz:trail0)
-
-boundParticle :: Xyz Double -> Xyz Double
-boundParticle xyz@(Xyz x y z)
-  | x >  particleBox = boundParticle (Xyz (x-2*particleBox) y z)
-  | x < -particleBox = boundParticle (Xyz (x+2*particleBox) y z)
-  | y >  particleBox = boundParticle (Xyz x (y-2*particleBox) z)
-  | y < -particleBox = boundParticle (Xyz x (y+2*particleBox) z)
-  | z >  particleBox = boundParticle (Xyz x y (z-2*particleBox))
-  | z < -particleBox = boundParticle (Xyz x y (z+2*particleBox))
-  | otherwise = xyz
 
 updateState :: MMH.MheMpcHorizons -> State -> IO State
 updateState ko _ = return $ Just ko
