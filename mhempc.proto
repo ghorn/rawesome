@@ -104,7 +104,7 @@ message Debug {
   optional double d9 = 10;
 }
 
-message AppliedControls {
+message ControlsApplied {
   required double urRight = 1;
   required double urLeft = 2;
   required double up = 3;
@@ -115,7 +115,7 @@ message MheMpcHorizons {
   repeated DaePlus mheHorizon = 2;
   repeated DaePlus mpcHorizon = 3;
   repeated DaePlus referenceTrajectory = 4;
-  repeated AppliedControls appliedControls = 5;
+  repeated ControlsApplied controlsApplied = 5;
   repeated Measurements measurementsHorizon = 6;
   required MeasurementsX measurementsCurrentX = 7;
   required Measurements measurementsLastLatest = 8;
