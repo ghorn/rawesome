@@ -115,10 +115,10 @@ message MheMpcHorizons {
   repeated DaePlus mheHorizon = 2;
   repeated DaePlus mpcHorizon = 3;
   repeated DaePlus referenceTrajectory = 4;
-  repeated ControlsApplied controlsApplied = 5;
-  repeated Measurements measurementsHorizon = 6;
-  required MeasurementsX measurementsCurrentX = 7;
-  required Measurements measurementsLastLatest = 8;
+  repeated Measurements measurementsHorizon = 5;
+  required MeasurementsX measurementsCurrentX = 6;
+  required Measurements measurementsLastLatest = 7;
+  required ControlsApplied controlsApplied = 8;
   required VisConf visConf = 9;
   repeated string messages = 10;
   required Debug debug = 11;
