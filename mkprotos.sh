@@ -23,7 +23,7 @@ else
 	hprotoc -I.. --haskell_out=src mhempc.proto
 	)
 	(
-	cd plotter
+	cd plot-ho-matic
 	hprotoc -I.. --haskell_out=src kite.proto
 	hprotoc -I.. --haskell_out=src mhempc.proto
 	)

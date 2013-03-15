@@ -7,4 +7,5 @@ mkprotos.hs - a script which compiles kite.proto for kitevis and rawe
 aero/ - some aerodynamic analysis stuff
 rawe/ - python libraries for dynamics and optimal control (and kite stuff)
 studies/ - python code which uses rawe to do fun stuff!
+plot-ho-matic/ - live 2d plotting
 wtfviz/ - Wind Turbine Flight Visualizer: live 3d simulation/optimization visualization using protobufs and zeromq in haskell
