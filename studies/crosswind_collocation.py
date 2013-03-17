@@ -20,9 +20,9 @@ def setupOcp(dae,conf,nk,nicp,deg,collPoly):
 
         nkf = float(nk)
 
-        dae['daileronCost'] = 1e2*daileron*daileron / (daileronSigma*daileronSigma*nkf)
-        dae['delevatorCost'] = 1e2*delevator*delevator / (delevatorSigma*delevatorSigma*nkf)
-        dae['ddrCost'] = 1e2*ddr*ddr / (ddrSigma*ddrSigma*nkf)
+        dae['daileronCost'] = daileron*daileron / (daileronSigma*daileronSigma*nkf)
+        dae['delevatorCost'] = delevator*delevator / (delevatorSigma*delevatorSigma*nkf)
+        dae['ddrCost'] = ddr*ddr / (ddrSigma*ddrSigma*nkf)
     addCosts()
 
     ocp = rawe.collocation.Coll(dae, nk=nk, nicp=nicp, deg=deg, collPoly=collPoly)
@@ -104,7 +104,7 @@ def setupOcp(dae,conf,nk,nicp,deg,collPoly):
     ocp.bound('w0',(10,10))
 
     # boundary conditions
-#    ocp.bound('y',(0,0),timestep=0,quiet=True)
+    ocp.bound('y',(0,0),timestep=0,quiet=True)
 
     # guesses
     ocp.guess('endTime',5.4)
@@ -116,12 +116,11 @@ def setupOcp(dae,conf,nk,nicp,deg,collPoly):
 #        # control regularization
         obj += ocp.lookup('daileronCost',timestep=k)
         obj += ocp.lookup('delevatorCost',timestep=k)
-        for j in range(1,ocp.deg):
-            obj += ocp.lookup('ddrCost',timestep=k,degIdx=j)
+        obj += ocp.lookup('ddrCost',timestep=k)
 
     ocp.setQuadratureDdt('quadrature energy', 'winch power')
 
-    ocp.setObjective( obj + ocp.lookup('quadrature energy',timestep=-1)/ocp.lookup('endTime') )
+    ocp.setObjective( 1e2*obj + ocp.lookup('quadrature energy',timestep=-1)/ocp.lookup('endTime') )
 
     return ocp
 
