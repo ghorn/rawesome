@@ -1,5 +1,5 @@
 import casadi as C
-from dae import Dae
+from rawe.dae import Dae
 from aero import aeroForcesTorques
 
 def setupModel(dae, conf):

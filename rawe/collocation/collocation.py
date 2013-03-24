@@ -7,7 +7,7 @@ from scipy.interpolate import PiecewisePolynomial
 from rawe.ocputils import Constraints,setFXOptions
 import collmaps
 from collpoints import mkCollocationPoints
-from rawe.models import Dae
+from rawe.dae import Dae
 import trajectory
 
 class LagrangePoly(object):

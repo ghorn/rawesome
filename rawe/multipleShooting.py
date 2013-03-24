@@ -1,4 +1,4 @@
-from models import Dae
+from rawe.dae import Dae
 import casadi as C
 from ocputils import Constraints,Bounds,InitialGuess,DesignVars,setFXOptions
 

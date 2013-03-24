@@ -1,4 +1,4 @@
-from dae import Dae
+from rawe.dae import Dae
 import casadi as C
 
 def pendulumModel(nSteps=None):

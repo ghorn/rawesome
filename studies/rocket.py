@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 
-from rawe.models.dae import Dae
+from rawe.dae import Dae
 from rawe.collocation import Coll
 
 if __name__ == "__main__":
