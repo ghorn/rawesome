@@ -35,8 +35,7 @@ def pendulumModel(nSteps=None):
     dae['c']    = dae['x']*dae['x'] + dae['z']*dae['z'] - r*r
     dae['cdot'] = dae['dx']*dae['x'] + dae['dz']*dae['z']
 
-    dae.setAlgRes( alg )
-    dae.setOdeRes( ode )
+    dae.setResidual( [ode,alg] )
 
     return dae
 

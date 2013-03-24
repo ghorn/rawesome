@@ -9,8 +9,7 @@ class MultipleShootingStage():
         assert isinstance(nSteps, int)
 
         # make sure dae has everything
-        assert hasattr(dae,'_odeRes')
-        assert hasattr(dae,'_algRes')
+        assert hasattr(dae,'_residual')
         
         self.dae = dae
         self.dae._freeze('MultipleShootingStage(dae)')

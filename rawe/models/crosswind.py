@@ -319,9 +319,8 @@ def crosswindModel(conf,extraParams=[]):
         dae['-(winch power)'] = -dae['winch power']
     addLoydsLimit()
     
-    dae.setOdeRes( ode )
-#    dae.setAlgRes( C.mul(massMatrix, dae.zVec()) - rhs )
     psuedoZVec = C.veccat([dae.ddt(name) for name in ['dx','dy','dz','w1','w2','w3']]+[dae['nu']])
-    dae.setAlgRes( C.mul(massMatrix, psuedoZVec) - rhs )
+    alg = C.mul(massMatrix, psuedoZVec) - rhs
+    dae.setResidual( [ode, alg] )
     
     return dae

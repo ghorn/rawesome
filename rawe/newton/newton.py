@@ -72,18 +72,13 @@ class Newton(object):
 
 
     def _makeResidualFunction(self):
-        if not hasattr(self.dae, '_odeRes'):
-            raise ValueError("need to set ode residual")
-
-        residual = self.dae._odeRes
+        residual = self.dae.getResidual()
 
         xSize = self.dae.xVec().size()
         zSize = self.dae.zVec().size()
         
-        if hasattr(self.dae,'_algRes'):
-            residual = C.veccat([residual, self.dae._algRes])
-
-        assert (residual.size() == zSize+xSize)
+        if (residual.size() != zSize+xSize):
+            print "WARNING: residual.size() != zSize+xSize)"
     
         # residual function
         u = self.dae.uVec()

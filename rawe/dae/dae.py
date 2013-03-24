@@ -76,19 +76,12 @@ class Dae(object):
             self._dummyDdtMap[name] = C.ssym('_DotDummy_'+name)
             return self.ddt(name)
 
-    def setAlgRes(self,res):
-        if hasattr(self,'_algRes'):
-            raise ValueError('algebraic residual already set')
+    def setResidual(self,res):
+        if hasattr(self,'_residual'):
+            raise ValueError('residual already set')
         if isinstance(res,list):
             res = C.veccat(res)
-        self._algRes = res
-
-    def setOdeRes(self,res):
-        if hasattr(self,'_odeRes'):
-            raise ValueError('ode residual already set')
-        if isinstance(res,list):
-            res = C.veccat(res)
-        self._odeRes = res
+        self._residual = res
 
     def addX(self,name):
         """
@@ -215,18 +208,9 @@ class Dae(object):
 
     def getResidual(self):
         self._freezeXzup('getResidual()')
-        if not hasattr(self,'_odeRes'):
+        if not hasattr(self,'_residual'):
             raise ValueError('need to set the residual')
-        f = self._odeRes
-        if isinstance(f,list):
-            f = C.veccat(f)
-
-        if hasattr(self,'_algRes'):
-            algRes = self._algRes
-            if isinstance(algRes,list):
-                algRes = C.veccat(algRes)
-            f = C.veccat([f,algRes])
-        return f
+        return self._residual
 
     def casadiDae(self):
 #       I have:
@@ -256,14 +240,7 @@ class Dae(object):
     def acadoSimGen(self):
         self._freezeXzup('agadoSimGen()')
 
-        f = self._odeRes
-        if isinstance(f,list):
-            f = C.veccat(f)
-        if hasattr(self,'_algRes'):
-            algRes = self._algRes
-            if isinstance(algRes,list):
-                algRes = C.veccat(algRes)
-            f = C.veccat([f,algRes])
+        f = self.getResidual()
             
         xdot = C.veccat([self.ddt(name) for name in self.xNames()])
 
@@ -279,15 +256,7 @@ class Dae(object):
         self._freezeXzup('agadoModelGen()')
         self._freezeOutputs('agadoModelGen()')
 
-        f = self._odeRes
-        if isinstance(f,list):
-            f = C.veccat(f)
-        if hasattr(self,'_algRes'):
-            algRes = self._algRes
-            if isinstance(algRes,list):
-                algRes = C.veccat(algRes)
-            f = C.veccat([f,algRes])
-            
+        f = self.getResidual()
         return acadoModelExport.generateAcadoCodegenModel(self,f)
 
     def convertToOde(self):
@@ -334,24 +303,12 @@ class Dae(object):
         outs = newFunctions.eval([xs,us,ps])
         newXdot = outs[0]
         newZ = outs[1]
-        odeRes = []
+        res = []
         for k,name in enumerate(self.xNames()):
-            odeRes.append( dae.ddt(name) - newXdot[k] )
-        dae.setOdeRes(C.veccat(odeRes))
+            res.append( dae.ddt(name) - newXdot[k] )
+        dae.setResidual(res)
         for k,name in enumerate(self.zNames()):
             dae[name] = newZ[k]
         for k,name in enumerate(self.outputNames()):
             dae[name] = outs[k+2]
         return dae
-
-if __name__=='__main__':
-    dae = Dae()
-
-    [pos,vel,mass] = dae.addX( ["pos","vel","mass"] )
-    [zdummy] = dae.addZ( ["zdummy"] )
-    thrust = dae.addU( "thrust" )
-    
-    dae['pos*vel'] = pos*vel
-
-    dae.setOdeRhs([vel, (thrust - 0.05*vel*vel)/mass, -0.1*thrust*thrust])
-    dae.setAlgRes([zdummy])

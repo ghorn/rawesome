@@ -15,9 +15,9 @@ if __name__ == "__main__":
     dae['vel*vel'] = vel*vel
 
     # specify the ode residual
-    dae.setOdeRes([dae.ddt('pos') - vel,
-                   dae.ddt('vel') - thrust/mass,
-                   dae.ddt('mass') - 0.1*thrust*thrust])
+    dae.setResidual([dae.ddt('pos') - vel,
+                     dae.ddt('vel') - thrust/mass,
+                     dae.ddt('mass') - 0.1*thrust*thrust])
 
     ######## make the collocation scheme ########
     N = 100

@@ -330,10 +330,9 @@ def carouselModel(conf,nSteps=None,extraParams=[]):
     if nSteps is not None:
         dae.addP('endTime')
 
-    dae.setOdeRes( ode )
-#    dae.setAlgRes( C.mul(massMatrix, dae.zVec()) - rhs )
     psuedoZVec = C.veccat([dae.ddt(name) for name in ['ddelta','dx','dy','dz','w1','w2','w3']]+[dae['nu']])
-    dae.setAlgRes( C.mul(massMatrix, psuedoZVec) - rhs )
+    alg = C.mul(massMatrix, psuedoZVec) - rhs
+    dae.setResidual([ode,alg])
     
     return dae
 

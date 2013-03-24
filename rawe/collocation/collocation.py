@@ -219,10 +219,7 @@ class Coll():
                                       self.pVec()])
                     
                     # impose system dynamics (for the differential states (eq 10.19b))
-                    self.constrain(fk[:ndiff],'==',0,tag=("system dynamics, differential states",(k,i,j)))
-                    
-                    # impose system dynamics (for the algebraic states (eq 10.19b))
-                    self.constrain(fk[ndiff:],'==',0,tag=("system dynamics, algebraic states",(k,i,j)))
+                    self.constrain(fk,'==',0,tag=("implicit dynamic equation",(k,i,j)))
                     
                 # Get an expression for the state at the end of the finite element
                 xf_k = 0
@@ -281,16 +278,7 @@ class Coll():
         return NXD+NXA+NU+NXF+NP
 
     def _makeResidualFun(self):
-        if not hasattr(self.dae, '_odeRes'):
-            raise ValueError("need to set ode residual")
-
-        residual = self.dae._odeRes
-        
-        if hasattr(self.dae,'_algRes'):
-            residual = CS.veccat([residual, self.dae._algRes])
-        else:
-            if self.zSize()>0:
-                raise ValueError("you've added algebraic states but haven't set the algebraic residual")
+        residual = self.dae.getResidual()
 
         if (residual.size() != self.zSize()+self.xSize()):
             print 'WARNING: residual.size() != self.zSize() + self.xSize() ==> (%d != %d + %d)' % (residual.size(),self.zSize(), self.xSize())
