@@ -1,0 +1,20 @@
+include_rules
+CXX = g++
+CXXFLAGS  = -Wall
+CXXFLAGS += -g
+CXXFLAGS += -O2
+CXXFLAGS += -fPIC
+CXXFLAGS += -I..
+CXXFLAGS += -Wno-unused-function
+#CXXFLAGS += -std=c++11
+
+LDFLAGS = -lstdc++
+
+export PKG_CONFIG_PATH
+CXXFLAGS += `pkg-config --cflags acado`
+LDFLAGS  += `pkg-config --libs   acado`
+
+: foreach *.cpp |> $(CXX) $(CXXFLAGS) -c %f -o %o |> %B.o
+: *.o |> $(CXX) -shared -Wl,-soname,%o -o %o %f $(LDFLAGS) |> %d.so
+
+.gitignore

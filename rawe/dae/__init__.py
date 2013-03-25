@@ -3,3 +3,4 @@ import dae
 import acadoModelExport
 import acadoSimExport
 import octaveSimExport
+import rienIntegrator

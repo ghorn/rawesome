@@ -15,6 +15,10 @@ if __name__=='__main__':
 #    f.write(blah)
 #    f.close()
 
+    import rawe.dae.rienIntegrator as ri
+    ri.runExporter(dae)
+
+    import sys; sys.exit()
     (modelFile, simExportFile) = dae.acadoSimGen()
 
     f = open('data/auto_model.c','w')
@@ -24,7 +28,7 @@ if __name__=='__main__':
     f = open('data/auto_sim_export.c','w')
     f.write(simExportFile)
     f.close()
-#
+
 #    modelFile = dae.acadoModelGen()
 #    print modelFile
 #    print simExportFile
