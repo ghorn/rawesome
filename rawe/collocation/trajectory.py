@@ -65,7 +65,7 @@ class TrajectoryPlotter(Trajectory):
     """
     A Trajectory that can plot itself
     """
-    def subplot(self,names,title=None):
+    def subplot(self,names,title=None,style=None):
         assert isinstance(names,list)
         
         fig = plt.figure()
@@ -82,14 +82,16 @@ class TrajectoryPlotter(Trajectory):
                     
         plt.clf()
         n = len(names)
+        if style is None:
+            style = [None]*n
         for k,name in enumerate(names):
             plt.subplot(n,1,k+1)
             if k==0:
-                self._plot(name,title)
+                self._plot(name,title,style=style[k])
             else:
-                self._plot(name,None)
+                self._plot(name,None,style=style[k])
 
-    def plot(self,names,title=None):
+    def plot(self,names,title=None,style=None):
         fig = plt.figure()
         if title is None:
             if isinstance(names,str):
@@ -103,9 +105,9 @@ class TrajectoryPlotter(Trajectory):
         
         fig.canvas.set_window_title(str(title))
         plt.clf()
-        self._plot(names,title)
+        self._plot(names,title,style=style)
 
-    def _plot(self,names,title):
+    def _plot(self,names,title,style=None,showLegend=True):
         if isinstance(names,str):
             names = [names]
         assert isinstance(names,list)
@@ -128,7 +130,10 @@ class TrajectoryPlotter(Trajectory):
                         ts.append(ts[-1])
                 ys.append(self.dvMap.lookup(name,timestep=-1,nicpIdx=0,degIdx=0))
                 ts.append(self.tgrid[-1,0,0])
-                plt.plot(ts,ys)
+                if style is None:
+                    plt.plot(ts,ys)
+                else:
+                    plt.plot(ts,ys,style)
                 
             # if it's an algebraic var
             elif name in self.dvMap._zNames:
@@ -141,7 +146,10 @@ class TrajectoryPlotter(Trajectory):
                             ts.append(self.tgrid[i,k,j])
                         ys.append(np.nan*ys[-1])
                         ts.append(ts[-1])
-                plt.plot(ts,ys)
+                if style is None:
+                    plt.plot(ts,ys)
+                else:
+                    plt.plot(ts,ys,style)
 
             # if it's a control
             elif name in self.dvMap._uNames:
@@ -153,7 +161,10 @@ class TrajectoryPlotter(Trajectory):
                     t1 = self.tgrid[i+1,0,0]
                     ys.extend([y,y,np.nan*y])
                     ts.extend([t0,t1,t1])
-                plt.plot(ts,ys)
+                if style is None:
+                    plt.plot(ts,ys)
+                else:
+                    plt.plot(ts,ys,style)
 
             # if it's an output defined everywhere
             elif name in self.outputMap._outputs0:
@@ -166,7 +177,10 @@ class TrajectoryPlotter(Trajectory):
                             ts.append(self.tgrid[i,k,j])
                         ys.append(np.nan*ys[-1])
                         ts.append(ts[-1])
-                plt.plot(ts,ys)
+                if style is None:
+                    plt.plot(ts,ys)
+                else:
+                    plt.plot(ts,ys,style)
 
             # if it's an output defined only on collocation points
             elif name in self.outputMap._outputs:
@@ -179,7 +193,10 @@ class TrajectoryPlotter(Trajectory):
                             ts.append(self.tgrid[i,k,j])
                         ys.append(np.nan*ys[-1])
                         ts.append(ts[-1])
-                plt.plot(ts,ys)
+                if style is None:
+                    plt.plot(ts,ys)
+                else:
+                    plt.plot(ts,ys,style)
 
             # if it's a quadrature state
             elif name in self.quadratureMap._quadMap:
@@ -192,7 +209,10 @@ class TrajectoryPlotter(Trajectory):
                             ts.append(self.tgrid[i,k,j])
                         ys.append(np.nan*ys[-1])
                         ts.append(ts[-1])
-                plt.plot(ts,ys)
+                if style is None:
+                    plt.plot(ts,ys)
+                else:
+                    plt.plot(ts,ys,style)
 
             # throw error on parameter
             elif name in self.dvMap._pNames:
@@ -205,6 +225,7 @@ class TrajectoryPlotter(Trajectory):
         if title is not None:
             assert isinstance(title,str), "title must be a string"
             plt.title(title)
-        plt.xlabel('time')
-        plt.legend(legend)
+        plt.xlabel('time [s]')
+        if showLegend is True:
+            plt.legend(legend)
         plt.grid()

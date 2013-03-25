@@ -214,28 +214,53 @@ if __name__=='__main__':
         traj.plot(["loyd's limit","loyd's limit (exact)","-(winch power)"])
 #        traj.plot(["loyd's limit","-(winch power)"],title='')
         traj.subplot([['daileronCost','delevatorCost','ddrCost'],['winch power']])
-#        traj.subplot(['w1','w2','w3'])
+        traj.subplot(['w1','w2','w3'])
 #        traj.subplot(['e11','e12','e13','e21','e22','e23','e31','e32','e33'])
         traj.plot('line angle (deg)')
         traj.plot('quadrature energy')
 #        traj.subplot(['energy','quadrature energy'])
 #        traj.plot(['energy','quadrature energy'])
+        traj.plot('nu')
         
         plt.show()
-    plotResults()
+#    plotResults()
 
 
     def plotPaper():
-        traj.subplot(['wind at altitude','dr'],title='')
-        plt.subplot(211)
+        plt.figure()
+        plt.subplot(221)
+        traj._plot('cL','',showLegend=False)
+        plt.legend(['$C_L$'])
+        plt.ylim([0,1.7])
+
+        plt.subplot(223)
+        traj._plot('L/D','',showLegend=False)
+        plt.legend(['$L/D$'])
+        plt.ylim([0,5.5])
+
+        plt.subplot(222)
+        traj._plot('wind at altitude','',showLegend=False)
         plt.ylabel('[m/s]')
-        plt.subplot(212)
+        plt.ylim([7,9.2])
+        plt.legend(['wind at altitude'])
+        plt.subplot(224)
+        traj._plot('dr','',showLegend=False)
         plt.ylabel('[m/s]')
-        traj.subplot(['cL','L/D'],title='')
-        traj.subplot(['cL','L/D','dr'],title='')
+        plt.ylim([-10,9])
+        plt.legend(['$\dot{l}$'])
+
+#        traj.subplot(['cL','L/D','dr'],title='')
 #        traj.plot(["loyd's limit","loyd's limit (exact)","-(winch power)"])
-        traj.plot(["loyd's limit","-(winch power)"],title='')
+#        traj.plot(["loyd's limit","-(winch power)"],title='')
+        plt.figure()
+        traj._plot("loyd's limit",'',showLegend=False,style=':')
+        traj._plot("-(winch power)",'',showLegend=False)
+        plt.legend(["Loyd's limit","winch power"])
         plt.ylabel('power [W]')
-        
+        plt.ylim([-400,1100])
+        plt.grid()
+
+
         plt.show()
-#    plotPaper()
+    plotPaper()
+
