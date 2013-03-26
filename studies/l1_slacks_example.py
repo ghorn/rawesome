@@ -35,7 +35,7 @@ if __name__ == "__main__":
 
     # boundary conditions
     ocp.bound('pos',(5,5),timestep=0)
-    ocp.bound('pos',(0,0),timestep=-1)
+    ocp.bound('pos',(0.1,0.1),timestep=-1)
 
     ocp.bound('vel',(0,0),timestep=0)
     ocp.bound('vel',(0,0),timestep=-1)
