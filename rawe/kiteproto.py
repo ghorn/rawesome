@@ -37,7 +37,10 @@ def toKiteProto(lookup,kiteAlpha=1.0,lineAlpha=1.0):
         cs.zt = 0
         pass
 
-    cs.w0 = lookup('w0')
+    try:
+        cs.w0 = lookup('w0')
+    except Exception:
+        pass
         
     cs.kiteTransparency = kiteAlpha
     cs.lineTransparency = lineAlpha

@@ -99,8 +99,6 @@ def getSteadyState(dae,conf,omega0,r0):
                 sol[name] = x[k].at(0)
             lookup = lambda name: sol[name]
             kp = kiteproto.toKiteProto(lookup,
-                                       conf['zt'],
-                                       conf['rArm'],
                                        lineAlpha=0.2)
             mc = kite_pb2.MultiCarousel()
             mc.horizon.extend([kp])
@@ -113,10 +111,10 @@ def getSteadyState(dae,conf,omega0,r0):
     def addCallback():
         nd = len(boundsVec)
         nc = g.getLb().size()
-        c = C.PyFunction( MyCallback(), C.nlpsolverOut(x_opt=C.sp_dense(nd,1), cost=C.sp_dense(1,1), lambda_x=C.sp_dense(nd,1), lambda_g = C.sp_dense(nc,1), g = C.sp_dense(nc,1) ), [C.sp_dense(1,1)] )
+        c = C.PyFunction( MyCallback(), C.nlpsolverOut(x_opt=C.sp_dense(nd,1), cost=C.sp_dense(1,1), lambda_x=C.sp_dense(nd,1), lambda_p = C.sp_dense(0,1), lambda_g = C.sp_dense(nc,1), g = C.sp_dense(nc,1) ), [C.sp_dense(1,1)] )
         c.init()
         solver.setOption("iteration_callback", c)
-    addCallback()
+#    addCallback()
     solver.setOption('max_iter',10000)
     solver.init()
 
