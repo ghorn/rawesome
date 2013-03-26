@@ -129,7 +129,7 @@ if __name__=='__main__':
     print "reading config..."
 #    nk = 60*numLoops
     nk = 70
-    from conf import conf
+    from carousel_conf import conf
     #from highwind_carousel_conf import conf
     #from stingray_conf import conf
     
