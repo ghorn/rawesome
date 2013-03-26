@@ -8,12 +8,18 @@ from collocation import trajectory
 import kiteproto
 import kite_pb2
 
-def normalCallback(traj,myiter,ocp,conf):
+def showAllPoints(traj,myiter,ocp,conf):
+    return normalCallback(traj,myiter,ocp,conf,showAllPoints=True)
+
+def normalCallback(traj,myiter,ocp,conf,showAllPoints=False):
     kiteProtos = []
     for k in range(0,ocp.nk):
         for nicpIdx in range(0,ocp.nicp):
-            for degIdx in [0]:
-#            for degIdx in range(ocp.deg+1):
+            if showAllPoints:
+                degIdxRange = range(ocp.deg+1)
+            else:
+                degIdxRange = [0]
+            for degIdx in degIdxRange:
                 lookup = lambda name: traj.lookup(name,timestep=k,nicpIdx=nicpIdx,degIdx=degIdx)
                 kiteProtos.append( kiteproto.toKiteProto(lookup,
                                                          lineAlpha=0.2) )
@@ -29,7 +35,7 @@ def normalCallback(traj,myiter,ocp,conf):
     return mc.SerializeToString()
     
 
-def startKiteTelemetry(ocp, conf,userCallback=normalCallback, printBoundViolation=False,printConstraintViolation=False):
+def startKiteTelemetry(ocp, conf, userCallback=normalCallback, printBoundViolation=False,printConstraintViolation=False):
     xOptQueue = Manager().Queue()
     KiteTelemetry(ocp, xOptQueue, conf, userCallback).start()
 
