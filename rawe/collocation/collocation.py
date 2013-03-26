@@ -440,7 +440,14 @@ class Coll():
             nd = self._dvMap.vectorize().size()
             nc = self._constraints.getG().size()
     
-            c = CS.PyFunction( callback, CS.nlpsolverOut(x_opt=CS.sp_dense(nd,1), cost=CS.sp_dense(1,1), lambda_x=CS.sp_dense(nd,1), lambda_g = CS.sp_dense(nc,1), g = CS.sp_dense(nc,1) ), [CS.sp_dense(1,1)] )
+            c = CS.PyFunction( callback,
+                               CS.nlpsolverOut(x_opt = CS.sp_dense(nd,1),
+                                               cost = CS.sp_dense(1,1),
+                                               lambda_x = CS.sp_dense(nd,1),
+                                               lambda_g = CS.sp_dense(nc,1),
+                                               lambda_p = CS.sp_dense(0,1),
+                                               g = CS.sp_dense(nc,1) ),
+                               [CS.sp_dense(1,1)] )
             c.init()
             solverOpts.append( ("iteration_callback", c) )
 
