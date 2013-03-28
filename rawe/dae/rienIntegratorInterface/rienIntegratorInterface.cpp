@@ -52,12 +52,12 @@ map<string, int> makeIntegratorGridMap(void){
 }
 
 int makeRienIntegrator( const char * genPath,
-			int numIntervals,
-			double timestep,
+			const int numIntervals,
+			const double timestep,
 			const char * integratorType,
 			const char * integratorGrid,
-			int numIntegratorSteps,
-			int nx, int nz, int nu)
+			const int numIntegratorSteps,
+			const int nx, const int nz, const int nu)
 {
   SIMexport sim(numIntervals, timestep);
 

@@ -35,7 +35,7 @@ class AlgorithmWriter(object):
         def makePrefixBinary(op, replace):
             replace['op'] = op
             write( '%(spaces)s%(init)s%(work)s_%(i1)d = %(op)s( %(work)s_%(i2)d, %(work)s_%(i3)d );' %  replace)
-    
+
         # Loop over the algorithm
         for i in range(f.getAlgorithmSize()):
           
@@ -60,6 +60,10 @@ class AlgorithmWriter(object):
                     write( '%(spaces)s%(init)s%(work)s_%(i1)d = %(input)s[%(i3)d];' % replace)
                 elif op==C.OP_OUTPUT:
                     assert i1==0, "oh noes, OUTPUT IS MULTIDIMENSIONAL!!!"
+                    rowidx = f.output(i1).sparsity().getRow()[i3]
+                    colidx = f.output(i1).sparsity().col()[i3]
+                    assert colidx == 0, 'colidx != 0'
+                    replace['i3'] = rowidx
                     write( '%(spaces)s%(output)s[%(i3)d] = %(work)s_%(i2)d;' % replace )
                 
                 ########## BINARY ########
@@ -129,143 +133,17 @@ class AlgorithmWriter(object):
         return algStrings
 
 
-def writeAcadoAlgorithm(dae, f, inputs):
-    # error dictionary
-    errorMap = {}
-    for key,value in C.__dict__.iteritems():
-        if key[0:3] == "OP_":
-            errorMap[value] = key
-
-    inputStr = 'input'
-    outputStr = 'output'
-    spacesStr = ''
-    realStr = 'IntermediateState'
-    replace0 = {'spaces':spacesStr, 'real':realStr, 'work':'im_a_work_vector_woohoo','init':'',
-                'input':inputStr, 'output':outputStr}
-
-    algStrings = []
-    initializedWorkVars = set();
-    def write(blah):
-        algStrings.append(blah)
-    def makeUnary(op, replace):
-        replace['op'] = op
-        write( '%(spaces)s%(init)s%(work)s_%(i1)d = %(op)s( %(work)s_%(i2)d );' %  replace)
-    def makeInfixBinary(op, replace):
-        replace['op'] = op
-        write( '%(spaces)s%(init)s%(work)s_%(i1)d = %(work)s_%(i2)d %(op)s %(work)s_%(i3)d;' %  replace)
-    def makePrefixBinary(op, replace):
-        replace['op'] = op
-        write( '%(spaces)s%(init)s%(work)s_%(i1)d = %(op)s( %(work)s_%(i2)d, %(work)s_%(i3)d );' %  replace)
-        
-    # Loop over the algorithm
-    for i in range(f.getAlgorithmSize()):
-      
-        # Get the atomic operation
-        op = f.getAtomicOperation(i)
-        i1 = f.getAtomicOutput(i)
-
-        replace = dict(replace0.items() + {'i1':i1}.items())
-        if op != C.OP_OUTPUT:
-            if i1 not in initializedWorkVars:
-                initializedWorkVars.add(i1)
-                replace['init'] = replace['real']+' '
-        if(op==C.OP_CONST):
-            replace['const'] = repr(f.getAtomicInputReal(i))
-            write( '%(spaces)s%(init)s%(work)s_%(i1)d = %(const)s;' % replace )
-        else:
-            i2,i3 = f.getAtomicInput(i)
-            replace['i2'] = i2
-            replace['i3'] = i3
-            if op==C.OP_INPUT:
-                #assert i2==0, "oh noes, INPUT IS MULTIDIMENSIONAL!!!"
-                replace['input'] = inputs[i2][i3]
-                write( '%(spaces)s%(init)s%(work)s_%(i1)d = %(input)s;' % replace)
-            elif op==C.OP_OUTPUT:
-#                assert i1==0, "oh noes, OUTPUT IS MULTIDIMENSIONAL!!!"
-#                write( '%(spaces)sf << 0 == %(work)s_%(i2)d;' % replace )
-                if i1==0:
-                    write( '%(spaces)sf << 0 == %(work)s_%(i2)d;' % replace )
-                else:
-                    replace['i1'] = i1-1
-                    replace['outputname'] = dae.outputNames()[i1-1]
-                    write( '%(spaces)s/* Output output_%(i1)d = %(work)s_%(i2)d; /* %(outputname)s */ */' % replace )
-            
-            ########## BINARY ########
-            elif op==C.OP_ADD:
-                makeInfixBinary('+',replace)
-            elif op==C.OP_SUB:
-                makeInfixBinary('-',replace)
-            elif op==C.OP_MUL:
-                makeInfixBinary('*',replace)
-            elif op==C.OP_DIV:
-                makeInfixBinary('/',replace)
-            elif op==C.OP_ATAN2:
-                makePrefixBinary('atan2',replace)
-            elif op in [C.OP_POW,C.OP_CONSTPOW]:
-                makePrefixBinary('pow',replace)
-
-            ########## UNARY ########
-            elif op==C.OP_ACOS:
-                makeUnary('acos',replace)
-            elif op==C.OP_ATAN:
-                makeUnary('atan',replace)
-            elif op==C.OP_COS:
-                makeUnary('cos',replace)
-            elif op==C.OP_EXP:
-                makeUnary('exp',replace)
-            elif op==C.OP_INV:
-                makeUnary('1.0/',replace)
-            elif op==C.OP_SIN:
-                makeUnary('sin',replace)
-            elif op==C.OP_ACOSH:
-                makeUnary('acosh',replace)
-            elif op==C.OP_COSH:
-                makeUnary('cosh',replace)
-            elif op==C.OP_FABS:
-                makeUnary('fabs',replace)
-            elif op==C.OP_SINH:
-                makeUnary('sinh',replace)
-            elif op==C.OP_ATANH:
-                makeUnary('tanh',replace)
-            elif op==C.OP_NEG:
-                makeUnary('-',replace)
-            elif op==C.OP_LOG:
-                makeUnary('log',replace)
-            elif op==C.OP_SQRT:
-                makeUnary('sqrt',replace)
-            elif op==C.OP_ASIN:
-                makeUnary('asin',replace)
-            elif op==C.OP_ASINH:
-                makeUnary('asinh',replace)
-            elif op==C.OP_TAN:
-                makeUnary('tan',replace)
-            elif op==C.OP_ERF:
-                makeUnary('erf',replace)
-            elif op==C.OP_ERFINV:
-                makeUnary('erfinv',replace)
-            elif op==C.OP_SIGN:
-                makeUnary('sign',replace)
-            elif op==C.OP_TANH:
-                makeUnary('tanh',replace)
-            elif op==C.OP_ASSIGN:
-                makeUnary('',replace)
-            elif op==C.OP_PARAMETER:
-                raise KeyError('Oh man, there is a free parameter in your SXFunction')
-            else:
-                raise KeyError('Unknown operation: '+ errorMap[op])
-
-    return algStrings
-
-
 def generateCModel(dae,ag):
     writer = AlgorithmWriter()
 
-    dummyParamDots = C.veccat( [C.ssym(p+'__PARAMDOT_DUMMY_ACADO_DOESNT_HANDLE_PARAMS_UUUUGH')
-                                for p in dae.pNames()] )
-    inputs = C.veccat([ag['x'], ag['p'], ag['z'], ag['u'], ag['xdot'], dummyParamDots])
+    inputs = C.veccat([ag['x'], ag['z'], ag['u'], ag['p'], ag['xdot']])
 
     # dae residual
-    f = C.veccat([ag['f'], dummyParamDots])
+    f = ag['f']
+    rhs = C.SXFunction( [inputs], [f] )
+    rhs.init()
+    # handle time scaling
+    [f] = rhs.eval([C.veccat([ag['x'], ag['z'], ag['u'], ag['p'], ag['xdot']/ag['timeScaling']])])
     rhs = C.SXFunction( [inputs], [f] )
     rhs.init()
     rhs_string = [writer.writePrototype('rhs')]
@@ -273,7 +151,7 @@ def generateCModel(dae,ag):
     rhs_string.append('}')
 
     # dae residual jacobian
-    jf = C.veccat( [ C.jacobian(f,inputs) ] )
+    jf = C.veccat( [ C.jacobian(f,inputs).T ] )
     rhs_jacob = C.SXFunction( [inputs], [jf] )
     rhs_jacob.init()
     rhs_jacob_string = [writer.writePrototype('rhs_jac')]
@@ -289,7 +167,7 @@ def generateCModel(dae,ag):
     outputs_string.append('}')
 
     # outputs jacobian
-    jo = C.veccat( [ C.jacobian(o,inputs) ] )
+    jo = C.veccat( [ C.jacobian(o,inputs).T ] )
     outputs_jacob = C.SXFunction( [inputs], [jo] )
     outputs_jacob.init()
     outputs_jacob_string = [writer.writePrototype('out_jac')]
@@ -307,7 +185,9 @@ def generateCModel(dae,ag):
     modelFile.extend(outputs_string)
     modelFile.append('')
     modelFile.extend(outputs_jacob_string)
-    return '\n'.join(modelFile)
+    return {'modelFile':'\n'.join(modelFile),
+            'rhs':rhs,
+            'rhsJacob':rhs_jacob}
 
 
 

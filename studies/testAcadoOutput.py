@@ -1,7 +1,3 @@
-import numpy
-
-import casadi as C
-
 import rawe
 
 if __name__=='__main__':
@@ -9,19 +5,16 @@ if __name__=='__main__':
     
     print "creating model..."
     dae = rawe.models.carousel(conf)
-    
-#    blah = dae.octaveSimGen('carouselOde')
-#    f = open('carouselOde_modelAndJacob.m','w')
-#    f.write(blah)
-#    f.close()
-
-    import rawe.dae.rienIntegrator as ri
-    ri.runExporter(dae)
+   
+    blah = dae.octaveSimGen('carouselOde')
+    f = open('carouselOde_modelAndJacob.m','w')
+    f.write(blah)
+    f.close()
 
     import sys; sys.exit()
     (modelFile, simExportFile) = dae.acadoSimGen()
 
-    f = open('data/auto_model.c','w')
+    f = open('data/auto_model.cpp','w')
     f.write(modelFile)
     f.close()
 
@@ -29,10 +22,10 @@ if __name__=='__main__':
     f.write(simExportFile)
     f.close()
 
-#    modelFile = dae.acadoModelGen()
-#    print modelFile
-#    print simExportFile
+    modelFile = dae.acadoModelGen()
+    print modelFile
+    print simExportFile
 
-#    f = open('auto_model.cpp','w')
-#    f.write(modelFile)
-#    f.close()
+    f = open('auto_model.cpp','w')
+    f.write(modelFile)
+    f.close()

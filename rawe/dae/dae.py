@@ -252,6 +252,23 @@ class Dae(object):
                  'f':f }
         return acadoSimExport.simExport(self, info)
 
+    def makeRienModel(self, timeScaling):
+        self._freezeXzup('makeRienModel()')
+
+        f = self.getResidual()
+
+        xdot = C.veccat([self.ddt(name) for name in self.xNames()])
+
+        info = { 'x':self.xVec(),
+                 'z':self.zVec(),
+                 'p':self.pVec(),
+                 'u':self.uVec(),
+                 'xdot':xdot,
+                 'f':f,
+                 'timeScaling':timeScaling
+                 }
+        return acadoSimExport.generateCModel(self, info)
+
     def acadoModelGen(self):
         self._freezeXzup('agadoModelGen()')
         self._freezeOutputs('agadoModelGen()')
