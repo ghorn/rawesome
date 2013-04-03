@@ -10,12 +10,14 @@ if __name__=='__main__':
     force = dae.addU( "force" )
     endTime = dae.addP( 'endTime' )
     
-    # specify the ode residual
+    # specify the dae residual
     dae.setResidual([dae.ddt('pos') - vel,
                      dae.ddt('vel') - (force - 3.0*pos - 0.2*vel)])
 
     from rawe.dae.rienIntegrator import RienIntegrator
     integrator = RienIntegrator(dae,ts=endTime)
+
+
     x = {'pos':5.3, 'vel':0.6}
     u = {'force':-4.2}
     p = {'endTime':0.2}

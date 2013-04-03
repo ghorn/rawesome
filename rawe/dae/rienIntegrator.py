@@ -9,14 +9,21 @@ import numpy
 rawesomeDataPath = os.path.expanduser("~/.rawesome")
 
 def loadIntegratorInterface():
-    # get the filename of the shared object
+    # get the integrator interface directory
     filename = __file__.rstrip('.pyc')
     filename = filename.rstrip('.py')
     filename = filename.rstrip('rienIntegrator')
-    filename += 'rienIntegratorInterface/rienIntegratorInterface.so'
+    interfaceDir = os.path.join(filename , 'rienIntegratorInterface')
+
+    # call make to make sure shared lib is build
+    p = subprocess.Popen(['make'], stdout=subprocess.PIPE, cwd=interfaceDir)
+    ret = p.wait()
+    if ret != 0:
+        print p.stdout.read()
+        raise Exception("integrator compilation failed, return code "+str(ret))
 
     # load the shared object
-    return ctypes.cdll.LoadLibrary(filename)
+    return ctypes.cdll.LoadLibrary(os.path.join(interfaceDir, 'rienIntegratorInterface.so'))
 
 def makeMakefile(cfiles):
     return """\
