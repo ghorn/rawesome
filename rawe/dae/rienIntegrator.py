@@ -1,11 +1,9 @@
 import ctypes
 import os
-import shutil
 import subprocess
-import tempfile
 import numpy
 
-from ..utils.memoize import memoizeFiles
+from ..utils.codegen import memoizeFiles, withTempdir
 
 def loadIntegratorInterface():
     # get the integrator interface directory
@@ -17,6 +15,7 @@ def loadIntegratorInterface():
     # call make to make sure shared lib is build
     p = subprocess.Popen(['make'], stdout=subprocess.PIPE, cwd=interfaceDir)
     ret = p.wait()
+
     if ret != 0:
         print p.stdout.read()
         raise Exception("integrator compilation failed, return code "+str(ret))
@@ -70,34 +69,9 @@ def writeRienIntegrator(dae, path, options):
         raise Exception("rien integrator creater, what goon set bad options?")
 
 
-def generateRienIntegrator(dae, options):
-    # make temporary directory and generate integrator.c and acado.h there
-    # then read those files
-    tmppath = tempfile.mkdtemp()
-    shutil.rmtree # make sure this exists before making the tmp dir
-    try:
-        writeRienIntegrator(dae, tmppath, options)
-
-        integratorPath = tmppath+'/integrator.c'
-        acadoHeaderPath = tmppath+'/acado.h'
-
-        f = open(integratorPath,'r')
-        integrator = f.read()
-        f.close()
-
-        f = open(acadoHeaderPath,'r')
-        acadoHeader = f.read()
-        f.close()
-
-    finally:
-        shutil.rmtree(tmppath)
-
-    return (integrator, acadoHeader)
-    
-
 def exportIntegrator(dae, options):
     # get the exported integrator files
-    (integrator, acadoHeader) = generateRienIntegrator(dae, options)
+    exportedFiles = withTempdir(lambda tmppath : writeRienIntegrator(dae, tmppath, options))
 
     # model file
     rienModelGen = dae.makeRienModel(options['timestep'])
@@ -113,8 +87,8 @@ ACADOworkspace acadoWorkspace;
 ACADOvariables acadoVariables;
 """
 
-    genfiles = [('integrator.c', integrator),
-                ('acado.h', acadoHeader),
+    genfiles = [('integrator.c', exportedFiles['integrator.c']),
+                ('acado.h', exportedFiles['acado.h']),
                 ('model.c', modelFile),
                 ('workspace.c', workspace),
                 ('Makefile', makefile)]
