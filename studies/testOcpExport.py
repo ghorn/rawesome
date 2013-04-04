@@ -14,8 +14,8 @@ if __name__=='__main__':
                      dae.ddt('vel') - (force - 3.0*pos - 0.2*vel),
                      dae['dummyZ']])
 
-    from rawe.ocp.MpcMhe import Mpc
-    mpc = Mpc(dae, 10)
+    from rawe.ocp import Ocp
+    mpc = Ocp(dae, N=10, ts=0.2)
     mpc.constrain(mpc['pos'], '==', 3, when='AT_START')
     mpc.constrain(mpc['vel'], '==', 0, when='AT_START')
 
@@ -28,6 +28,4 @@ if __name__=='__main__':
     mpc.minimizeLsq(C.veccat([mpc['pos'],mpc['vel'],mpc['someRandomParameter']]))
     mpc.minimizeLsqEndTerm(C.veccat([mpc['pos']]))
 
-
-    ret = mpc.exportCode()
-    print ret
+    mpc.exportCode(CXX='clang++')

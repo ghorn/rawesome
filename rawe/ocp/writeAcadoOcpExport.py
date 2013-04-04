@@ -163,63 +163,119 @@ def generateAcadoOcp(ocp):
 #    assert len(dae.pNames()) == 0, 'parameters not supported by acado codegen'
 
     lines = []
-    lines.append('/* Differential States */')
+
+    lines.append('/* differential states */')
     for name in dae.xNames():
         lines.append('DifferentialState '+name+';')
     lines.append('')
-    lines.append('/* Algebraic States */')
+    lines.append('/* algebraic variables */')
     for name in dae.zNames():
         lines.append('AlgebraicState '+name+';')
     lines.append('')
-    lines.append('/* Control Inputs */')
+    lines.append('/* control inputs */')
     for name in dae.uNames():
         lines.append('Control '+name+';')
     lines.append('')
-    lines.append('/* Parameters */')
+    lines.append('/* parameters */')
     for name in dae.pNames():
         lines.append('Parameter '+name+';')
     lines.append('')
 
     # constraints and objective algorithm
+    lines.append('/* setup objective function and constraints */')
     lines.append('Function _obj;')
     lines.append('Function _objEnd;')
     lines.append('')
     (alg, constraintData) = writeAcadoAlgorithm(ocp, dae)
     lines.extend( alg )
     lines.append('')
+    lines.append('''\
+/* setup OCP */
+OCP _ocp(0, N * Ts, N);
+_ocp.setModel( "model", "rhs", "rhs_jac" );
+_ocp.setDimensions( %(nx)d, %(nx)d, %(nz)d, %(nup)d );\
+''' % {'nx':len(dae.xNames()), 'nz':len(dae.zNames()), 'nup':len(dae.uNames())+len(dae.pNames())})
+
     for (kLhs, comparison, kRhs, when) in constraintData:
         if when == 'ALWAYS':
             whenStr = ''
         elif when == 'AT_END':
-            whenStr = ', AT_END'
+            whenStr = 'AT_END, '
         elif when == 'AT_START':
-            whenStr = ', AT_START'
+            whenStr = 'AT_START, '
         else:
             raise Exception('the "impossible" happened, unrecognized "when": '+str(when))
         lines.append(
-            'ocp.subjectTo( %(output)s_%(kLhs)d %(comparison)s %(output)s_%(kRhs)d%(whenStr)s );'
+            '_ocp.subjectTo( %(whenStr)s0 %(comparison)s %(output)s_%(kRhs)d - %(output)s_%(kLhs)d );'
             % { 'output':replace0['output'], 'comparison':comparison, 'whenStr':whenStr,
                 'kLhs':kLhs, 'kRhs':kRhs })
-    # obj
-    lines.append('')
-    lines.append('ExportVariable  _SS( "SS", %(size)d, REAL);' % {'size': ocp._minLsq.size()})
-    lines.append('ExportVariable _SSN("SSN", %(size)d, REAL);' % {'size': ocp._minLsqEndTerm.size()})
-    lines.append('ocp.minimizeLSQ(_SS, _obj);')
-    lines.append('ocp.minimizeLSQEndTerm(_SSN, _objEnd);')
-    
-#    lines.append('/* hack to make parameters differential states: */')
-#    for p in dae.pNames():
-#        lines.append('_f << 0 == dot( '+p+' );')
-#    lines.append('')
-#    lines.append('/* the outputs */')
-#    lines.append('OutputFcn _h;')
-#    for k,name in enumerate(dae.outputNames()):
-#        size = 1
-#        if hasattr(dae[name], 'size'):
-#            size = dae[name].size()
-#        for j in range(size):
-#            replace = dict(replace0.items() + {'k':k,'j':j,'outputname':name}.items())
-#            lines.append('_h << %(output)s_%(k)d_%(j)d; /* %(outputname)s (%(j)d)*/' % replace)
+    # ocp
     lines.append('')
 
-    return ('\n'.join(lines))
+    # objective
+    lines.append('/* set objective */')
+    lines.append('ExportVariable  _SS( "SS", %(size)d, %(size)d);' % {'size': ocp._minLsq.size()})
+    lines.append('ExportVariable _SSN("SSN", %(size)d, %(size)d);' % {'size': ocp._minLsqEndTerm.size()})
+    lines.append('_ocp.minimizeLSQ(_SS, _obj);')
+    lines.append('_ocp.minimizeLSQEndTerm(_SSN, _objEnd);')
+    
+    lines.append('''
+/* setup OCPexport */
+OCPexport _ocpe( _ocp );
+
+_ocpe.set( HESSIAN_APPROXIMATION,   GAUSS_NEWTON    );
+// _ocpe.set( DISCRETIZATION_TYPE,  SINGLE_SHOOTING );
+_ocpe.set( DISCRETIZATION_TYPE,     MULTIPLE_SHOOTING );
+_ocpe.set( INTEGRATOR_TYPE, INT_IRK_RIIA3 );
+_ocpe.set( NUM_INTEGRATOR_STEPS, N * Ni );
+// _ocpe.set( IMPLICIT_INTEGRATOR_MODE,      IFT );
+// _ocpe.set( IMPLICIT_INTEGRATOR_NUM_ITS,   5   );
+_ocpe.set( LINEAR_ALGEBRA_SOLVER,        GAUSS_LU );
+// _ocpe.set( LINEAR_ALGEBRA_SOLVER,     HOUSEHOLDER_QR );
+// _ocpe.set( FIX_INITIAL_STATE, NO );
+// _ocpe.set( CG_HARDCODE_CONSTRAINT_VALUES, NO );
+_ocpe.set( SPARSE_QP_SOLUTION,     FULL_CONDENSING );
+// _ocpe.set( SPARSE_QP_SOLUTION,  CONDENSING );
+_ocpe.set( QP_SOLVER,              QP_QPOASES      );
+// _ocpe.set( SPARSE_QP_SOLUTION, SPARSE_SOLVER );
+// _ocpe.set( QP_SOLVER,          QP_FORCES      );
+// _ocpe.set( QP_SOLVER,          QP_QPDUNES     );
+// _ocpe.set( MAX_NUM_QP_ITERATIONS,   20             );
+_ocpe.set( HOTSTART_QP,                YES            );
+// _ocpe.set( LEVENBERG_MARQUARDT,     1.0e-10        );
+_ocpe.set( GENERATE_TEST_FILE,         NO             );
+_ocpe.set( GENERATE_MAKE_FILE,         NO             );
+_ocpe.set( GENERATE_MATLAB_INTERFACE,  YES            );
+// _ocpe.set( USE_SINGLE_PRECISION,    YES            );
+// _ocpe.set( CG_USE_OPENMP,           YES            );
+_ocpe.set( PRINTLEVEL, HIGH );
+
+/* export the code */
+_ocpe.printDimensionsQP( );
+_ocpe.exportCode( exportDir );
+
+return 0;\
+''')
+
+    lines = '\n'.join(['    '+l for l in ('\n'.join(lines)).split('\n')])
+    lines = '''\
+#include <acado_toolkit.hpp>
+//#include <include/acado_gnuplot/gnuplot_window.hpp>
+
+#include <ocp_export.hpp>
+
+//#include <iostream>
+//#include <sstream>
+//#include <fstream>
+//#include <vector>
+//#include <string>
+//#include <iomanip>
+
+extern "C" int exportOcp(int N, int Ni, double Ts, const char * exportDir);
+
+using namespace std;
+USING_NAMESPACE_ACADO
+
+int exportOcp(int N, int Ni, double Ts, const char * exportDir){
+''' + lines + '\n}'
+    return lines

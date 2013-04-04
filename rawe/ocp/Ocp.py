@@ -1,14 +1,19 @@
 import casadi as C
 
-import acadoOcpExport
+import exportOcp
 
-class MpcMhe(object):
-    def __init__(self, dae, nk):
+class Ocp(object):
+    def __init__(self, dae, N=None, ts=None):
         self._dae = dae
-        self._nk = nk
-        self._bndmap = {}
-        self._bndmapStart = {}
-        self._bndmapEnd = {}
+        if N is None or ts is None:
+            raise Exception('please initialize Ocp with Ocp(dae, N=.., ts=..)')
+        assert type(N) is int, "N must be an int, got type: "+str(type(N))
+        assert type(ts) in [int,float], "ts must be an int or float, got type: "+str(type(ts))
+        self._nk = N
+        self._ts = float(ts)
+#        self._bndmap = {}
+#        self._bndmapStart = {}
+#        self._bndmapEnd = {}
 
         self._constraints = []
         self._constraintsStart = []
@@ -22,24 +27,24 @@ class MpcMhe(object):
             raise KeyError('key must be a string')
         return name in self._dae
 
-    def bound(self, name, (lb,ub), when=None):
-        assert name in dae, "unrecognized name \""+name+"\""
-        def blah(bmap,msg):
-            if name in bmap:
-                msg = '"'+name+'" has already been bound'+msg+', old bounds: '+\
-                    str(bmap[name])+', new bounds: '+str((lb,ub))
-                raise Exception(msg)
-            else:
-                bmap[name] = (lb,ub)
-            
-        if when is None:
-            blah(self._bndmap, '')
-        elif when is "AT_END":
-            blah(self._bndmapEnd, ' AT_END')
-        elif when is "AT_START":
-            blah(self._bndmapStart, ' AT_START')
-        else:
-            raise Exception("unrecognized \"when\": "+str(when))
+#    def bound(self, name, (lb,ub), when=None):
+#        assert name in dae, "unrecognized name \""+name+"\""
+#        def blah(bmap,msg):
+#            if name in bmap:
+#                msg = '"'+name+'" has already been bound'+msg+', old bounds: '+\
+#                    str(bmap[name])+', new bounds: '+str((lb,ub))
+#                raise Exception(msg)
+#            else:
+#                bmap[name] = (lb,ub)
+#            
+#        if when is None:
+#            blah(self._bndmap, '')
+#        elif when is "AT_END":
+#            blah(self._bndmapEnd, ' AT_END')
+#        elif when is "AT_START":
+#            blah(self._bndmapStart, ' AT_START')
+#        else:
+#            raise Exception("unrecognized \"when\": "+str(when))
             
     def constrain(self, lhs, comparison, rhs, when=None):
         if type(lhs) == C.SXMatrix:
@@ -76,10 +81,5 @@ class MpcMhe(object):
         assert not hasattr(self, '_minLsqEndTerm'), 'you can only call minimizeLsqEndTerm once'
         self._minLsqEndTerm = obj
         
-            
-    def exportCode(self):
-        return acadoOcpExport.generateAcadoOcp(self)
-
-class Mpc(MpcMhe):
-    def __init__(self,dae,nk):
-        MpcMhe.__init__(self,dae, nk)
+    def exportCode(self, CXX='g++'):
+        exportOcp.exportOcp(self, CXX)
