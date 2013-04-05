@@ -28,6 +28,10 @@ if __name__=='__main__':
     mpc.minimizeLsq(C.veccat([mpc['pos'],mpc['vel'],mpc['someRandomParameter']]))
     mpc.minimizeLsqEndTerm(C.veccat([mpc['pos']]))
 
-    options = {'CXX':'clang++', 'CC':'clang'}
-    sim = mpc.exportCode(options,qpSolver='QP_OASES')
+#    options = {'CXX':'clang++', 'CC':'clang'}
+    options = {'CXX':'g++', 'CC':'gcc'}
+    mpcRt = mpc.exportCode(options,qpSolver='QP_OASES')
 
+    mpcRt.initializeNodesByForwardSimulation()
+    print "objective: "+str(mpcRt.getObjective())
+    print "objective type: "+str(type(mpcRt.getObjective()))
