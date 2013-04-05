@@ -276,7 +276,7 @@ class Dae(object):
         f = self.getResidual()
         return acadoModelExport.generateAcadoCodegenModel(self,f)
 
-    def convertToOde(self):
+    def solveForXDotAndZ(self):
         # get the residual fg(xdot,x,z)
         fg = self.getResidual()
 
@@ -296,11 +296,24 @@ class Dae(object):
         testFun = C.SXFunction([self.xVec(),self.uVec(),self.pVec()], [fg_zero])
         testFun.init()
         assert len(testFun.getFree()) == 0, \
-            "the \"impossible\" happened in Dae -> Ode conversion"
+            "the \"impossible\" happened in solveForXDotAndZ"
 
         xDotAndZ = C.solve(jac, -fg_zero)
         xDot = xDotAndZ[0:len(self.xNames())]
         z = xDotAndZ[len(self.xNames()):]
+
+        xDotDict = {}
+        for k,name in enumerate(self.xNames()):
+            xDotDict[name] = xDot[k]
+        zDict = {}
+        for k,name in enumerate(self.zNames()):
+            zDict[name] = z[k]
+        return (xDotDict, zDict)
+
+    def convertToOde(self):
+        (xDotDict,zDict) = self.solveForXDotAndZ()
+        xDot = C.veccat([xDotDict[name] for name in self.xNames()])
+        z = C.veccat([zDict[name] for name in self.zNames()])
 
         # construct outputs and residual as a function of x/z/u/p/xdot
         oldFunctions = C.SXFunction([self.xVec(), self.zVec(), self.uVec(), self.pVec(), self.xDotVec()],
