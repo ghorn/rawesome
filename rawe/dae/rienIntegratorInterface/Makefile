@@ -14,7 +14,8 @@ LDFLAGS  += `pkg-config --libs   acado`
 
 CPP_SRC = rienIntegratorInterface.cpp
 
-.PHONY: clean lib obj
+.PHONY: clean all rienIntegratorInterface.so
+all : $(OBJ) rienIntegratorInterface.so
 
 %.o : %.cpp
 	@echo CPP $@ #: $(CXX) $(CXXFLAGS) -c $< -o $@
@@ -23,11 +24,8 @@ CPP_SRC = rienIntegratorInterface.cpp
 OBJ = $(CPP_SRC:%.cpp=%.o)
 
 rienIntegratorInterface.so : $(OBJ)
-	@echo LD $@ #: $(CXX) -shared -Wl,-soname,$@ -o $@ $(OBJ) $(LDFLAGS)
-	@$(CXX) -shared -Wl,-soname,$@ -o $@ $(OBJ) $(LDFLAGS)
+	@echo LD $@ #: $(CXX) -shared -o $@ $(OBJ) $(LDFLAGS)
+	@$(CXX) -shared -o $@ $(OBJ) $(LDFLAGS)
 
-# aliases
-obj : $(OBJ)
-lib : rienIntegratorInterface.so
 clean :
 	rm -f *.o *.so

@@ -3,7 +3,7 @@ import os
 import subprocess
 import numpy
 
-from ..utils.codegen import memoizeFiles, withTempdir
+from ..utils import codegen
 
 def loadIntegratorInterface():
     # get the integrator interface directory
@@ -13,11 +13,11 @@ def loadIntegratorInterface():
     interfaceDir = os.path.join(filename , 'rienIntegratorInterface')
 
     # call make to make sure shared lib is build
-    p = subprocess.Popen(['make'], stdout=subprocess.PIPE, cwd=interfaceDir)
+#    p = subprocess.Popen(['make',codegen.makeJobs()], stdout=subprocess.PIPE, cwd=interfaceDir)
+    p = subprocess.Popen(['make',codegen.makeJobs()], cwd=interfaceDir)
     ret = p.wait()
-
     if ret != 0:
-        print p.stdout.read()
+#        print p.stdout.read()
         raise Exception("integrator compilation failed, return code "+str(ret))
 
     # load the shared object
@@ -32,50 +32,49 @@ LDFLAGS = -lm
 C_SRC = %(cfiles)s
 OBJ = $(C_SRC:%%.c=%%.o)
 
-.PHONY: clean libs obj
-
-all : model.so integrator.so
+.PHONY: clean all
+all : $(OBJ) model.so integrator.so
 
 %%.o : %%.c acado.h
 \t@echo CC $@: $(CC) $(CFLAGS) -c $< -o $@
 \t@$(CC) $(CFLAGS) -c $< -o $@
 
 %%.so : $(OBJ)
-\t@echo LD $@: $(CC) -shared -Wl,-soname,$@ -o $@ $(OBJ) $(LDFLAGS)
-\t@$(CC)   -shared -Wl,-soname,$@ -o $@ $(OBJ) $(LDFLAGS)
+\t@echo LD $@: $(CC) -shared -o $@ $(OBJ) $(LDFLAGS)
+\t@$(CC) -shared -o $@ $(OBJ) $(LDFLAGS)
 
-# aliases
-obj : $(OBJ)
 clean :
 \trm -f *.o *.so
 """ % {'cfiles':' '.join(cfiles)}
 
 
-def writeRienIntegrator(dae, path, options):
+def writeRienIntegrator(dae, options):
     nx = len(dae.xNames())
     nz = len(dae.zNames())
     nup = len(dae.uNames()) + len(dae.pNames())
 
     # call makeRienIntegrator
     lib = loadIntegratorInterface()
-    ret = lib.makeRienIntegrator(ctypes.c_char_p(path),
-                                 options['numIntervals'],
-                                 ctypes.c_double(1.0),
-                                 ctypes.c_char_p(options['integratorType']),
-                                 options['integratorGrid'],
-                                 options['numIntegratorSteps'],
-                                 nx, nz, nup)
-    if ret != 0:
-        raise Exception("rien integrator creater, what goon set bad options?")
-
+    def call(path):
+        ret = lib.makeRienIntegrator(ctypes.c_char_p(path),
+                                     options['numIntervals'],
+                                     ctypes.c_double(1.0),
+                                     ctypes.c_char_p(options['integratorType']),
+                                     options['integratorGrid'],
+                                     options['numIntegratorSteps'],
+                                     nx, nz, nup)
+        if ret != 0:
+            raise Exception("Rien integrator creater failed")
+    return codegen.withTempdir(call)
 
 def exportIntegrator(dae, options):
     # get the exported integrator files
-    exportedFiles = withTempdir(lambda tmppath : writeRienIntegrator(dae, tmppath, options))
+    exportedFiles = writeRienIntegrator(dae, options)
 
     # model file
     rienModelGen = dae.makeRienModel(options['timestep'])
-    modelFile = rienModelGen['modelFile']
+    rienModelGen['modelFile'] = '#include "acado.h"\n\n'+rienModelGen['modelFile']
+    modelFile = rienModelGen['modelFile'] 
 
     # write the makefile
     makefile = makeMakefile(['workspace.c', 'model.c', 'integrator.c'])
@@ -87,20 +86,20 @@ ACADOworkspace acadoWorkspace;
 ACADOvariables acadoVariables;
 """
 
-    genfiles = [('integrator.c', exportedFiles['integrator.c']),
-                ('acado.h', exportedFiles['acado.h']),
-                ('model.c', modelFile),
-                ('workspace.c', workspace),
-                ('Makefile', makefile)]
-    exportpath = memoizeFiles(genfiles)
+    genfiles = {'integrator.c': exportedFiles['integrator.c'],
+                'acado.h': exportedFiles['acado.h'],
+                'model.c': modelFile,
+                'workspace.c': workspace,
+                'Makefile': makefile}
+    exportpath = codegen.memoizeFiles(genfiles)
 
     # compile the code
-    p = subprocess.Popen(['make'], cwd=exportpath)
+    p = subprocess.Popen(['make',codegen.makeJobs()], cwd=exportpath)
     ret = p.wait()
     if ret != 0:
         raise Exception("integrator compilation failed, return code "+str(ret))
 
-    #p = subprocess.Popen(['make'], stdout=subprocess.PIPE, cwd=exportpath)
+    #p = subprocess.Popen(['make',codegen.makeJobs()], stdout=subprocess.PIPE, cwd=exportpath)
     #p.wait()
     #ret = p.stdout.read()
     #print "ret: " +str(ret)

@@ -101,6 +101,5 @@ int makeRienIntegrator( const char * genPath,
 //    sim.setTimingSteps( 10000 );
 //    sim.exportAndRun( "externModel_export", "init_externModel.txt", "controls_externModel.txt" );
 
-  sim.exportCode(genPath);
-  return 0;
+  return sim.exportCode(genPath);
 }

@@ -243,15 +243,15 @@ _ocpe.set( QP_SOLVER,              QP_QPOASES      );
 // _ocpe.set( MAX_NUM_QP_ITERATIONS,   20             );
 _ocpe.set( HOTSTART_QP,                YES            );
 // _ocpe.set( LEVENBERG_MARQUARDT,     1.0e-10        );
-_ocpe.set( GENERATE_TEST_FILE,         NO             );
-_ocpe.set( GENERATE_MAKE_FILE,         NO             );
+_ocpe.set( GENERATE_TEST_FILE,         YES            );
+_ocpe.set( GENERATE_MAKE_FILE,         YES            );
 _ocpe.set( GENERATE_MATLAB_INTERFACE,  YES            );
 // _ocpe.set( USE_SINGLE_PRECISION,    YES            );
 // _ocpe.set( CG_USE_OPENMP,           YES            );
-_ocpe.set( PRINTLEVEL, HIGH );
+//_ocpe.set( PRINTLEVEL, HIGH );
 
 /* export the code */
-_ocpe.printDimensionsQP( );
+//_ocpe.printDimensionsQP( );
 _ocpe.exportCode( exportDir );
 
 return 0;\

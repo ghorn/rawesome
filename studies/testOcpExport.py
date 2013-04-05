@@ -28,4 +28,6 @@ if __name__=='__main__':
     mpc.minimizeLsq(C.veccat([mpc['pos'],mpc['vel'],mpc['someRandomParameter']]))
     mpc.minimizeLsqEndTerm(C.veccat([mpc['pos']]))
 
-    mpc.exportCode(CXX='clang++')
+    options = {'CXX':'clang++', 'CC':'clang'}
+    sim = mpc.exportCode(options,qpSolver='QP_OASES')
+

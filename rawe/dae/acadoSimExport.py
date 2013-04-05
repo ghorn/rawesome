@@ -175,9 +175,7 @@ def generateCModel(dae,ag):
     outputs_jacob_string.append('}')
 
     # model file
-    modelFile = ['#include "acado.h"']
-    modelFile.append('')
-    modelFile.extend(rhs_string)
+    modelFile = rhs_string
     modelFile.append('')
     modelFile.extend(rhs_jacob_string)
     modelFile.append('')
