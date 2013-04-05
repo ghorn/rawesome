@@ -1,6 +1,6 @@
 import casadi as C
 
-from carouselSteadyState import getSteadyState
+from rawe.carouselSteadyState import getSteadyState
 import rawe
 
 if __name__=='__main__':
