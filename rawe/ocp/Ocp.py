@@ -39,7 +39,7 @@ class Ocp(object):
 #                raise Exception(msg)
 #            else:
 #                bmap[name] = (lb,ub)
-#            
+#
 #        if when is None:
 #            blah(self._bndmap, '')
 #        elif when is "AT_END":
@@ -48,8 +48,21 @@ class Ocp(object):
 #            blah(self._bndmapStart, ' AT_START')
 #        else:
 #            raise Exception("unrecognized \"when\": "+str(when))
-            
-    def constrain(self, lhs, comparison, rhs, when=None):
+
+    def constrain(self,*args, **kwargs):
+        usage = "do Ocp.constrain(x, CMP, y) or Ocp.constrain(x, CMP1, y, CMP2, z) where CMP,CMP1,CMP2 can be any of '<=', '==', or '>=' written as strings"
+        if len(args) is 3:
+            assert args[1] in ['>=','==','<='], usage
+            self._constrainOne(*args, **kwargs)
+        elif len(args) is 5:
+            assert args[1] in ['>=','==','<='], usage
+            assert args[3] in ['>=','==','<='], usage
+            self._constrainOne(args[0], args[1], args[2], **kwargs)
+            self._constrainOne(args[2], args[3], args[4], **kwargs)
+        else:
+            raise Exception(usage)
+
+    def _constrainOne(self, lhs, comparison, rhs, when=None):
         if type(lhs) == C.SXMatrix:
             assert lhs.shape == (1,1), "lhs must be scalar, got matrix with shape: "+str(lhs.shape)
         else:
@@ -83,7 +96,7 @@ class Ocp(object):
         assert shape[0] == 1 or shape[1] == 1, 'objective cannot be matrix, got shape: '+str(shape)
         assert not hasattr(self, '_minLsqEndTerm'), 'you can only call minimizeLsqEndTerm once'
         self._minLsqEndTerm = obj
-        
+
     def exportCode(self, options, qpSolver='QP_OASES'):
         print "put default options in here"
         return exportOcp.exportOcp(self, options, qpSolver)

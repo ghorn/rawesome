@@ -22,6 +22,8 @@ if __name__=='__main__':
     mpc.constrain(mpc['pos'], '==', 0, when='AT_END')
     mpc.constrain(mpc['vel'], '==', 0, when='AT_END')
 
+    mpc.constrain(-5, '<=', mpc['vel'], '<=', 6)
+
     mpc.constrain(mpc['force']**2, '<=', 4)
     mpc.constrain(mpc['someRandomParameter']/4.0, '<=', 2)
 
