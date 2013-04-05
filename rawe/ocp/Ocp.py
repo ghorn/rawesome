@@ -19,13 +19,16 @@ class Ocp(object):
         self._constraintsStart = []
         self._constraintsEnd = []
 
+    # stuff inherited from dae
     def __getitem__(self,name):
         return self._dae[name]
-
     def __contains__(self,name):
         if not isinstance(name,str):
             raise KeyError('key must be a string')
         return name in self._dae
+    def ddt(self,name):
+        return self._dae.ddt(name)
+
 
 #    def bound(self, name, (lb,ub), when=None):
 #        assert name in dae, "unrecognized name \""+name+"\""
