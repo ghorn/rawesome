@@ -90,6 +90,7 @@ int makeRienIntegrator( const char * genPath,
   // set NUM_INTEGRATOR_STEPS
   sim.set( NUM_INTEGRATOR_STEPS, numIntegratorSteps );
 
+  // 0 == rhs()
   sim.setModel( "model", "rhs", "rhs_jac" );
   sim.setDimensions( nx, nx, nz, nu );
 

@@ -1,22 +1,27 @@
 import ctypes
 import os
 import subprocess
-import tempfile
-import shutil
-import hashlib
 import numpy
 
-rawesomeDataPath = os.path.expanduser("~/.rawesome")
+from ..utils.codegen import memoizeFiles, withTempdir
 
 def loadIntegratorInterface():
-    # get the filename of the shared object
+    # get the integrator interface directory
     filename = __file__.rstrip('.pyc')
     filename = filename.rstrip('.py')
     filename = filename.rstrip('rienIntegrator')
-    filename += 'rienIntegratorInterface/rienIntegratorInterface.so'
+    interfaceDir = os.path.join(filename , 'rienIntegratorInterface')
+
+    # call make to make sure shared lib is build
+    p = subprocess.Popen(['make'], stdout=subprocess.PIPE, cwd=interfaceDir)
+    ret = p.wait()
+
+    if ret != 0:
+        print p.stdout.read()
+        raise Exception("integrator compilation failed, return code "+str(ret))
 
     # load the shared object
-    return ctypes.cdll.LoadLibrary(filename)
+    return ctypes.cdll.LoadLibrary(os.path.join(interfaceDir, 'rienIntegratorInterface.so'))
 
 def makeMakefile(cfiles):
     return """\
@@ -64,37 +69,9 @@ def writeRienIntegrator(dae, path, options):
         raise Exception("rien integrator creater, what goon set bad options?")
 
 
-def generateRienIntegrator(dae, options):
-    # make temporary directory and generate integrator.c and acado.h there
-    # then read those files
-    tmppath = tempfile.mkdtemp()
-    try:
-        writeRienIntegrator(dae, tmppath, options)
-
-        integratorPath = tmppath+'/integrator.c'
-        acadoHeaderPath = tmppath+'/acado.h'
-
-        f = open(integratorPath,'r')
-        integrator = f.read()
-        f.close()
-
-        f = open(acadoHeaderPath,'r')
-        acadoHeader = f.read()
-        f.close()
-
-    finally:
-        shutil.rmtree(tmppath)
-
-    return (integrator, acadoHeader)
-    
-
 def exportIntegrator(dae, options):
-    # make ~/.rawesome if it doesn't exist
-    if not os.path.exists(rawesomeDataPath):
-        os.makedirs(rawesomeDataPath)
-
     # get the exported integrator files
-    (integrator, acadoHeader) = generateRienIntegrator(dae, options)
+    exportedFiles = withTempdir(lambda tmppath : writeRienIntegrator(dae, tmppath, options))
 
     # model file
     rienModelGen = dae.makeRienModel(options['timestep'])
@@ -110,61 +87,23 @@ ACADOworkspace acadoWorkspace;
 ACADOvariables acadoVariables;
 """
 
-    genfiles = [('integrator.c', integrator),
-                ('acado.h', acadoHeader),
+    genfiles = [('integrator.c', exportedFiles['integrator.c']),
+                ('acado.h', exportedFiles['acado.h']),
                 ('model.c', modelFile),
                 ('workspace.c', workspace),
                 ('Makefile', makefile)]
+    exportpath = memoizeFiles(genfiles)
 
-    # hash the files
-    exportpath = rawesomeDataPath + '/' + \
-        hashlib.md5(''.join([''.join(x) for x in genfiles])).hexdigest()
+    # compile the code
+    p = subprocess.Popen(['make'], cwd=exportpath)
+    ret = p.wait()
+    if ret != 0:
+        raise Exception("integrator compilation failed, return code "+str(ret))
 
-    def writeFiles():
-        for (filename, filestring) in genfiles:
-            f = open(exportpath+'/'+filename,'w')
-            f.write(filestring)
-            f.close()
-    def compileFiles():
-        # compile the code
-        p = subprocess.Popen(['make'], cwd=exportpath)
-        ret = p.wait()
-        if ret != 0:
-            raise Exception("integrator compilation failed, return code "+str(ret))
-
-        #p = subprocess.Popen(['make'], stdout=subprocess.PIPE, cwd=exportpath)
-        #p.wait()
-        #ret = p.stdout.read()
-        #print "ret: " +str(ret)
-
-    # if no directory named by this hash exists, create it and compile the project there
-    print "integrator export path:  "+exportpath
-    if not os.path.exists(exportpath):
-        os.makedirs(exportpath)
-        writeFiles()
-        compileFiles()
-
-    # if the directory already exists, check if the contents match
-    else:
-        unmatched = []
-        for (filename, filestring) in genfiles:
-            f = open(exportpath+'/'+filename, 'r')
-            contents = f.read()
-            f.close()
-            if contents != filestring:
-                unmatched += filename
-        # if the files match, run "make" to ensure everything is built
-        if len(unmatched) == 0:
-            compileFiles()
-        # if the files don't match, print message and write new files
-        else:
-            print "shit! got hash collision"
-            # remove any existing files
-            for f in os.listdir(exportpath):
-                os.remove(exportpath+'/'+f)
-            # write and compile our new files
-            writeFiles()
-            compileFiles()
+    #p = subprocess.Popen(['make'], stdout=subprocess.PIPE, cwd=exportpath)
+    #p.wait()
+    #ret = p.stdout.read()
+    #print "ret: " +str(ret)
 
     print 'loading '+exportpath+'/integrator.so'
     integratorLib = ctypes.cdll.LoadLibrary(exportpath+'/integrator.so')

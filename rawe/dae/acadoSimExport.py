@@ -10,7 +10,7 @@ class AlgorithmWriter(object):
     def writePrototype(self, funname):
         self.replace0 = {'spaces':self.spacesStr, 'real':self.realStr, 'work':'work','init':'',
                          'input':self.inputStr, 'output':self.outputStr, 'funname':funname}
-        return 'void %(funname)s( %(real)s * %(input)s, %(real)s * %(output)s ){' % self.replace0
+        return 'void %(funname)s( const %(real)s * %(input)s, %(real)s * %(output)s ){' % self.replace0
 
     def convertAlgorithm(self, f):
         # error dictionary

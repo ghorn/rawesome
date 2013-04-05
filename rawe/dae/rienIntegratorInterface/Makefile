@@ -1,4 +1,4 @@
-CXX      = g++
+CXX       = g++
 CXXFLAGS  = -Wall
 CXXFLAGS += -g
 CXXFLAGS += -O2
@@ -24,7 +24,7 @@ OBJ = $(CPP_SRC:%.cpp=%.o)
 
 rienIntegratorInterface.so : $(OBJ)
 	@echo LD $@ #: $(CXX) -shared -Wl,-soname,$@ -o $@ $(OBJ) $(LDFLAGS)
-	@$(CXX)   -shared -Wl,-soname,$@ -o $@ $(OBJ) $(LDFLAGS)
+	@$(CXX) -shared -Wl,-soname,$@ -o $@ $(OBJ) $(LDFLAGS)
 
 # aliases
 obj : $(OBJ)
