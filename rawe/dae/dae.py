@@ -342,3 +342,13 @@ class Dae(object):
         for k,name in enumerate(self.outputNames()):
             dae[name] = outs[k+2]
         return dae
+
+    def assertNoFreeParams(self):
+        # get the residual fg(xdot,x,z,u,p)
+        fg = self.getResidual()
+        alloutputs = [fg] + [self[name] for name in self.outputNames()]
+
+        testFun = C.SXFunction([self.xDotVec(),self.xVec(),self.zVec(),self.uVec(),self.pVec()],
+                               alloutputs)
+        testFun.init()
+        assert len(testFun.getFree()) == 0, "oh noes, dae has free parameters: "+str(testFun.getFree())

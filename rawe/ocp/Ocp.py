@@ -4,6 +4,7 @@ import exportOcp
 
 class Ocp(object):
     def __init__(self, dae, N=None, ts=None):
+        dae.assertNoFreeParams()
         self._dae = dae
         if N is None or ts is None:
             raise Exception('please initialize Ocp with Ocp(dae, N=.., ts=..)')
