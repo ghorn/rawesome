@@ -86,4 +86,4 @@ class Ocp(object):
         
     def exportCode(self, options, qpSolver='QP_OASES'):
         print "put default options in here"
-        exportOcp.exportOcp(self, options, qpSolver)
+        return exportOcp.exportOcp(self, options, qpSolver)

@@ -116,7 +116,10 @@ CC       = %(CC)s
 CXXFLAGS = -O3 -fPIC -finline-functions
 CFLAGS   = -O3 -fPIC -finline-functions
 
-LDFLAGS = -lm
+#CFLAGS   += -Wall -Wextra
+#CXXFLAGS += -Wall -Wextra
+
+LDFLAGS = -lm -lrt
 
 CXX_SRC = \\
 %(qpo_src)s \\
@@ -126,7 +129,8 @@ C_SRC = \\
 \tacado_integrator.c \\
 \tacado_solver.c \\
 \tacado_auxiliary_functions.c \\
-\tmodel.c
+\tmodel.c \\
+\tworkspace.c
 
 QPO_INC = \\
 \t-I. \\
@@ -197,6 +201,11 @@ def exportQpOases(options, phase1src):
 
     # add makefile
     genfiles['Makefile'] = qpoasesMakefile(options, qpoStuff['qpOASESsrc'])
+    genfiles['workspace.c'] ='''\
+#include "acado_common.h"
+ACADOworkspace acadoWorkspace;
+ACADOvariables acadoVariables;
+'''
 
     # write all this
     exportpath = codegen.memoizeFiles(genfiles)
@@ -209,3 +218,45 @@ def exportQpOases(options, phase1src):
     if ret != 0:
 #        print "stdout: "+p.stdout.read()
         raise Exception("ocp compilation failed, return code "+str(ret))
+
+    # load the result
+    libpath = os.path.join(exportpath, 'ocp.so')
+
+    class OcpRT(object):
+        def __init__(self,libpath):
+            print 'loading "'+libpath+'"'
+            self._lib = ctypes.cdll.LoadLibrary(libpath)
+            print 'initializing solver'
+            self._lib.initializeSolver()
+            self._libpath = libpath
+
+        def preparationStep(self):
+            self._lib.preparationStep()
+
+        def feedbackStep(self):
+            return self._lib.feedbackStep()
+
+        def initializeNodesByForwardSimulation(self):
+            self._lib.initializeNodesByForwardSimulation()
+
+#        def shiftStates( int strategy, real_t* const xEnd, real_t* const uEnd ):
+#            void shiftStates( int strategy, real_t* const xEnd, real_t* const uEnd );
+
+#        def shiftControls( real_t* const uEnd ):
+#            void shiftControls( real_t* const uEnd );
+
+        def getKKT(self):
+            return self._lib.getKKT()
+
+        def getObjective(self):
+            return self._lib.getObjective()
+    return OcpRT(libpath)
+#    def call(path):
+#        ret = lib.makeRienIntegrator(ctypes.c_char_p(path),
+#                                     options['numIntervals'],
+#                                     ctypes.c_double(1.0),
+#                                     ctypes.c_char_p(options['integratorType']),
+#                                     options['integratorGrid'],
+#                                     options['numIntegratorSteps'],
+#                                     nx, nz, nup)
+#        if ret != 0:
