@@ -98,6 +98,9 @@ def writeAcadoAlgorithm(ocp, dae):
                 makeInfixBinary('-',replace)
             elif op==C.OP_MUL:
                 makeInfixBinary('*',replace)
+            elif op==C.OP_SQ:
+                replace['i3'] = replace['i2']
+                makeInfixBinary('*',replace)
             elif op==C.OP_DIV:
                 makeInfixBinary('/',replace)
             elif op==C.OP_ATAN2:
