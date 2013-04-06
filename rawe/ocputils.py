@@ -67,7 +67,7 @@ class Constraints():
     def getUb(self):
         return C.veccat(self._gub)
 
-    def getViolations(self,g,lbg,ubg,reportThreshold=0):
+    def getViolations(self,g,lbg,ubg,reportThreshold=0,reportEqViolations=False):
         """
         Tests if g >= ubg + reportThreshold
                  g <= lbg - reportThreshold
@@ -80,6 +80,11 @@ class Constraints():
         lbviols = lbg - g
         ubviolsIdx = np.where(C.logic_and(ubviols >= reportThreshold, ubg > lbg))[0]
         lbviolsIdx = np.where(C.logic_and(lbviols >= reportThreshold, ubg > lbg))[0]
+
+        eqviolsIdx = []
+        if reportEqViolations:
+            eqviolsIdx = np.where(C.logic_and(C.fabs(ubviols) >= reportThreshold, ubg == lbg))[0]
+
         violations = {}
         for k in ubviolsIdx:
             (name,time,idx) = self._tags[k]
@@ -91,6 +96,13 @@ class Constraints():
         for k in lbviolsIdx:
             (name,time,idx) = self._tags[k]
             viol = ('lb',(time,idx),float(lbviols[k]))#,g[k],lbg[k])
+            if name not in violations:
+                violations[name] = [viol]
+            else:
+                violations[name].append(viol)
+        for k in eqviolsIdx:
+            (name,time,idx) = self._tags[k]
+            viol = ('eq',(time,idx),float(ubviols[k]))#,g[k],lbg[k])
             if name not in violations:
                 violations[name] = [viol]
             else:
