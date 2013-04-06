@@ -160,10 +160,10 @@ def writeAcadoAlgorithm(ocp, dae):
 
     return (algStrings, constraintData)
 
-def generateAcadoOcp(ocp):
+def generateAcadoOcp(ocp, acadoOptions):
     dae = ocp._dae
-    print "WARNING: RE-ENABLE PARAMETER UNSUPPORTED ASSERTION"
-#    assert len(dae.pNames()) == 0, 'parameters not supported by acado codegen'
+    #print "WARNING: RE-ENABLE PARAMETER UNSUPPORTED ASSERTION"
+    assert len(dae.pNames()) == 0, 'parameters not supported by acado codegen'
 
     lines = []
 
@@ -224,41 +224,17 @@ _ocp.setDimensions( %(nx)d, %(nx)d, %(nz)d, %(nup)d );\
     
     lines.append('''
 /* setup OCPexport */
-OCPexport _ocpe( _ocp );
+OCPexport _ocpe( _ocp );\
+''')
 
-_ocpe.set( HESSIAN_APPROXIMATION,   GAUSS_NEWTON    );
-// _ocpe.set( DISCRETIZATION_TYPE,  SINGLE_SHOOTING );
-_ocpe.set( DISCRETIZATION_TYPE,     MULTIPLE_SHOOTING );
-_ocpe.set( INTEGRATOR_TYPE, INT_IRK_RIIA3 );
-_ocpe.set( NUM_INTEGRATOR_STEPS, N * Ni );
-// _ocpe.set( IMPLICIT_INTEGRATOR_MODE,      IFT );
-// _ocpe.set( IMPLICIT_INTEGRATOR_NUM_ITS,   5   );
-_ocpe.set( LINEAR_ALGEBRA_SOLVER,        GAUSS_LU );
-// _ocpe.set( LINEAR_ALGEBRA_SOLVER,     HOUSEHOLDER_QR );
-// _ocpe.set( FIX_INITIAL_STATE, NO );
-// _ocpe.set( CG_HARDCODE_CONSTRAINT_VALUES, NO );
-_ocpe.set( SPARSE_QP_SOLUTION,     FULL_CONDENSING );
-// _ocpe.set( SPARSE_QP_SOLUTION,  CONDENSING );
-_ocpe.set( QP_SOLVER,              QP_QPOASES      );
-// _ocpe.set( SPARSE_QP_SOLUTION, SPARSE_SOLVER );
-// _ocpe.set( QP_SOLVER,          QP_FORCES      );
-// _ocpe.set( QP_SOLVER,          QP_QPDUNES     );
-// _ocpe.set( MAX_NUM_QP_ITERATIONS,   20             );
-_ocpe.set( HOTSTART_QP,                YES            );
-// _ocpe.set( LEVENBERG_MARQUARDT,     1.0e-10        );
-_ocpe.set( GENERATE_TEST_FILE,         YES            );
-_ocpe.set( GENERATE_MAKE_FILE,         YES            );
-_ocpe.set( GENERATE_MATLAB_INTERFACE,  YES            );
-// _ocpe.set( USE_SINGLE_PRECISION,    YES            );
-// _ocpe.set( CG_USE_OPENMP,           YES            );
-//_ocpe.set( PRINTLEVEL, HIGH );
+    for name,val in acadoOptions:
+        lines.append('_ocpe.set( '+name+', '+val+' );')
 
+    lines.append('''
 /* export the code */
-//_ocpe.printDimensionsQP( );
 _ocpe.exportCode( exportDir );
 
-return 0;\
-''')
+return 0;''' )
 
     lines = '\n'.join(['    '+l for l in ('\n'.join(lines)).split('\n')])
     lines = '''\

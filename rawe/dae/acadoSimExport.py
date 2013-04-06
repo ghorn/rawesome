@@ -161,6 +161,8 @@ def generateCModel(dae,ag):
     rhs_jacob_string.extend(writer.convertAlgorithm(rhs_jacob))
     rhs_jacob_string.append('}')
 
+    residualString = '\n'.join(rhs_string + [''] + rhs_jacob_string)
+
     # outputs
     o = C.veccat( [dae[outname] for outname in dae.outputNames()] )
     outputs = C.SXFunction( [inputs], [o] )
@@ -188,8 +190,8 @@ def generateCModel(dae,ag):
     modelFile.extend(outputs_jacob_string)
     return {'modelFile':'\n'.join(modelFile),
             'rhs':rhs,
-            'rhsJacob':rhs_jacob}
-
+            'rhsJacob':rhs_jacob,
+            'rhsAndJacString':residualString}
 
 
 def generateSimExport(dae):

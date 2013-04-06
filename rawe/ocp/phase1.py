@@ -5,7 +5,7 @@ import os
 from rawe.utils import codegen, pkgconfig
 import writeAcadoOcpExport
 
-def makeExportMakefile(options):
+def makeExportMakefile(cgOptions):
     rpath = None
     for blah in pkgconfig.call(['--libs','ocg2']).split(' '):
         blah = blah.strip()
@@ -37,18 +37,18 @@ export_ocp.so : $(OBJ)
 
 clean :
 \trm -f *.o *.so
-""" % {'CXX':options['CXX'],'rpath':rpath}
+""" % {'CXX':cgOptions['CXX'],'rpath':rpath}
     return makefile
 
 # This writes and runs the ocp exporter, returning an exported OCP as a
 # dictionary of files.
-def runPhase1(ocp, options, qpSolver):
+def runPhase1(ocp, cgOptions, acadoOptions, qpSolver):
     supportedQps = ['QP_OASES']
     assert qpSolver in supportedQps, "qp solver must be one of "+str(supportedQps)
 
     # write the ocp exporter cpp file
-    genfiles = {'export_ocp.cpp':writeAcadoOcpExport.generateAcadoOcp(ocp),
-                'Makefile':makeExportMakefile(options)}
+    genfiles = {'export_ocp.cpp':writeAcadoOcpExport.generateAcadoOcp(ocp, acadoOptions),
+                'Makefile':makeExportMakefile(cgOptions)}
     exportpath = codegen.memoizeFiles(genfiles)
 
     # compile the ocp exporter
