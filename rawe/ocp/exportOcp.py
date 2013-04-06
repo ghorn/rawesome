@@ -1,101 +1,13 @@
 import subprocess
 import ctypes
 import os
-import sys
 
-from ..utils import codegen
-import rawe.dae.rienIntegrator as rienIntegrator
-import writeAcadoOcpExport
-
-def makeExportMakefile(options):
-    p = subprocess.Popen(['pkg-config', '--libs','ocg2'], stdout = subprocess.PIPE)
-    ret = p.wait()
-    assert ret==0, 'error calling `pkg-config --libs ocg2`'
-    rpath = None
-    for blah in p.stdout.read().strip().split(' '):
-        blah = blah.strip()
-        if len(blah) > 1 and blah[:2] == '-L':
-            rpath = blah[2:]
-            break
-    assert rpath is not None, "couldn't detect the library path of ocg2 :("
-
-    makefile = """\
-CXX       = %(CXX)s
-CXXFLAGS  = -O2 -fPIC -finline-functions -I. `pkg-config --cflags acado` `pkg-config --cflags ocg2`
-LDFLAGS = -lm `pkg-config --libs acado` `pkg-config --libs ocg2`
-
-CXX_SRC = export_ocp.cpp
-OBJ = $(CXX_SRC:%%.cpp=%%.o)
-
-.PHONY: clean all export_ocp.so
-all : $(OBJ) export_ocp.so
-
-%%.o : %%.cpp #acado.h
-\t@echo CXX $@: $(CXX) $(CXXFLAGS) -c $< -o $@
-\t@$(CXX) $(CXXFLAGS) -c $< -o $@
-
-export_ocp.so::LDFLAGS+=-Wl,-rpath,%(rpath)s
-
-export_ocp.so : $(OBJ)
-\t@echo LD $@ : $(CXX) -shared -o $@ $(OBJ) $(LDFLAGS)
-\t@$(CXX) -shared -o $@ $(OBJ) $(LDFLAGS)
-
-clean :
-\trm -f *.o *.so
-""" % {'CXX':options['CXX'],'rpath':rpath}
-    return makefile
+import phase1
+from rawe.utils import codegen,pkgconfig
 
 def exportOcp(ocp, options, qpSolver):
-    supportedQps = ['QP_OASES']
-    assert qpSolver in supportedQps, "qp solver must be one of "+str(supportedQps)
-
-    # make sure pkg-config is available
-    try:
-        subprocess.check_call(["pkg-config", '--version'], \
-                                  stdout = subprocess.PIPE, stderr = subprocess.PIPE)
-    except (subprocess.CalledProcessError, OSError):
-        sys.stderr.write('`pkg-config` has not been found, please install it\n')
-        sys.exit(os.EX_CONFIG)
-
-    # make sure pkg-config can find acado and ocg2
-    for name in ['acado','ocg2']:
-        try:
-            call = subprocess.Popen(['pkg-config', '--libs', '--cflags', name], \
-                                        stdout = subprocess.PIPE, stderr = subprocess.PIPE)
-            (output, error) = call.communicate()
-            if error != '':
-                raise OSError
-        except (subprocess.CalledProcessError, OSError):
-            raise Exception('\n'+error)
-
-    # write the ocp exporter cpp file
-    genfiles = {'export_ocp.cpp':writeAcadoOcpExport.generateAcadoOcp(ocp),
-                'Makefile':makeExportMakefile(options)}
-    exportpath = codegen.memoizeFiles(genfiles)
-
-    # compile the ocp exporter
-    p = subprocess.Popen(['make',codegen.makeJobs()], stdout=subprocess.PIPE, cwd=exportpath)
-    ret = p.wait()
-    if ret != 0:
-        print "stdout: "+p.stdout.read()
-        raise Exception("exportOcp phase 1 compilation failed, return code "+str(ret))
-
-    # load the ocp exporter
-    Ni = 5
-    lib = ctypes.cdll.LoadLibrary(os.path.join(exportpath, 'export_ocp.so'))
-
-    # run the ocp exporter
-    def runOcpExporter(path):
-        if qpSolver == 'QP_OASES':
-            os.mkdir(os.path.join(path,'qpoases'))
-
-        ret = lib.exportOcp(ocp._nk,
-                            Ni,
-                            ctypes.c_double(ocp._ts),
-                            ctypes.c_char_p(path))
-        if ret != 0:
-            raise Exception("call to export_ocp.so failed")
-    files = codegen.withTempdir(runOcpExporter)
+    # write the OCP exporter and run it, returning an exported OCP
+    files = phase1.runPhase1(ocp, options, qpSolver)
 
     # add model for rien integrator
     files['model.c'] = '#include "qpoases/solver.hpp"\n\n' + \
@@ -177,9 +89,7 @@ def exportQpOases(options, phase1src):
     # call pkg-config to get qpoases source and includes
     qpoStuff = {}
     for name in ['qpOASESsrc', 'qpOASESinc']:
-        p = subprocess.Popen(['pkg-config','--variable',name,'acado'], stdout=subprocess.PIPE)
-        assert p.wait() == 0, '"pkg-config --variable '+name+' acado" returned error'
-        qpoStuff[name] = (p.stdout.read()).strip()
+        qpoStuff[name] = pkgconfig.call(['--variable',name,'acado'])
     qpoStuff['qpOASESsrc'] = qpoStuff['qpOASESsrc'].split(' ')
 
     # get qpoases source as file dictionary
