@@ -190,7 +190,9 @@ ACADOvariables acadoVariables;
                                        dtype=numpy.double)
             else:
                 raise Exception('unrecognized ACADO_WEIGHING_MATRICES_TYPE '+str(wmt))
-            self.x0 = numpy.zeros( (self._lib.py_get_ACADO_NX(), 1), dtype=numpy.double)
+
+            if self._lib.py_get_ACADO_INITIAL_STATE_FIXED():
+                self.x0 = numpy.zeros( (self._lib.py_get_ACADO_NX(), 1), dtype=numpy.double)
 
             self._lib.py_initialize()
             self.getAll()
@@ -206,7 +208,8 @@ ACADOvariables acadoVariables;
             self._callMat(self._lib.py_set_yN, self.yN)
             self._callMat(self._lib.py_set_S,  self.S)
             self._callMat(self._lib.py_set_SN, self.SN)
-            self._callMat(self._lib.py_set_x0, self.x0)
+            if self._lib.py_get_ACADO_INITIAL_STATE_FIXED():
+                self._callMat(self._lib.py_set_x0, self.x0)
 
         def getAll(self):
             self._callMat(self._lib.py_get_x,  self.x)
@@ -215,7 +218,8 @@ ACADOvariables acadoVariables;
             self._callMat(self._lib.py_get_yN, self.yN)
             self._callMat(self._lib.py_get_S,  self.S)
             self._callMat(self._lib.py_get_SN, self.SN)
-            self._callMat(self._lib.py_get_x0, self.x0)
+            if self._lib.py_get_ACADO_INITIAL_STATE_FIXED():
+                self._callMat(self._lib.py_get_x0, self.x0)
 
         def preparationStep(self):
             self.setAll()
