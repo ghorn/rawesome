@@ -1,8 +1,7 @@
 import ctypes
-import subprocess
 import os
 
-from rawe.utils import codegen, pkgconfig
+from rawe.utils import codegen,pkgconfig,subprocess_tee
 import writeAcadoOcpExport
 
 def makeExportMakefile(cgOptions):
@@ -52,9 +51,9 @@ def runPhase1(ocp, cgOptions, acadoOptions, qpSolver):
     exportpath = codegen.memoizeFiles(genfiles)
 
     # compile the ocp exporter
-    p = subprocess.Popen(['make',codegen.makeJobs()], stderr=subprocess.PIPE, cwd=exportpath)
-    if p.wait() != 0:
-        raise Exception("exportOcp phase 1 compilation failed:\n"+p.stderr.read())
+    (ret, msgs) = subprocess_tee.call(['make',codegen.makeJobs()], cwd=exportpath)
+    if ret != 0:
+        raise Exception("exportOcp phase 1 compilation failed:\n\n"+msgs)
 
     # load the ocp exporter
     Ni = 5

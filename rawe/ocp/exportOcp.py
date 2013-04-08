@@ -1,11 +1,10 @@
-import subprocess
 import ctypes
 import os
 import numpy
 
 import phase1
 import ocg_interface
-from rawe.utils import codegen,pkgconfig
+from rawe.utils import codegen,pkgconfig,subprocess_tee
 
 def exportOcp(ocp, cgOptions, acadoOptions, qpSolver):
     assert isinstance(cgOptions, dict), "codegen options must be a dictionary"
@@ -151,9 +150,9 @@ ACADOvariables acadoVariables;
     print exportpath
 
     # compile!
-    p = subprocess.Popen(['make',codegen.makeJobs()], stderr=subprocess.PIPE, cwd=exportpath)
-    if p.wait() != 0:
-        raise Exception("ocp compilation failed:\n"+p.stderr.read())
+    (ret, msgs) = subprocess_tee.call(['make',codegen.makeJobs()], cwd=exportpath)
+    if ret != 0:
+        raise Exception("ocp compilation failed:\n\n"+msgs)
 
     # load the result
     libpath = os.path.join(exportpath, 'ocp.so')
