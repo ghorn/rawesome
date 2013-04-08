@@ -205,6 +205,8 @@ ACADOvariables acadoVariables;
 
         def _callMat(self,call,mat):
             (nr,nc) = mat.shape
+            ret = call(ctypes.c_void_p(mat.ctypes.data), nr, nc)
+            assert 0 == ret, "dimension mismatch in "+str(call)
             return call(ctypes.c_void_p(mat.ctypes.data), nr, nc)
 
         def setAll(self):
