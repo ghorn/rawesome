@@ -1,3 +1,5 @@
+import matplotlib.pyplot as plt
+
 import rawe
 import casadi as C
 
@@ -12,68 +14,90 @@ if __name__=='__main__':
                      dae.ddt('vel') - (force - 0*3.0*pos - 0.2*vel)])
 
     # specify the Ocp
-    N = 20
+    N = 100
     mpc = rawe.ocp.Ocp(dae, N=N, ts=0.2)
-    mpc.constrain(mpc['pos'], '==', 1, when='AT_START')
-    mpc.constrain(mpc['vel'], '==', 0, when='AT_START')
-
-    mpc.constrain(mpc['pos'], '==', 0, when='AT_END')
-    mpc.constrain(mpc['vel'], '==', 0, when='AT_END')
-
-    mpc.constrain(-5, '<=', mpc['vel'], '<=', 6)
-    mpc.constrain(mpc['force']**2, '<=', 4)
+#    mpc.constrain(mpc['pos'], '==', 1, when='AT_START')
+#    mpc.constrain(mpc['vel'], '==', 0, when='AT_START')
+#    mpc.constrain(mpc['pos'], '==', 1, when='AT_END')
+#    mpc.constrain(mpc['vel'], '==', 0, when='AT_END')
 
     mpc.minimizeLsq(C.veccat([mpc['pos'],mpc['vel'],mpc['force']]))
-    mpc.minimizeLsqEndTerm(C.veccat([mpc['pos']]))
+    mpc.minimizeLsqEndTerm(C.veccat([mpc['pos'], mpc['vel']]))
 
     cgOptions = {'CXX':'clang++', 'CC':'clang'}
 #    cg_options = {'CXX':'g++', 'CC':'gcc'}
     acadoOptions = [("HESSIAN_APPROXIMATION",     "GAUSS_NEWTON"),
                     ("DISCRETIZATION_TYPE",       "MULTIPLE_SHOOTING"),
                     ("INTEGRATOR_TYPE",           "INT_IRK_RIIA3"),
-                    ("NUM_INTEGRATOR_STEPS",      "N * 5"),
+                    ("NUM_INTEGRATOR_STEPS",      str(N*5)),
                     ("LINEAR_ALGEBRA_SOLVER",     "GAUSS_LU"),
                     ("SPARSE_QP_SOLUTION",        "FULL_CONDENSING"),
+#                    ("SPARSE_QP_SOLUTION",        "CONDENSING"),
                     ("QP_SOLVER",                 "QP_QPOASES"),
-                    ("HOTSTART_QP",               "YES"),
+#                    ("SPARSE_QP_SOLUTION",        "SPARSE_SOLVER"),
+#                    ("QP_SOLVER",                 "QP_FORCES"),
+                    ("FIX_INITIAL_STATE",         "YES"),
+                    ("HOTSTART_QP",               "NO"),
                     ("GENERATE_MATLAB_INTERFACE", "YES")]
     ocpRt = mpc.exportCode(cgOptions=cgOptions,acadoOptions=acadoOptions,qpSolver='QP_OASES')
-
-
-    # run the generated code
     print '='*80
-    for k in range(ocpRt.u.size):
-        ocpRt.u[k] = 0.1*(k+1)
-    ocpRt.S[0,0] = 5;
-    ocpRt.S[1,1] = 0.1;
-    ocpRt.S[2,2] = 3;
-    for k in range(ocpRt.SN.shape[0]):
-        ocpRt.SN[k,k] = 10.0
 
-    print "u:"
-    print ocpRt.u
+
+    # set the cost hessians
+    ocpRt.S[0,0] = 5  /float(N*N);
+    ocpRt.S[1,1] = 0.1/float(N*N);
+    ocpRt.S[2,2] = 3  /float(N*N);
+
+    ocpRt.SN[0,0] = 10
+    ocpRt.SN[1,1] = 5
+
+    # make a really bad initial guess
+    for k in range(N):
+        ocpRt.u[k] = 1
     ocpRt.initializeNodesByForwardSimulation()
-    print "x:"
-    print ocpRt.x
-    print "x0:"
-    print ocpRt.x0
 
-    for k in range(ocpRt.S.shape[0]):
-        ocpRt.S[k,k] = 0.01
+    # plot initial guess
+    plt.figure()
+    plt.subplot(331)
+    plt.plot(ocpRt.x[:,0])
+    plt.title('x initial guess')
+    plt.subplot(334)
+    plt.plot(ocpRt.x[:,1])
+    plt.title('v initial guess')
+    plt.subplot(337)
+    plt.plot(ocpRt.u[:,0])
+    plt.title('u initial guess')
 
-    for k in range(100):
+    # set tracking trajectory
+    ocpRt.yN[0,0] = 1
+    ocpRt.yN[1,0] = 0
+
+    # iterate
+    kkts = []
+    objs = []
+    for k in range(10):
         ocpRt.preparationStep()
         prepret = ocpRt.feedbackStep()
+        kkts.append(ocpRt.getKKT())
+        objs.append(ocpRt.getObjective())
         if prepret != 0:
             raise Exception("feedbackStep returned error code "+str(prepret))
-    print "x after feedback:"
-    print ocpRt.x
-    print "u after feedback:"
-    print ocpRt.u
-    print "x0 after feedback:"
-    print ocpRt.x0
 
-    print "kkt: "+str(ocpRt.getKKT())
-    print "kkt type: "+str(type(ocpRt.getKKT()))
-    print "objective: "+str(ocpRt._lib.getObjective())
-    print "objective type: "+str(type(ocpRt._lib.getObjective()))
+    # plot results
+    plt.subplot(332)
+    plt.plot(ocpRt.x[:,0])
+    plt.title('x after feedback')
+    plt.subplot(335)
+    plt.plot(ocpRt.x[:,1])
+    plt.title('v after feedback')
+    plt.subplot(338)
+    plt.plot(ocpRt.u[:,0])
+    plt.title('u after feedback')
+
+    plt.subplot(233)
+    plt.semilogy(kkts)
+    plt.title('kkt convergence')
+    plt.subplot(236)
+    plt.semilogy(objs)
+    plt.title('objective convergence')
+    plt.show()

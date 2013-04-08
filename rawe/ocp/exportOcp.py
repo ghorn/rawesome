@@ -162,6 +162,12 @@ ACADOvariables acadoVariables;
         def __init__(self,libpath):
             print 'loading "'+libpath+'"'
             self._lib = ctypes.cdll.LoadLibrary(libpath)
+
+            # set return types of KKT and objective
+            self._lib.getKKT.restype = ctypes.c_double
+            self._lib.getObjective.restype = ctypes.c_double
+
+
             print 'initializing solver'
             self._lib.py_initialize()
             self._libpath = libpath
