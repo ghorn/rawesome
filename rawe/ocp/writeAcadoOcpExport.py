@@ -13,20 +13,17 @@ def writeAcadoAlgorithm(ocp, dae):
     constraintData = []
     for (lhs,comparison,rhs) in ocp._constraints:
         k = len(outputs)
-        outputs.append(lhs)
-        outputs.append(rhs)
-        constraintData.append((k,comparison,k+1,'ALWAYS'))
+        outputs.append(rhs-lhs)
+        constraintData.append((k,comparison,'ALWAYS'))
     for (lhs,comparison,rhs) in ocp._constraintsEnd:
         k = len(outputs)
-        outputs.append(lhs)
-        outputs.append(rhs)
-        constraintData.append((k,comparison,k+1,'AT_END'))
+        outputs.append(rhs-lhs)
+        constraintData.append((k,comparison,'AT_END'))
     for (lhs,comparison,rhs) in ocp._constraintsStart:
         k = len(outputs)
-        outputs.append(lhs)
-        outputs.append(rhs)
-        constraintData.append((k,comparison,k+1,'AT_START'))
-    assert len(outputs)-2 == len(constraintData)*2, 'the "impossible" happened'
+        outputs.append(rhs-lhs)
+        constraintData.append((k,comparison,'AT_START'))
+    assert len(outputs)-2 == len(constraintData), 'the "impossible" happened'
 
     f = C.SXFunction( inputs, outputs )
     f.init()
@@ -199,7 +196,7 @@ _ocp.setModel( "model", "rhs", "rhs_jac" );
 _ocp.setDimensions( %(nx)d, %(nx)d, %(nz)d, %(nup)d );\
 ''' % {'nx':len(dae.xNames()), 'nz':len(dae.zNames()), 'nup':len(dae.uNames())+len(dae.pNames())})
 
-    for (kLhs, comparison, kRhs, when) in constraintData:
+    for (k, comparison, when) in constraintData:
         if when == 'ALWAYS':
             whenStr = ''
         elif when == 'AT_END':
@@ -209,9 +206,9 @@ _ocp.setDimensions( %(nx)d, %(nx)d, %(nz)d, %(nup)d );\
         else:
             raise Exception('the "impossible" happened, unrecognized "when": '+str(when))
         lines.append(
-            '_ocp.subjectTo( %(whenStr)s0 %(comparison)s %(output)s_%(kRhs)d - %(output)s_%(kLhs)d );'
+            '_ocp.subjectTo( %(whenStr)s0 %(comparison)s %(output)s_%(k)d );'
             % { 'output':replace0['output'], 'comparison':comparison, 'whenStr':whenStr,
-                'kLhs':kLhs, 'kRhs':kRhs })
+                'k':k })
     # ocp
     lines.append('')
 

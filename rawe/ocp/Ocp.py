@@ -50,7 +50,7 @@ class Ocp(object):
 #        else:
 #            raise Exception("unrecognized \"when\": "+str(when))
 
-    def constrain(self,*args, **kwargs):
+    def constrain(self, *args, **kwargs):
         usage = "do Ocp.constrain(x, CMP, y) or Ocp.constrain(x, CMP1, y, CMP2, z) where CMP,CMP1,CMP2 can be any of '<=', '==', or '>=' written as strings"
         if len(args) is 3:
             assert args[1] in ['>=','==','<='], usage
@@ -73,7 +73,7 @@ class Ocp(object):
         else:
             assert type(rhs) in [int,float], "rhs type unrecognized: "+str(type(rhs))
 
-        assert comparison in ['==','<=','>='], 'comparison "'+str(comparison)+\
+        assert comparison in ['==','<=','>='], 'THE "IMPOSSIBLE" HAPPENED: comparison "'+str(comparison)+\
             '" is not "==", "<=", or ">="'
         if when is None:
             self._constraints.append((lhs,comparison,rhs))
