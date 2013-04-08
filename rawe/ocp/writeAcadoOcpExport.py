@@ -236,16 +236,7 @@ return 0;''' )
     lines = '\n'.join(['    '+l for l in ('\n'.join(lines)).split('\n')])
     lines = '''\
 #include <acado_toolkit.hpp>
-//#include <include/acado_gnuplot/gnuplot_window.hpp>
-
 #include <ocp_export.hpp>
-
-//#include <iostream>
-//#include <sstream>
-//#include <fstream>
-//#include <vector>
-//#include <string>
-//#include <iomanip>
 
 extern "C" int exportOcp(int N, int Ni, double Ts, const char * exportDir);
 
