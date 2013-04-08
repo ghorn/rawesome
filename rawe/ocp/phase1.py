@@ -52,11 +52,9 @@ def runPhase1(ocp, cgOptions, acadoOptions, qpSolver):
     exportpath = codegen.memoizeFiles(genfiles)
 
     # compile the ocp exporter
-    p = subprocess.Popen(['make',codegen.makeJobs()], stdout=subprocess.PIPE, cwd=exportpath)
-    ret = p.wait()
-    if ret != 0:
-        print "stdout: "+p.stdout.read()
-        raise Exception("exportOcp phase 1 compilation failed, return code "+str(ret))
+    p = subprocess.Popen(['make',codegen.makeJobs()], stderr=subprocess.PIPE, cwd=exportpath)
+    if p.wait() != 0:
+        raise Exception("exportOcp phase 1 compilation failed:\n"+p.stderr.read())
 
     # load the ocp exporter
     Ni = 5

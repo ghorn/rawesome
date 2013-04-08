@@ -151,12 +151,9 @@ ACADOvariables acadoVariables;
     print exportpath
 
     # compile!
-    p = subprocess.Popen(['make',codegen.makeJobs()], cwd=exportpath)
-#    p = subprocess.Popen(['make',codegen.makeJobs()], stdout=subprocess.PIPE, cwd=exportpath)
-    ret = p.wait()
-    if ret != 0:
-#        print "stdout: "+p.stdout.read()
-        raise Exception("ocp compilation failed, return code "+str(ret))
+    p = subprocess.Popen(['make',codegen.makeJobs()], stderr=subprocess.PIPE, cwd=exportpath)
+    if p.wait() != 0:
+        raise Exception("ocp compilation failed:\n"+p.stderr.read())
 
     # load the result
     libpath = os.path.join(exportpath, 'ocp.so')
