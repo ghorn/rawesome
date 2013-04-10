@@ -182,6 +182,8 @@ class Ocp(object):
             raise Exception("\"when\" must be 'AT_START' or 'AT_END', leaving it blank means always, you put: "+str(when))
 
     def minimizeLsq(self, obj):
+        if isinstance(obj, list):
+            obj = C.veccat(obj)
         C.makeDense(obj)
         shape = obj.shape
         assert shape[0] == 1 or shape[1] == 1, 'objective cannot be matrix, got shape: '+str(shape)
@@ -189,6 +191,8 @@ class Ocp(object):
         self._minLsq = obj
 
     def minimizeLsqEndTerm(self, obj):
+        if isinstance(obj, list):
+            obj = C.veccat(obj)
         C.makeDense(obj)
         shape = obj.shape
         assert shape[0] == 1 or shape[1] == 1, 'objective cannot be matrix, got shape: '+str(shape)
