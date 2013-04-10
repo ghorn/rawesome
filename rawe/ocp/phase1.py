@@ -41,7 +41,7 @@ clean :
 
 # This writes and runs the ocp exporter, returning an exported OCP as a
 # dictionary of files.
-def runPhase1(ocp, cgOptions, acadoOptions, qpSolver, Ni):
+def runPhase1(ocp, cgOptions, acadoOptions, qpSolver):
     supportedQps = ['QP_OASES']
     assert qpSolver in supportedQps, "qp solver must be one of " + str(supportedQps)
 
@@ -57,7 +57,7 @@ def runPhase1(ocp, cgOptions, acadoOptions, qpSolver, Ni):
 
     # load the ocp exporter
     lib = ctypes.cdll.LoadLibrary(os.path.join(exportpath, 'export_ocp.so'))
-    lib.exportOcp.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_double, ctypes.c_char_p]
+    lib.exportOcp.argtypes = [ctypes.c_int, ctypes.c_double, ctypes.c_char_p]
 
     # run the ocp exporter
     def runOcpExporter(path):
@@ -65,7 +65,6 @@ def runPhase1(ocp, cgOptions, acadoOptions, qpSolver, Ni):
             os.mkdir(os.path.join(path,'qpoases'))
 
         ret = lib.exportOcp(ocp._nk,
-                            Ni,
                             ctypes.c_double(ocp._ts),
                             ctypes.c_char_p(path))
         if ret != 0:

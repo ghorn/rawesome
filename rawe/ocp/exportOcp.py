@@ -6,7 +6,7 @@ import phase1
 import ocg_interface
 from rawe.utils import codegen,pkgconfig,subprocess_tee
 
-def exportOcp(ocp, cgOptions, acadoOptions, qpSolver, Ni):
+def exportOcp(ocp, cgOptions, acadoOptions, qpSolver):
     assert isinstance(cgOptions, dict), "codegen options must be a dictionary"
     if 'CXX' not in cgOptions:
         cgOptions['CXX'] = 'g++'
@@ -24,7 +24,7 @@ def exportOcp(ocp, cgOptions, acadoOptions, qpSolver, Ni):
         raise Exception(acadoOpsMsg)
 
     # write the OCP exporter and run it, returning an exported OCP
-    files = phase1.runPhase1(ocp, cgOptions, acadoOptions, qpSolver, Ni)
+    files = phase1.runPhase1(ocp, cgOptions, acadoOptions, qpSolver)
 
     # add model for rien integrator
     files['model.c'] = '''\

@@ -267,11 +267,11 @@ return 0;''' )
 #include <acado_toolkit.hpp>
 #include <ocp_export.hpp>
 
-extern "C" int exportOcp(int N, int Ni, double Ts, const char * exportDir);
+extern "C" int exportOcp(int N, double Ts, const char * exportDir);
 
 using namespace std;
 USING_NAMESPACE_ACADO
 
-int exportOcp(int N, int Ni, double Ts, const char * exportDir){
+int exportOcp(int N, double Ts, const char * exportDir){
 ''' + lines + '\n}'
     return lines
