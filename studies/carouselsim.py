@@ -31,6 +31,7 @@ if __name__=='__main__':
         while True:
             timer.sleep()
             outs = sim.getOutputs(x,u,p)
+            outs['delta'] = C.arctan2(x['sin_delta'], x['cos_delta'])
             communicator.sendKite(x,u,p,outs,conf)
             try:
                 x = sim.step(x,u,p)
