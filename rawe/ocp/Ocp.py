@@ -29,6 +29,8 @@ class Ocp(object):
         self._constraintsStart = []
         self._constraintsEnd = []
 
+        self._dbgMessages = []
+
     # stuff inherited from dae
     def __getitem__(self,name):
         return self._dae[name]
@@ -38,6 +40,10 @@ class Ocp(object):
         return name in self._dae
     def ddt(self,name):
         return self._dae.ddt(name)
+
+    # debugging message
+    def debug(self,msg):
+        self._dbgMessages.append(msg)
 
     # add a linear constraint
     def _bound(self, name, bnd, upperLowerEq, when=None):
@@ -103,6 +109,69 @@ class Ocp(object):
 
         assert comparison in ['==','<=','>='], 'THE "IMPOSSIBLE" HAPPENED: comparison "'+str(comparison)+\
             '" is not "==", "<=", or ">="'
+
+        # detect simple constraints in x and u
+        def maybeAddBoxConstraint():
+            inputs = C.veccat([self._dae.xVec(),self._dae.uVec()])
+            # make sure only x and u are in rhs,lhs
+            rml = rhs-lhs
+            f = C.SXFunction([inputs],[rml])
+            f.init()
+            if len(f.getFree()) != 0:
+                return
+
+            # take jacobian of rhs-lhs
+            jac = C.jacobian(rml,inputs)
+            # fail if any jacobian element is not constant
+            coeffs = {}
+            for j in range(inputs.size()):
+                if not jac[0,j].toScalar().isZero():
+                    if not jac[0,j].toScalar().isConstant():
+                        return
+                    coeffs[j] = jac[0,j]
+            if len(coeffs) == 0:
+                raise Exception("constraint has no design variables in it")
+            if len(coeffs) > 1:
+                self.debug("found linear constraint that is not box constraint")
+                return
+
+            # alright, we've found a box constraint!
+            j = coeffs.keys()[0]
+            coeff = coeffs[j]
+            name = (self._dae.xNames()+self._dae.uNames())[j]
+            [f0] = f.eval([0*inputs])
+            # if we just divided by a negative number (coeff), flip the comparison
+            if not coeff.toScalar().isNonNegative():
+                # lhs       `cmp`       rhs
+                # 0         `cmp`       rhs - lhs
+                # 0         `cmp`       coeff*x + f0
+                # -f0       `cmp`       coeff*x
+                # -f0/coeff `FLIP(cmp)` x
+                if comparison == '>=':
+                    newComparison = '<='
+                elif comparison == '<=':
+                    newComparison = '>='
+                else:
+                    newComparison = comparison
+            else:
+                newComparison = comparison
+
+            c = -f0/coeff
+            self.debug('found linear constraint: '+str(c)+' '+newComparison+' '+name)
+            if newComparison == '==':
+                self._bound( name, c, 'equality', when=when)
+            elif newComparison == '<=':
+                self._bound( name, c, 'lower', when=when)
+            elif newComparison == '>=':
+                self._bound( name, c, 'upper', when=when)
+            else:
+                raise Exception('the "impossible" happened, comparison "'+str(comparison)+
+                                "\" not in ['==','>=','<=']")
+            return 'found box constraint'
+
+        if maybeAddBoxConstraint() == 'found box constraint':
+            return
+
         if when is None:
             self._constraints.append((lhs,comparison,rhs))
         elif when is "AT_END":

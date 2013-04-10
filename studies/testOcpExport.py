@@ -17,14 +17,13 @@ if __name__=='__main__':
     N = 100
     mpc = rawe.ocp.Ocp(dae, N=N, ts=0.2)
 
-    mpc._bound('vel', 0.2, 'upper')
-    mpc._bound('vel', 0.1, 'upper', when='AT_START')
-    mpc._bound('vel', 0.1, 'upper', when='AT_END')
-#    mpc.constrain(mpc['pos'], '==', 0.1, when='AT_START')
-#    mpc.constrain(mpc['vel'], '==', 0, when='AT_START')
+    mpc.constrain(mpc['pos'], '==', 0.1, when='AT_START')
+    mpc.constrain(mpc['vel'], '==', 0, when='AT_START')
+
     mpc.constrain(mpc['pos'], '==', 0.5, when='AT_END')
     mpc.constrain(mpc['vel'], '==', 0, when='AT_END')
-#    mpc.constrain(-3, '<=', vel, '<=', 3, when='AT_END')
+
+    mpc.constrain(mpc['vel'], '<=', 0.2)
     mpc.constrain(-0.2, '<=', mpc['force'], '<=', 0.2)
 
     mpc.minimizeLsq(C.veccat([mpc['pos'],mpc['vel'],mpc['force']]))
