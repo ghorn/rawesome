@@ -16,16 +16,23 @@ if __name__=='__main__':
     # specify the Ocp
     N = 100
     mpc = rawe.ocp.Ocp(dae, N=N, ts=0.2)
-#    mpc.constrain(mpc['pos'], '==', 1, when='AT_START')
+
+    mpc._bound('vel', 0.2, 'upper')
+    mpc._bound('vel', 0.1, 'upper', when='AT_START')
+    mpc._bound('vel', 0.1, 'upper', when='AT_END')
+#    mpc.constrain(mpc['pos'], '==', 0.1, when='AT_START')
 #    mpc.constrain(mpc['vel'], '==', 0, when='AT_START')
-#    mpc.constrain(mpc['pos'], '==', 1, when='AT_END')
-#    mpc.constrain(mpc['vel'], '==', 0, when='AT_END')
+    mpc.constrain(mpc['pos'], '==', 0.5, when='AT_END')
+    mpc.constrain(mpc['vel'], '==', 0, when='AT_END')
+#    mpc.constrain(-3, '<=', vel, '<=', 3, when='AT_END')
+    mpc.constrain(-0.2, '<=', mpc['force'], '<=', 0.2)
 
     mpc.minimizeLsq(C.veccat([mpc['pos'],mpc['vel'],mpc['force']]))
     mpc.minimizeLsqEndTerm(C.veccat([mpc['pos'], mpc['vel']]))
 
     cgOptions = {'CXX':'clang++', 'CC':'clang'}
-#    cg_options = {'CXX':'g++', 'CC':'gcc'}
+#    cgOptions = {'CXX':'g++', 'CC':'gcc'}
+#    cgOptions = {'CXX':'icpc', 'CC':'icc'}
     acadoOptions = [("HESSIAN_APPROXIMATION",     "GAUSS_NEWTON"),
                     ("DISCRETIZATION_TYPE",       "MULTIPLE_SHOOTING"),
                     ("INTEGRATOR_TYPE",           "INT_IRK_RIIA3"),
@@ -42,7 +49,6 @@ if __name__=='__main__':
     ocpRt = mpc.exportCode(cgOptions=cgOptions,acadoOptions=acadoOptions,qpSolver='QP_OASES')
     print '='*80
 
-
     # set the cost hessians
     ocpRt.S[0,0] = 5  /float(N*N);
     ocpRt.S[1,1] = 0.1/float(N*N);
@@ -53,9 +59,9 @@ if __name__=='__main__':
 
     # make a really bad initial guess
     for k in range(N):
-        ocpRt.u[k] = 1
+        ocpRt.u[k] = 0.2
     ocpRt.initializeNodesByForwardSimulation()
-
+    
     # plot initial guess
     plt.figure()
     plt.subplot(331)
@@ -69,7 +75,7 @@ if __name__=='__main__':
     plt.title('u initial guess')
 
     # set tracking trajectory
-    ocpRt.yN[0,0] = 1
+    ocpRt.yN[0,0] = 0
     ocpRt.yN[1,0] = 0
 
     # iterate
@@ -77,11 +83,11 @@ if __name__=='__main__':
     objs = []
     for k in range(10):
         ocpRt.preparationStep()
-        prepret = ocpRt.feedbackStep()
+        fbret = ocpRt.feedbackStep()
+        if fbret != 0:
+            raise Exception("feedbackStep returned error code "+str(fbret))
         kkts.append(ocpRt.getKKT())
         objs.append(ocpRt.getObjective())
-        if prepret != 0:
-            raise Exception("feedbackStep returned error code "+str(prepret))
 
     # plot results
     plt.subplot(332)

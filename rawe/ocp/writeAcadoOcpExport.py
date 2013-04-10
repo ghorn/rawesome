@@ -196,6 +196,7 @@ _ocp.setModel( "model", "rhs", "rhs_jac" );
 _ocp.setDimensions( %(nx)d, %(nx)d, %(nz)d, %(nup)d );\
 ''' % {'nx':len(dae.xNames()), 'nz':len(dae.zNames()), 'nup':len(dae.uNames())+len(dae.pNames())})
 
+    lines.append('/* complex constraints */')
     for (k, comparison, when) in constraintData:
         if when == 'ALWAYS':
             whenStr = ''
@@ -210,6 +211,34 @@ _ocp.setDimensions( %(nx)d, %(nx)d, %(nz)d, %(nup)d );\
             % { 'output':replace0['output'], 'comparison':comparison, 'whenStr':whenStr,
                 'k':k })
     # ocp
+    lines.append('')
+    lines.append('/* simple constraints */')
+    bnds = []
+    for name,bnd in ocp._lbndmap.items():
+        bnds.append( (name,           '', '>=', bnd) )
+    for name,bnd in ocp._lbndmapStart.items():
+        bnds.append( (name, 'AT_START, ', '>=', bnd) )
+    for name,bnd in ocp._lbndmapEnd.items():
+        bnds.append( (name,   'AT_END, ', '>=', bnd) )
+
+    for name,bnd in ocp._ubndmap.items():
+        bnds.append( (name,           '', '<=', bnd) )
+    for name,bnd in ocp._ubndmapStart.items():
+        bnds.append( (name, 'AT_START, ', '<=', bnd) )
+    for name,bnd in ocp._ubndmapEnd.items():
+        bnds.append( (name,   'AT_END, ', '<=', bnd) )
+
+    for name,bnd in ocp._ebndmap.items():
+        bnds.append( (name,           '', '==', bnd) )
+    for name,bnd in ocp._ebndmapStart.items():
+        bnds.append( (name, 'AT_START, ', '==', bnd) )
+    for name,bnd in ocp._ebndmapEnd.items():
+        bnds.append( (name,   'AT_END, ', '==', bnd) )
+
+    bnds.sort()
+    for name, whenStr, comparison, bnd in bnds:
+        lines.append('_ocp.subjectTo( %(whenStr)s%(name)s %(comparison)s %(bnd)s );'
+                     % {'whenStr':whenStr, 'name':name, 'comparison':comparison, 'bnd':bnd})
     lines.append('')
 
     # objective

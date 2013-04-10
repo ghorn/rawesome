@@ -12,9 +12,18 @@ class Ocp(object):
         assert type(ts) in [int,float], "ts must be an int or float, got type: "+str(type(ts))
         self._nk = N
         self._ts = float(ts)
-#        self._bndmap = {}
-#        self._bndmapStart = {}
-#        self._bndmapEnd = {}
+
+        self._ebndmap = {}
+        self._ebndmapStart = {}
+        self._ebndmapEnd = {}
+
+        self._lbndmap = {}
+        self._lbndmapStart = {}
+        self._lbndmapEnd = {}
+
+        self._ubndmap = {}
+        self._ubndmapStart = {}
+        self._ubndmapEnd = {}
 
         self._constraints = []
         self._constraintsStart = []
@@ -30,25 +39,44 @@ class Ocp(object):
     def ddt(self,name):
         return self._dae.ddt(name)
 
+    # add a linear constraint
+    def _bound(self, name, bnd, upperLowerEq, when=None):
+        assert name in self._dae.xNames()+self._dae.uNames(), "you can't bound "+name+\
+            " because only differential state and control bounds are supported"
 
-#    def bound(self, name, (lb,ub), when=None):
-#        assert name in dae, "unrecognized name \""+name+"\""
-#        def blah(bmap,msg):
-#            if name in bmap:
-#                msg = '"'+name+'" has already been bound'+msg+', old bounds: '+\
-#                    str(bmap[name])+', new bounds: '+str((lb,ub))
-#                raise Exception(msg)
-#            else:
-#                bmap[name] = (lb,ub)
-#
-#        if when is None:
-#            blah(self._bndmap, '')
-#        elif when is "AT_END":
-#            blah(self._bndmapEnd, ' AT_END')
-#        elif when is "AT_START":
-#            blah(self._bndmapStart, ' AT_START')
-#        else:
-#            raise Exception("unrecognized \"when\": "+str(when))
+        if upperLowerEq == 'lower':
+            maps = {'ALWAYS':self._lbndmap,
+                    'AT_START':self._lbndmapStart,
+                    'AT_END':self._lbndmapEnd,
+                    }
+        elif upperLowerEq == 'upper':
+            maps = {'ALWAYS':self._ubndmap,
+                    'AT_START':self._ubndmapStart,
+                    'AT_END':self._ubndmapEnd,
+                    }
+        elif upperLowerEq == 'equality':
+            maps = {'ALWAYS':self._ebndmap,
+                    'AT_START':self._ebndmapStart,
+                    'AT_END':self._ebndmapEnd,
+                    }
+        else:
+            raise Exception('the "impossible" happened, upperLowerEq was not in '+\
+                                "['upper','lower','equality']")
+
+        def insertWithErr(bndmap):
+           if name in bndmap:
+               raise Exception(upperOrLower+' bound for '+name+' is already set to '+ \
+                                   str(bndmap[name])+' but you tried to change it to '+str(bnd))
+           bndmap[name] = bnd
+
+        if when is None:
+            insertWithErr(maps['ALWAYS'])
+        elif when is "AT_END":
+            insertWithErr(maps['AT_END'])
+        elif when is "AT_START":
+            insertWithErr(maps['AT_START'])
+        else:
+            raise Exception('the "impossible" happened: unrecognized "when": '+str(when))
 
     def constrain(self, *args, **kwargs):
         usage = "do Ocp.constrain(x, CMP, y) or Ocp.constrain(x, CMP1, y, CMP2, z) where CMP,CMP1,CMP2 can be any of '<=', '==', or '>=' written as strings"
