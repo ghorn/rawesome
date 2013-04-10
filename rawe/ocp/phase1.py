@@ -41,9 +41,9 @@ clean :
 
 # This writes and runs the ocp exporter, returning an exported OCP as a
 # dictionary of files.
-def runPhase1(ocp, cgOptions, acadoOptions, qpSolver):
+def runPhase1(ocp, cgOptions, acadoOptions, qpSolver, Ni):
     supportedQps = ['QP_OASES']
-    assert qpSolver in supportedQps, "qp solver must be one of "+str(supportedQps)
+    assert qpSolver in supportedQps, "qp solver must be one of " + str(supportedQps)
 
     # write the ocp exporter cpp file
     genfiles = {'export_ocp.cpp':writeAcadoOcpExport.generateAcadoOcp(ocp, acadoOptions),
@@ -56,8 +56,8 @@ def runPhase1(ocp, cgOptions, acadoOptions, qpSolver):
         raise Exception("exportOcp phase 1 compilation failed:\n\n"+msgs)
 
     # load the ocp exporter
-    Ni = 5
     lib = ctypes.cdll.LoadLibrary(os.path.join(exportpath, 'export_ocp.so'))
+    lib.exportOcp.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_double, ctypes.c_char_p]
 
     # run the ocp exporter
     def runOcpExporter(path):
