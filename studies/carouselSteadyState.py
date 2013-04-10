@@ -2,8 +2,6 @@ import zmq
 import casadi as C
 
 from rawe.ocputils import Constraints
-import rawekite.kiteproto as kiteproto
-import rawekite.kite_pb2 as kite_pb2
 
 pi = C.pi
 
@@ -91,16 +89,20 @@ def getSteadyState(dae,conf,omega0,r0):
     publisher.bind("tcp://*:5563")
     class MyCallback:
         def __init__(self):
+            import rawekite.kiteproto as kiteproto
+            import rawekite.kite_pb2 as kite_pb2
+            self.kiteproto = kiteproto
+            self.kite_pb2 = kite_pb2
             self.iter = 0
         def __call__(self,f,*args):
-            x = C.DMatrix(f.input(C.NLP_X_OPT))
+            x = C.DMatrix(f.input('x'))
             sol = {}
             for k,name in enumerate(dae.xNames()+dae.zNames()+dae.uNames()+dae.pNames()):
                 sol[name] = x[k].at(0)
             lookup = lambda name: sol[name]
-            kp = kiteproto.toKiteProto(lookup,
-                                       lineAlpha=0.2)
-            mc = kite_pb2.MultiCarousel()
+            kp = self.kiteproto.toKiteProto(lookup,
+                                            lineAlpha=0.2)
+            mc = self.kite_pb2.MultiCarousel()
             mc.horizon.extend([kp])
             mc.messages.append("iter: "+str(self.iter))
             self.iter += 1
@@ -111,7 +113,7 @@ def getSteadyState(dae,conf,omega0,r0):
     def addCallback():
         nd = len(boundsVec)
         nc = g.getLb().size()
-        c = C.PyFunction( MyCallback(), C.nlpsolverOut(x_opt=C.sp_dense(nd,1), cost=C.sp_dense(1,1), lambda_x=C.sp_dense(nd,1), lambda_p = C.sp_dense(0,1), lambda_g = C.sp_dense(nc,1), g = C.sp_dense(nc,1) ), [C.sp_dense(1,1)] )
+        c = C.PyFunction( MyCallback(), C.nlpsolverOut(x=C.sp_dense(nd,1), f=C.sp_dense(1,1), lam_x=C.sp_dense(nd,1), lam_p = C.sp_dense(0,1), lam_g = C.sp_dense(nc,1), g = C.sp_dense(nc,1) ), [C.sp_dense(1,1)] )
         c.init()
         solver.setOption("iteration_callback", c)
 #    addCallback()
