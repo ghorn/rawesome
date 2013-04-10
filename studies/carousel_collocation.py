@@ -33,7 +33,7 @@ x0=C.veccat([x0,C.sqrt(C.sumAll(x0[0:2]*x0[0:2])),0,0,0])
 def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
     ocp = rawe.collocation.Coll(dae, nk=nk,nicp=nicp,deg=deg)
     ocp.setupCollocation(ocp.lookup('endTime'))
-                   
+
     # constrain invariants
     def constrainInvariantErrs():
         dcm = ocp.lookup('dcm',timestep=0)

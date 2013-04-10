@@ -441,11 +441,11 @@ class Coll():
             nc = self._constraints.getG().size()
     
             c = CS.PyFunction( callback,
-                               CS.nlpsolverOut(x_opt = CS.sp_dense(nd,1),
-                                               cost = CS.sp_dense(1,1),
-                                               lambda_x = CS.sp_dense(nd,1),
-                                               lambda_g = CS.sp_dense(nc,1),
-                                               lambda_p = CS.sp_dense(0,1),
+                               CS.nlpsolverOut(x = CS.sp_dense(nd,1),
+                                               f = CS.sp_dense(1,1),
+                                               lam_x = CS.sp_dense(nd,1),
+                                               lam_g = CS.sp_dense(nc,1),
+                                               lam_p = CS.sp_dense(0,1),
                                                g = CS.sp_dense(nc,1) ),
                                [CS.sp_dense(1,1)] )
             c.init()
@@ -463,8 +463,8 @@ class Coll():
         self.solver.init()
         
         # Bounds on g
-        self.solver.setInput(lbg,CS.NLP_LBG)
-        self.solver.setInput(ubg,CS.NLP_UBG)
+        self.solver.setInput(lbg,'lbg')
+        self.solver.setInput(ubg,'ubg')
 
         self._gfcn = gfcn
 
@@ -502,20 +502,20 @@ class Coll():
             vars_init = xInit
 
         # Initial condition
-        self.solver.setInput(vars_init, CS.NLP_X_INIT)
+        self.solver.setInput(vars_init, 'x0')
         
         # Bounds on x
-        self.solver.setInput(vars_lb,CS.NLP_LBX)
-        self.solver.setInput(vars_ub,CS.NLP_UBX)
+        self.solver.setInput(vars_lb,'lbx')
+        self.solver.setInput(vars_ub,'ubx')
         
         # Solve the problem
         self.solver.solve()
         
         # Print the optimal cost
-        print "optimal cost: ", float(self.solver.output(CS.NLP_COST))
+        print "optimal cost: ", float(self.solver.output('f'))
         
         # Retrieve the solution
-        return trajectory.TrajectoryPlotter(self,np.array(self.solver.output(CS.NLP_X_OPT)))
+        return trajectory.TrajectoryPlotter(self,np.array(self.solver.output('x')))
         
     def bound(self,name,val,timestep=None,quiet=False,force=False):
         assert isinstance(name,str)

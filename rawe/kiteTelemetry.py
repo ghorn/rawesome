@@ -41,16 +41,16 @@ def startKiteTelemetry(ocp, conf, userCallback=normalCallback, printBoundViolati
 
     class MyCallback:
         def __call__(self,f,*args):
-            xOpt = numpy.array(f.input(C.NLP_X_OPT))
+            xOpt = numpy.array(f.input('x'))
 
             if printBoundViolation:
-                lbx = numpy.array(ocp.solver.input(C.NLP_LBX))
-                ubx = numpy.array(ocp.solver.input(C.NLP_UBX))
+                lbx = numpy.array(ocp.solver.input('lbx'))
+                ubx = numpy.array(ocp.solver.input('ubx'))
                 ocp._bounds.printBoundsFeedback(xOpt,lbx,ubx,reportThreshold=0)
 
             if printConstraintViolation:
-                lbg = numpy.array(ocp.solver.input(C.NLP_LBG))
-                ubg = numpy.array(ocp.solver.input(C.NLP_UBG))
+                lbg = numpy.array(ocp.solver.input('lbg'))
+                ubg = numpy.array(ocp.solver.input('ubg'))
                 ocp._gfcn.setInput(xOpt,0)
                 ocp._gfcn.evaluate()
                 g = ocp._gfcn.output()

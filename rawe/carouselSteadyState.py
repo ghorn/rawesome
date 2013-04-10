@@ -118,17 +118,17 @@ def getSteadyState(dae,conf,omega0,r0):
     solver.setOption('max_iter',10000)
     solver.init()
 
-    solver.setInput(g.getLb(),C.NLP_LBG)
-    solver.setInput(g.getUb(),C.NLP_UBG)
-    solver.setInput(guessVec,C.NLP_X_INIT)
+    solver.setInput(g.getLb(),'lbg')
+    solver.setInput(g.getUb(),'ubg')
+    solver.setInput(guessVec,'x0')
     lb,ub = zip(*boundsVec)
-    solver.setInput(C.DMatrix(lb), C.NLP_LBX)
-    solver.setInput(C.DMatrix(ub), C.NLP_UBX)
+    solver.setInput(C.DMatrix(lb), 'lbx')
+    solver.setInput(C.DMatrix(ub), 'ubx')
 
     solver.solve()
     publisher.close()
     context.destroy()
-    xOpt = solver.output(C.NLP_X_OPT)
+    xOpt = solver.output('x')
     k = 0
     sol = {}
     for name in dae.xNames()+dae.zNames()+dae.uNames()+dae.pNames():

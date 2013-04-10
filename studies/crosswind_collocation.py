@@ -185,18 +185,18 @@ if __name__=='__main__':
 
     def printBoundsFeedback():
         xOpt = traj.dvMap.vectorize()
-        lbx = ocp.solver.input(C.NLP_LBX)
-        ubx = ocp.solver.input(C.NLP_UBX)
+        lbx = ocp.solver.input('lbx')
+        ubx = ocp.solver.input('ubx')
         ocp._bounds.printBoundsFeedback(xOpt,lbx,ubx,reportThreshold=0)
     printBoundsFeedback()
 
-    lbg = ocp.solver.input(C.NLP_LBG)
-    ubg = ocp.solver.input(C.NLP_UBG)
-    ocp._gfcn.setInput(traj.getDvs(),0)
-    ocp._gfcn.evaluate()
-    g = ocp._gfcn.output()
-    
-    ocp._constraints.printViolations(g,lbg,ubg,reportThreshold=0)
+#    lbg = ocp.solver.input('lbg')
+#    ubg = ocp.solver.input('ubg')
+#    ocp._gfcn.setInput(traj.getDvs(),0)
+#    ocp._gfcn.evaluate()
+#    g = ocp._gfcn.output()
+#
+#    ocp._constraints.printViolations(g,lbg,ubg,reportThreshold=1e-9)
 
     # Plot the results
     def plotResults():
