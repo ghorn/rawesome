@@ -187,7 +187,10 @@ class RienIntegrator(object):
             print (f.output() - dataOut)
         return dataOut
 
-    def run(self,x,u,p):
+    def run(self,*args,**kwargs):
+        raise Exception("to step a rien integrator, you now have to call .step(x,u,p) instead of .run(x,u,p)")
+
+    def step(self,x,u,p):
         # vectorize inputs
         for k,name in enumerate(self._dae.xNames()):
             self._xvec[k] = x[name]

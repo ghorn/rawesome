@@ -29,7 +29,7 @@ if __name__=='__main__':
     log = {'pos':[x['pos']], 'vel':[x['vel']]}
     print "running integrator..."
     for k in range(400):
-        x = integrator.run(x,u,p)
+        x = integrator.step(x,u,p)
         log['pos'].append(x['pos'])
         log['vel'].append(x['vel'])
 
