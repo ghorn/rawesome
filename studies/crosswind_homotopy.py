@@ -10,10 +10,10 @@ import rawekite
 
 def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
     ocp = rawe.collocation.Coll(dae, nk=nk,nicp=nicp,deg=deg)
-    
+
     print "setting up collocation..."
     ocp.setupCollocation(ocp.lookup('endTime'))
-    
+
     # constrain invariants
     def constrainInvariantErrs():
         dcm = ocp.lookup('dcm',timestep=0)
@@ -30,7 +30,7 @@ def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
     # constrain airspeed
     def constrainAirspeedAlphaBeta():
         for k in range(0,nk):
-            ocp.constrain(ocp.lookup('airspeed',timestep=k), '>=', 10, tag=('airspeed',nk))
+            ocp.constrain(ocp.lookup('airspeed',timestep=k), '>=', 20, tag=('airspeed',nk))
             ocp.constrainBnds(ocp.lookup('alpha(deg)',timestep=k), (-5,15), tag=('alpha',nk))
             ocp.constrainBnds(ocp.lookup('beta(deg)', timestep=k), (-10,10), tag=('beta',nk))
     constrainAirspeedAlphaBeta()
@@ -79,13 +79,13 @@ def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
     for w in ['w1','w2','w3']:
         ocp.bound(w,(-4*pi,4*pi))
 
-    ocp.bound('endTime',(4.0,7.0))
+    ocp.bound('endTime',(4.0,4.0))
     ocp.guess('endTime',4.0)
     ocp.bound('w0',(10,10))
 
     # boundary conditions
     ocp.bound('y',(0,0),timestep=0,quiet=True)
-    
+
     return ocp
 
 
@@ -103,69 +103,81 @@ if __name__=='__main__':
     print "setting up ocp..."
     ocp = setupOcp(dae,conf,nk=nk)
 
-    lineRadiusGuess = 120.0
-    circleRadiusGuess = 40.0
+    lineRadiusGuess = 70.0
+    circleRadiusGuess = 15.0
 
     # trajectory for homotopy
     homotopyTraj = {'x':[],'y':[],'z':[]}
-    for k in range(ocp.nk+1):
-        r = circleRadiusGuess
-        h = numpy.sqrt(lineRadiusGuess**2 - r**2)
-        nTurns = 1
-        
-        # path following
-        theta = nTurns*2*pi*k/float(ocp.nk)
-        thetaDot = nTurns*2*pi/(ocp._guess.lookup('endTime'))
-        xyzCircleFrame    = numpy.array([h, r*numpy.sin(theta),          -r*numpy.cos(theta)])
-        xyzDotCircleFrame = numpy.array([0, r*numpy.cos(theta)*thetaDot,  r*numpy.sin(theta)*thetaDot])
+    k = 0
+    for nkIdx in range(ocp.nk+1):
+        for nicpIdx in range(ocp.nicp):
+            if nkIdx == ocp.nk and nicpIdx > 0:
+                break
+            for degIdx in range(ocp.deg+1):
+                if nkIdx == ocp.nk and degIdx > 0:
+                    break
 
-        phi = numpy.arcsin(r/lineRadiusGuess) # rotate so it's above ground
-        phi += numpy.arcsin((conf['minAltitude']+0.3)/lineRadiusGuess)
-        R_c2n = numpy.matrix([[ numpy.cos(phi), 0, -numpy.sin(phi)],
-                              [              0, 1,               0],
-                              [ numpy.sin(phi), 0,  numpy.cos(phi)]])
-        xyz    = numpy.dot(R_c2n, xyzCircleFrame)
-        xyzDot = numpy.dot(R_c2n, xyzDotCircleFrame)
+                r = circleRadiusGuess
+                h = numpy.sqrt(lineRadiusGuess**2 - r**2)
+                nTurns = 1
 
-        homotopyTraj['x'].append(float(xyz[0,0]))
-        homotopyTraj['y'].append(float(xyz[0,1]))
-        homotopyTraj['z'].append(float(xyz[0,2]))
+                # path following
+                theta = nTurns*2*pi*k/float(ocp.nk*ocp.nicp*(ocp.deg+1)-1)
 
-        x = float(xyz[0,0])
-        y = float(xyz[0,1])
-        z = float(xyz[0,2])
-        
-        dx = float(xyzDot[0,0])
-        dy = float(xyzDot[0,1])
-        dz = float(xyzDot[0,2])
-        
-        ocp.guess('x',x,timestep=k)
-        ocp.guess('y',y,timestep=k)
-        ocp.guess('z',z,timestep=k)
-        ocp.guess('dx',dx,timestep=k)
-        ocp.guess('dy',dy,timestep=k)
-        ocp.guess('dz',dz,timestep=k)
+                thetaDot = nTurns*2*pi/(ocp._guess.lookup('endTime'))
+                xyzCircleFrame    = numpy.array([h, r*numpy.sin(theta),          -r*numpy.cos(theta)])
+                xyzDotCircleFrame = numpy.array([0, r*numpy.cos(theta)*thetaDot,  r*numpy.sin(theta)*thetaDot])
 
-        p0 = numpy.array([x,y,z])
-        dp0 = numpy.array([dx,dy,dz])
-        e1 = dp0/numpy.linalg.norm(dp0)
-        e3 = p0/lineRadiusGuess
-        e2 = numpy.cross(e3,e1)
+                phi = numpy.arcsin(r/lineRadiusGuess) # rotate so it's above ground
+                phi += numpy.arcsin((conf['minAltitude']+0.3)/lineRadiusGuess)
+                R_c2n = numpy.matrix([[ numpy.cos(phi), 0, -numpy.sin(phi)],
+                                      [              0, 1,               0],
+                                      [ numpy.sin(phi), 0,  numpy.cos(phi)]])
+                xyz    = numpy.dot(R_c2n, xyzCircleFrame)
+                xyzDot = numpy.dot(R_c2n, xyzDotCircleFrame)
 
-        ocp.guess('e11',e1[0],timestep=k)
-        ocp.guess('e12',e1[1],timestep=k)
-        ocp.guess('e13',e1[2],timestep=k)
-        
-        ocp.guess('e21',e2[0],timestep=k)
-        ocp.guess('e22',e2[1],timestep=k)
-        ocp.guess('e23',e2[2],timestep=k)
+                if nicpIdx == 0 and degIdx == 0:
+                    homotopyTraj['x'].append(float(xyz[0,0]))
+                    homotopyTraj['y'].append(float(xyz[0,1]))
+                    homotopyTraj['z'].append(float(xyz[0,2]))
 
-        ocp.guess('e31',e3[0],timestep=k)
-        ocp.guess('e32',e3[1],timestep=k)
-        ocp.guess('e33',e3[2],timestep=k)
-        
+                x = float(xyz[0,0])
+                y = float(xyz[0,1])
+                z = float(xyz[0,2])
+
+                dx = float(xyzDot[0,0])
+                dy = float(xyzDot[0,1])
+                dz = float(xyzDot[0,2])
+
+                ocp.guess('x',x,timestep=nkIdx,nicpIdx=nicpIdx,degIdx=degIdx)
+                ocp.guess('y',y,timestep=nkIdx,nicpIdx=nicpIdx,degIdx=degIdx)
+                ocp.guess('z',z,timestep=nkIdx,nicpIdx=nicpIdx,degIdx=degIdx)
+                ocp.guess('dx',dx,timestep=nkIdx,nicpIdx=nicpIdx,degIdx=degIdx)
+                ocp.guess('dy',dy,timestep=nkIdx,nicpIdx=nicpIdx,degIdx=degIdx)
+                ocp.guess('dz',dz,timestep=nkIdx,nicpIdx=nicpIdx,degIdx=degIdx)
+
+                p0 = numpy.array([x,y,z])
+                dp0 = numpy.array([dx,dy,dz])
+                e1 = dp0/numpy.linalg.norm(dp0)
+                e3 = p0/lineRadiusGuess
+                e2 = numpy.cross(e3,e1)
+
+                ocp.guess('e11',e1[0],timestep=nkIdx,nicpIdx=nicpIdx,degIdx=degIdx)
+                ocp.guess('e12',e1[1],timestep=nkIdx,nicpIdx=nicpIdx,degIdx=degIdx)
+                ocp.guess('e13',e1[2],timestep=nkIdx,nicpIdx=nicpIdx,degIdx=degIdx)
+
+                ocp.guess('e21',e2[0],timestep=nkIdx,nicpIdx=nicpIdx,degIdx=degIdx)
+                ocp.guess('e22',e2[1],timestep=nkIdx,nicpIdx=nicpIdx,degIdx=degIdx)
+                ocp.guess('e23',e2[2],timestep=nkIdx,nicpIdx=nicpIdx,degIdx=degIdx)
+
+                ocp.guess('e31',e3[0],timestep=nkIdx,nicpIdx=nicpIdx,degIdx=degIdx)
+                ocp.guess('e32',e3[1],timestep=nkIdx,nicpIdx=nicpIdx,degIdx=degIdx)
+                ocp.guess('e33',e3[2],timestep=nkIdx,nicpIdx=nicpIdx,degIdx=degIdx)
+
+                k += 1
+
     ocp.guess('w3', 2*pi/ocp._guess.lookup('endTime'))
-    
+
     # objective function
     obj = -1e6*ocp.lookup('gamma_homotopy')
     for k in range(ocp.nk+1):
@@ -179,15 +191,15 @@ if __name__=='__main__':
         ddr = ocp.lookup('ddr',timestep=k)
         daileron = ocp.lookup('daileron',timestep=k)
         delevator = ocp.lookup('delevator',timestep=k)
-        
+
         daileronSigma = 0.01
         delevatorSigma = 0.1
         ddrSigma = 1.0
-        
+
         ailObj = daileron*daileron / (daileronSigma*daileronSigma)
         eleObj = delevator*delevator / (delevatorSigma*delevatorSigma)
         winchObj = ddr*ddr / (ddrSigma*ddrSigma)
-        
+
         obj += 1e-2*(ailObj + eleObj + winchObj)/float(ocp.nk)
 
     # homotopy forces/torques regularization
@@ -208,12 +220,12 @@ if __name__=='__main__':
     # initial guesses
     ocp.guess('w0',10)
     ocp.guess('r',lineRadiusGuess)
-    
+
     for name in ['w1','w2','dr','ddr','aileron','elevator','daileron','delevator']:
         ocp.guess(name,0)
-        
+
     ocp.guess('gamma_homotopy',0)
-    
+
     # spawn telemetry thread
     callback = rawekite.kiteTelemetry.startKiteTelemetry(ocp, conf)
 #    callback = rawekite.kiteTelemetry.startKiteTelemetry(ocp, conf, printBoundViolation=True, printConstraintViolation=True)
@@ -226,7 +238,7 @@ if __name__=='__main__':
 #                     ,("qp_solver_options",{'nlp_solver': C.IpoptSolver, "nlp_solver_options":{"linear_solver":"ma57"}})
                     , ("linear_solver","ma57")
                     , ("max_iter",1000)
-                    , ("tol",1e-4)
+                    , ("tol",1e-11)
 #                    , ('monitor',['eval_g'])
 #                    , ("Timeout", 1e6)
 #                    , ("UserHM", True)
@@ -236,18 +248,18 @@ if __name__=='__main__':
 #                    , ("ScaledObj",True)
 #                    , ("ScaledQP",True)
                     ]
-    
+
     print "setting up solver..."
     ocp.setupSolver( solverOpts=solverOptions,
                      callback=callback )
 
     xInit = None
-    ocp.bound('gamma_homotopy',(0,0),force=True)
+    ocp.bound('gamma_homotopy',(1e-4,1e-4),force=True)
     traj = ocp.solve(xInit=xInit)
 
     ocp.bound('gamma_homotopy',(0,1),force=True)
     traj = ocp.solve(xInit=traj.getDvs())
-    
+
     ocp.bound('gamma_homotopy',(1,1),force=True)
 #    ocp.bound('endTime',(4.0,4.0),force=True)
     traj = ocp.solve(xInit=traj.getDvs())
@@ -277,5 +289,6 @@ if __name__=='__main__':
         traj.subplot(['winch power', 'tether tension'])
         traj.subplot(['w1','w2','w3'])
         traj.subplot(['e11','e12','e13','e21','e22','e23','e31','e32','e33'])
+        traj.plot(['nu'])
         plt.show()
     plotResults()
