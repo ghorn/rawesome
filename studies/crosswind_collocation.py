@@ -5,6 +5,7 @@ import numpy
 from numpy import pi
 
 import rawe
+import rawekite
 
 numLoops=4
 
@@ -73,7 +74,7 @@ def setupOcp(dae,conf,nk,nicp,deg,collPoly):
         ocp.constrain(ocp.lookup(name,timestep=0),'==',ocp.lookup(name,timestep=-1), tag=('periodic diff state \"'+name+'"',None))
 
     # periodic attitude
-    rawe.kiteutils.periodicDcm(ocp)
+    rawekite.kiteutils.periodicDcm(ocp)
 
     # bounds
     ocp.bound('aileron',(-0.04,0.04))
@@ -144,7 +145,9 @@ if __name__=='__main__':
     ocp = setupOcp(dae,conf,nk,nicp,deg,collPoly)
 
     # spawn telemetry thread
-    callback = rawe.kiteTelemetry.startKiteTelemetry(ocp, conf)
+    callback = rawekite.kiteTelemetry.startKiteTelemetry(ocp, conf)
+#    callback = rawekite.kiteTelemetry.startKiteTelemetry(ocp, conf, userCallback=rawe.kiteTelemetry.showAllPoints)
+#    callback = rawekite.kiteTelemetry.startKiteTelemetry(ocp, conf, printBoundViolation=True, printConstraintViolation=True)
 
     # solver
     solverOptions = [("expand_f",True),

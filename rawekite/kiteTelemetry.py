@@ -4,7 +4,7 @@ import time
 import numpy
 import casadi as C
 
-from collocation import trajectory
+from rawe.collocation import trajectory
 import kiteproto
 import kite_pb2
 

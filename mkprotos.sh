@@ -6,8 +6,9 @@ then
 	exit 1
 else
 	mkdir -p carousel-cpp
-	protoc --python_out=rawe --cpp_out=carousel-cpp kite.proto
-	protoc --python_out=rawe --cpp_out=carousel-cpp mhempc.proto
+	protoc --python_out=rawekite --cpp_out=carousel-cpp kite.proto
+	protoc --python_out=rawekite --cpp_out=carousel-cpp mhempc.proto
+
 	echo "Successfully generated C and Python protobuf message interfaces"
 fi
 

@@ -6,6 +6,7 @@ from numpy import pi
 import pickle
 
 import rawe
+import rawekite
 
 def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
     ocp = rawe.collocation.Coll(dae, nk=nk,nicp=nicp,deg=deg)
@@ -49,9 +50,9 @@ def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
         ocp.constrain(ocp.lookup(name,timestep=0),'==',ocp.lookup(name,timestep=-1))
 
     # periodic attitude
-#    rawe.kiteutils.periodicEulers(ocp)
-#    rawe.kiteutils.periodicOrthonormalizedDcm(ocp)
-    rawe.kiteutils.periodicDcm(ocp)
+#    rawekite.kiteutils.periodicEulers(ocp)
+#    rawekite.kiteutils.periodicOrthonormalizedDcm(ocp)
+    rawekite.kiteutils.periodicDcm(ocp)
 
     # bounds
     ocp.bound('aileron',(-0.04,0.04))
@@ -214,7 +215,8 @@ if __name__=='__main__':
     ocp.guess('gamma_homotopy',0)
     
     # spawn telemetry thread
-    callback = rawe.kiteTelemetry.startKiteTelemetry(ocp, conf, printBoundViolation=True, printConstraintViolation=True)
+    callback = rawekite.kiteTelemetry.startKiteTelemetry(ocp, conf)
+#    callback = rawekite.kiteTelemetry.startKiteTelemetry(ocp, conf, printBoundViolation=True, printConstraintViolation=True)
 
     # solver
     solverOptions = [ ("expand_f",True)

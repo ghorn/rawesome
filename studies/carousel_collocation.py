@@ -6,6 +6,7 @@ from numpy import pi
 import pickle
 
 import rawe
+import rawekite
 
 x0 = C.DMatrix( [ 1.154244772411
                 , -0.103540608242
@@ -70,9 +71,9 @@ def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
         ocp.constrain(ocp.lookup(name,timestep=0),'==',ocp.lookup(name,timestep=-1))
 
     # periodic attitude
-#    rawe.kiteutils.periodicEulers(ocp)
-#    rawe.kiteutils.periodicOrthonormalizedDcm(ocp)
-    rawe.kiteutils.periodicDcm(ocp)
+#    rawekite.kiteutils.periodicEulers(ocp)
+#    rawekite.kiteutils.periodicOrthonormalizedDcm(ocp)
+    rawekite.kiteutils.periodicDcm(ocp)
 
     # bounds
     ocp.bound('aileron',(-0.04,0.04))
@@ -175,7 +176,7 @@ def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
 
 if __name__=='__main__':
     print "reading config..."
-    from conf import conf
+    from highwind_carousel_conf import conf
     
     print "creating model..."
     dae = rawe.models.carousel(conf,extraParams=['endTime'])
@@ -183,7 +184,7 @@ if __name__=='__main__':
     print "setting up ocp..."
     ocp = setupOcp(dae,conf,nk=30)
 
-    ocp.interpolateInitialGuess("data/carousel_opt.dat",force=True,quiet=True)
+#    ocp.interpolateInitialGuess("data/carousel_opt.dat",force=True,quiet=True)
 
     for w0 in [10]:
         ocp.bound('w0',(w0,w0),force=True)

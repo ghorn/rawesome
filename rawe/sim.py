@@ -1,3 +1,4 @@
+import time
 import casadi as C
 
 def getitemMsg(d,name,msg):
@@ -12,17 +13,21 @@ def maybeToScalar(x):
     else:
         return x
 
+class Timer(object):
+    def __init__(self,dt):
+        self.dt = dt
+
+    def start(self):
+        self.nextTime = time.time() + self.dt
+
+    def sleep(self):
+        tToWait = self.nextTime - time.time()
+        if tToWait > 0:
+            time.sleep(tToWait)
+        self.nextTime = self.nextTime + self.dt
+
 class Sim(object):
     def __init__(self, dae, ts):
-#        x = C.DMatrix([x0[name] for name in self.xNames()])
-    
-#        print "creating outputs function"
-#        (_,(fNoZ,outputNames)) = self.outputsFun()
-#        fNoZ.init()
-#    
-#        print "creating communicator"
-#        communicator = simutils.Communicator(fNoZ,outputNames)
-
         print "creating integrator"
         self.dae = dae
         self.integrator = C.IdasIntegrator(self.dae.casadiDae())
@@ -33,7 +38,7 @@ class Sim(object):
         self.integrator.setOption('name','integrator')
         self.integrator.setOption("linear_solver",C.CSparse)
         self.integrator.init()
-        
+
         print "creating outputs function"
         (fAll, (f0,outputs0names)) = self.dae.outputsFun()
         self.outputsFunAll = fAll

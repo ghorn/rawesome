@@ -1,7 +1,8 @@
 import casadi as C
 
-from rawe.carouselSteadyState import getSteadyState
+from carouselSteadyState import getSteadyState
 import rawe
+import rawekite
 
 if __name__=='__main__':
     print "creating model"
@@ -11,7 +12,7 @@ if __name__=='__main__':
 
     dt = 0.02
     sim = rawe.sim.Sim(dae,dt)
-    communicator = rawe.simutils.Communicator()
+    communicator = rawekite.communicator.Communicator()
 #    js = joy.Joy()
     x = {}
     for name in dae.xNames():
@@ -24,7 +25,7 @@ if __name__=='__main__':
         p[name] = steadyState[name]
 
     print "simulating..."
-    timer = rawe.simutils.Timer(dt)
+    timer = rawe.sim.Timer(dt)
     timer.start()
     try:
         while True:
