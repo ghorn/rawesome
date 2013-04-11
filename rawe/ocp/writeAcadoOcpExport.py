@@ -213,32 +213,51 @@ _ocp.setDimensions( %(nx)d, %(nx)d, %(nz)d, %(nup)d );\
     # ocp
     lines.append('')
     lines.append('/* simple constraints */')
-    bnds = []
-    for name,bnd in ocp._lbndmap.items():
-        bnds.append( (name,           '', '>=', bnd) )
-    for name,bnd in ocp._lbndmapStart.items():
-        bnds.append( (name, 'AT_START, ', '>=', bnd) )
-    for name,bnd in ocp._lbndmapEnd.items():
-        bnds.append( (name,   'AT_END, ', '>=', bnd) )
+    # the simple constraints won't work if you do
+    # subjectTo( -2 <= x);
+    # subjectTo(  x <= 2);
+    # you have to do:
+    # subjectTo( -2 <= x <= 2 );
 
-    for name,bnd in ocp._ubndmap.items():
-        bnds.append( (name,           '', '<=', bnd) )
-    for name,bnd in ocp._ubndmapStart.items():
-        bnds.append( (name, 'AT_START, ', '<=', bnd) )
-    for name,bnd in ocp._ubndmapEnd.items():
-        bnds.append( (name,   'AT_END, ', '<=', bnd) )
+    # bnds is a list of [(key, BLAH)]
+    # where `BLAH` will be written as ocp.subjectTo( BLAH )
+    # and `key` is just a key for sorting, so that we can
+    # write the constraints in a nice order
+    bnds = []
+    for name,lbnd in ocp._lbndmap.items():
+        lbnd = str(lbnd)
+        if name in ocp._ubndmap:
+            ubnd = str(ocp._ubndmap[name])
+            bnds.append( ((name,0,1), lbnd + ' <= ' + name + ' <= ' + ubnd ) )
+        else:
+            bnds.append( ((name,0,1), lbnd + ' <= ' + name ) )
+
+    for name,lbnd in ocp._lbndmapStart.items():
+        lbnd = str(lbnd)
+        if name in ocp._ubndmapStart:
+            ubnd = str(ocp._ubndmapStart[name])
+            bnds.append( ((name,1,1), 'AT_START, ' + lbnd + ' <= ' + name + ' <= ' + ubnd ) )
+        else:
+            bnds.append( ((name,1,1), 'AT_START, ' + lbnd + ' <= ' + name ) )
+
+    for name,lbnd in ocp._lbndmapEnd.items():
+        lbnd = str(lbnd)
+        if name in ocp._ubndmapEnd:
+            ubnd = str(ocp._ubndmapEnd[name])
+            bnds.append( ((name,2,1), 'AT_END, ' + lbnd + ' <= ' + name + ' <= ' + ubnd ) )
+        else:
+            bnds.append( ((name,2,1), 'AT_END, ' + lbnd + ' <= ' + name ) )
 
     for name,bnd in ocp._ebndmap.items():
-        bnds.append( (name,           '', '==', bnd) )
+        bnds.append( ((name,0,0),  name + ' == ' + str(bnd) ))
     for name,bnd in ocp._ebndmapStart.items():
-        bnds.append( (name, 'AT_START, ', '==', bnd) )
+        bnds.append( ((name,1,0),  'AT_START, ' + name + ' == ' + str(bnd) ))
     for name,bnd in ocp._ebndmapEnd.items():
-        bnds.append( (name,   'AT_END, ', '==', bnd) )
+        bnds.append( ((name,2,0),  'AT_END, ' + name + ' == ' + str(bnd) ))
 
     bnds.sort()
-    for name, whenStr, comparison, bnd in bnds:
-        lines.append('_ocp.subjectTo( %(whenStr)s%(name)s %(comparison)s %(bnd)s );'
-                     % {'whenStr':whenStr, 'name':name, 'comparison':comparison, 'bnd':bnd})
+    for _, bnd in bnds:
+        lines.append('_ocp.subjectTo( '+bnd+' );')
     lines.append('')
 
     # objective
@@ -274,4 +293,5 @@ USING_NAMESPACE_ACADO
 
 int exportOcp(int N, double Ts, const char * exportDir){
 ''' + lines + '\n}'
+
     return lines
