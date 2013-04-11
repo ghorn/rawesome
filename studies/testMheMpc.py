@@ -9,7 +9,7 @@ def makeDae():
 
     [pos,vel] = dae.addX( ["pos","vel"] )
     force = dae.addU( "force" )
-    
+
     dae.setResidual([dae.ddt('pos') - vel,
                      dae.ddt('vel') - (force - 0*3.0*pos - 0*0.2*vel)])
     return dae
@@ -26,16 +26,17 @@ def makeMpc(dae, N, ts):
 #    cgOptions = {'CXX':'icpc', 'CC':'icc'}
     acadoOptions = [("HESSIAN_APPROXIMATION",     "GAUSS_NEWTON"),
                     ("DISCRETIZATION_TYPE",       "MULTIPLE_SHOOTING"),
-                    ("INTEGRATOR_TYPE",           "INT_IRK_RIIA3"),
+#                    ("INTEGRATOR_TYPE",           "INT_IRK_RIIA3"),
+                    ("INTEGRATOR_TYPE",           "INT_IRK_GL2"),
                     ("NUM_INTEGRATOR_STEPS",      str(N*5)),
                     ("LINEAR_ALGEBRA_SOLVER",     "GAUSS_LU"),
-                    ("SPARSE_QP_SOLUTION",        "FULL_CONDENSING"),
-#                    ("SPARSE_QP_SOLUTION",        "CONDENSING"),
+#                    ("SPARSE_QP_SOLUTION",        "FULL_CONDENSING"),
+                    ("SPARSE_QP_SOLUTION",        "CONDENSING"),
                     ("QP_SOLVER",                 "QP_QPOASES"),
 #                    ("SPARSE_QP_SOLUTION",        "SPARSE_SOLVER"),
 #                    ("QP_SOLVER",                 "QP_FORCES"),
                     ("FIX_INITIAL_STATE",         "YES"),
-                    ("HOTSTART_QP",               "NO"),
+                    ("HOTSTART_QP",               "YES"),
                     ("GENERATE_MATLAB_INTERFACE", "YES")]
     mpcRt = mpc.exportCode(cgOptions=cgOptions,
                            acadoOptions=acadoOptions,
@@ -54,7 +55,8 @@ def makeMhe(dae, N, ts):
 #    cgOptions = {'CXX':'icpc', 'CC':'icc'}
     acadoOptions = [("HESSIAN_APPROXIMATION",     "GAUSS_NEWTON"),
                     ("DISCRETIZATION_TYPE",       "MULTIPLE_SHOOTING"),
-                    ("INTEGRATOR_TYPE",           "INT_IRK_RIIA3"),
+#                    ("INTEGRATOR_TYPE",           "INT_IRK_RIIA3"),
+                    ("INTEGRATOR_TYPE",           "INT_IRK_GL2"),
                     ("NUM_INTEGRATOR_STEPS",      str(N*5)),
                     ("LINEAR_ALGEBRA_SOLVER",     "GAUSS_LU"),
                     ("SPARSE_QP_SOLUTION",        "FULL_CONDENSING"),
@@ -63,7 +65,7 @@ def makeMhe(dae, N, ts):
 #                    ("SPARSE_QP_SOLUTION",        "SPARSE_SOLVER"),
 #                    ("QP_SOLVER",                 "QP_FORCES"),
                     ("FIX_INITIAL_STATE",         "NO"),
-                    ("HOTSTART_QP",               "NO"),
+                    ("HOTSTART_QP",               "YES"),
                     ("GENERATE_MATLAB_INTERFACE", "YES")]
     mheRt = mhe.exportCode(cgOptions=cgOptions,
                            acadoOptions=acadoOptions,
@@ -128,7 +130,7 @@ if __name__=='__main__':
     setTrajectory(mpc, t)
 
     # run a sim
-    x = {'pos':0,'vel':mpc.x[k,1]}
+    x = {'pos':0,'vel':mpc.x[0,1]}
     u = {'force':0}
 
     ytraj = []
@@ -139,12 +141,13 @@ if __name__=='__main__':
     objs = []
     t = 0
     for k in range(200):
+        print "k: ",k
         mpc.x0[0] = x['pos'] # will be mhe output
         mpc.x0[1] = x['vel'] # will be mhe output
 
         # command mpc to follow sin wave
         setTrajectory(mpc, t)
-        
+
         # log stuff
         xtraj.append((x['pos'], x['vel']))
         ytraj.append((mpc.y[0,0], mpc.y[0,1]))
@@ -161,17 +164,21 @@ if __name__=='__main__':
             fbret = mpc.feedbackStep()
             if fbret != 0:
                 raise Exception("feedbackStep returned error code "+str(fbret))
+#        print mpc.u.T#[0,0]
+#        if k > 0:
+#            import sys; sys.exit()
+
         u['force'] = mpc.u[0,0]
 
         # log
         utraj.append(u['force'])
-        kkts.append(mpc.getKKT())
-        objs.append(mpc.getObjective())
+        kkts.append(mpc.getKKT() + 1e-100)
+        objs.append(mpc.getObjective() + 1e-100)
 
         # simulate
         x = sim.step(x, u, {})
         t += ts
-        
+
     # plot results
     plt.figure()
     plt.subplot(311)

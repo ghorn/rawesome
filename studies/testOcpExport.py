@@ -9,7 +9,7 @@ if __name__=='__main__':
 
     [pos,vel] = dae.addX( ["pos","vel"] )
     force = dae.addU( "force" )
-    
+
     dae.setResidual([dae.ddt('pos') - vel,
                      dae.ddt('vel') - (force - 0*3.0*pos - 0.2*vel)])
 
@@ -17,14 +17,14 @@ if __name__=='__main__':
     N = 100
     mpc = rawe.ocp.Ocp(dae, N=N, ts=0.2)
 
-    mpc.constrain(mpc['pos'], '==', 0.1, when='AT_START')
+    mpc.constrain(mpc['pos'], '==', 0, when='AT_START')
     mpc.constrain(mpc['vel'], '==', 0, when='AT_START')
 
-    mpc.constrain(mpc['pos'], '==', 0.5, when='AT_END')
+    mpc.constrain(mpc['pos'], '==', 0.38, when='AT_END')
     mpc.constrain(mpc['vel'], '==', 0, when='AT_END')
 
     mpc.constrain(mpc['vel'], '<=', 0.2)
-    mpc.constrain(-0.2, '<=', mpc['force'], '<=', 0.2)
+    mpc.constrain(-0.1, '<=', mpc['force'], '<=', 0.1)
 
     mpc.minimizeLsq(C.veccat([mpc['pos'],mpc['vel'],mpc['force']]))
     mpc.minimizeLsqEndTerm(C.veccat([mpc['pos'], mpc['vel']]))
@@ -44,25 +44,31 @@ if __name__=='__main__':
 #                    ("SPARSE_QP_SOLUTION",        "SPARSE_SOLVER"),
 #                    ("QP_SOLVER",                 "QP_FORCES"),
                     ("FIX_INITIAL_STATE",         "YES"),
-                    ("HOTSTART_QP",               "NO"),
+                    ("HOTSTART_QP",               "YES"),
                     ("GENERATE_MATLAB_INTERFACE", "YES")]
     ocpRt = mpc.exportCode(cgOptions=cgOptions,acadoOptions=acadoOptions,
                            phase1Options=phase1Opts,qpSolver='QP_OASES')
     print '='*80
 
     # set the cost hessians
-    ocpRt.S[0,0] = 5  /float(N*N);
-    ocpRt.S[1,1] = 0.1/float(N*N);
-    ocpRt.S[2,2] = 3  /float(N*N);
+#    xRms = 0.2
+#    vRms = 0.2
+#    fRms = 20
+    ocpRt.S[0,0] = 1.0#/(xRms*N)**2
+    ocpRt.S[1,1] = 1.0#/(vRms*N)**2
+    ocpRt.S[2,2] = 1.0#/(fRms*N)**2
 
-    ocpRt.SN[0,0] = 10
-    ocpRt.SN[1,1] = 5
+    ocpRt.SN[0,0] = 1.0#/(xRms*N)**2
+    ocpRt.SN[1,1] = 1.0#/(vRms*N)**2
 
     # make a really bad initial guess
     for k in range(N):
-        ocpRt.u[k] = 0.2
+        ocpRt.u[k] = 0.0
     ocpRt.initializeNodesByForwardSimulation()
-    
+
+#    import pickle
+#    (ocpRt.x, ocpRt.u) = pickle.load( open('rt_initial_guess.dat','rb'))
+
     # plot initial guess
     plt.figure()
     plt.subplot(331)
@@ -87,8 +93,12 @@ if __name__=='__main__':
         fbret = ocpRt.feedbackStep()
         if fbret != 0:
             raise Exception("feedbackStep returned error code "+str(fbret))
-        kkts.append(ocpRt.getKKT())
-        objs.append(ocpRt.getObjective())
+        kkts.append(ocpRt.getKKT() + 1e-100)
+        objs.append(ocpRt.getObjective() + 1e-100)
+
+#    import pickle
+#    print "saving to rt_initial_guess.dat'
+#    pickle.dump( (ocpRt.x, ocpRt.u), open('rt_initial_guess.dat','wb'))
 
     # plot results
     plt.subplot(332)
