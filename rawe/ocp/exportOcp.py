@@ -67,7 +67,17 @@ CFLAGS   = -O3 -fPIC -finline-functions
 #CFLAGS   += -Wall -Wextra
 #CXXFLAGS += -Wall -Wextra
 
-LDFLAGS = -lm -lrt
+LDFLAGS = -lm
+
+UNAME := $(shell uname)
+ifeq ($(UNAME),Darwin)
+#	LDFLAGS += -L/opt/local/lib
+#	INCLUDES += -I/opt/local/include
+#	INCLUDES += -isystem /usr/local/include
+else
+	LDFLAGS += -lrt
+endif
+
 
 CXX_SRC = \\
 %(qpo_src)s \\
