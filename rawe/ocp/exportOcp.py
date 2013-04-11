@@ -6,12 +6,24 @@ import phase1
 import ocg_interface
 from rawe.utils import codegen,pkgconfig,subprocess_tee
 
-def exportOcp(ocp, cgOptions, acadoOptions, qpSolver):
-    assert isinstance(cgOptions, dict), "codegen options must be a dictionary"
-    if 'CXX' not in cgOptions:
-        cgOptions['CXX'] = 'g++'
-    if 'CC' not in cgOptions:
-        cgOptions['CC'] = 'gcc'
+def validateOptions(defaultOpts, userOpts, optName):
+    assert isinstance(userOpts,dict), optName+" options must be a dictionary"
+    # fill in missing default options
+    for name in defaultOpts:
+        if name not in userOpts:
+            userOpts[name] = defaultOpts[name]
+
+    # throw error on extra, unrecognized options
+    for name in userOpts:
+        if name not in defaultOpts:
+            raise Exception(optName+' option "'+name+'" unrecognized, valid options: '+\
+                                str(defaultOpts.keys()))
+
+def exportOcp(ocp, cgOptions, acadoOptions, phase1Options, qpSolver):
+    defaultCgOptions = {'CXX':'g++', 'CC':'gcc'}
+    defaultPhase1Options = {'CXX':'g++'}
+    validateOptions(defaultCgOptions, cgOptions, "codegen")
+    validateOptions(defaultPhase1Options, phase1Options, "phase 1")
 
     # validate acado options (sort of)
     acadoOpsMsg = "acadoOptions must be a list of (string,string) tuples"
@@ -24,7 +36,7 @@ def exportOcp(ocp, cgOptions, acadoOptions, qpSolver):
         raise Exception(acadoOpsMsg)
 
     # write the OCP exporter and run it, returning an exported OCP
-    files = phase1.runPhase1(ocp, cgOptions, acadoOptions, qpSolver)
+    files = phase1.runPhase1(ocp, phase1Options, acadoOptions, qpSolver)
 
     # add model for rien integrator
     files['model.c'] = '''\

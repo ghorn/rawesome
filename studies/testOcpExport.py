@@ -29,9 +29,10 @@ if __name__=='__main__':
     mpc.minimizeLsq(C.veccat([mpc['pos'],mpc['vel'],mpc['force']]))
     mpc.minimizeLsqEndTerm(C.veccat([mpc['pos'], mpc['vel']]))
 
-    cgOptions = {'CXX':'clang++', 'CC':'clang'}
-#    cgOptions = {'CXX':'g++', 'CC':'gcc'}
+#    cgOptions = {'CXX':'clang++', 'CC':'clang'}
+    cgOptions = {'CXX':'g++', 'CC':'gcc'}
 #    cgOptions = {'CXX':'icpc', 'CC':'icc'}
+    phase1Opts = {'CXX':'g++'}
     acadoOptions = [("HESSIAN_APPROXIMATION",     "GAUSS_NEWTON"),
                     ("DISCRETIZATION_TYPE",       "MULTIPLE_SHOOTING"),
                     ("INTEGRATOR_TYPE",           "INT_IRK_RIIA3"),
@@ -45,7 +46,8 @@ if __name__=='__main__':
                     ("FIX_INITIAL_STATE",         "YES"),
                     ("HOTSTART_QP",               "NO"),
                     ("GENERATE_MATLAB_INTERFACE", "YES")]
-    ocpRt = mpc.exportCode(cgOptions=cgOptions,acadoOptions=acadoOptions,qpSolver='QP_OASES')
+    ocpRt = mpc.exportCode(cgOptions=cgOptions,acadoOptions=acadoOptions,
+                           phase1Options=phase1Opts,qpSolver='QP_OASES')
     print '='*80
 
     # set the cost hessians
