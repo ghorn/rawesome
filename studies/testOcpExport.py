@@ -47,7 +47,7 @@ if __name__=='__main__':
                     ("HOTSTART_QP",               "YES"),
                     ("GENERATE_MATLAB_INTERFACE", "YES")]
     ocpRt = mpc.exportCode(cgOptions=cgOptions,acadoOptions=acadoOptions,
-                           phase1Options=phase1Opts,qpSolver='QP_OASES')
+                           phase1Options=phase1Opts)
     print '='*80
 
     # set the cost hessians

@@ -42,9 +42,6 @@ clean :
 # This writes and runs the ocp exporter, returning an exported OCP as a
 # dictionary of files.
 def runPhase1(ocp, phase1Options, acadoOptions, qpSolver):
-    supportedQps = ['QP_OASES']
-    assert qpSolver in supportedQps, "qp solver must be one of " + str(supportedQps)
-
     # write the ocp exporter cpp file
     genfiles = {'export_ocp.cpp':writeAcadoOcpExport.generateAcadoOcp(ocp, acadoOptions),
                 'Makefile':makeExportMakefile(phase1Options)}
@@ -61,7 +58,7 @@ def runPhase1(ocp, phase1Options, acadoOptions, qpSolver):
 
     # run the ocp exporter
     def runOcpExporter(path):
-        if qpSolver == 'QP_OASES':
+        if qpSolver == 'QP_QPOASES':
             os.mkdir(os.path.join(path,'qpoases'))
 
         ret = lib.exportOcp(ocp._nk,

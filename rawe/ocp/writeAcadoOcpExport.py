@@ -292,6 +292,6 @@ using namespace std;
 USING_NAMESPACE_ACADO
 
 int exportOcp(int N, double Ts, const char * exportDir){
-''' + lines + '\n}'
+''' + lines + '\n}\n'
 
     return lines

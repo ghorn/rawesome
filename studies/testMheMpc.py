@@ -38,11 +38,8 @@ def makeMpc(dae, N, ts):
                     ("FIX_INITIAL_STATE",         "YES"),
                     ("HOTSTART_QP",               "YES"),
                     ("GENERATE_MATLAB_INTERFACE", "YES")]
-    mpcRt = mpc.exportCode(cgOptions=cgOptions,
-                           acadoOptions=acadoOptions,
-                           qpSolver='QP_OASES')
-    return mpcRt
-
+    return mpc.exportCode(cgOptions=cgOptions,
+                          acadoOptions=acadoOptions)
 
 def makeMhe(dae, N, ts):
     mhe = rawe.ocp.Ocp(dae, N=N, ts=ts)
@@ -67,10 +64,8 @@ def makeMhe(dae, N, ts):
                     ("FIX_INITIAL_STATE",         "NO"),
                     ("HOTSTART_QP",               "YES"),
                     ("GENERATE_MATLAB_INTERFACE", "YES")]
-    mheRt = mhe.exportCode(cgOptions=cgOptions,
-                           acadoOptions=acadoOptions,
-                           qpSolver='QP_OASES')
-    return mheRt
+    return mhe.exportCode(cgOptions=cgOptions,
+                          acadoOptions=acadoOptions)
 
 
 if __name__=='__main__':
