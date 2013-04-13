@@ -90,14 +90,25 @@ if __name__=='__main__':
     # iterate
     kkts = []
     objs = []
-    for k in range(5):
+
+    xHistory = [numpy.array(ocpRt.x)]
+    uHistory = [numpy.array(ocpRt.u)]
+    for k in range(4):
         ocpRt.preparationStep()
         fbret = ocpRt.feedbackStep()
         if fbret != 0:
             raise Exception("feedbackStep returned error code "+str(fbret))
         print "sqp iteration",k,"\tkkts:",ocpRt.getKKT(),"\tobjective:",ocpRt.getObjective()
+        xHistory.append(numpy.array(ocpRt.x))
+        uHistory.append(numpy.array(ocpRt.u))
+
         kkts.append(ocpRt.getKKT() + 1e-200)
         objs.append(ocpRt.getObjective() + 1e-200)
+
+#    print "1:"
+#    print xHistory[1].T - xHistory[2].T
+#    print uHistory[1].T - uHistory[2].T
+#    import sys; sys.exit()
 
 #    import pickle
 #    print "saving to rt_initial_guess.dat'
