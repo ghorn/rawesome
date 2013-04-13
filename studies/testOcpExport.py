@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import numpy
 
 import rawe
 import casadi as C
@@ -17,8 +18,8 @@ if __name__=='__main__':
     N = 100
     mpc = rawe.ocp.Ocp(dae, N=N, ts=0.2)
 
-    mpc.constrain(mpc['pos'], '==', 0, when='AT_START')
-    mpc.constrain(mpc['vel'], '==', 0, when='AT_START')
+#    mpc.constrain(mpc['pos'], '==', 0, when='AT_START')
+#    mpc.constrain(mpc['vel'], '==', 0, when='AT_START')
 
     mpc.constrain(mpc['pos'], '==', 0.38, when='AT_END')
     mpc.constrain(mpc['vel'], '==', 0, when='AT_END')
@@ -38,14 +39,15 @@ if __name__=='__main__':
                     ("INTEGRATOR_TYPE",           "INT_IRK_RIIA3"),
                     ("NUM_INTEGRATOR_STEPS",      str(N*5)),
                     ("LINEAR_ALGEBRA_SOLVER",     "GAUSS_LU"),
-                    ("SPARSE_QP_SOLUTION",        "FULL_CONDENSING"),
-#                    ("SPARSE_QP_SOLUTION",        "CONDENSING"),
+#                    ("SPARSE_QP_SOLUTION",        "FULL_CONDENSING"),
+                    ("SPARSE_QP_SOLUTION",        "CONDENSING"),
                     ("QP_SOLVER",                 "QP_QPOASES"),
 #                    ("SPARSE_QP_SOLUTION",        "SPARSE_SOLVER"),
-#                    ("QP_SOLVER",                 "QP_FORCES"),
+#                    ("QP_SOLVER",                 "QP_QPDUNES"),
                     ("FIX_INITIAL_STATE",         "YES"),
                     ("HOTSTART_QP",               "YES"),
-                    ("GENERATE_MATLAB_INTERFACE", "YES")]
+                    ("GENERATE_MAKE_FILE",        "NO")]
+#                    ("GENERATE_MATLAB_INTERFACE", "YES")]
     ocpRt = mpc.exportCode(cgOptions=cgOptions,acadoOptions=acadoOptions,
                            phase1Options=phase1Opts)
     print '='*80
@@ -61,7 +63,7 @@ if __name__=='__main__':
     ocpRt.SN[0,0] = 1.0#/(xRms*N)**2
     ocpRt.SN[1,1] = 1.0#/(vRms*N)**2
 
-    # make a really bad initial guess
+    # make an initial guess
     for k in range(N):
         ocpRt.u[k] = 0.0
     ocpRt.initializeNodesByForwardSimulation()
@@ -88,13 +90,14 @@ if __name__=='__main__':
     # iterate
     kkts = []
     objs = []
-    for k in range(10):
+    for k in range(5):
         ocpRt.preparationStep()
         fbret = ocpRt.feedbackStep()
         if fbret != 0:
             raise Exception("feedbackStep returned error code "+str(fbret))
-        kkts.append(ocpRt.getKKT() + 1e-100)
-        objs.append(ocpRt.getObjective() + 1e-100)
+        print "sqp iteration",k,"\tkkts:",ocpRt.getKKT(),"\tobjective:",ocpRt.getObjective()
+        kkts.append(ocpRt.getKKT() + 1e-200)
+        objs.append(ocpRt.getObjective() + 1e-200)
 
 #    import pickle
 #    print "saving to rt_initial_guess.dat'
