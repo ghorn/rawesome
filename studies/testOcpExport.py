@@ -84,8 +84,8 @@ if __name__=='__main__':
     plt.title('u initial guess')
 
     # set tracking trajectory
-    ocpRt.yN[0,0] = 0
-    ocpRt.yN[1,0] = 0
+    ocpRt.yN[0] = 0
+    ocpRt.yN[1] = 0
 
     # iterate
     kkts = []
