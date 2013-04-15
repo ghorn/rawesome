@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import numpy
 
 import rawe
 import casadi as C
@@ -11,12 +12,12 @@ def makeDae():
     force = dae.addU( "force" )
 
     dae.setResidual([dae.ddt('pos') - vel,
-                     dae.ddt('vel') - (force - 0*3.0*pos - 0*0.2*vel)])
+                     dae.ddt('vel') - (force - 0.14*pos - 0*0.2*vel)])
     return dae
 
 def makeMpc(dae, N, ts):
     mpc = rawe.ocp.Ocp(dae, N=N, ts=ts)
-    mpc.constrain(-0.5, '<=', mpc['force'], '<=', 0.5)
+    mpc.constrain(-2.5, '<=', mpc['force'], '<=', 2.5)
 
     mpc.minimizeLsq([mpc['pos'],mpc['vel'],mpc['force']])
     mpc.minimizeLsqEndTerm([mpc['pos'],mpc['vel']])
@@ -69,7 +70,7 @@ def makeMhe(dae, N, ts):
 
 
 if __name__=='__main__':
-    N = 50
+    N = 70
     ts = 0.2
 
     A = 0.5
@@ -78,20 +79,20 @@ if __name__=='__main__':
     dae = makeDae()
     mpc = makeMpc(dae, N, ts)
 
-#    sim = rawe.dae.rienIntegrator.RienIntegrator(dae, ts=ts)
-    sim = rawe.sim.Sim(dae, ts=ts)
+    sim = rawe.dae.rienIntegrator.RienIntegrator(dae, ts=ts)
+#    sim = rawe.sim.Sim(dae, ts=ts)
 
     print '='*80
 
     # set the mpc weights
     xRms = 0.1
-    vRms = omega*xRms
-    fRms = 0.3
-    mpc.S[0,0] = (1.0/xRms)**2
-    mpc.S[1,1] = (1.0/vRms)**2
-    mpc.S[2,2] = (1.0/fRms)**2
-    mpc.SN[0,0] = (1.0/xRms)**2
-    mpc.SN[1,1] = (1.0/vRms)**2
+    vRms = 1.5
+    fRms = 5.0
+    mpc.S[0,0] = (1.0/xRms)**2/N
+    mpc.S[1,1] = (1.0/vRms)**2/N
+    mpc.S[2,2] = (1.0/fRms)**2/N
+    mpc.SN[0,0] = (1.0/0.01)**2
+    mpc.SN[1,1] = (1.0/0.01)**2
 
     # initial guess
     tk = 0
@@ -100,20 +101,9 @@ if __name__=='__main__':
         mpc.x[k,1] = A*C.cos(omega*tk)*omega
         tk += ts
 
-    # plot initial guess
-    plt.figure()
-    plt.subplot(311)
-    plt.plot(mpc.x[:,0])
-    plt.title('x initial guess')
-    plt.subplot(312)
-    plt.plot(mpc.x[:,1])
-    plt.title('v initial guess')
-    plt.subplot(313)
-    plt.plot(mpc.u[:,0])
-    plt.title('u initial guess')
-
     # set tracking trajectory
     t = 0
+    refLog = []
     def setTrajectory(ocp, t0):
         tk = t0
         for k in range(N):
@@ -122,10 +112,12 @@ if __name__=='__main__':
             tk += ts
         ocp.yN[0] = A*C.sin(omega*tk)
         ocp.yN[1] = A*C.cos(omega*tk)*omega
+
+        refLog.append(numpy.copy(numpy.vstack((ocp.y[:,:2], ocp.yN.T))))
     setTrajectory(mpc, t)
 
     # run a sim
-    x = {'pos':0,'vel':mpc.x[0,1]}
+    x = {'pos':mpc.x[0,0],'vel':mpc.x[0,1]}
     u = {'force':0}
 
     ytraj = []
@@ -136,7 +128,6 @@ if __name__=='__main__':
     objs = []
     t = 0
     for k in range(200):
-        print "k: ",k
         mpc.x0[0] = x['pos'] # will be mhe output
         mpc.x0[1] = x['vel'] # will be mhe output
 
@@ -149,19 +140,12 @@ if __name__=='__main__':
         xestTraj.append((mpc.x0[0], mpc.x0[1]))
 
         # run mpc
-        mpc.preparationStep()
-        fbret = mpc.feedbackStep()
-        if fbret != 0:
-            raise Exception("feedbackStep returned error code "+str(fbret))
-
-        for j in range(10):
+        for j in range(2):
             mpc.preparationStep()
             fbret = mpc.feedbackStep()
             if fbret != 0:
                 raise Exception("feedbackStep returned error code "+str(fbret))
-#        print mpc.u.T#[0,0]
-#        if k > 0:
-#            import sys; sys.exit()
+            print "timestep",k,"sqp iteration",j,"\tkkts:",mpc.getKKT(),"\tobjective:",mpc.getObjective()
 
         u['force'] = mpc.u[0,0]
 
@@ -179,18 +163,40 @@ if __name__=='__main__':
     plt.subplot(311)
     plt.plot([xt[0] for xt in ytraj])
     plt.plot([xt[0] for xt in xtraj])
-    plt.legend(['command','actual'])
-    plt.title('x')
+    plt.legend(['x command','x actual'])
 
     plt.subplot(312)
     plt.plot([xt[1] for xt in ytraj])
     plt.plot([xt[1] for xt in xtraj])
-    plt.legend(['command','actual'])
-    plt.title('v')
+    plt.legend(['v command','v actual'])
 
     plt.subplot(313)
     plt.plot(utraj)
-    plt.title('u')
+    plt.legend(['u'])
+
+
+    from mpl_toolkits.mplot3d import Axes3D
+    fig = plt.figure()
+    ax = fig.gca(projection='3d')
+    for k,y in enumerate(refLog):
+        n = y[:,0].size
+        xs = range(k,k+n)
+        ax.plot(xs, k*numpy.ones(n), zs=y[:,0] )
+    ax.set_xlabel("time")
+    ax.set_ylabel("iteration")
+    ax.set_zlabel("reference")
+    plt.title('pos ref')
+
+    fig = plt.figure()
+    ax = fig.gca(projection='3d')
+    for k,y in enumerate(refLog):
+        n = y[:,1].size
+        xs = range(k,k+n)
+        ax.plot(xs, k*numpy.ones(n), zs=y[:,1] )
+    ax.set_xlabel("time")
+    ax.set_ylabel("iteration")
+    ax.set_zlabel("reference")
+    plt.title('vel ref')
 
     plt.figure()
     plt.subplot(211)
