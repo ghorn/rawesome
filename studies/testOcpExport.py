@@ -48,7 +48,7 @@ if __name__=='__main__':
                     ("HOTSTART_QP",               "YES"),
                     ("GENERATE_MAKE_FILE",        "NO")]
 #                    ("GENERATE_MATLAB_INTERFACE", "YES")]
-    ocpRt = mpc.exportCode(cgOptions=cgOptions,acadoOptions=acadoOptions,
+    ocpRt = mpc.exportCode(codegenOptions=cgOptions,acadoOptions=acadoOptions,
                            phase1Options=phase1Opts)
     print '='*80
 

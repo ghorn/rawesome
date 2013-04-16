@@ -199,5 +199,5 @@ class Ocp(object):
         assert not hasattr(self, '_minLsqEndTerm'), 'you can only call minimizeLsqEndTerm once'
         self._minLsqEndTerm = obj
 
-    def exportCode(self, cgOptions={}, acadoOptions=[], phase1Options={}):
-        return exportOcp.exportOcp(self, cgOptions, acadoOptions, phase1Options)
+    def exportCode(self, codegenOptions={}, acadoOptions=[], phase1Options={}):
+        return exportOcp.exportOcp(self, codegenOptions, acadoOptions, phase1Options)

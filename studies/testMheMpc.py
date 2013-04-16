@@ -39,7 +39,7 @@ def makeMpc(dae, N, ts):
                     ("FIX_INITIAL_STATE",         "YES"),
                     ("HOTSTART_QP",               "YES"),
                     ("GENERATE_MATLAB_INTERFACE", "YES")]
-    return mpc.exportCode(cgOptions=cgOptions,
+    return mpc.exportCode(codegenOptions=cgOptions,
                           acadoOptions=acadoOptions)
 
 def makeMhe(dae, N, ts):
