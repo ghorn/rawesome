@@ -64,6 +64,8 @@ if __name__=='__main__':
     ocpRt.SN[1,1] = 1.0#/(vRms*N)**2
 
     # make an initial guess
+    ocpRt.x[0,0] = 0.0
+    ocpRt.x[0,1] = 0.0
     for k in range(N):
         ocpRt.u[k] = 0.0
     ocpRt.initializeNodesByForwardSimulation()
