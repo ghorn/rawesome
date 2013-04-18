@@ -23,7 +23,7 @@ class LagrangePoly(object):
 
     def _mkLagrangePolynomials(self):
         # Collocation point
-        tau = CS.ssym("tau")
+        tau = CS.ssym("_tau")
           
         # lagrange polynomials
         self.lfcns = []
@@ -553,7 +553,7 @@ class Coll():
 
     def guess(self,name,val,timestep=None,nicpIdx=None,degIdx=None,quiet=False,force=False):
         assert isinstance(name,str)
-        assert isinstance(val,numbers.Real)
+        assert isinstance(val,numbers.Real), "your guess must be a valid python number"
 
         # handle timestep == None
         if timestep is None:
