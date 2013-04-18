@@ -50,7 +50,12 @@ def mkCollocationPoints(collPoly,deg):
                 msg += "\nscipy.special.j_roots: "+str(list(roots))
                 raise ValueError(msg)
 
-    return [0.0]+list(roots)
+    def toReal(val):
+        if np.imag(val) == 0:
+            return np.real(val).item()
+        else:
+            raise Exception("collocation point has non-zero imaginary part")
+    return [0.0]+[toReal(r) for r in list(roots)]
 
 if __name__ == '__main__':
     print "LEGENDRE:"
