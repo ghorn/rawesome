@@ -52,7 +52,7 @@ def exportOcp(ocp, cgOptions, acadoOptions, phase1Options):
     # add python_interface.c
     files['python_interface.c'] = ocg_interface.ocg_interface
 
-    if qpSolver is 'QP_QPOASES':
+    if qpSolver == 'QP_QPOASES':
         ocpSoPath = qpoases.exportPhase2(cgOptions, files)
     else:
         raise Exception('the impossible happened, unsupported qp solver: "'+str(qpSolver)+'"')
