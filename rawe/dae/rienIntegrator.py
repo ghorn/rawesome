@@ -1,24 +1,20 @@
 import ctypes
 import os
-import subprocess
 import numpy
+import rienIntegratorInterface
 
-from ..utils import codegen
+from ..utils import codegen, subprocess_tee
 
 def loadIntegratorInterface():
-    # get the integrator interface directory
-    filename = __file__.rstrip('.pyc')
-    filename = filename.rstrip('.py')
-    filename = filename.rstrip('rienIntegrator')
-    interfaceDir = os.path.join(filename , 'rienIntegratorInterface')
+    # write the interface file
+    files = {'rienIntegratorInterface.cpp':rienIntegratorInterface.phase1src,
+             'Makefile':rienIntegratorInterface.phase1makefile}
+    interfaceDir = codegen.memoizeFiles(files)
 
     # call make to make sure shared lib is build
-#    p = subprocess.Popen(['make',codegen.makeJobs()], stdout=subprocess.PIPE, cwd=interfaceDir)
-    p = subprocess.Popen(['make',codegen.makeJobs()], cwd=interfaceDir)
-    ret = p.wait()
+    (ret, msgs) = subprocess_tee.call(['make',codegen.makeJobs()], cwd=interfaceDir)
     if ret != 0:
-#        print p.stdout.read()
-        raise Exception("integrator compilation failed, return code "+str(ret))
+        raise Exception("integrator compilation failed:\n"+msgs)
 
     # load the shared object
     return ctypes.cdll.LoadLibrary(os.path.join(interfaceDir, 'rienIntegratorInterface.so'))
@@ -94,15 +90,9 @@ ACADOvariables acadoVariables;
     exportpath = codegen.memoizeFiles(genfiles)
 
     # compile the code
-    p = subprocess.Popen(['make',codegen.makeJobs()], cwd=exportpath)
-    ret = p.wait()
+    (ret, msgs) = subprocess_tee.call(['make',codegen.makeJobs()], cwd=exportpath)
     if ret != 0:
-        raise Exception("integrator compilation failed, return code "+str(ret))
-
-    #p = subprocess.Popen(['make',codegen.makeJobs()], stdout=subprocess.PIPE, cwd=exportpath)
-    #p.wait()
-    #ret = p.stdout.read()
-    #print "ret: " +str(ret)
+        raise Exception("integrator compilation failed:\n"+msgs)
 
     print 'loading '+exportpath+'/integrator.so'
     integratorLib = ctypes.cdll.LoadLibrary(exportpath+'/integrator.so')
@@ -112,7 +102,7 @@ ACADOvariables acadoVariables;
 
 
 class RienIntegrator(object):
-    def __init__(self, dae, ts, numIntervals=1, numIntegratorSteps=10, integratorType='INT_IRK_RIIA3'):
+    def __init__(self, dae, ts, numIntervals=1, numIntegratorSteps=10, integratorType='INT_IRK_GL4'):
         self._dae = dae
 
         # set some options

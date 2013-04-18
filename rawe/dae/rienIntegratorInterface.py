@@ -1,3 +1,4 @@
+phase1src = '''\
 #include <string>
 #include <iostream>
 
@@ -67,9 +68,9 @@ int makeRienIntegrator( const char * genPath,
   map<string,int>::const_iterator it = itMap.find(integratorTypeStr);
   if( it != itMap.end() ) {
     sim.set( INTEGRATOR_TYPE, it->second);
-    //cout << "using integrator type \"" << integratorTypeStr << "\"\n";
+    //cout << "using integrator type \\"" << integratorTypeStr << "\\"\\n";
   } else {
-    cerr << "unrecognized integrator type \"" << integratorTypeStr << "\"\n";
+    cerr << "unrecognized integrator type \\"" << integratorTypeStr << "\\"\\n";
     return -1;
   }
 
@@ -80,9 +81,9 @@ int makeRienIntegrator( const char * genPath,
     it = igMap.find(integratorGridStr);
     if ( it != igMap.end() ) {
       sim.set( MEASUREMENT_GRID, it->second);
-      //cout << "using measurement grid \"" << integratorGridStr << "\"\n";
+      //cout << "using measurement grid \\"" << integratorGridStr << "\\"\\n";
     } else {
-      cerr << "unrecognized measurement grid \"" << integratorGridStr << "\"\n";
+      cerr << "unrecognized measurement grid \\"" << integratorGridStr << "\\"\\n";
       return -1;
     }
   }
@@ -103,3 +104,38 @@ int makeRienIntegrator( const char * genPath,
 
   return sim.exportCode(genPath);
 }
+'''
+
+phase1makefile = '''\
+CXX       = g++
+CXXFLAGS  = -Wall
+CXXFLAGS += -g
+CXXFLAGS += -O2
+CXXFLAGS += -fPIC
+CXXFLAGS += -I..
+CXXFLAGS += -Wno-unused-function
+#CXXFLAGS += -std=c++11
+
+LDFLAGS = -lstdc++
+
+CXXFLAGS += `pkg-config --cflags acado`
+LDFLAGS  += `pkg-config --libs   acado`
+
+CPP_SRC = rienIntegratorInterface.cpp
+
+.PHONY: clean all rienIntegratorInterface.so
+all : $(OBJ) rienIntegratorInterface.so
+
+%.o : %.cpp
+	@echo CPP $@ #: $(CXX) $(CXXFLAGS) -c $< -o $@
+	@$(CXX) $(CXXFLAGS) -c $< -o $@
+
+OBJ = $(CPP_SRC:%.cpp=%.o)
+
+rienIntegratorInterface.so : $(OBJ)
+	@echo LD $@ #: $(CXX) -shared -o $@ $(OBJ) $(LDFLAGS)
+	@$(CXX) -shared -o $@ $(OBJ) $(LDFLAGS)
+
+clean :
+	rm -f *.o *.so
+'''
