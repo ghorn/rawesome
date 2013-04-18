@@ -181,20 +181,40 @@ class RienIntegrator(object):
         raise Exception("to step a rien integrator, you now have to call .step(x,u,p) instead of .run(x,u,p)")
 
     def step(self,x,u,p):
+        # x,u,p can be dicts or array-like
+        # if x is a dict, the return value is a dict, otherwise it's a numpy array
+
         # vectorize inputs
-        for k,name in enumerate(self._dae.xNames()):
-            self._xvec[k] = x[name]
-        for k,name in enumerate(self._dae.uNames()):
-            self._uvec[k] = u[name]
-        for k,name in enumerate(self._dae.pNames()):
-            self._pvec[k] = p[name]
+        if type(x) == dict:
+            for k,name in enumerate(self._dae.xNames()):
+                self._xvec[k] = x[name]
+        else:
+            for k in range(len(self._dae.xNames())):
+                self._xvec[k] = x[k]
+
+        if type(u) == dict:
+            for k,name in enumerate(self._dae.uNames()):
+                self._uvec[k] = u[name]
+        else:
+            for k in range(len(self._dae.uNames())):
+                self._uvec[k] = u[k]
+
+        if type(p) == dict:
+            for k,name in enumerate(self._dae.pNames()):
+                self._pvec[k] = p[name]
+        else:
+            for k in range(len(self._dae.pNames())):
+                self._pvec[k] = p[k]
 
         # call integrator
         ret = self._integratorLib.integrate(ctypes.c_void_p(self._data.ctypes.data), self._initIntegrator)
         self._initIntegrator = 0
 
         # devectorize outputs
-        xret = {}
-        for k,name in enumerate(self._dae.xNames()):
-            xret[name] = self._xvec[k]
+        if type(x) == dict:
+            xret = {}
+            for k,name in enumerate(self._dae.xNames()):
+                xret[name] = self._xvec[k]
+        else:
+            xret = numpy.copy(self._xvec)
         return xret

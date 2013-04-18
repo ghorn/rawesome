@@ -7,6 +7,21 @@ def getitemMsg(d,name,msg):
     except KeyError:
         raise Exception('you forgot to put "'+name+'" in '+msg)
 
+def vectorizeXUP(x,u,p,dae):
+    if type(x) == dict:
+        xVec = C.veccat([getitemMsg(x,name,"the states") for name in dae.xNames()])
+    else:
+        xVec = x
+    if type(u) == dict:
+        uVec = C.veccat([getitemMsg(u,name,"the controls") for name in dae.uNames()])
+    else:
+        uVec = u
+    if type(p) == dict:
+        pVec = C.veccat([getitemMsg(p,name,"the parameters") for name in dae.pNames()])
+    else:
+        pVec = p
+    return (xVec,uVec,pVec)
+
 def maybeToScalar(x):
     if x.size() == 1:
         return x.at(0)
@@ -46,22 +61,21 @@ class Sim(object):
         self.outputs0names = outputs0names
 
     def step(self, x, u, p):
-        xVec = C.veccat([getitemMsg(x,name,"the states") for name in self.dae.xNames()])
-        uVec = C.veccat([getitemMsg(u,name,"the controls") for name in self.dae.uNames()])
-        pVec = C.veccat([getitemMsg(p,name,"the parameters") for name in self.dae.pNames()])
+        (xVec,uVec,pVec) = vectorizeXUP(x,u,p,self.dae)
         self.integrator.setInput(xVec,C.INTEGRATOR_X0)
         self.integrator.setInput(C.veccat([uVec,pVec]),C.INTEGRATOR_P)
         self.integrator.evaluate()
         xNext = C.DMatrix(self.integrator.output())
-        ret = {}
-        for k,name in enumerate(self.dae.xNames()):
-            ret[name] = xNext[k].at(0)
+        if type(x) == dict:
+            ret = {}
+            for k,name in enumerate(self.dae.xNames()):
+                ret[name] = xNext[k].at(0)
+        else:
+            ret = xNext
         return ret
 
     def getOutputs(self, x, u, p):
-        xVec = C.veccat([getitemMsg(x,name,"the states") for name in self.dae.xNames()])
-        uVec = C.veccat([getitemMsg(u,name,"the controls") for name in self.dae.uNames()])
-        pVec = C.veccat([getitemMsg(p,name,"the parameters") for name in self.dae.pNames()])
+        (xVec,uVec,pVec) = vectorizeXUP(x,u,p,self.dae)
         self.outputsFun0.setInput(xVec, 0)
         self.outputsFun0.setInput(uVec, 1)
         self.outputsFun0.setInput(pVec, 2)
