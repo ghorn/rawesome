@@ -25,7 +25,6 @@ import qualified MheMpc.MheMpcHorizons as MMH
 
 import ParseArgs ( getip )
 import Plotter ( runPlotter, newChannel, makeAccessors )
-import PlotTypes ( Channel(..) )
 
 main :: IO ()
 main = do
@@ -33,12 +32,12 @@ main = do
   ip <- getip "plot-ho-matic" "tcp://localhost:5563"
   putStrLn $ "using ip \""++ip++"\""
 
-  (c0, chan0) <- newChannel "multi-carousel" $(makeAccessors ''MC.MultiCarousel)
-  (c1, chan1) <- newChannel "carousel" $(makeAccessors ''CS.CarouselState)
+  (c0, chan0) <- newChannel "multi-carousel"   $(makeAccessors ''MC.MultiCarousel)
+  (c1, chan1) <- newChannel "carousel"         $(makeAccessors ''CS.CarouselState)
   (c2, chan2) <- newChannel "mhe-mpc-horizons" $(makeAccessors ''MMH.MheMpcHorizons)
-  listenerTid0 <- CC.forkIO (sub ip chan0 c0)
-  listenerTid1 <- CC.forkIO (sub ip chan1 c1)
-  listenerTid2 <- CC.forkIO (sub ip chan2 c2)
+  listenerTid0 <- CC.forkIO (sub ip chan0 "multi-carousel"  )
+  listenerTid1 <- CC.forkIO (sub ip chan1 "carousel"        )
+  listenerTid2 <- CC.forkIO (sub ip chan2 "mhe-mpc-horizons")
   
   runPlotter [c0,c1,c2] [listenerTid0, listenerTid1, listenerTid2]
 
@@ -49,8 +48,8 @@ withContext = ZMQ.withContext
 withContext = ZMQ.withContext 1
 #endif
 
-sub :: (PB.Wire a, PB.ReflectDescriptor a) => String -> CC.Chan a -> Channel -> IO ()
-sub ip chan channel = withContext $ \context -> do
+sub :: (PB.Wire a, PB.ReflectDescriptor a) => String -> CC.Chan a -> String -> IO ()
+sub ip chan name = withContext $ \context -> do
 #if OSX
   let receive = ZMQ.receive
 #else
@@ -58,7 +57,7 @@ sub ip chan channel = withContext $ \context -> do
 #endif
   ZMQ.withSocket context ZMQ.Sub $ \subscriber -> do
     ZMQ.connect subscriber ip
-    ZMQ.subscribe subscriber (chanName channel)
+    ZMQ.subscribe subscriber name
     forever $ do
       _ <- receive subscriber
       mre <- ZMQ.moreToReceive subscriber

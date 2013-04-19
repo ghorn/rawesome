@@ -11,27 +11,15 @@ category:            Graphics
 build-type:          Simple
 cabal-version:       >=1.8
 
---library:
---  -- exposed-modules:     
---  -- other-modules:       
---  build-depends:       base ==4.6.*
-
 executable plot-ho-matic
   hs-source-dirs:    src
   main-is:           Main.hs
 --  other-modules:
   build-depends:     base >= 4.5.0 && < 4.7,
-                     transformers,
+                     Plot-ho-matic,
+                     cmdargs,
                      protocol-buffers,
-                     containers,
-                     time,
-                     bytestring,
-                     Chart,
-                     gtk,
-                     data-accessor,
-                     glib,
-                     template-haskell,
-                     cmdargs
+                     bytestring
 --                     ekg
 
   if os(OSX)
