@@ -79,6 +79,9 @@ class KiteTelemetry(Process):
 
         while True:
             xOpt = self.xOptQueue.get()
+            # empty the queue
+            while not self.xOptQueue.empty():
+                xOpt = self.xOptQueue.get()
             traj = trajectory.Trajectory(self.ocp,xOpt)
             mcStr = self.callbackFun(traj,myiter,self.ocp,self.conf)
             publisher.send_multipart(["multi-carousel", mcStr])
