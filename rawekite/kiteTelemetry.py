@@ -35,9 +35,9 @@ def normalCallback(traj,myiter,ocp,conf,showAllPoints=False):
     return mc.SerializeToString()
     
 
-def startKiteTelemetry(ocp, conf, userCallback=normalCallback, printBoundViolation=False,printConstraintViolation=False):
+def startKiteTelemetry(ocp, conf, userCallback=normalCallback, printBoundViolation=False,printConstraintViolation=False, zeromqChannel='multi-carousel'):
     xOptQueue = Manager().Queue()
-    KiteTelemetry(ocp, xOptQueue, conf, userCallback).start()
+    KiteTelemetry(ocp, xOptQueue, conf, userCallback, zeromqChannel).start()
 
     class MyCallback:
         def __call__(self,f,*args):
@@ -62,7 +62,7 @@ def startKiteTelemetry(ocp, conf, userCallback=normalCallback, printBoundViolati
 
 
 class KiteTelemetry(Process):
-    def __init__(self, ocp, xOptQueue, conf, callbackFun):
+    def __init__(self, ocp, xOptQueue, conf, callbackFun, zeromqChannel):
         Process.__init__(self)
         self.daemon = True
 
@@ -70,6 +70,7 @@ class KiteTelemetry(Process):
         self.xOptQueue = xOptQueue
         self.conf = conf
         self.callbackFun = callbackFun
+        self.zeromqChannel = zeromqChannel
 
     def run(self):
         myiter = 0
@@ -84,5 +85,5 @@ class KiteTelemetry(Process):
                 xOpt = self.xOptQueue.get()
             traj = trajectory.Trajectory(self.ocp,xOpt)
             mcStr = self.callbackFun(traj,myiter,self.ocp,self.conf)
-            publisher.send_multipart(["multi-carousel", mcStr])
+            publisher.send_multipart([self.zeromqChannel, mcStr])
             myiter += 1
