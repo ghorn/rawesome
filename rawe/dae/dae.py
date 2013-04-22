@@ -352,3 +352,11 @@ class Dae(object):
                                alloutputs)
         testFun.init()
         assert len(testFun.getFree()) == 0, "oh noes, dae has free parameters: "+str(testFun.getFree())
+
+    def makeProtoBuf(self, protoname, fieldnames, qualifier='required'):
+        ret = []
+        ret.append('message '+protoname+' {')
+        for k,name in enumerate(fieldnames):
+            ret.append('  '+qualifier+' double '+name+' = '+str(k+1)+';')
+        ret.append('}\n\n')
+        return '\n'.join(ret)
