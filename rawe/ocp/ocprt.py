@@ -97,7 +97,72 @@ class OcpRT(object):
         self.setAll()
         self._lib.initializeNodesByForwardSimulation()
         self.getAll()
+                
+    def shift(self,new_x=None,new_u=None,sim=None,new_y=None,new_yN=None,new_S=None,new_SN=None):
+        
+            
+        # Shift weighting matrices
+        if new_S != None:
+            wmt = self._lib.py_get_ACADO_WEIGHTING_MATRICES_TYPE()
+            if wmt == 1:    # Constant weighting matrices
+                self.S =  new_S
+                
+            elif wmt == 2:  # Varying weighting matrices
+                weight_S = self.S[1:(self._lib.py_get_ACADO_N())*self._lib.py_get_ACADO_NY(),:]
+                self.S = numpy.ascontiguousarray(numpy.append(weight_S,new_S,axis=0), dtype=numpy.double)
+            
+            else:
+                raise Exception('unrecognized ACADO_WEIGHING_MATRICES_TYPE '+str(wmt))
+                        
+        if new_SN != None:
+            self.SN = new_SN
+        
+        # Shift states and controls
+        guess_x = self.x[1:,:]
+        guess_u = self.u[1:,:]
+        
+        if new_x != None and new_u == None:
+            raise Exception('if you provide new_x you must also provide new_u')
+        if new_x != None and sim == None:
+            raise Exception('you cannot provide both new_x and sim')
+        if new_u != None and new_x != None and sim != None:
+            raise Exception('your sim will never be used')
+        if new_u != None:   # If the new control is provided, either integrate to get the new state or use the provided one
+            if new_x != None: # If the new state is provided, use it
+                self.x = numpy.append(guess_x,new_x,axis=0)
+                self.u = numpy.append(guess_u,new_u,axis=0)
+            elif sim != None: # Integrate the system forward with the provided integrator
+                # Integrate the system forward using the last control
+                new_x = sim.step(self.x[-1,:],new_u,{}) 
+                
+                self.u = numpy.append(guess_u,new_u,axis=0)
+                self.x = numpy.append(guess_x,new_x.T,axis=0)
+            else:
+                raise Exception('If a new control is provided as an input to the shift function either a state or an integrator must also be provided')
+                
+        elif sim != None: # If an integrator is provided, use it
+            if new_x != None:
+                raise Exception('your new_x will never be used')
+            new_u = self.u[-1,:]
+            # Integrate the system forward using the last control
+            new_x = sim.step(self.x[-1,:],new_u,{}) 
+                
+            self.u = numpy.append(guess_u,[new_u],axis=0)
+            self.x = numpy.append(guess_x,new_x.T,axis=0)
+            
+        else:
+            self.x = numpy.append(guess_x,[self.x[-1,:]],axis=0)
+            self.u = numpy.append(guess_u,[self.u[-1,:]],axis=0)
 
+        # Shift the reference (if provided, else keep the previous one)
+        if new_y != None:
+            self.y = numpy.append(self.y[1:,:],new_y,axis=0)
+            
+        if new_yN != None:
+            self.yN = new_yN
+           
+        
+        
 #     def shiftStates( int strategy, real_t* const xEnd, real_t* const uEnd ):
 #         void shiftStates( int strategy, real_t* const xEnd, real_t* const uEnd );
 
