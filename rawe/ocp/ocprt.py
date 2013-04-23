@@ -1,5 +1,6 @@
 import ctypes
 import numpy
+import casadi as C
 
 class OcpRT(object):
     def __init__(self,libpath):
@@ -15,36 +16,44 @@ class OcpRT(object):
         self._lib.py_initialize()
         self._libpath = libpath
 
-        self.x  = self._myZeros(self._lib.py_get_ACADO_N()+1,
-                                self._lib.py_get_ACADO_NX())
-        self.u  = self._myZeros(self._lib.py_get_ACADO_N(),
-                                self._lib.py_get_ACADO_NU())
-        self.y  = self._myZeros(self._lib.py_get_ACADO_N(),
-                                self._lib.py_get_ACADO_NY())
-        self.yN = self._myZeros(self._lib.py_get_ACADO_NYN(), 1)
+        self.x  = numpy.zeros((self._lib.py_get_ACADO_N()+1,
+                               self._lib.py_get_ACADO_NX()))
+        self.u  = numpy.zeros((self._lib.py_get_ACADO_N(),
+                               self._lib.py_get_ACADO_NU()))
+        self.y  = numpy.zeros((self._lib.py_get_ACADO_N(),
+                               self._lib.py_get_ACADO_NY()))
+        self.yN = numpy.zeros((self._lib.py_get_ACADO_NYN(), 1))
         wmt = self._lib.py_get_ACADO_WEIGHTING_MATRICES_TYPE()
         if wmt == 1:
-            self.S  = self._myZeros(self._lib.py_get_ACADO_NY(),
-                                    self._lib.py_get_ACADO_NY())
-            self.SN = self._myZeros(self._lib.py_get_ACADO_NYN(),
-                                    self._lib.py_get_ACADO_NYN())
+            self.S  = numpy.zeros((self._lib.py_get_ACADO_NY(),
+                                   self._lib.py_get_ACADO_NY()))
+            self.SN = numpy.zeros((self._lib.py_get_ACADO_NYN(),
+                                   self._lib.py_get_ACADO_NYN()))
         elif wmt == 2:
-            self.S  = self._myZeros(self._lib.py_get_ACADO_N()*self._lib.py_get_ACADO_NY(),
-                                    self._lib.py_get_ACADO_NY())
-            self.SN = self._myZeros(self._lib.py_get_ACADO_NYN(),
-                                    self._lib.py_get_ACADO_NYN())
+            self.S  = numpy.zeros((self._lib.py_get_ACADO_N()*self._lib.py_get_ACADO_NY(),
+                                   self._lib.py_get_ACADO_NY()))
+            self.SN = numpy.zeros((self._lib.py_get_ACADO_NYN(),
+                                   self._lib.py_get_ACADO_NYN()))
         else:
             raise Exception('unrecognized ACADO_WEIGHING_MATRICES_TYPE '+str(wmt))
 
         if self._lib.py_get_ACADO_INITIAL_STATE_FIXED():
-            self.x0 = self._myZeros(self._lib.py_get_ACADO_NX(), 1)
+            self.x0 = numpy.zeros((self._lib.py_get_ACADO_NX(), 1))
 
         self._lib.py_initialize()
         self.getAll()
 
-    def _myZeros(self, nr, nc):
-        z = numpy.zeros( (nr, nc), dtype=numpy.double )
-        return numpy.ascontiguousarray(z, dtype=numpy.double)
+    def __setattr__(self, name, value):
+        if name in ['x','u','y','yN','x0','S','SN']:
+            if type(value)==C.DMatrix:
+                value = numpy.array(value)
+            if hasattr(self, name):
+                assert value.shape == getattr(self, name).shape, \
+                    name+' has dimension '+str(getattr(self,name).shape)+' but you tried to '+\
+                    'assign it something with dimension '+str(value.shape)
+            object.__setattr__(self, name, numpy.ascontiguousarray(value, dtype=numpy.double))
+        else:
+            object.__setattr__(self, name, value)
 
     def _callMat(self,call,mat):
         (nr,nc) = mat.shape
