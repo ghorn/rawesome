@@ -113,7 +113,7 @@ if __name__=='__main__':
 #    import sys; sys.exit()
 
 #    import pickle
-#    print "saving to rt_initial_guess.dat'
+#    print "saving to rt_initial_guess.dat"
 #    pickle.dump( (ocpRt.x, ocpRt.u), open('rt_initial_guess.dat','wb'))
 
     # plot results
