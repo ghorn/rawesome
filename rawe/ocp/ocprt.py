@@ -3,6 +3,7 @@ import numpy
 import casadi as C
 
 class OcpRT(object):
+    _canonicalNames = ['x','u','y','yN','x0','S','SN']
     def __init__(self,libpath):
         print 'loading "'+libpath+'"'
         self._lib = ctypes.cdll.LoadLibrary(libpath)
@@ -44,7 +45,7 @@ class OcpRT(object):
         self.getAll()
 
     def __setattr__(self, name, value):
-        if name in ['x','u','y','yN','x0','S','SN']:
+        if name in self._canonicalNames:
             if type(value)==C.DMatrix:
                 value = numpy.array(value)
             if hasattr(self, name):
