@@ -47,7 +47,7 @@ mpcLog = rawe.ocp.ocprt.Logger(mpcRT,dae)
 # Create a simulation class
 sim = rawe.sim.Sim(dae,dt_sim)
 
-mpcRT.x0 = (np.array([[1.0,0]]).T)
+mpcRT.x0 = np.array([1,0])
     
 time = 0
 while time < Tf:
@@ -61,7 +61,7 @@ while time < Tf:
 #    mheRT.log(sim)
 
     if time > 0:    
-        mpcRT.x0[:,0] = mpcRT.x[1,:]
+        mpcRT.x0 = mpcRT.x[1,:]
     
     mpcRT.preparationStep()
     fbret = mpcRT.feedbackStep()
