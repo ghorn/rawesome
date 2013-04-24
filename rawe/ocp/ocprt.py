@@ -1,6 +1,111 @@
 import ctypes
 import numpy
+import copy
+import matplotlib.pyplot as plt
 import casadi as C
+
+
+class Logger(object):
+    def __init__(self,ocprt,dae):
+        
+        self.xNames = dae.xNames()
+        self.uNames = dae.uNames()
+        self.Ts = ocprt.getTs()
+        
+        self._ocprt = ocprt
+        self._dae = dae
+        self._log = {}
+        for field in OcpRT._canonicalNames:
+            self._log[field] = []
+        self.log(ocprt)
+
+    def log(self, ocprt):
+        for field in OcpRT._canonicalNames:
+            self._log[field].append(copy.deepcopy(getattr(ocprt, field)))
+    
+    def subplot(self,names,title=None,style=None,when=0,showLegend=True):
+        assert isinstance(names,list)
+        
+        fig = plt.figure()
+        if title is None:
+            if isinstance(names,str):
+                title = names
+            else:
+                assert isinstance(names,list)
+                if len(names) == 1:
+                    title = names[0]
+                else:
+                    title = str(names)
+        fig.canvas.set_window_title(str(title))
+        
+        plt.clf()
+        n = len(names)
+        if style is None:
+            style = [None]*n
+        for k,name in enumerate(names):
+            plt.subplot(n,1,k+1)
+            if k==0:
+                self._plot(name,title,style=style[k],when=when,showLegend=showLegend)
+            else:
+                self._plot(name,None,style=style[k],when=when,showLegend=showLegend)
+            
+    def plot(self,names,title=None,style=None,when=0,showLegend=True):
+        
+        fig = plt.figure()
+        if title is None:
+            if isinstance(names,str):
+                title = names
+            else:
+                assert isinstance(names,list)
+                if len(names) == 1:
+                    title = names[0]
+                else:
+                    title = str(names)
+        fig.canvas.set_window_title(str(title))
+        
+        plt.clf()
+        self._plot(names,title,style=style,when=when,showLegend=showLegend)
+        
+            
+    def _plot(self,names,title,style=None,when=0,showLegend=True):
+        if isinstance(names,str):
+            names = [names]
+        assert isinstance(names,list)
+        
+        legend = []
+        for name in names:
+            assert isinstance(name,str)
+            legend.append(name)
+
+            # if it's a differential state
+            if name in self.xNames:
+                index = self.xNames.index(name)
+                ys = numpy.array(self._log['x'])[1:,when,index]
+                ts = numpy.arange(len(ys))*self.Ts
+                
+                if style is None:
+                    plt.plot(ts,ys)
+                else:
+                    plt.plot(ts,ys,style)
+                    
+            # if it's a control
+            if name in self.uNames:
+                index = self.uNames.index(name)
+                ys = numpy.array(self._log['u'])[1:,when,index]
+                ts = numpy.arange(len(ys))*self.Ts
+                
+                if style is None:
+                    plt.step(ts,ys)
+                else:
+                    plt.step(ts,ys,style)
+        
+        if title is not None:
+            assert isinstance(title,str), "title must be a string"
+            plt.title(title)
+        plt.xlabel('time [s]')
+        if showLegend is True:
+            plt.legend(legend)
+        plt.grid()
 
 class OcpRT(object):
     _canonicalNames = ['x','u','y','yN','x0','S','SN']
@@ -177,3 +282,6 @@ class OcpRT(object):
     def getObjective(self):
         self.setAll()
         return self._lib.getObjective()
+
+    def getTs(self):
+        return 0.5
