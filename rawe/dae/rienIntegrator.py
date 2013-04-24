@@ -51,9 +51,10 @@ def writeRienIntegrator(dae, options):
 
     # call makeRienIntegrator
     lib = loadIntegratorInterface()
+    numIntervals = 1 # should maybe be hard-coded
     def call(path):
         ret = lib.makeRienIntegrator(ctypes.c_char_p(path),
-                                     options['numIntervals'],
+                                     numIntervals,
                                      ctypes.c_double(1.0),
                                      ctypes.c_char_p(options['integratorType']),
                                      options['integratorGrid'],
@@ -102,12 +103,11 @@ ACADOvariables acadoVariables;
 
 
 class RienIntegrator(object):
-    def __init__(self, dae, ts, numIntervals=1, numIntegratorSteps=10, integratorType='INT_IRK_GL4'):
+    def __init__(self, dae, ts, numIntegratorSteps=10, integratorType='INT_IRK_GL4'):
         self._dae = dae
 
         # set some options
         options = {}
-        options['numIntervals'] = numIntervals
         options['timestep'] = ts # because we scale xdot
         options['numIntegratorSteps'] = numIntegratorSteps
         options['integratorType'] = integratorType
