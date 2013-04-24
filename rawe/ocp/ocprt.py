@@ -23,7 +23,7 @@ class OcpRT(object):
                                self._lib.py_get_ACADO_NU()))
         self.y  = numpy.zeros((self._lib.py_get_ACADO_N(),
                                self._lib.py_get_ACADO_NY()))
-        self.yN = numpy.zeros((self._lib.py_get_ACADO_NYN(), 1))
+        self.yN = numpy.zeros(self._lib.py_get_ACADO_NYN())
         wmt = self._lib.py_get_ACADO_WEIGHTING_MATRICES_TYPE()
         if wmt == 1:
             self.S  = numpy.zeros((self._lib.py_get_ACADO_NY(),
@@ -39,7 +39,7 @@ class OcpRT(object):
             raise Exception('unrecognized ACADO_WEIGHING_MATRICES_TYPE '+str(wmt))
 
         if self._lib.py_get_ACADO_INITIAL_STATE_FIXED():
-            self.x0 = numpy.zeros((self._lib.py_get_ACADO_NX(), 1))
+            self.x0 = numpy.zeros(self._lib.py_get_ACADO_NX())
 
         self._lib.py_initialize()
         self.getAll()
@@ -57,7 +57,11 @@ class OcpRT(object):
             object.__setattr__(self, name, value)
 
     def _callMat(self,call,mat):
-        (nr,nc) = mat.shape
+        sh = mat.shape
+        # if it's 1 dimensional with size n, treat is as shape (n,1)
+        if len(sh) == 1:
+            sh = (sh[0], 1)
+        (nr,nc) = sh
         ret = call(ctypes.c_void_p(mat.ctypes.data), nr, nc)
         assert 0 == ret, "dimension mismatch in "+str(call)
         return call(ctypes.c_void_p(mat.ctypes.data), nr, nc)
