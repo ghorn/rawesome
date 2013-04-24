@@ -42,7 +42,7 @@ class OcpRT(object):
             self.x0 = numpy.zeros(self._lib.py_get_ACADO_NX())
 
         self._lib.py_initialize()
-        self.getAll()
+        self._getAll()
 
     def __setattr__(self, name, value):
         if name in self._canonicalNames:
@@ -66,7 +66,7 @@ class OcpRT(object):
         assert 0 == ret, "dimension mismatch in "+str(call)
         return call(ctypes.c_void_p(mat.ctypes.data), nr, nc)
 
-    def setAll(self):
+    def _setAll(self):
         self._callMat(self._lib.py_set_x,  self.x)
         self._callMat(self._lib.py_set_u,  self.u)
         self._callMat(self._lib.py_set_y,  self.y)
@@ -76,7 +76,7 @@ class OcpRT(object):
         if self._lib.py_get_ACADO_INITIAL_STATE_FIXED():
             self._callMat(self._lib.py_set_x0, self.x0)
 
-    def getAll(self):
+    def _getAll(self):
         self._callMat(self._lib.py_get_x,  self.x)
         self._callMat(self._lib.py_get_u,  self.u)
         self._callMat(self._lib.py_get_y,  self.y)
@@ -87,21 +87,21 @@ class OcpRT(object):
             self._callMat(self._lib.py_get_x0, self.x0)
 
     def preparationStep(self):
-        self.setAll()
+        self._setAll()
         ret = self._lib.preparationStep()
-        self.getAll()
+        self._getAll()
         return ret
 
     def feedbackStep(self):
-        self.setAll()
+        self._setAll()
         ret = self._lib.feedbackStep()
-        self.getAll()
+        self._getAll()
         return ret
 
     def initializeNodesByForwardSimulation(self):
-        self.setAll()
+        self._setAll()
         self._lib.initializeNodesByForwardSimulation()
-        self.getAll()
+        self._getAll()
                 
     def shift(self,new_x=None,new_u=None,sim=None,new_y=None,new_yN=None,new_S=None,new_SN=None):
         
@@ -175,9 +175,9 @@ class OcpRT(object):
 #         void shiftControls( real_t* const uEnd );
 
     def getKKT(self):
-        self.setAll()
+        self._setAll()
         return self._lib.getKKT()
 
     def getObjective(self):
-        self.setAll()
+        self._setAll()
         return self._lib.getObjective()
