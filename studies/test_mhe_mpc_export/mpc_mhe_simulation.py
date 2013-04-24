@@ -29,7 +29,6 @@ N_mpc = 10  # Number of MPC control intervals
 N_mhe = 10  # Number of MHE control intervals
 Ts = 0.5    # Sampling time
 Tf = 5.    # Simulation duration
-dt_sim = 0.01  # Simulation integrator step size
 
 # Create the MPC class
 mpcRT = makeNmpc(dae,N=N_mpc,dt=Ts)
@@ -45,7 +44,7 @@ mpcLog = rawe.ocp.ocprt.Logger(mpcRT,dae)
 #mheRT.initialize()
 
 # Create a simulation class
-sim = rawe.sim.Sim(dae,dt_sim)
+sim = rawe.sim.Sim(dae,Ts)
 
 mpcRT.x0 = np.array([1,0])
     
