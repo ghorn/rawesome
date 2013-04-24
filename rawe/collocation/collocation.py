@@ -469,6 +469,8 @@ class Coll():
         self._gfcn = gfcn
 
     def solve(self,xInit=None,warnZBounds=False,warnZGuess=False):
+        if not hasattr(self, 'solver'):
+            raise Exception("you need to call setupSolver before you can call solve")
         for name in self.dae.zNames():
             for k in range(self.nk):
                 for j in range(self.nicp):
