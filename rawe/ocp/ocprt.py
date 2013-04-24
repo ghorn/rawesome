@@ -7,11 +7,11 @@ import casadi as C
 
 class Logger(object):
     def __init__(self,ocprt,dae):
-        
+
         self.xNames = dae.xNames()
         self.uNames = dae.uNames()
         self.Ts = ocprt.getTs()
-        
+
         self._ocprt = ocprt
         self._dae = dae
         self._log = {}
@@ -22,10 +22,10 @@ class Logger(object):
     def log(self, ocprt):
         for field in OcpRT._canonicalNames:
             self._log[field].append(copy.deepcopy(getattr(ocprt, field)))
-    
+
     def subplot(self,names,title=None,style=None,when=0,showLegend=True):
         assert isinstance(names,list)
-        
+
         fig = plt.figure()
         if title is None:
             if isinstance(names,str):
@@ -37,7 +37,7 @@ class Logger(object):
                 else:
                     title = str(names)
         fig.canvas.set_window_title(str(title))
-        
+
         plt.clf()
         n = len(names)
         if style is None:
@@ -48,9 +48,9 @@ class Logger(object):
                 self._plot(name,title,style=style[k],when=when,showLegend=showLegend)
             else:
                 self._plot(name,None,style=style[k],when=when,showLegend=showLegend)
-            
+
     def plot(self,names,title=None,style=None,when=0,showLegend=True):
-        
+
         fig = plt.figure()
         if title is None:
             if isinstance(names,str):
@@ -62,16 +62,16 @@ class Logger(object):
                 else:
                     title = str(names)
         fig.canvas.set_window_title(str(title))
-        
+
         plt.clf()
         self._plot(names,title,style=style,when=when,showLegend=showLegend)
-        
-            
+
+
     def _plot(self,names,title,style=None,when=0,showLegend=True):
         if isinstance(names,str):
             names = [names]
         assert isinstance(names,list)
-        
+
         legend = []
         for name in names:
             assert isinstance(name,str)
@@ -82,23 +82,23 @@ class Logger(object):
                 index = self.xNames.index(name)
                 ys = numpy.array(self._log['x'])[1:,when,index]
                 ts = numpy.arange(len(ys))*self.Ts
-                
+
                 if style is None:
                     plt.plot(ts,ys)
                 else:
                     plt.plot(ts,ys,style)
-                    
+
             # if it's a control
             if name in self.uNames:
                 index = self.uNames.index(name)
                 ys = numpy.array(self._log['u'])[1:,when,index]
                 ts = numpy.arange(len(ys))*self.Ts
-                
+
                 if style is None:
                     plt.step(ts,ys)
                 else:
                     plt.step(ts,ys,style)
-        
+
         if title is not None:
             assert isinstance(title,str), "title must be a string"
             plt.title(title)
@@ -209,30 +209,28 @@ class OcpRT(object):
         self._setAll()
         self._lib.initializeNodesByForwardSimulation()
         self._getAll()
-                
+
     def shift(self,new_x=None,new_u=None,sim=None,new_y=None,new_yN=None,new_S=None,new_SN=None):
-        
-            
         # Shift weighting matrices
         if new_S != None:
             wmt = self._lib.py_get_ACADO_WEIGHTING_MATRICES_TYPE()
             if wmt == 1:    # Constant weighting matrices
                 self.S =  new_S
-                
+
             elif wmt == 2:  # Varying weighting matrices
                 weight_S = self.S[1:(self._lib.py_get_ACADO_N())*self._lib.py_get_ACADO_NY(),:]
                 self.S = numpy.ascontiguousarray(numpy.append(weight_S,new_S,axis=0), dtype=numpy.double)
-            
+
             else:
                 raise Exception('unrecognized ACADO_WEIGHING_MATRICES_TYPE '+str(wmt))
-                        
+
         if new_SN != None:
             self.SN = new_SN
-        
+
         # Shift states and controls
         guess_x = self.x[1:,:]
         guess_u = self.u[1:,:]
-        
+
         if new_x != None and new_u == None:
             raise Exception('if you provide new_x you must also provide new_u')
         if new_x != None and sim == None:
@@ -245,23 +243,23 @@ class OcpRT(object):
                 self.u = numpy.append(guess_u,new_u,axis=0)
             elif sim != None: # Integrate the system forward with the provided integrator
                 # Integrate the system forward using the last control
-                new_x = sim.step(self.x[-1,:],new_u,{}) 
-                
+                new_x = sim.step(self.x[-1,:],new_u,{})
+
                 self.u = numpy.append(guess_u,new_u,axis=0)
                 self.x = numpy.append(guess_x,new_x.T,axis=0)
             else:
                 raise Exception('If a new control is provided as an input to the shift function either a state or an integrator must also be provided')
-                
+
         elif sim != None: # If an integrator is provided, use it
             if new_x != None:
                 raise Exception('your new_x will never be used')
             new_u = self.u[-1,:]
             # Integrate the system forward using the last control
-            new_x = sim.step(self.x[-1,:],new_u,{}) 
-                
+            new_x = sim.step(self.x[-1,:],new_u,{})
+
             self.u = numpy.append(guess_u,[new_u],axis=0)
             self.x = numpy.append(guess_x,new_x.T,axis=0)
-            
+
         else:
             self.x = numpy.append(guess_x,[self.x[-1,:]],axis=0)
             self.u = numpy.append(guess_u,[self.u[-1,:]],axis=0)
@@ -269,12 +267,12 @@ class OcpRT(object):
         # Shift the reference (if provided, else keep the previous one)
         if new_y != None:
             self.y = numpy.append(self.y[1:,:],new_y,axis=0)
-            
+
         if new_yN != None:
             self.yN = new_yN
-           
-        
-        
+
+
+
 #     def shiftStates( int strategy, real_t* const xEnd, real_t* const uEnd ):
 #         void shiftStates( int strategy, real_t* const xEnd, real_t* const uEnd );
 
