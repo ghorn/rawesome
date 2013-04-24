@@ -62,7 +62,7 @@ def runPhase1(ocp, phase1Options, acadoOptions, qpSolver):
             os.mkdir(os.path.join(path,'qpoases'))
 
         ret = lib.exportOcp(ocp._nk,
-                            ctypes.c_double(ocp._ts),
+                            ctypes.c_double(1.0),
                             ctypes.c_char_p(path))
         if ret != 0:
             raise Exception("call to export_ocp.so failed")
