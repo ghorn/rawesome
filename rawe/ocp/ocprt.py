@@ -107,9 +107,11 @@ class Logger(object):
             plt.legend(legend)
         plt.grid()
 
+
 class OcpRT(object):
     _canonicalNames = ['x','u','y','yN','x0','S','SN']
-    def __init__(self,libpath):
+    def __init__(self,libpath, ts):
+        self._ts = ts
         print 'loading "'+libpath+'"'
         self._lib = ctypes.cdll.LoadLibrary(libpath)
 
@@ -288,4 +290,4 @@ class OcpRT(object):
         return self._lib.getObjective()
 
     def getTs(self):
-        return 0.5
+        return self._ts
