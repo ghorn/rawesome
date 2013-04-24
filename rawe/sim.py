@@ -75,6 +75,8 @@ class Sim(object):
         return ret
 
     def getOutputs(self, x, u, p):
+        if self.outputsFun0 == None:
+            return {}
         (xVec,uVec,pVec) = vectorizeXUP(x,u,p,self.dae)
         self.outputsFun0.setInput(xVec, 0)
         self.outputsFun0.setInput(uVec, 1)
