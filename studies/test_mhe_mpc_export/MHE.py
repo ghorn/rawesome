@@ -1,9 +1,9 @@
 import rawe
 import casadi as C
 
-def makeNmpc(dae,N,dt):
+def makeMhe(dae,N,dt):
     from rawe.ocp import Ocp
-    mpc = Ocp(dae, N=N, ts=dt)
+    mhe = Ocp(dae, N=N, ts=dt)
     
     intOpts = {'numsteps':40}
     intOpts = [('INTEGRATOR_TYPE','INT_IRK_GL2'),
@@ -21,7 +21,7 @@ def makeNmpc(dae,N,dt):
                ('SPARSE_QP_SOLUTION','CONDENSING'),
 #               ('SPARSE_QP_SOLUTION','FULL_CONDENSING_U2'),
 #               ('AX_NUM_QP_ITERATIONS','30'),
-               ('FIX_INITIAL_STATE','YES'),
+               ('FIX_INITIAL_STATE','NO'),
                ('GENERATE_TEST_FILE','NO'),
                ('GENERATE_SIMULINK_INTERFACE','NO'),
                ('GENERATE_MAKE_FILE','NO'),
@@ -29,17 +29,19 @@ def makeNmpc(dae,N,dt):
                
     acadoOpts += intOpts
 
-    mpc.minimizeLsq(C.veccat([mpc['x'],mpc['v'],mpc['u']]))
-    mpc.minimizeLsqEndTerm(C.veccat([mpc['x'],mpc['v']]))
+#    mhe.minimizeLsq(C.veccat([mhe['x'],mhe['u']]))
+#    mhe.minimizeLsqEndTerm(C.veccat([mhe['x']]))
+    mhe.minimizeLsq(mhe['measurements'])
+    mhe.minimizeLsqEndTerm(mhe['measurementsN'])
 
     cgOpts = {'CXX':'g++', 'CC':'gcc'}
-    mpcRT = mpc.exportCode(codegenOptions=cgOpts,acadoOptions=acadoOpts)
+    mheRT = mhe.exportCode(codegenOptions=cgOpts,acadoOptions=acadoOpts)
     
     
-    return mpcRT, intOpts
+    return mheRT, intOpts
 
 #if __name__=='__main__':
 #    from highwind_carousel_conf import conf
 #    dae = rawe.models.carousel(conf)
 #
-#    OcpRt = makeNmpc(dae,10,0.1)
+#    OcpRt = makeMhe(dae,10,0.1)
