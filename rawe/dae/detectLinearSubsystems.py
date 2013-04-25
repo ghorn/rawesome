@@ -1,10 +1,7 @@
 import rawe
 import casadi as C
 
-if __name__=='__main__':
-    from highwind_carousel_conf import conf
-    dae = rawe.models.carousel(conf)
-
+def detectLinearSubsystems(dae):
     f = dae.getResidual()
     xdot = C.veccat([dae.ddt(name) for name in dae.xNames()])
     x = dae.xVec()
