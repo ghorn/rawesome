@@ -174,6 +174,9 @@ class RienIntegrator(object):
         options['integratorType'] = integratorType
         options['integratorGrid'] = None
 
+        # setup outputs function
+        self._outputFun = self._dae.outputsFunWithSolve()
+
         (integratorLib, modelLib, rienModelGen) = exportIntegrator(self._dae, options)
         self._integratorLib = integratorLib
         self._modelLib = modelLib
@@ -271,3 +274,20 @@ class RienIntegrator(object):
         else:
             xret = numpy.copy(self.x)
         return xret
+
+    def getOutputs(self, x=None, u=None, p=None):
+        # vectorize inputs
+        if x != None:
+            self.x = x
+        if u != None:
+            self.u = u
+        if p != None:
+            self.p = p
+        self._outputsFun.setInput(self.x, 0)
+        self._outputsFun.setInput(self.u, 1)
+        self._outputsFun.setInput(self.p, 2)
+        self._outputsFun.evaluate()
+        ret = {}
+        for k,name in enumerate(self._dae.outputNames()):
+            ret[name] = numpy.array(self._outputsFun.output(k))
+        return ret
