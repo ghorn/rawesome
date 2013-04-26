@@ -66,19 +66,19 @@ def getSteadyState(dae,conf,omega0,r0,z0):
              'w1':(-50,50),'w2':(0,50),'w3':(-50,50),
              'delta':(0,0),'ddelta':(omega0,omega0),
              'cos_delta':(1,1),'sin_delta':(0,0),
-             'aileron':(-0.1,0.1),'elevator':(-0.1,0.1),
+             'aileron':(-0.2,0.2),'elevator':(-0.2,0.2),
              'daileron':(0,0),'delevator':(0,0),
              'nu':(0,3000),'motor_torque':(0,1000),
              'ddr':(0,0),'w0':(0,0)}
     dotBounds = {'x':(-50,50),'y':(-50,50),'z':(-50,50)
-                 ,'dx':(-50,50),'dy':(-50,50),'dz':(0,0),
+                 ,'dx':(0,0),'dy':(-50,50),'dz':(0,0),
                  'r':(-1,1),'dr':(-1,1),
                  'e11':(-50,50),'e12':(-50,50),'e13':(-50,50),
                  'e21':(-50,50),'e22':(-50,50),'e23':(-50,50),
                  'e31':(-50,50),'e32':(-50,50),'e33':(-50,50),
                  'w1':(0,0),'w2':(0,0),'w3':(0,0),
                  'delta':(omega0-1,omega0+1),'ddelta':(0,0),
-                 'cos_delta':(0,0),'sin_delta':(omega0,omega0),
+                 'cos_delta':(-1,1),'sin_delta':(omega0-1,omega0+1),
                  'aileron':(-1,1),'elevator':(-1,1)}
     boundsVec = [bounds[n] for n in dae.xNames()+dae.zNames()+dae.uNames()+dae.pNames()]+ \
                 [dotBounds[n] for n in dae.xNames()]
@@ -125,6 +125,7 @@ def getSteadyState(dae,conf,omega0,r0,z0):
         solver.setOption("iteration_callback", c)
 #    addCallback()
     solver.setOption('max_iter',10000)
+    solver.setOption('tol',1e-20)
     solver.setOption('suppress_all_output','yes')
     solver.setOption('print_time',False)
     solver.init()

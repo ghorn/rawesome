@@ -53,7 +53,7 @@ mheLog = InitializeMHE(mheRT,dae)
 
 from rawe.dae.rienIntegrator import RienIntegrator
 Rint = RienIntegrator(dae,ts=Ts, numIntegratorSteps=400, integratorType='INT_IRK_GL2')
-Rint.getOutputs()
+#Rint.getOutputs()
 # Initialize the MPC-MHE scheme
 #mpcRT.initialize()
 #mheRT.initialize()
@@ -69,6 +69,9 @@ outs = sim.getOutputs(mpcRT.x[0,:],mpcRT.u[0,:],{})
 new_y  = np.squeeze(outs['measurements'])
 simLog.log(mpcRT.x0,new_y,[])
     
+err1 = []
+err2 = []
+
 time = 0
 while time < Tf:
 #    print time
@@ -98,12 +101,16 @@ while time < Tf:
     new_x = sim.step(mpcRT.x[0,:],mpcRT.u[0,:],{})  
     # Get the last measurement AFTER simulating
     outs = sim.getOutputs(new_x,mpcRT.u[0,:],{})
+    outsR = Rint.getOutputs(x=np.squeeze(new_x),u=mpcRT.u[0,:])
     new_yN = np.array([outs['measurementsN']])
+    
+    err1 += [outs['measurements']-outsR['measurements']]
+    err2 += [outs['measurementsN']-outsR['measurementsN']]
     
     simLog.log(new_x,new_y,new_yN)
     
     # Assign the new initial value and shift
-    mpcRT.x0 = np.array(new_x)[:,0]
+    mpcRT.x0 = np.squeeze(new_x)
     mpcRT.shift()
     mheRT.shift(new_y=new_y,new_yN=new_yN)
     
