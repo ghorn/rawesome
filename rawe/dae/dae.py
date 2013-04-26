@@ -1,3 +1,4 @@
+import re
 
 import casadi as C
 import acadoSimExport
@@ -49,6 +50,11 @@ class Dae(object):
     def assertUniqueName(self, name):
         if name in (self._getAllNames() + self._illegalNames):
             raise ValueError('name "'+name+'" is not unique or illegal')
+
+        # make sure it's a valid variable name (useful for codegen)
+        if not re.match("^[A-Za-z0-9_]+$", name):
+            raise Exception('invalid name: "'+name+'"')
+
 
         if name[0]=='_':
             raise ValueError("underscores before names are illegal")

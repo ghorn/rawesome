@@ -69,7 +69,7 @@ def setupModel(dae, conf):
         wind_x = dae['w0']*C.log((zsat+zt_roughness+2)/zt_roughness)/C.log(z0/zt_roughness)
     else:
         wind_x = 0
-    dae['wind at altitude'] = wind_x
+    dae['wind_at_altitude'] = wind_x
 
     dp_carousel_frame = C.veccat( [ dx - ddelta*y
                                   , dy + ddelta*(rA + x)
@@ -296,19 +296,19 @@ def carouselModel(conf,nSteps=None,extraParams=[]):
     dae['daileron(deg/s)'] = dae['daileron']*180/C.pi
     dae['delevator(deg/s)'] = dae['delevator']*180/C.pi
     
-    dae['motor power'] = dae['motor_torque']*dae['ddelta']
+    dae['motor_power'] = dae['motor_torque']*dae['ddelta']
 
-    dae['tether tension'] = dae['r']*dae['nu']
-    dae['winch power'] = -dae['tether tension']*dae['dr']
+    dae['tether_tension'] = dae['r']*dae['nu']
+    dae['winch_power'] = -dae['tether_tension']*dae['dr']
     
     dae['dcm'] = C.vertcat([C.horzcat([dae['e11'],dae['e12'],dae['e13']]),
                             C.horzcat([dae['e21'],dae['e22'],dae['e23']]),
                             C.horzcat([dae['e31'],dae['e32'],dae['e33']])])
     
     # line angle
-    dae['cos(line angle)'] = \
+    dae['cos_line_angle'] = \
       (dae['e31']*dae['x'] + dae['e32']*dae['y'] + dae['e33']*dae['z']) / C.sqrt(dae['x']**2 + dae['y']**2 + dae['z']**2)
-    dae['line angle (deg)'] = C.arccos(dae['cos(line angle)'])*180.0/C.pi
+    dae['line_angle_deg'] = C.arccos(dae['cos_line_angle'])*180.0/C.pi
 
     (massMatrix, rhs, dRexp) = setupModel(dae, conf)
 

@@ -12,7 +12,7 @@ if __name__ == "__main__":
     force = dae.addU( "force" )
     
     # some extra outputs for the dae model
-    dae['force/pos'] = force/pos
+    dae['force_over_pos'] = force/pos
 
     # specify the ode residual
     mass = 1.0
@@ -82,6 +82,6 @@ if __name__ == "__main__":
     traj = ocp.solve()
 
     # plot results
-    traj.subplot([['pos','vel'],['force'],['force/pos']])
+    traj.subplot([['pos','vel'],['force'],['force_over_pos']])
     traj.plot(['pos','abspos'])
     plt.show()

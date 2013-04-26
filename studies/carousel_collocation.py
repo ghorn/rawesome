@@ -46,20 +46,20 @@ def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
 
     # constraint line angle
     for k in range(0,nk):
-        ocp.constrain(ocp.lookup('cos(line angle)',timestep=k),'>=',C.cos(55*pi/180), tag=('line angle',k))
+        ocp.constrain(ocp.lookup('cos_line_angle',timestep=k),'>=',C.cos(55*pi/180), tag=('line angle',k))
         
     # constrain airspeed
     def constrainAirspeedAlphaBeta():
         for k in range(0,nk):
             ocp.constrain(ocp.lookup('airspeed',timestep=k), '>=', 5)
-            ocp.constrainBnds(ocp.lookup('alpha(deg)',timestep=k), (-5,10))
-            ocp.constrainBnds(ocp.lookup('beta(deg)', timestep=k), (-10,10))
+            ocp.constrainBnds(ocp.lookup('alpha_deg',timestep=k), (-5,10))
+            ocp.constrainBnds(ocp.lookup('beta_deg', timestep=k), (-10,10))
     constrainAirspeedAlphaBeta()
 
     # constrain tether force
     for k in range(nk):
-        ocp.constrain( ocp.lookup('tether tension',timestep=k,degIdx=1), '>=', 0)
-        ocp.constrain( ocp.lookup('tether tension',timestep=k,degIdx=ocp.deg), '>=', 0)
+        ocp.constrain( ocp.lookup('tether_tension',timestep=k,degIdx=1), '>=', 0)
+        ocp.constrain( ocp.lookup('tether_tension',timestep=k,degIdx=ocp.deg), '>=', 0)
 
     # make it periodic
     for name in [ "y","z",
@@ -131,7 +131,7 @@ def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
         obj += ailObj + eleObj + winchObj + torqueObj
     ocp.setObjective( obj/nk )
 
-    ocp.setQuadratureDdt('quadrature energy', 'winch power')
+    ocp.setQuadratureDdt('quadrature_energy', 'winch_power')
 
     # spawn telemetry thread
     callback = rawe.kiteTelemetry.startKiteTelemetry(ocp, conf)
@@ -200,10 +200,10 @@ if __name__=='__main__':
         traj.plot(['ddr'],title='winch accel (ddr)')
         traj.subplot(['c','cdot','cddot'],title="invariants")
         traj.plot('airspeed')
-        traj.subplot([['alpha(deg)','alphaTail(deg)'],['beta(deg)','betaTail(deg)']])
-        traj.subplot(['cL','cD','L/D'])
-        traj.subplot(['motor_torque','motor power'])
-        traj.subplot(['winch power','tether tension'])
+        traj.subplot([['alpha_deg','alphaTail_deg'],['beta_deg','betaTail_deg']])
+        traj.subplot(['cL','cD','L_over_D'])
+        traj.subplot(['motor_torque','motor_power'])
+        traj.subplot(['winch_power','tether_tension'])
         traj.subplot(['e11','e12','e13','e21','e22','e23','e31','e32','e33'])
         plt.show()
     plotResults()
