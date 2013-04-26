@@ -5,7 +5,7 @@ from rawe.ocputils import Constraints
 
 pi = C.pi
 
-def getSteadyState(dae,conf,omega0,r0):
+def getSteadyState(dae,conf,omega0,r0,z0):
     # make steady state model
     g = Constraints()
     g.add(dae.getResidual(),'==',0,tag=('dae residual',None))
@@ -17,9 +17,16 @@ def getSteadyState(dae,conf,omega0,r0):
         g.add(dae['c'], '==', 0, tag=('c(0)==0',None))
         g.add(dae['cdot'], '==', 0, tag=('cdot(0)==0',None))
     constrainInvariantErrs()
-
+    
+    # Rotational velocity time derivative
+    g.add(C.mul(dae['dcm'].T,C.veccat([dae['w1'],dae['w2'],dae['w3']])) - C.veccat([0,0,omega0]) , '==', 0, tag=
+                       ("Rotational velocities",None))
+#    g.add(C.veccat([dae['w1'],dae['w2'],dae['w3']]) - C.mul(dae['dcm'],C.veccat([0,0,omega0])), '==', 0, tag=
+#                       ("Rotational velocities",None))
+    
     dvs = C.veccat([dae.xVec(), dae.zVec(), dae.uVec(), dae.pVec(), dae.xDotVec()])
-    ffcn = C.SXFunction([dvs],[sum([dae[n]**2 for n in ['aileron','elevator','y','z']])])
+#    ffcn = C.SXFunction([dvs],[sum([dae[n]**2 for n in ['aileron','elevator','y','z']])])
+    ffcn = C.SXFunction([dvs],[(dae['cL']-0.5)**2])
     gfcn = C.SXFunction([dvs],[g.getG()])
     ffcn.init()
     gfcn.init()
@@ -50,13 +57,13 @@ def getSteadyState(dae,conf,omega0,r0):
     guessVec = C.DMatrix([guess[n] for n in dae.xNames()+dae.zNames()+dae.uNames()+dae.pNames()]+
                          [dotGuess[n] for n in dae.xNames()])
 
-    bounds = {'x':(0.01,r0+1),'y':(-1,0),'z':(-1,0),
+    bounds = {'x':(0.01,r0+1),'y':(-1,0),'z':(z0,z0),
+             'dx':(-50,50),'dy':(0,0),'dz':(0,0),
              'r':(r0,r0),'dr':(0,0),
              'e11':(-2,2),'e12':(-2,2),'e13':(-2,2),
              'e21':(-2,2),'e22':(-2,2),'e23':(-2,2),
              'e31':(-2,2),'e32':(-2,2),'e33':(-2,2),
-             'dx':(-50,50),'dy':(-50,50),'dz':(0,0),
-             'w1':(-50,50),'w2':(-50,50),'w3':(-50,50),
+             'w1':(-50,50),'w2':(0,50),'w3':(-50,50),
              'delta':(0,0),'ddelta':(omega0,omega0),
              'cos_delta':(1,1),'sin_delta':(0,0),
              'aileron':(-0.1,0.1),'elevator':(-0.1,0.1),
@@ -64,7 +71,7 @@ def getSteadyState(dae,conf,omega0,r0):
              'nu':(0,3000),'motor_torque':(0,1000),
              'ddr':(0,0),'w0':(0,0)}
     dotBounds = {'x':(-50,50),'y':(-50,50),'z':(-50,50)
-                 ,'dx':(0,0),'dy':(0,0),'dz':(0,0),
+                 ,'dx':(-50,50),'dy':(-50,50),'dz':(0,0),
                  'r':(-1,1),'dr':(-1,1),
                  'e11':(-50,50),'e12':(-50,50),'e13':(-50,50),
                  'e21':(-50,50),'e22':(-50,50),'e23':(-50,50),
@@ -118,6 +125,8 @@ def getSteadyState(dae,conf,omega0,r0):
         solver.setOption("iteration_callback", c)
 #    addCallback()
     solver.setOption('max_iter',10000)
+    solver.setOption('suppress_all_output','yes')
+    solver.setOption('print_time',False)
     solver.init()
 
     solver.setInput(g.getLb(),'lbg')
@@ -142,5 +151,5 @@ def getSteadyState(dae,conf,omega0,r0):
         dotSol[name] = xOpt[k].at(0)
         k += 1
 #        print 'DDT('+name+'):\t',dotSol[name]
-    return sol
+    return sol, dotSol
 

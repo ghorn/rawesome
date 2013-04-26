@@ -166,6 +166,7 @@ class RienIntegrator(object):
 
     def __init__(self, dae, ts, numIntegratorSteps=10, integratorType='INT_IRK_GL4'):
         self._dae = dae
+        self._ts = ts
 
         # set some options
         options = {}
