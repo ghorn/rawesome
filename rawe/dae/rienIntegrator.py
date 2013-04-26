@@ -176,7 +176,7 @@ class RienIntegrator(object):
         options['integratorGrid'] = None
 
         # setup outputs function
-        self._outputFun = self._dae.outputsFunWithSolve()
+        self._outputsFun = self._dae.outputsFunWithSolve()
 
         (integratorLib, modelLib, rienModelGen) = exportIntegrator(self._dae, options)
         self._integratorLib = integratorLib
