@@ -206,6 +206,26 @@ class Dae(object):
 
         return (fAll,(f0,outputs0))
 
+    def outputsFunWithSolve(self):
+        # get output fun as fcn of [xdot, x, z, u, p]
+        (fAll, _) = self.outputsFun()
+        if fAll == None:
+            f = C.SXFunction([self.xVec(), self.uVec(), self.pVec()], [0])
+            return f
+        # solve for xdot, z
+        (xDotDict, zDict) = self.solveForXDotAndZ()
+        xDot = C.veccat([xDotDict[name] for name in self.xNames()])
+        z    = C.veccat([zDict[name] for name in self.zNames()])
+        # plug in xdot, z solution to outputs fun
+        fAll.init()
+        outputs = fAll.eval([xDot, self.xVec(), z, self.uVec(), self.pVec()])
+        # make new SXFunction that is only fcn of [x, u, p]
+        f = C.SXFunction([self.xVec(), self.uVec(), self.pVec()], [outputs])
+
+        f.init()
+        assert len(f.getFree()) == 0, 'the "impossible" happened >_<'
+        return f
+
     def getResidual(self):
         self._freezeXzup('getResidual()')
         if not hasattr(self,'_residual'):
