@@ -1,8 +1,8 @@
 import casadi as C
 
-from carouselSteadyState import getSteadyState
 import rawe
 import rawekite
+from rawekite.carouselSteadyState import getSteadyState
 
 if __name__=='__main__':
     # create the model

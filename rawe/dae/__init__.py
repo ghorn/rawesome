@@ -4,3 +4,4 @@ import acadoModelExport
 import acadoSimExport
 import octaveSimExport
 import rienIntegrator
+import detectLinearSubsystems
