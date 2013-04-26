@@ -244,23 +244,27 @@ class RienIntegrator(object):
     def run(self,*args,**kwargs):
         raise Exception("to step a rien integrator, you now have to call .step(x,u,p) instead of .run(x,u,p)")
 
-    def step(self,x,u,p):
+    def step(self,x=None,u=None,p=None):
         # x,u,p can be dicts or array-like
         # if x is a dict, the return value is a dict, otherwise it's a numpy array
 
         # vectorize inputs
-        self.x = x
-        self.u = u
-        self.p = p
+        if x != None:
+            self.x = x
+        if u != None:
+            self.u = u
+        if p != None:
+            self.p = p
 
         # call integrator
         self._setData()
-        ret = self._integratorLib.integrate(ctypes.c_void_p(self._data.ctypes.data), self._initIntegrator)
+        ret = self._integratorLib.integrate(ctypes.c_void_p(self._data.ctypes.data),
+                                            self._initIntegrator)
         self._getData()
         self._initIntegrator = 0
 
         # devectorize outputs
-        if type(x) == dict:
+        if x != None and type(x) == dict:
             xret = {}
             for k,name in enumerate(self._dae.xNames()):
                 xret[name] = self.x[k]
