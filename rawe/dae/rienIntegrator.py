@@ -2,6 +2,7 @@ import ctypes
 import os
 import numpy
 import rienIntegratorInterface
+import casadi as C
 
 from ..utils import codegen, subprocess_tee
 
@@ -103,6 +104,66 @@ ACADOvariables acadoVariables;
 
 
 class RienIntegrator(object):
+    _canonicalNames = ['x','z',
+                       'dx1_dx0','dz0_dx0','dx1_du','dx1_dp','dz0_du','dz0_dp',
+                       'u','p',
+                       '_dx1z0_dx0','_dx1z0_dup',
+                       '_data']
+    def __setattr__(self, name, value):
+        if name in self._canonicalNames:
+            if type(value)==C.DMatrix:
+                value = numpy.array(value)
+            if type(value)==dict:
+                if name == 'x':
+                    value = numpy.array([value[n] for n in self._dae.xNames()])
+                elif name == 'z':
+                    value = numpy.array([value[n] for n in self._dae.zNames()])
+                elif name == 'u':
+                    value = numpy.array([value[n] for n in self._dae.uNames()])
+                elif name == 'p':
+                    value = numpy.array([value[n] for n in self._dae.pNames()])
+                else:
+                    raise Exception('you can only pass a dict for [x,z,u,p], not for '+name)
+
+            if hasattr(self, name):
+                assert value.shape == getattr(self, name).shape, \
+                    name+' has dimension '+str(getattr(self,name).shape)+' but you tried to '+\
+                    'assign it something with dimension '+str(value.shape)
+            object.__setattr__(self, name, numpy.ascontiguousarray(value, dtype=numpy.double))
+        else:
+            object.__setattr__(self, name, value)
+
+    def _setData(self):
+        self._dx1z0_dx0 = numpy.vstack( (self.dx1_dx0,
+                                         self.dz0_dx0) )
+        self._dx1z0_dup = numpy.vstack((numpy.hstack( (self.dx1_du, self.dx1_dp) ),
+                                        numpy.hstack( (self.dz0_du, self.dz0_dp) )))
+        self._data = numpy.concatenate((self.x,
+                                        self.z,
+                                        self._dx1z0_dx0.flatten(),
+                                        self._dx1z0_dup.flatten(),
+                                        self.u,
+                                        self.p))
+
+    def _getData(self):
+        i0 = 0
+        i1 = 0
+        for field in ['x','z','_dx1z0_dx0','_dx1z0_dup','u','p']:
+            i0  = i1
+            i1 += getattr(self,field).size
+            shape = getattr(self,field).shape
+            self.__setattr__(field, self._data[i0:i1].reshape(shape))
+        assert i1 == self._data.size
+        # unpack dx1z0_dx0, dx1z0_dup
+        nx = self.x.size
+        nu = self.u.size
+        self.dx1_dx0 = self._dx1z0_dx0[:nx,:]
+        self.dz0_dx0 = self._dx1z0_dx0[nx:,:]
+        self.dx1_du  = self._dx1z0_dup[:nx,:nu]
+        self.dx1_dp  = self._dx1z0_dup[:nx,nu:]
+        self.dz0_du  = self._dx1z0_dup[nx:,:nu]
+        self.dz0_dp  = self._dx1z0_dup[nx:,nu:]
+
     def __init__(self, dae, ts, numIntegratorSteps=10, integratorType='INT_IRK_GL4'):
         self._dae = dae
 
@@ -124,18 +185,21 @@ class RienIntegrator(object):
         nz = len( self._dae.zNames() )
         nu = len( self._dae.uNames() )
         np = len( self._dae.pNames() )
-        N = nx + nz + nu + np + (nx+nz)*nx + (nu+np)*nx
-        
-        self._data = numpy.zeros( N, dtype=numpy.double )
-        self._xvec = self._data[0:nx]
-        self._zvec = self._data[nx:nx+nz]
-        self._pvec = self._data[(N-np):N]
-        self._uvec = self._data[(N-np-nu):(N-np)]
 
-        assert self._xvec.size == nx, str(self._xvec.size)+'!='+str(nx)
-        assert self._zvec.size == nz, str(self._zvec.size)+'!='+str(nz)
-        assert self._pvec.size == np, str(self._pvec.size)+'!='+str(np)
-        assert self._uvec.size == nu, str(self._uvec.size)+'!='+str(nu)
+#        [ x z d(x,z)/dx d(x,z)/d(u,p) u p]
+        self.x = numpy.zeros( nx )
+        self.z = numpy.zeros( nz )
+        self.u = numpy.zeros( nu )
+        self.p = numpy.zeros( np )
+        self.dx1_dx0  = numpy.zeros( (nx, nx) )
+        self.dz0_dx0  = numpy.zeros( (nz, nx) )
+        self.dx1_du = numpy.zeros( (nx, nu) )
+        self.dx1_dp = numpy.zeros( (nx, np) )
+        self.dz0_du = numpy.zeros( (nz, nu) )
+        self.dz0_dp = numpy.zeros( (nz, np) )
+
+        self._dx1z0_dx0 = numpy.zeros( (nx+nz, nx) )
+        self._dx1z0_dup = numpy.zeros( (nx+nz, nu+np) )
 
     def rhs(self,xdot,x,z,u,p, compareWithSX=False):
         xdot = numpy.array([xdot[n] for n in self._dae.xNames()],dtype=numpy.double)
@@ -185,36 +249,21 @@ class RienIntegrator(object):
         # if x is a dict, the return value is a dict, otherwise it's a numpy array
 
         # vectorize inputs
-        if type(x) == dict:
-            for k,name in enumerate(self._dae.xNames()):
-                self._xvec[k] = x[name]
-        else:
-            for k in range(len(self._dae.xNames())):
-                self._xvec[k] = x[k]
-
-        if type(u) == dict:
-            for k,name in enumerate(self._dae.uNames()):
-                self._uvec[k] = u[name]
-        else:
-            for k in range(len(self._dae.uNames())):
-                self._uvec[k] = u[k]
-
-        if type(p) == dict:
-            for k,name in enumerate(self._dae.pNames()):
-                self._pvec[k] = p[name]
-        else:
-            for k in range(len(self._dae.pNames())):
-                self._pvec[k] = p[k]
+        self.x = x
+        self.u = u
+        self.p = p
 
         # call integrator
+        self._setData()
         ret = self._integratorLib.integrate(ctypes.c_void_p(self._data.ctypes.data), self._initIntegrator)
+        self._getData()
         self._initIntegrator = 0
 
         # devectorize outputs
         if type(x) == dict:
             xret = {}
             for k,name in enumerate(self._dae.xNames()):
-                xret[name] = self._xvec[k]
+                xret[name] = self.x[k]
         else:
-            xret = numpy.copy(self._xvec)
+            xret = numpy.copy(self.x)
         return xret
