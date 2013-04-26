@@ -220,7 +220,7 @@ class Dae(object):
         fAll.init()
         outputs = fAll.eval([xDot, self.xVec(), z, self.uVec(), self.pVec()])
         # make new SXFunction that is only fcn of [x, u, p]
-        f = C.SXFunction([self.xVec(), self.uVec(), self.pVec()], [outputs])
+        f = C.SXFunction([self.xVec(), self.uVec(), self.pVec()], outputs)
 
         f.init()
         assert len(f.getFree()) == 0, 'the "impossible" happened >_<'
