@@ -1,5 +1,7 @@
 import casadi as C
 
+import time
+
 import rawe
 import rawekite
 from rawekite.carouselSteadyState import getSteadyState
@@ -8,12 +10,15 @@ if __name__=='__main__':
     # create the model
     from highwind_carousel_conf import conf
     dae = rawe.models.carousel(conf)
-
+    
     # compute the steady state
-    steadyState = getSteadyState(dae,conf,2*C.pi,1.2)
-
+    steadyState, ssDot = getSteadyState(dae,conf,2*C.pi,1.2,-0.1)
+    print steadyState
+    print ssDot
+    
+    
     # create the sim
-    dt = 0.02
+    dt = 0.01
     sim = rawe.sim.Sim(dae,dt)
     communicator = rawekite.communicator.Communicator()
 #    js = joy.Joy()
@@ -35,8 +40,10 @@ if __name__=='__main__':
     # loop through and simulate, if there's an error close the communicator and throw exception
     try:
         while True:
+#        for k in range(100):
             # sleep for dt
             timer.sleep()
+#            time.sleep(0.1)
             # send message to visualizer/plotter
             outs = sim.getOutputs(x,u,p)
             outs['delta'] = C.arctan2(x['sin_delta'], x['cos_delta'])
