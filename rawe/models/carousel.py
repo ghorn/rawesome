@@ -291,10 +291,10 @@ def carouselModel(conf,nSteps=None,extraParams=[]):
 
     
     dae['RPM'] = dae['ddelta']*60/(2*C.pi)
-    dae['aileron(deg)'] = dae['aileron']*180/C.pi
-    dae['elevator(deg)'] = dae['elevator']*180/C.pi
-    dae['daileron(deg/s)'] = dae['daileron']*180/C.pi
-    dae['delevator(deg/s)'] = dae['delevator']*180/C.pi
+    dae['aileron_deg'] = dae['aileron']*180/C.pi
+    dae['elevator_deg'] = dae['elevator']*180/C.pi
+    dae['daileron_deg_s'] = dae['daileron']*180/C.pi
+    dae['delevator_deg_s'] = dae['delevator']*180/C.pi
     
     dae['motor_power'] = dae['motor_torque']*dae['ddelta']
 
