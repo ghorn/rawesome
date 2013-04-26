@@ -33,7 +33,7 @@ dae = rawe.dae.Dae()
 [u] = dae.addU(['u'])
 
 dae['measurements'] = C.vertcat([x,u])
-dae['measurementsN'] = C.vertcat([x])
+dae['measurementsN'] = x
 
 dae.setResidual([dae.ddt("x")-v,
                  dae.ddt("v")-u])
@@ -51,11 +51,9 @@ mheRT, _ = makeMhe(dae,N=N_mpc,dt=Ts)
 mpcLog = InitializeMPC(mpcRT,dae)
 mheLog = InitializeMHE(mheRT,dae)
 
-
-
-# Create the MHE class
-#mheRT = makeMhe(dae,N=N_mhe,dt=Ts)
-
+from rawe.dae.rienIntegrator import RienIntegrator
+Rint = RienIntegrator(dae,ts=Ts, numIntegratorSteps=400, integratorType='INT_IRK_GL2')
+Rint.getOutputs()
 # Initialize the MPC-MHE scheme
 #mpcRT.initialize()
 #mheRT.initialize()

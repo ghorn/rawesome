@@ -12,8 +12,8 @@ import matplotlib.pyplot as plt
 import casadi as C
 import rawe
 
-def LinearizeSystem(mpcrt,dae):
-    raise Exception('not implemented yet')
+#def LinearizeSystem(mpcrt,dae):
+#    raise Exception('not implemented yet')
 #    (ode, _) = dae.solveForXDotAndZ()
 #    
 #    odeValue = []
@@ -146,7 +146,8 @@ def InitializeSim(dae,intOptions):
     if intOptions['type'] == 'Idas':
         sim = rawe.sim.Sim(dae,Ts)
     elif intOptions['type'] == 'Rintegrator':
-        sim = rawe.dae.rienIntegrator(dae,ts=Ts, numIntegratorSteps=400, integratorType='INT_IRK_GL2')
+        from rawe.dae.rienIntegrator import RienIntegrator
+        sim = RienIntegrator(dae,ts=Ts, numIntegratorSteps=400, integratorType='INT_IRK_GL2')
     else:
         raise Exception('integrator not supported')
     
