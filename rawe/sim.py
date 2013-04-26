@@ -45,6 +45,7 @@ class Sim(object):
     def __init__(self, dae, ts):
         print "creating integrator"
         self.dae = dae
+        self._ts = ts
         self.integrator = C.IdasIntegrator(self.dae.casadiDae())
         self.integrator.setOption("reltol",1e-6)
         self.integrator.setOption("abstol",1e-8)

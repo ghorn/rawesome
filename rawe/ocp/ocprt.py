@@ -8,6 +8,11 @@ import casadi as C
 class Logger(object):
     def __init__(self,ocprt,dae):
 
+        if ocprt._lib.py_get_ACADO_INITIAL_STATE_FIXED():
+            self._canonicalNames = ocprt._canonicalNames
+        else:
+            self._canonicalNames = list(set(ocprt._canonicalNames)-set(['x0']))
+        
         self.xNames = dae.xNames()
         self.uNames = dae.uNames()
         self.Ts = ocprt.getTs()
@@ -15,15 +20,15 @@ class Logger(object):
         self._ocprt = ocprt
         self._dae = dae
         self._log = {}
-        for field in OcpRT._canonicalNames:
+        for field in self._canonicalNames:
             self._log[field] = []
         self.log(ocprt)
-
+        
     def log(self, ocprt):
-        for field in OcpRT._canonicalNames:
+        for field in self._canonicalNames:
             self._log[field].append(copy.deepcopy(getattr(ocprt, field)))
 
-    def subplot(self,names,title=None,style=None,when=0,showLegend=True):
+    def subplot(self,names,title=None,style='',when=0,showLegend=True):
         assert isinstance(names,list)
 
         fig = plt.figure()
@@ -40,16 +45,16 @@ class Logger(object):
 
         plt.clf()
         n = len(names)
-        if style is None:
-            style = [None]*n
+        if style is '':
+            style = ['']*n
         for k,name in enumerate(names):
             plt.subplot(n,1,k+1)
             if k==0:
-                self._plot(name,title,style=style[k],when=when,showLegend=showLegend)
+                self._plot(name,title,style[k],when=when,showLegend=showLegend)
             else:
-                self._plot(name,None,style=style[k],when=when,showLegend=showLegend)
+                self._plot(name,None,style[k],when=when,showLegend=showLegend)
 
-    def plot(self,names,title=None,style=None,when=0,showLegend=True):
+    def plot(self,names,title=None,style='',when=0,showLegend=True):
 
         fig = plt.figure()
         if title is None:
@@ -64,14 +69,17 @@ class Logger(object):
         fig.canvas.set_window_title(str(title))
 
         plt.clf()
-        self._plot(names,title,style=style,when=when,showLegend=showLegend)
+        self._plot(names,title,style,when=when,showLegend=showLegend)
 
 
-    def _plot(self,names,title,style=None,when=0,showLegend=True):
+    def _plot(self,names,title,style,when=0,showLegend=True):
         if isinstance(names,str):
             names = [names]
         assert isinstance(names,list)
-
+        
+#        if style == None:
+#            style = ''
+        
         legend = []
         for name in names:
             assert isinstance(name,str)
@@ -80,12 +88,14 @@ class Logger(object):
             # if it's a differential state
             if name in self.xNames:
                 index = self.xNames.index(name)
-                ys = numpy.array(self._log['x'])[1:,when,index]
-                ts = numpy.arange(len(ys))*self.Ts
-
-                if style is None:
-                    plt.plot(ts,ys)
+                if when == 'all':
+                    for k in range(numpy.array(self._log['x']).shape[0]-1):
+                        ys = numpy.array(self._log['x'])[1+k,:,index]
+                        ts = numpy.arange(len(ys))*self.Ts + self.Ts*k
+                        plt.plot(ts,ys)
                 else:
+                    ys = numpy.array(self._log['x'])[1:,when,index]
+                    ts = numpy.arange(len(ys))*self.Ts
                     plt.plot(ts,ys,style)
 
             # if it's a control
@@ -93,11 +103,7 @@ class Logger(object):
                 index = self.uNames.index(name)
                 ys = numpy.array(self._log['u'])[1:,when,index]
                 ts = numpy.arange(len(ys))*self.Ts
-
-                if style is None:
-                    plt.step(ts,ys)
-                else:
-                    plt.step(ts,ys,style)
+                plt.step(ts,ys)
 
         if title is not None:
             assert isinstance(title,str), "title must be a string"
@@ -266,7 +272,7 @@ class OcpRT(object):
 
         # Shift the reference (if provided, else keep the previous one)
         if new_y != None:
-            self.y = numpy.append(self.y[1:,:],new_y,axis=0)
+            self.y = numpy.append(self.y[1:,:],[new_y],axis=0)
 
         if new_yN != None:
             self.yN = new_yN
