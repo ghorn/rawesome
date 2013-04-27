@@ -53,31 +53,31 @@ def toKiteProto(lookup,kiteAlpha=1.0,lineAlpha=1.0):
                                   ('my','aero_my'),
                                   ('mz','aero_mz')]:
         cs.aero.forcesTorques.__setattr__(attrName,lookup(lookupName))
-    for (attrName,lookupName) in [('alpha_deg','alpha(deg)'),
-                                  ('beta_deg','beta(deg)'),
+    for (attrName,lookupName) in [('alpha_deg','alpha_deg'),
+                                  ('beta_deg','beta_deg'),
                                   ('airspeed','airspeed'),
                                   ('CL','cL'),
                                   ('CD','cD'),
-                                  ('L_over_D','L/D'),
+                                  ('L_over_D','L_over_D'),
                                   ('fLift','fLift'),
                                   ('fDrag','fDrag')]:
         try:
             cs.aero.__setattr__(attrName,lookup(lookupName))
         except Exception:
             pass
-    for (attrName,lookupName) in [('tension','tether tension'),
-                                  ('winch_power','winch power'),
+    for (attrName,lookupName) in [('tension','tether_tension'),
+                                  ('winch_power','winch_power'),
                                   ('prop_power','prop_power'),
-                                  ('energy','quadrature energy'),
-                                  ('line_angle_deg', 'line angle (deg)'),
+                                  ('energy','quadrature_energy'),
+                                  ('line_angle_deg', 'line_angle_deg'),
                                   ('r',  'r'),
                                   ('dr', 'dr'),
                                   ('ddr','ddr'),
                                   ('c','c'),
                                   ('cdot','cdot'),
-                                  ('elevator_deg','elevator(deg)'),
+                                  ('elevator_deg','elevator_deg'),
                                   ('prop_drag','prop_drag'),
-                                  ('aileron_deg','aileron(deg)')]:
+                                  ('aileron_deg','aileron_deg')]:
         try:
             cs.outputs.__setattr__(attrName,lookup(lookupName))
         except Exception:
