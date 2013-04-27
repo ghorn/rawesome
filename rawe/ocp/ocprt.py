@@ -22,11 +22,16 @@ class Logger(object):
         self._log = {}
         for field in self._canonicalNames:
             self._log[field] = []
+        self._log['kkt'] = []
+        self._log['objective'] = []
+        self._log['timing'] = []
         self.log(ocprt)
         
     def log(self, ocprt):
         for field in self._canonicalNames:
             self._log[field].append(copy.deepcopy(getattr(ocprt, field)))
+        self._log['kkt'].append(ocprt.getKKT())
+        self._log['objective'].append(ocprt.getObjective())
 
     def subplot(self,names,title=None,style='',when=0,showLegend=True):
         assert isinstance(names,list)
@@ -103,7 +108,7 @@ class Logger(object):
                 index = self.uNames.index(name)
                 ys = numpy.array(self._log['u'])[1:,when,index]
                 ts = numpy.arange(len(ys))*self.Ts
-                plt.step(ts,ys)
+                plt.step(ts,ys,style)
 
         if title is not None:
             assert isinstance(title,str), "title must be a string"
