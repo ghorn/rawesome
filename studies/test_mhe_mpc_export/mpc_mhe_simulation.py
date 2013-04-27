@@ -72,49 +72,37 @@ simLog.log(mpcRT.x0,new_y,[])
 err1 = []
 err2 = []
 
+PL = np.eye(2)
+WL = np.eye(2)*1e10
+VL = mheRT.S
+xL = mpcRT.x0
+
 time = 0
 while time < Tf:
-#    print time
-    
     mheRT.preparationStep()
     fbret = mheRT.feedbackStep()
     if fbret != 0:
         raise Exception("MHE feedbackStep returned error code "+str(fbret))
     
-    mheLog.log(mheRT)
+    mpcRT.x0 = np.squeeze(mheRT.x[-1,:])
     
-    # Get the latest measurement
-    mpcRT.x0 = mheRT.x[-1,:]
-
     mpcRT.preparationStep()
     fbret = mpcRT.feedbackStep()
     if fbret != 0:
         raise Exception("MPC feedbackStep returned error code "+str(fbret))
     
-    mpcLog.log(mpcRT)
+    yL = mheRT.y[0,:]
+    x = mheRT.x[0,:]
+    u = mheRT.u[0,:]
+    PL1, xL1 = UpdateArrivalCost(Rint, x, u, xL, yL, PL, VL, WL)
+    print xL1
+    PL = PL1
+    xL = xL1
     
-    # Get the measurement BEFORE simulating
-    outs = sim.getOutputs(mpcRT.x[0,:],mpcRT.u[0,:],{})
-    new_y  = np.squeeze(outs['measurements'])
-#    new_y = mhe.makeMeasurements(x,u)
-    # Simulate the system
-    new_x = sim.step(mpcRT.x[0,:],mpcRT.u[0,:],{})  
-    # Get the last measurement AFTER simulating
-    outs = sim.getOutputs(new_x,mpcRT.u[0,:],{})
-    outsR = Rint.getOutputs(x=np.squeeze(new_x),u=mpcRT.u[0,:])
-    new_yN = np.array([outs['measurementsN']])
-    
-    err1 += [outs['measurements']-outsR['measurements']]
-    err2 += [outs['measurementsN']-outsR['measurementsN']]
-    
-    simLog.log(new_x,new_y,new_yN)
-    
-    # Assign the new initial value and shift
-    mpcRT.x0 = np.squeeze(new_x)
-    mpcRT.shift()
-    mheRT.shift(new_y=new_y,new_yN=new_yN)
+    SimulateAndShift(mpcRT,mheRT,sim,mpcLog,mheLog,simLog)
     
     time += Ts
+    print time
     
 
 
