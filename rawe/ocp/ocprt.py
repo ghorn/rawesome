@@ -97,7 +97,7 @@ class Logger(object):
                     for k in range(numpy.array(self._log['x']).shape[0]-1):
                         ys = numpy.array(self._log['x'])[1+k,:,index]
                         ts = numpy.arange(len(ys))*self.Ts + self.Ts*k
-                        plt.plot(ts,ys)
+                        plt.plot(ts,ys,style)
                 else:
                     ys = numpy.array(self._log['x'])[1:,when,index]
                     ts = numpy.arange(len(ys))*self.Ts
