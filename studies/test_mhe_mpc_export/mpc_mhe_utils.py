@@ -172,13 +172,13 @@ def SimulateAndShift(mpcRT,mheRT,sim,mpcLog,mheLog,simLog):
     
     # Get the measurement BEFORE simulating
     outs = sim.getOutputs(mpcRT.x[0,:],mpcRT.u[0,:],{})
-    new_y  = np.squeeze(outs['measurements'])
+    new_y  = np.squeeze(outs['measurements']) + np.random.randn(2)*0.01
     # Simulate the system
     new_x = sim.step(mpcRT.x[0,:],mpcRT.u[0,:],{})
     # Get the last measurement AFTER simulating
     outs = sim.getOutputs(new_x,mpcRT.u[0,:],{})
 #    outsR = Rint.getOutputs(x=np.squeeze(new_x),u=mpcRT.u[0,:])
-    new_yN = np.array([outs['measurementsN']])
+    new_yN = np.array([outs['measurementsN']]) + np.random.randn(1)*0.01
     
     simLog.log(new_x=new_x,new_y=new_y,new_yN=new_yN,new_out=outs)
     

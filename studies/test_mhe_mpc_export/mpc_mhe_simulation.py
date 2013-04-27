@@ -42,7 +42,7 @@ dae.setResidual([dae.ddt("x")-v,
 N_mpc = 10  # Number of MPC control intervals
 N_mhe = 10  # Number of MHE control intervals
 Ts = 0.1    # Sampling time
-Tf = 5.    # Simulation duration
+Tf = 10.    # Simulation duration
 
 # Create the MPC class
 mpcRT, intOpts = makeNmpc(dae,N=N_mpc,dt=Ts)
@@ -73,7 +73,7 @@ err1 = []
 err2 = []
 
 PL = np.eye(2)
-WL = np.eye(2)*1e10
+WL = np.eye(2)*1e6
 VL = mheRT.S
 xL = mpcRT.x0
 
