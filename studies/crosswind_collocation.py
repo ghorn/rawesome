@@ -145,9 +145,8 @@ if __name__=='__main__':
     ocp = setupOcp(dae,conf,nk,nicp,deg,collPoly)
 
     # spawn telemetry thread
-    callback = rawekite.kiteTelemetry.startKiteTelemetry(ocp, conf)
-#    callback = rawekite.kiteTelemetry.startKiteTelemetry(ocp, conf, userCallback=rawe.kiteTelemetry.showAllPoints)
-#    callback = rawekite.kiteTelemetry.startKiteTelemetry(ocp, conf, printBoundViolation=True, printConstraintViolation=True)
+    callback = rawe.telemetry.startTelemetry(ocp, conf, callbacks=[(rawekite.kiteTelemetry.showAllPoints,'multi-carousel')])
+#    callback = rawe.telemetry.startTelemetry(ocp, conf, callbacks=[(rawekite.kiteTelemetry.showAllPoints,'multi-carousel')], printBoundViolation=True, printConstraintViolation=True)
 
     # solver
     solverOptions = [("expand_f",True),

@@ -228,7 +228,7 @@ def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
 #        ocp._constraints.printViolations(g,lbg,ubg,reportThreshold=0)
         
         return mc.SerializeToString()
-    callback = rawe.kiteTelemetry.startKiteTelemetry(ocp, conf, userCallback=myCallback)
+    callback = rawe.telemetry.startTelemetry(ocp, conf, callbacks=[(myCallback,'multi-carousel')])
 
 
     # solver

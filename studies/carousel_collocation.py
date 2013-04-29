@@ -134,7 +134,7 @@ def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
     ocp.setQuadratureDdt('quadrature_energy', 'winch_power')
 
     # spawn telemetry thread
-    callback = rawe.kiteTelemetry.startKiteTelemetry(ocp, conf)
+    callback = rawe.telemetry.startTelemetry(ocp, conf, callbacks=[(rawekite.kiteTelemetry.showAllPoints,'multi-carousel')])
 
     # solver
     solverOptions = [ ("expand_f",True)

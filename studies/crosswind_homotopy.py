@@ -227,8 +227,8 @@ if __name__=='__main__':
     ocp.guess('gamma_homotopy',0)
 
     # spawn telemetry thread
-    callback = rawekite.kiteTelemetry.startKiteTelemetry(ocp, conf)
-#    callback = rawekite.kiteTelemetry.startKiteTelemetry(ocp, conf, printBoundViolation=True, printConstraintViolation=True)
+    callback = rawe.telemetry.startTelemetry(ocp, conf, callbacks=[(rawekite.kiteTelemetry.showAllPoints,'multi-carousel')])
+#    callback = rawe.telemetry.startTelemetry(ocp, conf, callbacks=[(rawekite.kiteTelemetry.showAllPoints,'multi-carousel')], printBoundViolation=True, printConstraintViolation=True)
 
     # solver
     solverOptions = [ ("expand_f",True)
