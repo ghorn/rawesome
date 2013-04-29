@@ -25,20 +25,20 @@ def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
 
     # constrain line angle
     for k in range(0,nk):
-        ocp.constrain(ocp.lookup('cos(line angle)',timestep=k),'>=',C.cos(55*pi/180), tag=('line angle',k))
+        ocp.constrain(ocp.lookup('cos_line_angle',timestep=k),'>=',C.cos(55*pi/180), tag=('line angle',k))
 
     # constrain airspeed
     def constrainAirspeedAlphaBeta():
         for k in range(0,nk):
             ocp.constrain(ocp.lookup('airspeed',timestep=k), '>=', 20, tag=('airspeed',nk))
-            ocp.constrainBnds(ocp.lookup('alpha(deg)',timestep=k), (-5,15), tag=('alpha',nk))
-            ocp.constrainBnds(ocp.lookup('beta(deg)', timestep=k), (-10,10), tag=('beta',nk))
+            ocp.constrainBnds(ocp.lookup('alpha_deg',timestep=k), (-5,15), tag=('alpha',nk))
+            ocp.constrainBnds(ocp.lookup('beta_deg', timestep=k), (-10,10), tag=('beta',nk))
     constrainAirspeedAlphaBeta()
 
     # constrain tether force
     for k in range(nk):
-        ocp.constrain( ocp.lookup('tether tension',timestep=k,degIdx=1), '>=', 0, tag=('tether tension',(nk,0)))
-        ocp.constrain( ocp.lookup('tether tension',timestep=k,degIdx=ocp.deg), '>=', 0, tag=('tether tension',(nk,1)))
+        ocp.constrain( ocp.lookup('tether_tension',timestep=k,degIdx=1), '>=', 0, tag=('tether tension',(nk,0)))
+        ocp.constrain( ocp.lookup('tether_tension',timestep=k,degIdx=ocp.deg), '>=', 0, tag=('tether tension',(nk,1)))
 
     # make it periodic
     for name in [ "y","z",
@@ -184,7 +184,7 @@ if __name__=='__main__':
         obj += (homotopyTraj['x'][k] - ocp.lookup('x',timestep=k))**2
         obj += (homotopyTraj['y'][k] - ocp.lookup('y',timestep=k))**2
         obj += (homotopyTraj['z'][k] - ocp.lookup('z',timestep=k))**2
-    ocp.setQuadratureDdt('quadrature energy', 'winch power')
+    ocp.setQuadratureDdt('quadrature_energy', 'winch_power')
 
     # control regularization
     for k in range(ocp.nk):

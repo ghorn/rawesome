@@ -5,13 +5,17 @@ from rawe.utils import codegen,pkgconfig,subprocess_tee
 import writeAcadoOcpExport
 
 def makeExportMakefile(phase1Options):
-    rpath = None
-    for blah in pkgconfig.call(['--libs','ocg2']).split(' '):
-        blah = blah.strip()
-        if len(blah) > 1 and blah[:2] == '-L':
-            rpath = blah[2:]
-            break
-    assert rpath is not None, "couldn't detect the library path of ocg2 :("
+    def getRpath(name):
+        rpath = None
+        for blah in pkgconfig.call(['--libs',name]).split(' '):
+            blah = blah.strip()
+            if len(blah) > 1 and blah[:2] == '-L':
+                rpath = blah[2:]
+                break
+        assert rpath is not None, "couldn't detect the library path of \""+name+"\" :("
+        return rpath
+    rpathAcado = getRpath('acado')
+    rpathOcg2 = getRpath('ocg2')
 
     makefile = """\
 CXX       = %(CXX)s
@@ -28,7 +32,8 @@ all : $(OBJ) export_ocp.so
 \t@echo CXX $@: $(CXX) $(CXXFLAGS) -c $< -o $@
 \t@$(CXX) $(CXXFLAGS) -c $< -o $@
 
-export_ocp.so::LDFLAGS+=-Wl,-rpath,%(rpath)s
+export_ocp.so::LDFLAGS+=-Wl,-rpath,%(rpathAcado)s
+export_ocp.so::LDFLAGS+=-Wl,-rpath,%(rpathOcg2)s
 
 export_ocp.so : $(OBJ)
 \t@echo LD $@ : $(CXX) -shared -o $@ $(OBJ) $(LDFLAGS)
@@ -36,7 +41,7 @@ export_ocp.so : $(OBJ)
 
 clean :
 \trm -f *.o *.so
-""" % {'CXX':phase1Options['CXX'],'rpath':rpath}
+""" % {'CXX':phase1Options['CXX'],'rpathAcado':rpathAcado,'rpathOcg2':rpathOcg2}
     return makefile
 
 # This writes and runs the ocp exporter, returning an exported OCP as a

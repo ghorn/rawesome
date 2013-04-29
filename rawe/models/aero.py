@@ -106,12 +106,12 @@ def aeroForcesTorques(dae, conf, we, wE, (w1,w2,w3), (eTe1, eTe2, eTe3), (ailero
         alphaTail = alpha0 + C.arctan2(-vT3,vT1)
         betaTail = C.arcsin(vT2/vKite)
     else:
-        raise ValueError('config "alpha_beta_compuation" value '+str(conf['alpha_beta_computation'])+' not recognized')
+        raise ValueError('config "alpha_beta_compuation" value '+str(conf['alpha_beta_computation'])+' not recognized, use "first_order" or "closed_form"')
     
-    dae['alpha(deg)'] = alpha*180/C.pi
-    dae['alphaTail(deg)'] = alphaTail*180/C.pi
-    dae['beta(deg)'] = beta*180/C.pi
-    dae['betaTail(deg)'] = betaTail*180/C.pi
+    dae['alpha_deg'] = alpha*180/C.pi
+    dae['alphaTail_deg'] = alphaTail*180/C.pi
+    dae['beta_deg'] = beta*180/C.pi
+    dae['betaTail_deg'] = betaTail*180/C.pi
 
     # cL = cLA*alpha + cLe*elevator   + cL0
     # cD = cDA*alpha + cDA2*alpha*alpha + cDB2*beta*beta + cDe*elevator + cDr*aileron + cD0
@@ -129,7 +129,7 @@ def aeroForcesTorques(dae, conf, we, wE, (w1,w2,w3), (eTe1, eTe2, eTe3), (ailero
 
     dae['cL'] = cL
     dae['cD'] = cD
-    dae['L/D'] = cL/cD
+    dae['L_over_D'] = cL/cD
     
     # LIFT :
     # ###############################

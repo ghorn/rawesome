@@ -62,7 +62,7 @@ def setupModel(dae, conf):
     zsat = 0.5*(z+C.sqrt(z*z))
     wind_x = dae['w0']*C.log((zsat+zt_roughness+2)/zt_roughness)/C.log(z0/zt_roughness)
 #    wind_x = dae['w0']
-    dae['wind at altitude'] = wind_x
+    dae['wind_at_altitude'] = wind_x
 
     dp_carousel_frame = C.veccat( [ dx - ddelta*y
                                   , dy + ddelta*(rA + x)
@@ -260,13 +260,13 @@ def crosswindModel(conf,extraParams=[]):
     dae['dw2'] = dae.ddt('w2')
     dae['dw3'] = dae.ddt('w3')
     
-    dae['aileron(deg)'] = dae['aileron']*180/C.pi
-    dae['elevator(deg)'] = dae['elevator']*180/C.pi
-    dae['daileron(deg/s)'] = dae['daileron']*180/C.pi
-    dae['delevator(deg/s)'] = dae['delevator']*180/C.pi
+    dae['aileron_deg']     = dae['aileron']*180/C.pi
+    dae['elevator_deg']    = dae['elevator']*180/C.pi
+    dae['daileron_deg_s']  = dae['daileron']*180/C.pi
+    dae['delevator_deg_s'] = dae['delevator']*180/C.pi
 
-    dae['tether tension'] = dae['r']*dae['nu']
-    dae['winch power'] = -dae['tether tension']*dae['dr']
+    dae['tether_tension'] = dae['r']*dae['nu']
+    dae['winch_power'] = -dae['tether_tension']*dae['dr']
 
     dae['dcm'] = C.vertcat([C.horzcat([dae['e11'],dae['e12'],dae['e13']]),
                             C.horzcat([dae['e21'],dae['e22'],dae['e23']]),
@@ -295,28 +295,28 @@ def crosswindModel(conf,extraParams=[]):
     ddx = dae.ddt('dx')
     ddy = dae.ddt('dy')
     ddz = dae.ddt('dz')
-    dae['accel (g)'] = C.sqrt(ddx**2 + ddy**2 + (ddz + 9.8)**2)/9.8
-    dae['accel without gravity (g)'] = C.sqrt(ddx**2 + ddy**2 + ddz**2)/9.8
+    dae['accel_g'] = C.sqrt(ddx**2 + ddy**2 + (ddz + 9.8)**2)/9.8
+    dae['accel_without_gravity_g'] = C.sqrt(ddx**2 + ddy**2 + ddz**2)/9.8
     dae['accel'] = C.sqrt(ddx**2 + ddy**2 + (ddz+9.8)**2)
-    dae['accel without gravity'] = C.sqrt(ddx**2 + ddy**2 + ddz**2)
+    dae['accel_without_gravity'] = C.sqrt(ddx**2 + ddy**2 + ddz**2)
 
     # line angle
-    dae['cos(line angle)'] = \
+    dae['cos_line_angle'] = \
       (dae['e31']*dae['x'] + dae['e32']*dae['y'] + dae['e33']*dae['z']) / C.sqrt(dae['x']**2 + dae['y']**2 + dae['z']**2)
-    dae['line angle (deg)'] = C.arccos(dae['cos(line angle)'])*180.0/C.pi
+    dae['line_angle_deg'] = C.arccos(dae['cos_line_angle'])*180.0/C.pi
 
     # add local loyd's limit
     def addLoydsLimit():
-        w = dae['wind at altitude']
+        w = dae['wind_at_altitude']
         cL = dae['cL']
         cD = dae['cD']
         rho = conf['rho']
         S = conf['sref']
         loyds = 2/27.0*rho*S*w**3*cL**3/cD**2
         loyds2 = 2/27.0*rho*S*w**3*(cL**2/cD**2 + 1)**(1.5)*cD
-        dae["loyd's limit"] = loyds
-        dae["loyd's limit (exact)"] = loyds2
-        dae['-(winch power)'] = -dae['winch power']
+        dae["loyds_limit"] = loyds
+        dae["loyds_limit_exact"] = loyds2
+        dae['neg_winch_power'] = -dae['winch_power']
     addLoydsLimit()
     
     psuedoZVec = C.veccat([dae.ddt(name) for name in ['dx','dy','dz','w1','w2','w3']]+[dae['nu']])

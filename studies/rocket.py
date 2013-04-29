@@ -11,8 +11,8 @@ if __name__ == "__main__":
     thrust = dae.addU( "thrust" )
     
     # some extra outputs for the dae model
-    dae['pos*vel'] = pos*vel
-    dae['vel*vel'] = vel*vel
+    dae['posvel'] = pos*vel
+    dae['velvel'] = vel*vel
 
     # specify the ode residual
     dae.setResidual([dae.ddt('pos') - vel,
@@ -46,15 +46,12 @@ if __name__ == "__main__":
     ocp.guess("mass",1)
     ocp.guess("thrust",0)
     
-#    ocp.setQuadratureDdt('integral vel*vel','vel*vel')
-#    ocp.setQuadratureDdt('integral vel*vel2','vel*vel')
-
     # lookup states/actions/outputs/params
     thrust4 = ocp.lookup('thrust',timestep=4)
     thrust4 = ocp('thrust',timestep=4)
     
     # can specify index of collocation point
-    posvel4_2 = ocp('pos*vel',timestep=4, degIdx=2)
+    posvel4_2 = ocp('posvel',timestep=4, degIdx=2)
 
     # add nonlinear constraint
     ocp.constrain(thrust4, '<=', posvel4_2**2)
