@@ -20,6 +20,16 @@ def dlqr(A, B, Q, R, N=None):
     
     P = scipy.linalg.solve_discrete_are(A, B, Q, R)
     
+#    nx = A.shape[0]
+#    nu = B.shape[1]
+#    PL = np.eye(nx)
+#    for k in range(10):
+#        M = np.bmat([[             Q, np.zeros((nx,nu)), np.zeros((nx,nx)) ],
+#                     [             0,                 R, np.zeros((nu,nx)) ],
+#                     [ -np.dot(PL,A),     -np.dot(PL,B),                PL ]])
+#        np.linalg.inv(np.dot(M.T,M))*M.T
+        
+    
     k1 = np.dot(np.dot(B.T, P), B) + R
     k2 = np.dot(np.dot(B.T, P), A)
     K = np.linalg.solve(k1,k2)
