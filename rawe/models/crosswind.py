@@ -210,10 +210,8 @@ def setupModel(dae, conf):
     dae['cddot'] = cddot
     return (mm, rhs, dRexp)
         
-def crosswindModel(conf,extraParams=[]):
+def crosswindModel(conf):
     dae = Dae()
-    for ep in extraParams:
-        dae.addP(ep)
         
 #    dae.addZ( [ "ddx"
 #              , "ddy"

@@ -179,7 +179,8 @@ if __name__=='__main__':
     from highwind_carousel_conf import conf
     
     print "creating model..."
-    dae = rawe.models.carousel(conf,extraParams=['endTime'])
+    dae = rawe.models.carousel(conf)
+    dae.addP('endTime')
 
     print "setting up ocp..."
     ocp = setupOcp(dae,conf,nk=30)

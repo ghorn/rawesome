@@ -260,7 +260,10 @@ if __name__=='__main__':
     from conf import conf
     
     print "creating model..."
-    dae = rawe.models.carousel(conf,extraParams=['endTime','phase0','phaseF'])
+    dae = rawe.models.carousel(conf)
+    dae.addP('endTime')
+    dae.addP('phase0')
+    dae.addP('phaseF')
 
     print "setting up ocp..."
     ocp = setupOcp(dae,conf,nk=50)

@@ -98,7 +98,8 @@ if __name__=='__main__':
     nk = 40
 
     print "creating model..."
-    dae = rawe.models.crosswind(conf,extraParams=['endTime'])
+    dae = rawe.models.crosswind(conf)
+    dae.addP('endTime')
 
     print "setting up ocp..."
     ocp = setupOcp(dae,conf,nk=nk)
