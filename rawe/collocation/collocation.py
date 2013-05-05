@@ -24,16 +24,16 @@ class LagrangePoly(object):
     def _mkLagrangePolynomials(self):
         # Collocation point
         tau = CS.ssym("_tau")
-          
+
         # lagrange polynomials
         self.lfcns = []
 
         # lagrange polynomials evaluated at collocation points
         self.lAtOne = np.zeros(self.deg+1)
-        
+
         # derivative of lagrange polynomials evaluated at collocation points
         self.lDotAtTauRoot = np.zeros((self.deg+1,self.deg+1))
-        
+
         # For all collocation points: eq 10.4 or 10.17 in Biegler's book
         # Construct Lagrange polynomials to get the polynomial basis at the collocation point
         for j in range(self.deg+1):
@@ -61,18 +61,18 @@ class LagrangePoly(object):
             self.lfcns[j].setInput(tau)
             self.lfcns[j].evaluate()
             ret += self.lfcn.output()*zs[j]
-            
+
         return ret
 
 class BoundsMap(collmaps.WriteableCollMap):
     def __init__(self,ocp,name):
         collmaps.WriteableCollMap.__init__(self,ocp,name)
-        
+
         # tags for the bounds
         bndtags = []
         for name in ocp.dae.pNames():
             bndtags.append((name,None))
-        for k in range(ocp.nk):  
+        for k in range(ocp.nk):
             for i in range(ocp.nicp):
                 for j in range(ocp.deg+1):
                     if k==0 and j==0 and i==0:
@@ -91,7 +91,7 @@ class BoundsMap(collmaps.WriteableCollMap):
             bndtags.append((name,(ocp.nk,0,0)))
 
         self.bndtags = bndtags
-        
+
     def boundsFeedback(self,x,lbx,ubx,reportThreshold=0):
         """
         Tests if x >= ub + reportThreshold
@@ -139,9 +139,9 @@ class Coll():
     def __init__(self, dae, nk=None, nicp=1, deg=4, collPoly='RADAU'):
         assert nk is not None
         assert isinstance(dae, Dae)
-        
+
         self.dae = dae
-        
+
         self.nk = nk
         self.nicp = nicp
         self.deg = deg
@@ -163,7 +163,7 @@ class Coll():
         # run some checks and pass it to the less safe CollMapPlus.setQuadratureDdt
         if not self.collocationIsSetup:
             raise ValueError("Can't add quadratures until you call setupCollocation")
-        
+
         # make sure this is a unique name (quadratureManager also checks)
         self.dae.assertUniqueName(quadratureStateName)
 
@@ -178,7 +178,7 @@ class Coll():
         if self.collocationIsSetup:
             raise ValueError("you can't setup collocation twice")
         self.collocationIsSetup = True
-        
+
         ## -----------------------------------------------------------------------------
         ## Collocation setup
         ## -----------------------------------------------------------------------------
@@ -187,19 +187,19 @@ class Coll():
 
         # make coefficients for collocation/continuity equations
         self.lagrangePoly = LagrangePoly(deg=self.deg,collPoly=self.collPoly)
-        
+
         # function to get h out
         self.hfun = CS.MXFunction([self._dvMap.vectorize()],[self.h])
         self.hfun.init()
-        
+
         # add collocation constraints
         ffcn = self._makeResidualFun()
- 
+
         ndiff = self.xSize()
         nalg = self.zSize()
 
         self._xDot = np.resize(np.array([None]),(self.nk,self.nicp,self.deg+1))
-        
+
         # For all finite elements
         for k in range(self.nk):
             for i in range(self.nicp):
@@ -217,10 +217,10 @@ class Coll():
                                       self.zVec(k,nicpIdx=i,degIdx=j),
                                       self.uVec(k),
                                       self.pVec()])
-                    
+
                     # impose system dynamics (for the differential states (eq 10.19b))
                     self.constrain(fk,'==',0,tag=("implicit dynamic equation",(k,i,j)))
-                    
+
                 # Get an expression for the state at the end of the finite element
                 xf_k = 0
                 for j in range(self.deg+1):
@@ -282,14 +282,14 @@ class Coll():
 
         if (residual.size() != self.zSize()+self.xSize()):
             print 'WARNING: residual.size() != self.zSize() + self.xSize() ==> (%d != %d + %d)' % (residual.size(),self.zSize(), self.xSize())
-    
+
         # residual function
         u = self.dae.uVec()
         xd = self.dae.xVec()
         xa = self.dae.zVec()
         xddot = CS.veccat([self.dae.ddt(name) for name in self.dae.xNames()])
         p  = self.dae.pVec()
-        
+
         ffcn = CS.SXFunction([xddot,xd,xa,u,p],[residual])
         ffcn.init()
 
@@ -306,7 +306,7 @@ class Coll():
         h = (traj.tgrid[-1,0,0] - traj.tgrid[0,0,0])/float(traj.dvMap._nk*traj.dvMap._nicp)
         h *= traj.dvMap._nk*traj.dvMap._nicp/float(self.nk*self.nicp)
         h *= numLoops
-            
+
         pps = {}
         missing = []
         ############# make piecewise polynomials ###########
@@ -421,7 +421,7 @@ class Coll():
     def setupSolver(self,solverOpts=[],constraintFunOpts=[],callback=None):
         if not self.collocationIsSetup:
             raise ValueError("you forgot to call setupCollocation")
-        
+
         g =   self._constraints.getG()
         lbg = self._constraints.getLb()
         ubg = self._constraints.getUb()
@@ -429,7 +429,7 @@ class Coll():
         # Nonlinear constraint function
         gfcn = CS.MXFunction([self._dvMap.vectorize()],[g])
         setFXOptions(gfcn,constraintFunOpts)
-        
+
         # Objective function of the NLP
         if not hasattr(self,'_objective'):
             raise ValueError('need to set objective function')
@@ -439,7 +439,7 @@ class Coll():
         if callback is not None:
             nd = self._dvMap.vectorize().size()
             nc = self._constraints.getG().size()
-    
+
             c = CS.PyFunction( callback,
                                CS.nlpsolverOut(x = CS.sp_dense(nd,1),
                                                f = CS.sp_dense(1,1),
@@ -458,10 +458,10 @@ class Coll():
 
         # Set options
         setFXOptions(self.solver, solverOpts)
-        
+
         # initialize the solver
         self.solver.init()
-        
+
         # Bounds on g
         self.solver.setInput(lbg,'lbg')
         self.solver.setInput(ubg,'ubg')
@@ -486,7 +486,7 @@ class Coll():
         def linearInterpMissing(tau,val0,val1):
             return val0*(1-tau) + val1*tau
         self._guess.fillInMissing("initial guess",linearInterpMissing)
-        
+
         def ceilMissing(tau,val0,val1):
             (lb0,ub0) = val0
             (lb1,ub1) = val1
@@ -499,26 +499,26 @@ class Coll():
         vars_lbub = self._bounds.vectorize()
         vars_lb = [lbub[0] for lbub in vars_lbub]
         vars_ub = [lbub[1] for lbub in vars_lbub]
-        
+
         if xInit is not None:
             vars_init = xInit
 
         # Initial condition
         self.solver.setInput(vars_init, 'x0')
-        
+
         # Bounds on x
         self.solver.setInput(vars_lb,'lbx')
         self.solver.setInput(vars_ub,'ubx')
-        
+
         # Solve the problem
         self.solver.solve()
-        
+
         # Print the optimal cost
         print "optimal cost: ", float(self.solver.output('f'))
-        
+
         # Retrieve the solution
         return trajectory.TrajectoryPlotter(self,np.array(self.solver.output('x')))
-        
+
     def bound(self,name,val,timestep=None,quiet=False,force=False):
         assert isinstance(name,str)
         assert isinstance(val,tuple)
@@ -544,7 +544,7 @@ class Coll():
                 self._bounds.setVal(name,val,force=force)
                 return
             raise ValueError("can't bound \""+name+"\" because it's not x/z/u/p")
-        
+
         assert isinstance(timestep,int)
         if name in self._bounds._zMap:
             for nicpIdx in range(self.nicp):
@@ -600,7 +600,7 @@ class Coll():
 
         for k,name in enumerate(names):
             self.guess(name,float(val[k]),**kwargs)
-        
+
     def guessX(self,val,**kwargs):
         self._guessVec(val,self.dae.xNames(),**kwargs)
     def guessZ(self,val,**kwargs):
@@ -612,7 +612,7 @@ class Coll():
 
     def __call__(self,*args,**kwargs):
         return self.lookup(*args,**kwargs)
-        
+
     def lookup(self,name,timestep=None,nicpIdx=None,degIdx=None):
         if name in self.dae.outputNames():
             if not hasattr(self,'_outputMap'):
