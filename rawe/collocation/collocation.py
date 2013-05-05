@@ -612,14 +612,13 @@ class Coll():
         return self.lookup(*args,**kwargs)
         
     def lookup(self,name,timestep=None,nicpIdx=None,degIdx=None):
-        if (name in self.dae.outputNames()) and (not hasattr(self,'_outputMap')):
-            raise ValueError("Can't lookup outputs until you call setupOutputs")
+        if name in self.dae.outputNames():
+            if not hasattr(self,'_outputMap'):
+                raise ValueError("Can't lookup outputs until you call setupOutputs")
+            else:
+                return self._outputMap.lookup(name,timestep=timestep,nicpIdx=nicpIdx,degIdx=degIdx)
         try:
             return self._dvMap.lookup(name,timestep=timestep,nicpIdx=nicpIdx,degIdx=degIdx)
-        except NameError:
-            pass
-        try:
-            return self._outputMap.lookup(name,timestep=timestep,nicpIdx=nicpIdx,degIdx=degIdx)
         except NameError:
             pass
         try:
