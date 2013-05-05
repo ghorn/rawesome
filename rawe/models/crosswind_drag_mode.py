@@ -48,43 +48,35 @@ def setupModel(dae, conf):
     w2  =  dae['w2']
     w3  =  dae['w3']
 
-    delta = 0
-    ddelta = 0
-    rA = 0
-
     r = dae['r']
-    dr = 0
-    ddr = 0
-    
-    # wind
-    z0 = conf['z0']
-    zt_roughness = conf['zt_roughness']
-    zsat = 0.5*(z+C.sqrt(z*z))
-    wind_x = dae['w0']*C.log((zsat+zt_roughness+2)/zt_roughness)/C.log(z0/zt_roughness)
-#    wind_x = dae['w0']
-    dae['wind_at_altitude'] = wind_x
 
-    dp_carousel_frame = C.veccat( [ dx - ddelta*y
-                                  , dy + ddelta*(rA + x)
-                                  , dz
-                                  ]) - C.veccat([C.cos(delta)*wind_x,C.sin(delta)*wind_x,0])
-    R_c2b = C.veccat( [dae[n] for n in ['e11', 'e12', 'e13',
+    # wind
+    def getWind():
+        z0 = conf['z0']
+        zt_roughness = conf['zt_roughness']
+        zsat = 0.5*(z+C.sqrt(z*z))
+        wind_x = dae['w0']*C.log((zsat+zt_roughness+2)/zt_roughness)/C.log(z0/zt_roughness)
+    #    wind_x = dae['w0']
+        return wind_x
+    dae['wind_at_altitude'] = getWind()
+
+    v_bw_n = C.veccat( [ dx - dae['wind_at_altitude'], dy, dz ] )
+    R_n2b = C.veccat( [dae[n] for n in ['e11', 'e12', 'e13',
                                         'e21', 'e22', 'e23',
                                         'e31', 'e32', 'e33']]
                       ).reshape((3,3))
 
     # Aircraft velocity w.r.t. inertial frame, given in its own reference frame
     # (needed to compute the aero forces and torques !)
-    dpE = C.mul( R_c2b, dp_carousel_frame )
+    v_bw_b = C.mul( R_n2b, v_bw_n )
 
-    (f1, f2, f3, t1, t2, t3) = aeroForcesTorques(dae, conf, dp_carousel_frame, dpE,
+    (f1, f2, f3, t1, t2, t3) = aeroForcesTorques(dae, conf, v_bw_n, v_bw_b,
                                                  (dae['w1'], dae['w2'], dae['w3']),
                                                  (dae['e21'], dae['e22'], dae['e23']),
                                                  (dae['aileron'],dae['elevator'])
                                                  )
-    we = dp_carousel_frame
-    dae['prop_drag_vector'] = dae['prop_drag']*we/dae['airspeed']
-    dae['prop_power'] = C.mul(dae['prop_drag_vector'].T, we)
+    dae['prop_drag_vector'] = dae['prop_drag']*v_bw_n/dae['airspeed']
+    dae['prop_power'] = C.mul(dae['prop_drag_vector'].T, v_bw_n)
     f1 -= dae['prop_drag_vector'][0]
     f2 -= dae['prop_drag_vector'][1]
     f3 -= dae['prop_drag_vector'][2]
@@ -158,6 +150,10 @@ def setupModel(dae, conf):
 
     # right hand side
     zt2 = zt*zt
+    ddelta = 0
+    rA = 0
+    dr = 0
+    ddr = 0
     rhs = C.veccat(
           [ f1 + ddelta*m*(dy + ddelta*rA + ddelta*x) + ddelta*dy*m 
           , f2 - ddelta*m*(dx - ddelta*y) - ddelta*dx*m 

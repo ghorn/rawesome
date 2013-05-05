@@ -43,7 +43,7 @@ def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
     # make it periodic
     for name in [ "y","z",
                   "dy","dz",
-                  "w1","w2","w3",
+                  "w_bn_b_x","w_bn_b_y","w_bn_b_z",
                   "r","dr",
                   'aileron','elevator'
                   ]:
@@ -76,7 +76,9 @@ def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
     for d in ['dx','dy','dz']:
         ocp.bound(d,(-70,70))
 
-    for w in ['w1','w2','w3']:
+    for w in ['w_bn_b_x',
+              'w_bn_b_y',
+              'w_bn_b_z']:
         ocp.bound(w,(-4*pi,4*pi))
 
     ocp.bound('endTime',(4.0,4.0))
@@ -177,7 +179,7 @@ if __name__=='__main__':
 
                 k += 1
 
-    ocp.guess('w3', 2*pi/ocp._guess.lookup('endTime'))
+    ocp.guess('w_bn_b_z', 2.0*pi/ocp._guess.lookup('endTime'))
 
     # objective function
     obj = -1e6*ocp.lookup('gamma_homotopy')
@@ -222,7 +224,7 @@ if __name__=='__main__':
     ocp.guess('w0',10)
     ocp.guess('r',lineRadiusGuess)
 
-    for name in ['w1','w2','dr','ddr','aileron','elevator','daileron','delevator']:
+    for name in ['w_bn_b_x','w_bn_b_y','dr','ddr','aileron','elevator','daileron','delevator']:
         ocp.guess(name,0)
 
     ocp.guess('gamma_homotopy',0)
@@ -232,23 +234,12 @@ if __name__=='__main__':
 #    callback = rawe.telemetry.startTelemetry(ocp, conf, callbacks=[(rawekite.kiteTelemetry.showAllPoints,'multi-carousel')], printBoundViolation=True, printConstraintViolation=True)
 
     # solver
-    solverOptions = [ ("expand_f",True)
-                    , ("expand_g",True)
-                    , ("generate_hessian",True)
-#                     ,("qp_solver",C.NLPQPSolver)
-#                     ,("qp_solver_options",{'nlp_solver': C.IpoptSolver, "nlp_solver_options":{"linear_solver":"ma57"}})
-                    , ("linear_solver","ma57")
-                    , ("max_iter",1000)
-                    , ("tol",1e-11)
-#                    , ('monitor',['eval_g'])
-#                    , ("Timeout", 1e6)
-#                    , ("UserHM", True)
-#                    , ("ScaleConIter",True)
-#                    , ("ScaledFD",True)
-#                    , ("ScaledKKT",True)
-#                    , ("ScaledObj",True)
-#                    , ("ScaledQP",True)
-                    ]
+    solverOptions = [("expand_f",True),
+                     ("expand_g",True),
+                     ("generate_hessian",True),
+                     ("linear_solver","ma57"),
+                     ("max_iter",1000),
+                     ("tol",1e-11)]
 
     print "setting up solver..."
     ocp.setupSolver( solverOpts=solverOptions,
@@ -282,13 +273,13 @@ if __name__=='__main__':
         traj.subplot(['dx','dy','dz'])
         traj.subplot([['aileron','elevator'],['daileron','delevator']],title='control surfaces')
         traj.subplot(['r','dr','ddr'])
-        traj.subplot(['wind at altitude','dr','dx'])
+        traj.subplot(['wind_at_altitude','dr','dx'])
         traj.subplot(['c','cdot','cddot'],title="invariants")
         traj.plot('airspeed')
-        traj.subplot([['alpha(deg)','alphaTail(deg)'],['beta(deg)','betaTail(deg)']])
-        traj.subplot(['cL','cD','L/D'])
-        traj.subplot(['winch power', 'tether tension'])
-        traj.subplot(['w1','w2','w3'])
+        traj.subplot([['alpha_deg','alphaTail_deg'],['beta_deg','betaTail_deg']])
+        traj.subplot(['cL','cD','L_over_D'])
+        traj.subplot(['winch_power', 'tether_tension'])
+        traj.subplot(['w_bn_b_x','w_bn_b_y','w_bn_b_z'])
         traj.subplot(['e11','e12','e13','e21','e22','e23','e31','e32','e33'])
         traj.plot(['nu'])
         plt.show()

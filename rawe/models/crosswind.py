@@ -44,41 +44,33 @@ def setupModel(dae, conf):
     dy  =  dae['dy']
     dz  =  dae['dz']
 
-    w1  =  dae['w1']
-    w2  =  dae['w2']
-    w3  =  dae['w3']
-
-    delta = 0
-    ddelta = 0
-    rA = 0
-
     r = dae['r']
     dr = dae['dr']
     ddr = dae['ddr']
     
     # wind
-    z0 = conf['z0']
-    zt_roughness = conf['zt_roughness']
-    zsat = 0.5*(z+C.sqrt(z*z))
-    wind_x = dae['w0']*C.log((zsat+zt_roughness+2)/zt_roughness)/C.log(z0/zt_roughness)
-#    wind_x = dae['w0']
-    dae['wind_at_altitude'] = wind_x
+    def getWind():
+        z0 = conf['z0']
+        zt_roughness = conf['zt_roughness']
+        zsat = 0.5*(z+C.sqrt(z*z))
+        wind_x = dae['w0']*C.log((zsat+zt_roughness+2)/zt_roughness)/C.log(z0/zt_roughness)
+    #    wind_x = dae['w0']
+        return wind_x
+    dae['wind_at_altitude'] = getWind()
 
-    dp_carousel_frame = C.veccat( [ dx - ddelta*y
-                                  , dy + ddelta*(rA + x)
-                                  , dz
-                                  ]) - C.veccat([C.cos(delta)*wind_x,C.sin(delta)*wind_x,0])
-    R_c2b = C.veccat( [dae[n] for n in ['e11', 'e12', 'e13',
+    v_bw_n = C.veccat( [ dx - dae['wind_at_altitude'], dy, dz ] )
+    R_n2b = C.veccat( [dae[n] for n in ['e11', 'e12', 'e13',
                                         'e21', 'e22', 'e23',
                                         'e31', 'e32', 'e33']]
                       ).reshape((3,3))
+    print R_n2b
 
     # Aircraft velocity w.r.t. inertial frame, given in its own reference frame
     # (needed to compute the aero forces and torques !)
-    dpE = C.mul( R_c2b, dp_carousel_frame )
+    v_bw_b = C.mul( R_n2b, v_bw_n )
 
-    (f1, f2, f3, t1, t2, t3) = aeroForcesTorques(dae, conf, dp_carousel_frame, dpE,
-                                                 (dae['w1'], dae['w2'], dae['w3']),
+    (f1, f2, f3, t1, t2, t3) = aeroForcesTorques(dae, conf, v_bw_n, v_bw_b,
+                                                 (dae['w_bn_b_x'], dae['w_bn_b_y'], dae['w_bn_b_z']),
                                                  (dae['e21'], dae['e22'], dae['e23']),
                                                  (dae['aileron'],dae['elevator'])
                                                  )
@@ -150,7 +142,13 @@ def setupModel(dae, conf):
     mm[6,6] = 0
 
     # right hand side
+    w1  =  dae['w_bn_b_x']
+    w2  =  dae['w_bn_b_y']
+    w3  =  dae['w_bn_b_z']
+
     zt2 = zt*zt
+    ddelta = 0
+    rA = 0
     rhs = C.veccat(
           [ f1 + ddelta*m*(dy + ddelta*rA + ddelta*x) + ddelta*dy*m 
           , f2 - ddelta*m*(dx - ddelta*y) - ddelta*dx*m 
@@ -182,8 +180,8 @@ def setupModel(dae, conf):
     ddx = dae.ddt('dx')
     ddy = dae.ddt('dy')
     ddz = dae.ddt('dz')
-    dw1 = dae.ddt('w1')
-    dw2 = dae.ddt('w2')
+    dw1 = dae.ddt('w_bn_b_x')
+    dw2 = dae.ddt('w_bn_b_y')
 #    ddx = dae['ddx']
 #    ddy = dae['ddy']
 #    ddz = dae['ddz']
@@ -213,35 +211,27 @@ def setupModel(dae, conf):
 def crosswindModel(conf):
     dae = Dae()
         
-#    dae.addZ( [ "ddx"
-#              , "ddy"
-#              , "ddz"
-#              , "dw1"
-#              , "dw2"
-#              , "dw3"
-#              , "nu"
-#              ] )
     dae.addZ("nu")
-    dae.addX( [ "x"   # state 0
-              , "y"   # state 1
-              , "z"   # state 2
-              , "e11" # state 3
-              , "e12" # state 4
-              , "e13" # state 5
-              , "e21" # state 6
-              , "e22" # state 7
-              , "e23" # state 8
-              , "e31" # state 9
-              , "e32" # state 10
-              , "e33" # state 11
-              , "dx"  # state 12
-              , "dy"  # state 13
-              , "dz"  # state 14
-              , "w1"  # state 15
-              , "w2"  # state 16
-              , "w3"  # state 17
-              , "r" # state 20
-              , "dr" # state 21
+    dae.addX( [ "x"
+              , "y"
+              , "z"
+              , "e11"
+              , "e12"
+              , "e13"
+              , "e21"
+              , "e22"
+              , "e23"
+              , "e31"
+              , "e32"
+              , "e33"
+              , "dx"
+              , "dy"
+              , "dz"
+              , "w_bn_b_x"
+              , "w_bn_b_y"
+              , "w_bn_b_z"
+              , "r"
+              , "dr"
               , "aileron"
               , "elevator"
               ] )
@@ -254,9 +244,9 @@ def crosswindModel(conf):
     dae['ddx'] = dae.ddt('dx')
     dae['ddy'] = dae.ddt('dy')
     dae['ddz'] = dae.ddt('dz')
-    dae['dw1'] = dae.ddt('w1')
-    dae['dw2'] = dae.ddt('w2')
-    dae['dw3'] = dae.ddt('w3')
+    dae['ddt_w_bn_b_x'] = dae.ddt('w_bn_b_x')
+    dae['ddt_w_bn_b_y'] = dae.ddt('w_bn_b_y')
+    dae['ddt_w_bn_b_z'] = dae.ddt('w_bn_b_z')
     
     dae['aileron_deg']     = dae['aileron']*180/C.pi
     dae['elevator_deg']    = dae['elevator']*180/C.pi
@@ -317,7 +307,8 @@ def crosswindModel(conf):
         dae['neg_winch_power'] = -dae['winch_power']
     addLoydsLimit()
     
-    psuedoZVec = C.veccat([dae.ddt(name) for name in ['dx','dy','dz','w1','w2','w3']]+[dae['nu']])
+    psuedoZVec = C.veccat([dae.ddt(name) for name in \
+                    ['dx','dy','dz','w_bn_b_x','w_bn_b_y','w_bn_b_z']]+[dae['nu']])
     alg = C.mul(massMatrix, psuedoZVec) - rhs
     dae.setResidual( [ode, alg] )
     

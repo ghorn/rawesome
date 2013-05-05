@@ -7,7 +7,7 @@ from numpy import pi
 import rawe
 import rawekite
 
-numLoops=4
+numLoops=1
 
 def setupOcp(dae,conf,nk,nicp,deg,collPoly):
     def addCosts():
@@ -67,7 +67,7 @@ def setupOcp(dae,conf,nk,nicp,deg,collPoly):
     # make it periodic
     for name in [ "y","z",
                   "dy","dz",
-                  "w1","w2","w3",
+                  "w_bn_b_x","w_bn_b_y","w_bn_b_z",
                   "r","dr",
                   'aileron','elevator'
                   ]:
@@ -78,17 +78,17 @@ def setupOcp(dae,conf,nk,nicp,deg,collPoly):
 
     # bounds
     ocp.bound('aileron',(-0.04,0.04))
-    ocp.bound('elevator',(-0.1,0.1))
+    ocp.bound('elevator',(-0.1,0.5))
     ocp.bound('daileron',(-2.0,2.0))
     ocp.bound('delevator',(-2.0,2.0))
 
-    ocp.bound('x',(-200,200))
-    ocp.bound('y',(-200,200))
+    ocp.bound('x',(-2000,2000))
+    ocp.bound('y',(-2000,2000))
     if 'minAltitude' in conf:
-        ocp.bound('z',(conf['minAltitude'],200))
+        ocp.bound('z',(conf['minAltitude'],150))
     else:
-        ocp.bound('z',(0.5,200))
-    ocp.bound('r',(1,200))
+        ocp.bound('z',(0.01,150))
+    ocp.bound('r',(1,500))
     ocp.bound('dr',(-30,30))
     ocp.bound('ddr',(-500,500))
 
@@ -98,10 +98,13 @@ def setupOcp(dae,conf,nk,nicp,deg,collPoly):
     for d in ['dx','dy','dz']:
         ocp.bound(d,(-70,70))
 
-    for w in ['w1','w2','w3']:
+    for w in ['w_bn_b_x',
+              'w_bn_b_y',
+              'w_bn_b_z']:
         ocp.bound(w,(-4*pi,4*pi))
 
-    ocp.bound('endTime',(0.5,20))
+    ocp.bound('endTime',(0.5,12))
+#    ocp.bound('endTime',(0.5,numLoops*15))
     ocp.bound('w0',(10,10))
 
     # boundary conditions
@@ -128,11 +131,12 @@ def setupOcp(dae,conf,nk,nicp,deg,collPoly):
 
 if __name__=='__main__':
     print "reading config..."
-#    nk = 60*numLoops
-    nk = 70
     from carousel_conf import conf
     #from highwind_carousel_conf import conf
     #from stingray_conf import conf
+    
+    nk = 40*numLoops
+#    nk = 70
     
     print "creating model..."
     dae = rawe.models.crosswind(conf)
@@ -152,26 +156,23 @@ if __name__=='__main__':
     # solver
     solverOptions = [("expand_f",True),
                      ("expand_g",True),
-                     ("generate_hessian",True),
-                    ("linear_solver","ma57"),
-                    ("max_iter",1000),
-                    ("tol",1e-12),
-#                     ("qp_solver",C.NLPQPSolver),
-#                     ("qp_solver_options",{'nlp_solver': C.IpoptSolver, "nlp_solver_options":{"linear_solver":"ma57"}}),
-#                    ("warm_start_init_point","yes"),
-#                    ("warm_start_bound_push",1e-11),
-#                    ("warm_start_mult_bound_push",1e-11),
-#                    ("mu_init",1e-11),
-#                    ("Timeout", 1e6),
-#                    ("UserHM", True),
-#                    ("ScaleConIter",True),
-#                    ("ScaledFD",True),
-#                    ("ScaledKKT",True),
-#                    ("ScaledObj",True),
-#                    ("ScaledQP",True)
-                    ]
-    
+                     ("generate_hessian",True)]
+    ipoptOptions = solverOptions + [("linear_solver","ma57"),
+                                    ("max_iter",1000),
+                                    ("tol",1e-12)]
+    worhpOptions = solverOptions + [("Max_Iter",5000),
+                                    #("MaxIter",5000),
+                                    ("Timeout", 1e6),
+                                    ("UserHM", True),
+                                    ("ScaleConIter",True),
+                                    ("ScaledFD",True),
+                                    ("ScaledKKT",True),
+                                    ("ScaledObj",True),
+                                    ("ScaledQP",True)
+                                    ]
     print "setting up solver..."
+    solverOptions = ipoptOptions
+#    solverOptions = worhpOptions
     ocp.setupSolver( solverOpts=solverOptions,
                      callback=callback )
 
@@ -179,12 +180,16 @@ if __name__=='__main__':
 #    ocp.interpolateInitialGuess("data/crosswind_opt.dat",force=True,quiet=True,numLoops=numLoops)
 
     traj = ocp.solve()
+#    from rawe.collocation import trajectory
+#    traj = trajectory.TrajectoryPlotter(ocp,numpy.array(ocp._guess.vectorize()))
+
 
     print "num loops: "+str(numLoops)
-    print "optimal power: "+str(traj.lookup('quadrature energy',-1)/traj.lookup('endTime'))
+    print "optimal power: "+str(traj.lookup('quadrature_energy',-1)/traj.lookup('endTime'))
     print "endTime: "+str(traj.lookup('endTime'))
 
-    traj.save("data/crosswind_opt_4_loops.dat")
+    traj.save("data/crosswind_opt.dat")
+#    traj.save("data/crosswind_opt_4_loops.dat")
 
     def printBoundsFeedback():
         xOpt = traj.dvMap.vectorize()
@@ -216,8 +221,8 @@ if __name__=='__main__':
 #        traj.subplot([['ddx','ddy','ddz'],['accel','accel without gravity']])
         traj.plot(["loyds_limit","loyds_limit_exact","neg_winch_power"])
 #        traj.plot(["loyd's limit","-(winch power)"],title='')
-        traj.subplot([['daileronCost','delevatorCost','ddrCost'],['winch power']])
-        traj.subplot(['w1','w2','w3'])
+        traj.subplot([['daileronCost','delevatorCost','ddrCost'],['winch_power']])
+        traj.subplot(['w_bn_b_x','w_bn_b_y','w_bn_b_z'])
 #        traj.subplot(['e11','e12','e13','e21','e22','e23','e31','e32','e33'])
         traj.plot('line_angle_deg')
         traj.plot('quadrature_energy')
@@ -226,7 +231,7 @@ if __name__=='__main__':
         traj.plot('nu')
         
         plt.show()
-#    plotResults()
+    plotResults()
 
 
     def plotPaper():
