@@ -565,19 +565,21 @@ class Coll():
                 for k in range(self.nk+1):
                     self.guess(name,val,timestep=k,quiet=quiet)
                 return
-            if name in self._guess._zMap:
+            elif name in self._guess._zMap:
                 for k in range(self.nk):
                     self.guess(name,val,timestep=k,quiet=quiet)
                 return
-            if name in self._guess._uMap:
+            elif name in self._guess._uMap:
                 for k in range(self.nk):
                     self.guess(name,val,timestep=k,quiet=quiet)
                 return
-            if name in self._guess._pMap:
+            elif name in self._guess._pMap:
                 self._guess.setVal(name,val,force=force)
                 return
-        
-        assert isinstance(timestep,int)
+            else:
+                raise Exception('"'+name+'" is not a design variable')
+
+        assert isinstance(timestep,int), "timestep is not an int: " + str(timestep)
         if nicpIdx is not None:
             assert isinstance(nicpIdx,int)
         if degIdx is not None:
