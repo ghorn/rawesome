@@ -1,5 +1,10 @@
 import casadi as C
 
+def getWindAnglesFrom_v_bw_b(airspeed, v_bw_b):
+    alpha =  C.arctan2( v_bw_b[2], v_bw_b[0] )
+    beta  =  C.arcsin (-v_bw_b[1] / airspeed )
+    return (alpha, beta)
+
 def aeroForcesTorques(dae, conf, v_bw_n, v_bw_b, (w1,w2,w3), (eTe1, eTe2, eTe3), (aileron,elevator)):
     rho = conf['rho']
     alpha0 = conf['alpha0deg']*C.pi/180
@@ -86,9 +91,10 @@ def aeroForcesTorques(dae, conf, v_bw_n, v_bw_b, (w1,w2,w3), (eTe1, eTe2, eTe3),
 
     # AERODYNAMIC COEEFICIENTS
     # #################
-    vT1 =          v_bw_b_x
-    vT2 = -lT*w3 + v_bw_b_y
-    vT3 =  lT*w2 + v_bw_b_z
+    v_tailw_b = C.veccat([          v_bw_b_x,
+                           -lT*w3 + v_bw_b_y,
+                            lT*w2 + v_bw_b_z])
+
 
     #NOTE: beta & alphaTail are compensated for the tail motion induced by
     #omega @>@>
@@ -101,10 +107,10 @@ def aeroForcesTorques(dae, conf, v_bw_n, v_bw_b, (w1,w2,w3), (eTe1, eTe2, eTe3),
 #        betaTail = vT2/C.sqrt(vT1*vT1 + vT3*vT3)
 
     elif conf['alpha_beta_computation'] == 'closed_form':
-        alpha = alpha0 + C.arctan2(-v_bw_b_z,v_bw_b_x)
-        beta = C.arcsin(v_bw_b_y/vKite)
-        alphaTail = alpha0 + C.arctan2(-vT3,vT1)
-        betaTail = C.arcsin(vT2/vKite)
+        (alpha, beta)          = getWindAnglesFrom_v_bw_b(vKite, v_bw_b)
+        (alphaTail, betaTail)  = getWindAnglesFrom_v_bw_b(vKite, v_tailw_b)
+        alpha     += alpha0
+        alphaTail += alpha0
     else:
         raise ValueError('config "alpha_beta_compuation" value '+str(conf['alpha_beta_computation'])+' not recognized, use "first_order" or "closed_form"')
 
