@@ -160,6 +160,8 @@ class Coll():
 
 
     def setQuadratureDdt(self,quadratureStateName,quadratureStateDotName):
+        ''' Add a new quadrature state to the collocation problem by specifying the name of its derivative
+        '''
         # run some checks and pass it to the less safe CollMapPlus.setQuadratureDdt
         if not self.collocationIsSetup:
             raise ValueError("Can't add quadratures until you call setupCollocation")
@@ -555,7 +557,9 @@ class Coll():
 
     def guess(self,name,val,timestep=None,nicpIdx=None,degIdx=None,quiet=False,force=False):
         assert isinstance(name,str)
-        assert isinstance(val,numbers.Real), "your guess must be a valid python number"
+        if (type(val)==np.array or type(val)==np.ndarray) and val.size == 1:
+            val = float(val)
+        assert isinstance(val,numbers.Real), "your guess for \""+name+"\" must be a valid python number, you gave: "+repr(val)
 
         # handle timestep == None
         if timestep is None:
