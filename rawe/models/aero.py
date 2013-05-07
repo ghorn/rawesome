@@ -94,6 +94,9 @@ def aeroForcesTorques(dae, conf, v_bw_n, v_bw_b, (w1,w2,w3), (eTe1, eTe2, eTe3),
     v_tailw_b = C.veccat([          v_bw_b_x,
                            -lT*w3 + v_bw_b_y,
                             lT*w2 + v_bw_b_z])
+    v_tailw_b_x = v_tailw_b[0]
+    v_tailw_b_y = v_tailw_b[1]
+    v_tailw_b_z = v_tailw_b[2]
 
 
     #NOTE: beta & alphaTail are compensated for the tail motion induced by
@@ -102,9 +105,9 @@ def aeroForcesTorques(dae, conf, v_bw_n, v_bw_b, (w1,w2,w3), (eTe1, eTe2, eTe3),
         alpha = alpha0-v_bw_b_z/v_bw_b_x
         beta = v_bw_b_y/v_bw_b_x
 #        beta = v_bw_b_y/C.sqrt(v_bw_b_x*v_bw_b_x + v_bw_b_z*v_bw_b_z)
-        alphaTail = alpha0-vT3/vT1
-        betaTail = vT2/vT1
-#        betaTail = vT2/C.sqrt(vT1*vT1 + vT3*vT3)
+        alphaTail = alpha0-v_tailw_b_z/v_tailw_b_x
+        betaTail = v_tailw_b_y/v_tailw_b_x
+#        betaTail = v_tailw_b_y/C.sqrt(v_tailw_b_x*v_tailw_b_x + v_tailw_b_z*v_tailw_b_z)
 
     elif conf['alpha_beta_computation'] == 'closed_form':
         (alpha, beta)          = getWindAnglesFrom_v_bw_b(vKite, v_bw_b)
