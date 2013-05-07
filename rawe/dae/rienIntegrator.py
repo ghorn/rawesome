@@ -8,8 +8,8 @@ from ..utils import codegen, subprocess_tee
 
 def loadIntegratorInterface():
     # write the interface file
-    files = {'rienIntegratorInterface.cpp':rienIntegratorInterface.phase1src,
-             'Makefile':rienIntegratorInterface.phase1makefile}
+    files = {'rienIntegratorInterface.cpp':rienIntegratorInterface.phase1src(),
+             'Makefile':rienIntegratorInterface.phase1makefile()}
     interfaceDir = codegen.memoizeFiles(files)
 
     # call make to make sure shared lib is build

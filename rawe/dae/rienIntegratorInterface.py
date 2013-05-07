@@ -1,4 +1,7 @@
-phase1src = '''\
+from ..utils import pkgconfig
+
+def phase1src():
+    return '''\
 #include <string>
 #include <iostream>
 
@@ -106,7 +109,9 @@ int makeRienIntegrator( const char * genPath,
 }
 '''
 
-phase1makefile = '''\
+def phase1makefile():
+    rpathAcado = pkgconfig.getRpath('acado')
+    return '''\
 CXX       = g++
 CXXFLAGS  = -Wall
 CXXFLAGS += -g
@@ -126,11 +131,13 @@ CPP_SRC = rienIntegratorInterface.cpp
 .PHONY: clean all rienIntegratorInterface.so
 all : $(OBJ) rienIntegratorInterface.so
 
-%.o : %.cpp
+%%.o : %%.cpp
 	@echo CPP $@ #: $(CXX) $(CXXFLAGS) -c $< -o $@
 	@$(CXX) $(CXXFLAGS) -c $< -o $@
 
-OBJ = $(CPP_SRC:%.cpp=%.o)
+OBJ = $(CPP_SRC:%%.cpp=%%.o)
+
+rienIntegratorInterface.so::LDFLAGS+=-Wl,-rpath,%(rpathAcado)s
 
 rienIntegratorInterface.so : $(OBJ)
 	@echo LD $@ #: $(CXX) -shared -o $@ $(OBJ) $(LDFLAGS)
@@ -138,4 +145,4 @@ rienIntegratorInterface.so : $(OBJ)
 
 clean :
 	rm -f *.o *.so
-'''
+''' % {'rpathAcado':rpathAcado}
