@@ -2,6 +2,7 @@ import phase1
 import qpoases
 from ocprt import OcpRT
 import ocg_interface
+from ..dae import rienModelExport
 
 def validateOptions(defaultOpts, userOpts, optName):
     assert isinstance(userOpts,dict), optName+" options must be a dictionary"
@@ -45,9 +46,14 @@ def exportOcp(ocp, cgOptions, acadoOptions, phase1Options):
     # add model for rien integrator
     files['model.c'] = '''\
 #include "qpoases/solver.hpp"
-
-%(rhsAndJacString)s
-''' % ocp._dae.makeRienModel(ocp._ts)
+#include "rhs.h"
+#include "rhsJacob.h"
+'''
+    rienModelGen = rienModelExport.generateCModel(ocp._dae, ocp._ts)
+    files['rhs.cpp'] = '#include "rhs.h"\n'+rienModelGen['rhsFile'][0]
+    files['rhsJacob.cpp'] = '#include "rhsJacob.h"\n'+rienModelGen['rhsJacobFile'][0]
+    files['rhs.h'] = rienModelGen['rhsFile'][1]
+    files['rhsJacob.h'] = rienModelGen['rhsJacobFile'][1]
 
     # add python_interface.c
     files['python_interface.c'] = ocg_interface.ocg_interface

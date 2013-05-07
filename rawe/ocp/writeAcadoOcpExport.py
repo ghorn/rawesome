@@ -192,7 +192,7 @@ def generateAcadoOcp(ocp, acadoOptions):
     lines.append('''\
 /* setup OCP */
 OCP _ocp(0, N * Ts, N);
-_ocp.setModel( "model", "rhs", "rhs_jac" );
+_ocp.setModel( "model", "rhs", "rhsJacob" );
 _ocp.setDimensions( %(nx)d, %(nx)d, %(nz)d, %(nup)d );\
 ''' % {'nx':len(dae.xNames()), 'nz':len(dae.zNames()), 'nup':len(dae.uNames())+len(dae.pNames())})
 
@@ -262,8 +262,8 @@ _ocp.setDimensions( %(nx)d, %(nx)d, %(nz)d, %(nup)d );\
 
     # objective
     lines.append('/* set objective */')
-    lines.append('ExportVariable  _SS( "SS", %(size)d, %(size)d);' % {'size': ocp._minLsq.size()})
-    lines.append('ExportVariable _SSN("SSN", %(size)d, %(size)d);' % {'size': ocp._minLsqEndTerm.size()})
+    lines.append('ExportVariable  _SS( "S", %(size)d, %(size)d);' % {'size': ocp._minLsq.size()})
+    lines.append('ExportVariable _SSN("SN", %(size)d, %(size)d);' % {'size': ocp._minLsqEndTerm.size()})
     lines.append('_ocp.minimizeLSQ(_SS, _obj);')
     lines.append('_ocp.minimizeLSQEndTerm(_SSN, _objEnd);')
     

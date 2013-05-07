@@ -1,8 +1,11 @@
 import ctypes
 import os
 import numpy
-import rienIntegratorInterface
+
 import casadi as C
+
+import rienModelExport
+import rienIntegratorInterface
 
 from ..utils import codegen, subprocess_tee
 
@@ -20,14 +23,18 @@ def loadIntegratorInterface():
     # load the shared object
     return ctypes.cdll.LoadLibrary(os.path.join(interfaceDir, 'rienIntegratorInterface.so'))
 
-def makeMakefile(cfiles):
+def makeMakefile(cfiles, cxxfiles):
     return """\
 CC      = gcc
 CFLAGS  = -O3 -fPIC -finline-functions -I.
+CXX     = g++
+CXXFLAGS = -O3 -fPIC -finline-functions -I.
 LDFLAGS = -lm
 
 C_SRC = %(cfiles)s
+CXX_SRC = %(cxxfiles)s
 OBJ = $(C_SRC:%%.c=%%.o)
+OBJ += $(CXX_SRC:%%.cpp=%%.o)
 
 .PHONY: clean all
 all : $(OBJ) model.so integrator.so
@@ -36,13 +43,17 @@ all : $(OBJ) model.so integrator.so
 \t@echo CC $@: $(CC) $(CFLAGS) -c $< -o $@
 \t@$(CC) $(CFLAGS) -c $< -o $@
 
+%%.o : %%.cpp acado.h
+\t@echo CXX $@: $(CXX) $(CXXFLAGS) -c $< -o $@
+\t@$(CXX) $(CXXFLAGS) -c $< -o $@
+
 %%.so : $(OBJ)
-\t@echo LD $@: $(CC) -shared -o $@ $(OBJ) $(LDFLAGS)
-\t@$(CC) -shared -o $@ $(OBJ) $(LDFLAGS)
+\t@echo LD $@: $(CXX) -shared -o $@ $(OBJ) $(LDFLAGS)
+\t@$(CXX) -shared -o $@ $(OBJ) $(LDFLAGS)
 
 clean :
 \trm -f *.o *.so
-""" % {'cfiles':' '.join(cfiles)}
+""" % {'cfiles':' '.join(cfiles), 'cxxfiles':' '.join(cxxfiles)}
 
 
 def writeRienIntegrator(dae, options):
@@ -70,12 +81,15 @@ def exportIntegrator(dae, options):
     exportedFiles = writeRienIntegrator(dae, options)
 
     # model file
-    rienModelGen = dae.makeRienModel(options['timestep'])
-    rienModelGen['modelFile'] = '#include "acado.h"\n\n'+rienModelGen['modelFile']
-    modelFile = rienModelGen['modelFile'] 
-
+    rienModelGen = rienModelExport.generateCModel(dae,options['timestep'])
+    modelFile = '''\
+#include "acado.h"
+#include "rhs.h"
+#include "rhsJacob.h"
+'''
     # write the makefile
-    makefile = makeMakefile(['workspace.c', 'model.c', 'integrator.c'])
+    makefile = makeMakefile(['workspace.c', 'model.c', 'integrator.c'],
+                            ['rhs.cpp','rhsJacob.cpp'])
 
     # write the static workspace file (temporary)
     workspace = """\
@@ -83,10 +97,13 @@ def exportIntegrator(dae, options):
 ACADOworkspace acadoWorkspace;
 ACADOvariables acadoVariables;
 """
-
     genfiles = {'integrator.c': exportedFiles['integrator.c'],
                 'acado.h': exportedFiles['acado.h'],
                 'model.c': modelFile,
+                'rhs.cpp': '#include "rhs.h"\n'+rienModelGen['rhsFile'][0],
+                'rhs.h': rienModelGen['rhsFile'][1],
+                'rhsJacob.cpp': '#include "rhsJacob.h"\n'+rienModelGen['rhsJacobFile'][0],
+                'rhsJacob.h': rienModelGen['rhsJacobFile'][1],
                 'workspace.c': workspace,
                 'Makefile': makefile}
     exportpath = codegen.memoizeFiles(genfiles)

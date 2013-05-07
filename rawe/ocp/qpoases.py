@@ -25,6 +25,8 @@ endif
 
 
 CXX_SRC = \\
+\trhs.cpp \\
+\trhsJacob.cpp \\
 %(qpo_src)s \\
 \tqpoases/solver.cpp
 

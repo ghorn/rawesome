@@ -21,14 +21,15 @@ def memoizeFiles(genfiles):
         def doAssertions(blah):
             assert isinstance(blah, dict), 'blah not a dict'
             for name,src in blah.items():
-                assert isinstance(name, str), "name not a string"
+                assert isinstance(name, str), "name not a string: "+str(name)
                 if isinstance(src,dict):
                     doAssertions(src)
                 else:
-                    assert isinstance(src, str), "src not a string"
+                    assert isinstance(src, str), "src not a string: "+str(src)
         doAssertions(genfiles)
-    except Exception:
-        raise Exception("memoizeFiles needs a (possibly recursive) dict of filename:source input")
+    except Exception as e:
+        raise Exception("memoizeFiles needs a (possibly recursive) dict of filename:source input\n"+\
+                        str(e))
 
     # hash the files
     exportpath = getExportPath(genfiles)
@@ -113,3 +114,47 @@ def withTempdir(command):
         shutil.rmtree(tmppath)
 
     return allfiles
+
+def writeCCode(f, name):
+    def callme(tmpdir):
+        f.generateCode( os.path.join(tmpdir,'generatedCode.c') )
+    namespace = "ALRIGHT_GUYS_LETS_EXPORT_"+name
+    codestring = withTempdir(callme)['generatedCode.c']
+    codestring = '\n'.join(['  '+c for c in codestring.split('\n')])
+    codestring = "namespace "+namespace+"{\n"+\
+                 codestring +\
+                 "} // namespace "+ namespace +"\n\n"
+
+    real = 'double'
+    args0 = ['const '+real+'* x'+str(k) for k in range(f.getNumInputs())]
+    args0 += [real+'* r'+str(k) for k in range(f.getNumOutputs())]
+    args0 = '(' + ', '.join(args0) + ')'
+    args1 = ['x'+str(k) for k in range(f.getNumInputs())]
+    args1 += ['r'+str(k) for k in range(f.getNumOutputs())]
+    args1 = '(' + ', '.join(args1) + ')'
+
+    proto0 = 'void '+name+args0
+    fun0 = proto0+'{\n' + \
+           '  '+namespace+'::evaluate'+args1+';\n}\n'
+
+    proto1 = 'int '+name+'Wrap(const '+real+'** x, '+real+'** r)'
+    fun1 = proto1+'{\n' + \
+           '  return '+namespace+'::evaluateWrap(x, r);\n}\n'
+    codestring += fun0 + fun1
+    header = '''\
+#ifndef __%(name)s_H__
+#define __%(name)s_H__
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+%(protos)s
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif // __%(name)s_H__
+''' % {'name':name, 'protos':proto0 + ';\n' + proto1 + ';'}
+    return (codestring, header)

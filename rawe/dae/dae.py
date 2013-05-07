@@ -1,9 +1,5 @@
 import re
-
 import casadi as C
-import acadoSimExport
-import acadoModelExport
-from octaveSimExport import generateOctaveSim
 
 class Dae(object):
     """
@@ -258,49 +254,6 @@ class Dae(object):
                                       p=C.veccat([self.uVec(),self.pVec()])
                                       ),
                              C.daeOut( alg=f, ode=xdot) )
-
-    def octaveSimGen(self,functionName):
-        self._freezeXzup('octaveSimGen()')
-        return generateOctaveSim(self,functionName)
-
-    def acadoSimGen(self):
-        self._freezeXzup('agadoSimGen()')
-
-        f = self.getResidual()
-            
-        xdot = C.veccat([self.ddt(name) for name in self.xNames()])
-
-        info = { 'x':self.xVec(),
-                 'z':self.zVec(),
-                 'p':self.pVec(),
-                 'u':self.uVec(),
-                 'xdot':xdot,
-                 'f':f }
-        return acadoSimExport.simExport(self, info)
-
-    def makeRienModel(self, timeScaling):
-        self._freezeXzup('makeRienModel()')
-
-        f = self.getResidual()
-
-        xdot = C.veccat([self.ddt(name) for name in self.xNames()])
-
-        info = { 'x':self.xVec(),
-                 'z':self.zVec(),
-                 'p':self.pVec(),
-                 'u':self.uVec(),
-                 'xdot':xdot,
-                 'f':f,
-                 'timeScaling':timeScaling
-                 }
-        return acadoSimExport.generateCModel(self, info)
-
-    def acadoModelGen(self):
-        self._freezeXzup('agadoModelGen()')
-        self._freezeOutputs('agadoModelGen()')
-
-        f = self.getResidual()
-        return acadoModelExport.generateAcadoCodegenModel(self,f)
 
     def solveForXDotAndZ(self):
         # get the residual fg(xdot,x,z)
