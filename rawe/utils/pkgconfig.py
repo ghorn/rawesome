@@ -22,3 +22,13 @@ def call(args):
         raise Exception('\n'+error)
 
     return output.strip()
+
+def getRpath(name):
+    rpath = None
+    for blah in call(['--libs',name]).split(' '):
+        blah = blah.strip()
+        if len(blah) > 1 and blah[:2] == '-L':
+            rpath = blah[2:]
+            break
+    assert rpath is not None, "couldn't detect the library path of \""+name+"\" :("
+    return rpath

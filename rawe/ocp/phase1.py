@@ -5,17 +5,8 @@ from rawe.utils import codegen,pkgconfig,subprocess_tee
 import writeAcadoOcpExport
 
 def makeExportMakefile(phase1Options):
-    def getRpath(name):
-        rpath = None
-        for blah in pkgconfig.call(['--libs',name]).split(' '):
-            blah = blah.strip()
-            if len(blah) > 1 and blah[:2] == '-L':
-                rpath = blah[2:]
-                break
-        assert rpath is not None, "couldn't detect the library path of \""+name+"\" :("
-        return rpath
-    rpathAcado = getRpath('acado')
-    rpathOcg2 = getRpath('ocg2')
+    rpathAcado = pkgconfig.getRpath('acado')
+    rpathOcg2 = pkgconfig.getRpath('ocg2')
 
     makefile = """\
 CXX       = %(CXX)s
