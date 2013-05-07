@@ -1,8 +1,11 @@
+import casadi as C
+
 import phase1
 import qpoases
 from ocprt import OcpRT
 import ocg_interface
 from ..dae import rienModelExport
+from ..utils import codegen
 
 def validateOptions(defaultOpts, userOpts, optName):
     assert isinstance(userOpts,dict), optName+" options must be a dictionary"
@@ -16,6 +19,31 @@ def validateOptions(defaultOpts, userOpts, optName):
         if name not in defaultOpts:
             raise Exception(optName+' option "'+name+'" unrecognized, valid options: '+\
                                 str(defaultOpts.keys()))
+
+def writeObjective(ocp, out0, exportName):
+    dae = ocp._dae
+
+    # first make out not a function of xDot or z
+    xdot = C.veccat([dae.ddt(name) for name in dae.xNames()])
+    inputs0 = [xdot, dae.xVec(), dae.zVec(), dae.uVec(), dae.pVec()]
+    outputFun0 = C.SXFunction(inputs0, [out0])
+
+    (xDotDict, zDict) = dae.solveForXDotAndZ()
+    xDot = C.veccat([xDotDict[name] for name in dae.xNames()])
+    z    = C.veccat([zDict[name] for name in dae.zNames()])
+
+    # plug in xdot, z solution to outputs fun
+    outputFun0.init()
+    [out] = outputFun0.eval([xDot, dae.xVec(), z, dae.uVec(), dae.pVec()])
+
+    # make new SXFunction that is only fcn of [x, u, p]
+    inputs = C.veccat([dae.xVec(), dae.uVec(), dae.pVec()])
+    outs = C.veccat( [ out, C.jacobian(out,inputs).T ] )
+    outputFun = C.SXFunction([inputs], [C.densify(outs)])
+    outputFun.init()
+    assert len(outputFun.getFree()) == 0, 'the "impossible" happened >_<'
+
+    return codegen.writeCCode(outputFun,exportName)
 
 
 def exportOcp(ocp, cgOptions, acadoOptions, phase1Options):
@@ -54,6 +82,18 @@ def exportOcp(ocp, cgOptions, acadoOptions, phase1Options):
     files['rhsJacob.cpp'] = '#include "rhsJacob.h"\n'+rienModelGen['rhsJacobFile'][0]
     files['rhs.h'] = rienModelGen['rhsFile'][1]
     files['rhsJacob.h'] = rienModelGen['rhsJacobFile'][1]
+
+    # add objective and jacobian
+    externObj    = writeObjective(ocp, ocp._minLsq, 'lsqExtern')
+    externObjEnd = writeObjective(ocp, ocp._minLsqEndTerm, 'lsqEndTermExtern')
+    files['lsqExtern.cpp'] = '#include "lsqExtern.h"\n'+externObj[0]
+    files['lsqExtern.h']   = externObj[1]
+    files['lsqEndTermExtern.cpp'] = '#include "lsqEndTermExtern.h"\n'+externObjEnd[0]
+    files['lsqEndTermExtern.h']   = externObjEnd[1]
+
+    # #include objective/jacobian in acado_solver.c
+    files['acado_solver.c'] = '#include "lsqExtern.h"\n#include "lsqEndTermExtern.h"\n'+\
+                              files['acado_solver.c']
 
     # add python_interface.c
     files['python_interface.c'] = ocg_interface.ocg_interface

@@ -9,7 +9,7 @@ replace0 = {'real':'IntermediateState',
 def writeAcadoAlgorithm(ocp, dae):
     xdot = C.veccat([dae.ddt(name) for name in dae.xNames()])
     inputs = [dae.xVec(), dae.zVec(), dae.uVec(), dae.pVec(), xdot]
-    outputs = [ocp._minLsq, ocp._minLsqEndTerm]
+    outputs = []
     constraintData = []
     for (lhs,comparison,rhs) in ocp._constraints:
         k = len(outputs)
@@ -23,7 +23,9 @@ def writeAcadoAlgorithm(ocp, dae):
         k = len(outputs)
         outputs.append(rhs-lhs)
         constraintData.append((k,comparison,'AT_START'))
-    assert len(outputs)-2 == len(constraintData), 'the "impossible" happened'
+    assert len(outputs) == len(constraintData), 'the "impossible" happened'
+    if len(outputs) == 0:
+        return ([],[])
 
     f = C.SXFunction( inputs, outputs )
     f.init()
@@ -76,16 +78,11 @@ def writeAcadoAlgorithm(ocp, dae):
             elif op==C.OP_OUTPUT:
 #                assert i1==0, "oh noes, OUTPUT IS MULTIDIMENSIONAL!!!"
 #                write( '%(spaces)sf << 0 == %(work)s_%(i2)d;' % replace )
-                if i1 == 0:
-                    write( '_obj << %(work)s_%(i2)d;' % replace )
-                elif i1 == 1:
-                    write( '_objEnd << %(work)s_%(i2)d;' % replace )
-                else:
-                    rowidx = f.output(i1).sparsity().getRow()[i3]
-                    colidx = f.output(i1).sparsity().col()[i3]
-                    assert colidx==0 and rowidx==0 and i3==0, 'non-scalars not supported in ocp constraints, colIdx: '+str(colidx)+', rowidx: '+str(rowidx)+', i3: '+str(i3)
+                rowidx = f.output(i1).sparsity().getRow()[i3]
+                colidx = f.output(i1).sparsity().col()[i3]
+                assert colidx==0 and rowidx==0 and i3==0, 'non-scalars not supported in ocp constraints, colIdx: '+str(colidx)+', rowidx: '+str(rowidx)+', i3: '+str(i3)
     
-                    write( '%(real)s %(output)s_%(i1)d = %(work)s_%(i2)d;' % replace )
+                write( '%(real)s %(output)s_%(i1)d = %(work)s_%(i2)d;' % replace )
 
             
             ########## BINARY ########
@@ -182,10 +179,7 @@ def generateAcadoOcp(ocp, acadoOptions):
     lines.append('')
 
     # constraints and objective algorithm
-    lines.append('/* setup objective function and constraints */')
-    lines.append('Function _obj;')
-    lines.append('Function _objEnd;')
-    lines.append('')
+    lines.append('/* setup constraint function */')
     (alg, constraintData) = writeAcadoAlgorithm(ocp, dae)
     lines.extend( alg )
     lines.append('')
@@ -262,10 +256,14 @@ _ocp.setDimensions( %(nx)d, %(nx)d, %(nz)d, %(nup)d );\
 
     # objective
     lines.append('/* set objective */')
-    lines.append('ExportVariable  _SS( "S", %(size)d, %(size)d);' % {'size': ocp._minLsq.size()})
-    lines.append('ExportVariable _SSN("SN", %(size)d, %(size)d);' % {'size': ocp._minLsqEndTerm.size()})
-    lines.append('_ocp.minimizeLSQ(_SS, _obj);')
-    lines.append('_ocp.minimizeLSQEndTerm(_SSN, _objEnd);')
+    lines.append('String _lsqExtern( "lsqExtern" );')
+    lines.append('String _lsqEndTermExtern( "lsqEndTermExtern" );')
+
+    lines.append('ExportVariable  _S( "S", %(size)d, %(size)d);' % {'size': ocp._minLsq.size()})
+    lines.append('ExportVariable _SN("SN", %(size)d, %(size)d);' % {'size': ocp._minLsqEndTerm.size()})
+
+    lines.append('_ocp.minimizeLSQ(        _S,        _lsqExtern);')
+    lines.append('_ocp.minimizeLSQEndTerm(_SN, _lsqEndTermExtern);')
     
     lines.append('''
 /* setup OCPexport */
