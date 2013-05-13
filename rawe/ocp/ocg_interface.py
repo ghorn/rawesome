@@ -24,6 +24,14 @@ int memcpyMat(real_t * const dest, real_t const * const src,
   }
 }
 
+// int my_preparation_step(double * time){
+//   timer tmr;
+//   tic(&tmr);
+//   ret = preparationStep();
+//   *time = toc(&tmr);
+//   return ret;
+// }
+
 int py_set_x(real_t * val, const int nr, const int nc){
   return memcpyMat(acadoVariables.x, val, nr, nc, ACADO_N + 1, ACADO_NX); }
 int py_get_x(real_t * val, const int nr, const int nc){

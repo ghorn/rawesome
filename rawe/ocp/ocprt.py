@@ -300,3 +300,18 @@ class OcpRT(object):
 
     def getTs(self):
         return self._ts
+
+
+class MpcRT(OcpRT):
+    def __init__(self, dae, lqrDae, libpath, ts, referenceStr, reference):
+        OcpRT.__init__(self, dae, libpath, ts)
+        self.lqrDae = lqrDae
+        self.referenceStr = referenceStr
+        self.reference = reference
+
+    def computeLqr(self):
+        raise Exception('implement me, mario')
+
+class MheRT(OcpRT):
+    def computeArrival(self):
+        raise Exception('implement me, mario')

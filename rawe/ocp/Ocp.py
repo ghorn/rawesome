@@ -201,3 +201,42 @@ class Ocp(object):
 
     def exportCode(self, codegenOptions={}, acadoOptions=[], phase1Options={}):
         return exportOcp.exportOcp(self, codegenOptions, acadoOptions, phase1Options)
+
+class Mhe(Ocp):
+    def minimizeLsq(self, obj):
+        raise Exception("hey, you don't know this is Ocp, you can only call setMeasurement")
+    def minimizeLsqEndTerm(self, obj):
+        raise Exception("hey, you don't know this is Ocp, ......")
+    def setMeasurememt(self, objStr):
+        self.measurementStr = objStr
+        self.measurement = C.veccat([self[name] for name in self.measurememtStr])
+        Ocp.minimizeLsq(self, self.measurement)
+    def exportCode(self, codegenOptions={}, acadoOptions=[], phase1Options={}):
+        raise Exception('please implement, ya goon') # this returns an MheRT
+
+class Mpc(Ocp):
+    def __init__(self, dae, N=None, ts=None, lqrDae=None):
+        Ocp.__init__(self, dae, N=N, ts=ts)
+        if lqrDae == None:
+            self.lqrDae = dae
+        else:
+            self.lqrDae = lqrDae
+    def minimizeLsq(self, obj):
+        raise Exception("hey, you don't know this is Ocp, you can only call setMeasurement")
+    def minimizeLsqEndTerm(self, obj):
+        raise Exception("hey, you don't know this is Ocp, ......")
+    def setRefererence(self, objStr):
+        self.referenceStr = objStr
+        self.reference = C.veccat([self[name] for name in self.referenceStr])
+        Ocp.minimizeLsq(self, self.reference)
+    def exportCode(self, codegenOptions={}, acadoOptions=[], phase1Options={}):
+        raise Exception('please implement, ya goon') # this returns an MpcRT
+
+
+class MpcMheSim(object):
+    def __init__(self, mpcRT, mheRT, simDae):
+        self.mpcRT = mpcRT
+        self.mheRT = mheRT
+
+    def step(self):
+        pass
