@@ -3,120 +3,133 @@ import numpy
 import copy
 import matplotlib.pyplot as plt
 import casadi as C
+import scipy
 
+def dlqr(A, B, Q, R, N):
+    
+    if N == None:
+        N = numpy.zeros((Q.shape[0],R.shape[0]))
+    
+    P = scipy.linalg.solve_discrete_are(A, B, Q, R)
+    
+    k1 = numpy.dot(numpy.dot(B.T, P), B) + R
+    k2 = numpy.dot(numpy.dot(B.T, P), A)
+    K = numpy.linalg.solve(k1,k2)
+    
+    return K, P
 
-class Logger(object):
-    def __init__(self,ocprt,dae):
-
-        if ocprt._lib.py_get_ACADO_INITIAL_STATE_FIXED():
-            self._canonicalNames = ocprt._canonicalNames
-        else:
-            self._canonicalNames = list(set(ocprt._canonicalNames)-set(['x0']))
-        
-        self.xNames = dae.xNames()
-        self.uNames = dae.uNames()
-        self.Ts = ocprt.getTs()
-
-        self._ocprt = ocprt
-        self._dae = dae
-        self._log = {}
-        for field in self._canonicalNames:
-            self._log[field] = []
-        self._log['kkt'] = []
-        self._log['objective'] = []
-        self._log['timing'] = []
-        self.log(ocprt)
-        
-    def log(self, ocprt):
-        for field in self._canonicalNames:
-            self._log[field].append(copy.deepcopy(getattr(ocprt, field)))
-        self._log['kkt'].append(ocprt.getKKT())
-        self._log['objective'].append(ocprt.getObjective())
-
-    def subplot(self,names,title=None,style='',when=0,showLegend=True):
-        assert isinstance(names,list)
-
-        fig = plt.figure()
-        if title is None:
-            if isinstance(names,str):
-                title = names
-            else:
-                assert isinstance(names,list)
-                if len(names) == 1:
-                    title = names[0]
-                else:
-                    title = str(names)
-        fig.canvas.set_window_title(str(title))
-
-        plt.clf()
-        n = len(names)
-        if style is '':
-            style = ['']*n
-        for k,name in enumerate(names):
-            plt.subplot(n,1,k+1)
-            if k==0:
-                self._plot(name,title,style[k],when=when,showLegend=showLegend)
-            else:
-                self._plot(name,None,style[k],when=when,showLegend=showLegend)
-
-    def plot(self,names,title=None,style='',when=0,showLegend=True):
-
-        fig = plt.figure()
-        if title is None:
-            if isinstance(names,str):
-                title = names
-            else:
-                assert isinstance(names,list)
-                if len(names) == 1:
-                    title = names[0]
-                else:
-                    title = str(names)
-        fig.canvas.set_window_title(str(title))
-
-        plt.clf()
-        self._plot(names,title,style,when=when,showLegend=showLegend)
-
-
-    def _plot(self,names,title,style,when=0,showLegend=True):
-        if isinstance(names,str):
-            names = [names]
-        assert isinstance(names,list)
-        
-#        if style == None:
-#            style = ''
-        
-        legend = []
-        for name in names:
-            assert isinstance(name,str)
-            legend.append(name)
-
-            # if it's a differential state
-            if name in self.xNames:
-                index = self.xNames.index(name)
-                if when == 'all':
-                    for k in range(numpy.array(self._log['x']).shape[0]-1):
-                        ys = numpy.array(self._log['x'])[1+k,:,index]
-                        ts = numpy.arange(len(ys))*self.Ts + self.Ts*k
-                        plt.plot(ts,ys,style)
-                else:
-                    ys = numpy.array(self._log['x'])[1:,when,index]
-                    ts = numpy.arange(len(ys))*self.Ts
-                    plt.plot(ts,ys,style)
-
-            # if it's a control
-            if name in self.uNames:
-                index = self.uNames.index(name)
-                ys = numpy.array(self._log['u'])[1:,when,index]
-                ts = numpy.arange(len(ys))*self.Ts
-                plt.step(ts,ys,style)
-
-        if title is not None:
-            assert isinstance(title,str), "title must be a string"
-            plt.title(title)
-        plt.xlabel('time [s]')
-        if showLegend is True:
-            plt.legend(legend)
-        plt.grid()
+#class Logger(object):
+#    def __init__(self,ocprt,dae):
+#
+#        if ocprt._lib.py_get_ACADO_INITIAL_STATE_FIXED():
+#            self._canonicalNames = ocprt._canonicalNames
+#        else:
+#            self._canonicalNames = list(set(ocprt._canonicalNames)-set(['x0']))
+#        
+#        self.xNames = dae.xNames()
+#        self.uNames = dae.uNames()
+#        self.Ts = ocprt.getTs()
+#
+#        self._ocprt = ocprt
+#        self._dae = dae
+#        self._log = {}
+#        for field in self._canonicalNames:
+#            self._log[field] = []
+#        self._log['kkt'] = []
+#        self._log['objective'] = []
+#        self._log['timing'] = []
+#        self.log(ocprt)
+#        
+#    def log(self, ocprt):
+#        for field in self._canonicalNames:
+#            self._log[field].append(copy.deepcopy(getattr(ocprt, field)))
+#        self._log['kkt'].append(ocprt.getKKT())
+#        self._log['objective'].append(ocprt.getObjective())
+#
+#    def subplot(self,names,title=None,style='',when=0,showLegend=True):
+#        assert isinstance(names,list)
+#
+#        fig = plt.figure()
+#        if title is None:
+#            if isinstance(names,str):
+#                title = names
+#            else:
+#                assert isinstance(names,list)
+#                if len(names) == 1:
+#                    title = names[0]
+#                else:
+#                    title = str(names)
+#        fig.canvas.set_window_title(str(title))
+#
+#        plt.clf()
+#        n = len(names)
+#        if style is '':
+#            style = ['']*n
+#        for k,name in enumerate(names):
+#            plt.subplot(n,1,k+1)
+#            if k==0:
+#                self._plot(name,title,style[k],when=when,showLegend=showLegend)
+#            else:
+#                self._plot(name,None,style[k],when=when,showLegend=showLegend)
+#
+#    def plot(self,names,title=None,style='',when=0,showLegend=True):
+#
+#        fig = plt.figure()
+#        if title is None:
+#            if isinstance(names,str):
+#                title = names
+#            else:
+#                assert isinstance(names,list)
+#                if len(names) == 1:
+#                    title = names[0]
+#                else:
+#                    title = str(names)
+#        fig.canvas.set_window_title(str(title))
+#
+#        plt.clf()
+#        self._plot(names,title,style,when=when,showLegend=showLegend)
+#
+#
+#    def _plot(self,names,title,style,when=0,showLegend=True):
+#        if isinstance(names,str):
+#            names = [names]
+#        assert isinstance(names,list)
+#        
+##        if style == None:
+##            style = ''
+#        
+#        legend = []
+#        for name in names:
+#            assert isinstance(name,str)
+#            legend.append(name)
+#
+#            # if it's a differential state
+#            if name in self.xNames:
+#                index = self.xNames.index(name)
+#                if when == 'all':
+#                    for k in range(numpy.array(self._log['x']).shape[0]-1):
+#                        ys = numpy.array(self._log['x'])[1+k,:,index]
+#                        ts = numpy.arange(len(ys))*self.Ts + self.Ts*k
+#                        plt.plot(ts,ys,style)
+#                else:
+#                    ys = numpy.array(self._log['x'])[1:,when,index]
+#                    ts = numpy.arange(len(ys))*self.Ts
+#                    plt.plot(ts,ys,style)
+#
+#            # if it's a control
+#            if name in self.uNames:
+#                index = self.uNames.index(name)
+#                ys = numpy.array(self._log['u'])[1:,when,index]
+#                ts = numpy.arange(len(ys))*self.Ts
+#                plt.step(ts,ys,style)
+#
+#        if title is not None:
+#            assert isinstance(title,str), "title must be a string"
+#            plt.title(title)
+#        plt.xlabel('time [s]')
+#        if showLegend is True:
+#            plt.legend(legend)
+#        plt.grid()
 
 
 class OcpRT(object):
@@ -161,6 +174,21 @@ class OcpRT(object):
 
         self._lib.py_initialize()
         self._getAll()
+        
+        if not self._lib.py_get_ACADO_INITIAL_STATE_FIXED():
+            self._canonicalNames = list(set(ocprt._canonicalNames)-set(['x0']))
+        
+        self.xNames = self.dae.xNames()
+        self.uNames = self.dae.uNames()
+        self.Ts = self.getTs()
+
+        self._log = {}
+        for field in self._canonicalNames:
+            self._log[field] = []
+        self._log['kkt'] = []
+        self._log['objective'] = []
+        self._log['timing'] = []
+        self.log()
 
     def __setattr__(self, name, value):
         if name in self._canonicalNames:
@@ -281,7 +309,12 @@ class OcpRT(object):
 
         if new_yN != None:
             self.yN = new_yN
-
+            
+    def log(self):
+        for field in self._canonicalNames:
+            self._log[field].append(copy.deepcopy(getattr(self, field)))
+        self._log['kkt'].append(self.getKKT())
+        self._log['objective'].append(self.getObjective())
 
 
 #     def shiftStates( int strategy, real_t* const xEnd, real_t* const uEnd ):
@@ -290,6 +323,9 @@ class OcpRT(object):
 #     def shiftControls( real_t* const uEnd ):
 #         void shiftControls( real_t* const uEnd );
 
+#    def getTiming(self):
+#        blabla
+        
     def getKKT(self):
         self._setAll()
         return self._lib.getKKT()
@@ -300,6 +336,91 @@ class OcpRT(object):
 
     def getTs(self):
         return self._ts
+        
+    def subplot(self,names,title=None,style='',when=0,showLegend=True):
+        assert isinstance(names,list)
+
+        fig = plt.figure()
+        if title is None:
+            if isinstance(names,str):
+                title = names
+            else:
+                assert isinstance(names,list)
+                if len(names) == 1:
+                    title = names[0]
+                else:
+                    title = str(names)
+        fig.canvas.set_window_title(str(title))
+
+        plt.clf()
+        n = len(names)
+        if style is '':
+            style = ['']*n
+        for k,name in enumerate(names):
+            plt.subplot(n,1,k+1)
+            if k==0:
+                self._plot(name,title,style[k],when=when,showLegend=showLegend)
+            else:
+                self._plot(name,None,style[k],when=when,showLegend=showLegend)
+
+    def plot(self,names,title=None,style='',when=0,showLegend=True):
+
+        fig = plt.figure()
+        if title is None:
+            if isinstance(names,str):
+                title = names
+            else:
+                assert isinstance(names,list)
+                if len(names) == 1:
+                    title = names[0]
+                else:
+                    title = str(names)
+        fig.canvas.set_window_title(str(title))
+
+        plt.clf()
+        self._plot(names,title,style,when=when,showLegend=showLegend)
+
+
+    def _plot(self,names,title,style,when=0,showLegend=True):
+        if isinstance(names,str):
+            names = [names]
+        assert isinstance(names,list)
+        
+#        if style == None:
+#            style = ''
+        
+        legend = []
+        for name in names:
+            assert isinstance(name,str)
+            legend.append(name)
+
+            # if it's a differential state
+            if name in self.xNames:
+                index = self.xNames.index(name)
+                if when == 'all':
+                    for k in range(numpy.array(self._log['x']).shape[0]-1):
+                        ys = numpy.array(self._log['x'])[1+k,:,index]
+                        ts = numpy.arange(len(ys))*self.Ts + self.Ts*k
+                        plt.plot(ts,ys,style)
+                else:
+                    ys = numpy.array(self._log['x'])[1:,when,index]
+                    ts = numpy.arange(len(ys))*self.Ts
+                    plt.plot(ts,ys,style)
+
+            # if it's a control
+            if name in self.uNames:
+                index = self.uNames.index(name)
+                ys = numpy.array(self._log['u'])[1:,when,index]
+                ts = numpy.arange(len(ys))*self.Ts
+                plt.step(ts,ys,style)
+
+        if title is not None:
+            assert isinstance(title,str), "title must be a string"
+            plt.title(title)
+        plt.xlabel('time [s]')
+        if showLegend is True:
+            plt.legend(legend)
+        plt.grid()
 
 
 class MpcRT(OcpRT):
@@ -310,8 +431,106 @@ class MpcRT(OcpRT):
         self.reference = reference
 
     def computeLqr(self):
-        raise Exception('implement me, mario')
+        nx = self.x.shape[1]
+#        nu = self.u.shape[1]
+        
+        self.integrator.x = self.y[-1,:nx]
+        self.integrator.u = self.y[-1,nx:]
+        self.integrator.step()
+        A = self.integrator.dx1_dx0
+        B = self.integrator.dx1_du
+    #    integrator.getOutputs()
+        
+        K, P = dlqr(A, B, self.Q, self.R, self.N)
+        
+        self.K = K
+        self.SN = P
 
 class MheRT(OcpRT):
-    def computeArrival(self):
-        raise Exception('implement me, mario')
+    def UpdateArrivalCost(self): 
+        ''' Arrival cost implementation.
+            Approximate the solution of:
+            min_{xL_,uL_,xL1_} ||  pL ( xL_-xL )         ||^2
+                               ||  vL ( yL-h(xL_,uL_) )  ||
+                               ||  wL wx                 ||_2
+                         s.t.  wx = xL1_ - f(xL_,uL_)
+            where:
+                    PL = pL^T pL is the last kalman prediction covariance matrix
+                    VL = vL^T vL is the measurement noise covariance matrix
+                    WL = wL^T wL is the state noise covariance matrix
+            
+            Linearization (at the last MHE estimate x,u which is different from xL,uL):
+            f(xL_,uL_) ~= f(x,u) + df(x,u)/dx (xL_-x) + df(x,u)/du (uL_-u)
+                       ~= f(x,u) +         Xx (xL_-x) +         Xu (uL_-u)
+                       ~= f(x,u) - Xx x - Xu u + Xx xL_ + Xu uL_
+                       ~= x_tilde              + Xx xL_ + Xu uL_
+            h(xL_,uL_) ~= h(x,u) + dh(x,u)/dx (xL_-x) + dh(x,u)/du (uL_-u)
+                       ~= f(x,u) +         Hx (xL_-x) +         Hu (uL_-u)
+                       ~= h(x,u) - Hx x - Hu u + Hx xL_ + Hu uL_
+                       ~= h_tilde              + Hx xL_ + Hu uL_
+                       
+            Linearized problem:
+            min_{xL_,uL_,xL1_} ||  pL ( xL_ - xL )                          ||^2
+                               ||  vL ( yL - h_tilde - Hx xL_ - Hu uL_ )    ||
+                               ||  wL ( xL1_ - x_tilde - Xx xL_ - Xu uL_ )  ||_2
+            
+            Rewrite as:
+            min_{xL_,uL_,xL1_} ||  M ( xL_, uL_, xL1_ ) + res  ||^2_2
+            
+            After QR factorization of M:
+            min_{xL_,uL_,xL1_} ||  R ( xL_, uL_, xL1_ ) + rho  ||^2_2
+                
+            '''        
+        pL = self.pL
+        vL = self.vL
+        wL = self.wL
+        
+        xL = self.xL        # Last kalman update state prediction for the initial state
+        yL = self.y[0,:]    # Initial measurement
+        
+        x = self.x[0,:]     # Last MHE state prediction
+        u = self.u[0,:]     # Last MHE control prediction
+        
+        nx = x.shape[0]
+        nu = u.shape[0]
+        nV = vL.shape[0]
+        
+        self.integrator.x = x
+        self.integrator.u = u
+        h = self.integrator.y
+        x1 = self.integrator.step()
+        Xx = self.integrator.dx1_dx0
+        Xu = self.integrator.dx1_du
+        
+        Hx = self.integrator.dy_dx0
+        Hu = self.integrator.dy_du
+        
+        x_tilde = x1 - numpy.dot(Xx,x) - numpy.dot(Xu,u)
+        h_tilde =  h - numpy.dot(Hx,x) - numpy.dot(Hu,u)
+        
+        res = numpy.bmat([ -numpy.dot(pL, xL),
+                            numpy.dot(vL, yL - h_tilde),
+                           -numpy.dot(wL, x_tilde) ])
+        res = numpy.squeeze(numpy.array(res))
+        
+        M = numpy.bmat([[                pL,  numpy.zeros((nx,nu)), numpy.zeros((nx,nx)) ],
+                        [ -numpy.dot(vL,Hx),     -numpy.dot(vL,Hu), numpy.zeros((nV,nx)) ],
+                        [ -numpy.dot(wL,Xx),     -numpy.dot(wL,Xu),                   wL ]])
+        
+        Q, R = numpy.linalg.qr(M)
+        
+    #    R1  = R[:nx+nu,:nx+nu]
+    #    R12 = R[:nx+nu,nx+nu:]
+        R2  = R[nx+nu:,nx+nu:]
+        
+    #    rho = numpy.linalg.solve(Q,res)
+        rho = numpy.squeeze(numpy.array(numpy.dot(Q.T,res)))
+        rho2 = rho[nx+nu:]
+        
+        pL1 = R2
+        xL1 = -numpy.linalg.solve(R2,rho2)
+        
+        self.pL = numpy.array( pL1 )
+        self.AC = numpy.dot( pL1.T, pL1 )
+        
+        self.xL = numpy.array( xL1 )
