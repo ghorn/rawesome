@@ -103,4 +103,4 @@ def exportOcp(ocp, cgOptions, acadoOptions, phase1Options):
     else:
         raise Exception('the impossible happened, unsupported qp solver: "'+str(qpSolver)+'"')
 
-    return OcpRT(ocpSoPath, ocp._ts)
+    return OcpRT(ocpSoPath, ocp._ts, ocp._dae)
