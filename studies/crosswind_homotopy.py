@@ -187,7 +187,8 @@ if __name__=='__main__':
         obj += (homotopyTraj['x'][k] - ocp.lookup('x',timestep=k))**2
         obj += (homotopyTraj['y'][k] - ocp.lookup('y',timestep=k))**2
         obj += (homotopyTraj['z'][k] - ocp.lookup('z',timestep=k))**2
-    ocp.setQuadratureDdt('quadrature_energy', 'winch_power')
+    ocp.setQuadratureDdt('mechanical_energy', 'mechanical_winch_power')
+    ocp.setQuadratureDdt('electrical_energy', 'electrical_winch_power')
 
     # control regularization
     for k in range(ocp.nk):

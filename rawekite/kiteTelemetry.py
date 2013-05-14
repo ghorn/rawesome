@@ -22,6 +22,7 @@ def normalCallback(traj,myiter,ocp,conf,showAllPoints=False):
     mc.messages.append("w0: "+str(traj.lookup('w0')))
     mc.messages.append("iter: "+str(myiter))
     mc.messages.append("endTime: "+str(traj.lookup('endTime')))
-    mc.messages.append("average power: "+str(traj.lookup('quadrature_energy',timestep=-1)/traj.lookup('endTime'))+" W")
+    mc.messages.append("average electrical power: "+str(traj.lookup('electrical_energy',timestep=-1)/traj.lookup('endTime'))+" W")
+    mc.messages.append("average mechanical power: "+str(traj.lookup('mechanical_energy',timestep=-1)/traj.lookup('endTime'))+" W")
     
     return mc.SerializeToString()

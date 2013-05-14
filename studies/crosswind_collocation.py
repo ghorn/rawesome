@@ -122,9 +122,11 @@ def setupOcp(dae,conf,nk,nicp,deg,collPoly):
         obj += ocp.lookup('delevatorCost',timestep=k)
         obj += ocp.lookup('ddrCost',timestep=k)
 
-    ocp.setQuadratureDdt('quadrature_energy', 'winch_power')
+    ocp.setQuadratureDdt('mechanical_energy', 'mechanical_winch_power')
+    ocp.setQuadratureDdt('electrical_energy', 'electrical_winch_power')
 
-    ocp.setObjective( 1e2*obj + ocp.lookup('quadrature_energy',timestep=-1)/ocp.lookup('endTime') )
+    ocp.setObjective( 1e2*obj + \
+                      ocp.lookup('mechanical_energy',timestep=-1)/ocp.lookup('endTime') )
 
     return ocp
 
@@ -185,7 +187,8 @@ if __name__=='__main__':
 
 
     print "num loops: "+str(numLoops)
-    print "optimal power: "+str(traj.lookup('quadrature_energy',-1)/traj.lookup('endTime'))
+    print "optimal mechanical power: "+str(traj.lookup('mechanical_energy',-1)/traj.lookup('endTime'))
+    print "optimal electrical power: "+str(traj.lookup('electrical_energy',-1)/traj.lookup('endTime'))
     print "endTime: "+str(traj.lookup('endTime'))
 
     traj.save("data/crosswind_opt.dat")
@@ -208,27 +211,30 @@ if __name__=='__main__':
 
     # Plot the results
     def plotResults():
-        traj.subplot(['x','y','z'])
-        traj.subplot(['dx','dy','dz'])
-        traj.subplot([['aileron','elevator'],['daileron','delevator']],title='control surfaces')
-        traj.subplot(['r','dr','ddr'])
-        traj.subplot(['wind_at_altitude','dr'],title='')
-        traj.subplot(['c','cdot','cddot'],title="invariants")
+#        traj.subplot(['x','y','z'])
+#        traj.subplot(['dx','dy','dz'])
+#        traj.subplot([['aileron','elevator'],['daileron','delevator']],title='control surfaces')
+#        traj.subplot(['r','dr','ddr'])
+#        traj.subplot(['wind_at_altitude','dr'],title='')
+#        traj.subplot(['c','cdot','cddot'],title="invariants")
         traj.plot('airspeed',title='airspeed')
         traj.subplot([['alpha_deg','alphaTail_deg'],['beta_deg','betaTail_deg']])
         traj.subplot(['cL','cD','L_over_D'],title='')
-        traj.subplot([['winch_power'], ['tether_tension'],['accel_g','accel_without_gravity_g']])
+#        traj.subplot([['winch_power'], ['tether_tension'],['accel_g','accel_without_gravity_g']])
+        traj.subplot([['rpm'],['dr']])
+        traj.subplot([['tether_tension'],['torque']])
+        traj.plot(['mechanical_winch_power', 'electrical_winch_power'])
 #        traj.subplot([['ddx','ddy','ddz'],['accel','accel without gravity']])
-        traj.plot(["loyds_limit","loyds_limit_exact","neg_winch_power"])
+#        traj.plot(["loyds_limit","loyds_limit_exact","neg_winch_power"])
 #        traj.plot(["loyd's limit","-(winch power)"],title='')
-        traj.subplot([['daileronCost','delevatorCost','ddrCost'],['winch_power']])
-        traj.subplot(['w_bn_b_x','w_bn_b_y','w_bn_b_z'])
+#        traj.subplot([['daileronCost','delevatorCost','ddrCost'],['winch_power']])
+#        traj.subplot(['w_bn_b_x','w_bn_b_y','w_bn_b_z'])
 #        traj.subplot(['e11','e12','e13','e21','e22','e23','e31','e32','e33'])
-        traj.plot('line_angle_deg')
-        traj.plot('quadrature_energy')
+#        traj.plot('line_angle_deg')
+#        traj.plot('quadrature_energy')
 #        traj.subplot(['energy','quadrature_energy'])
 #        traj.plot(['energy','quadrature_energy'])
-        traj.plot('nu')
+#        traj.plot('nu')
         
         plt.show()
     plotResults()
@@ -270,5 +276,5 @@ if __name__=='__main__':
 
 
         plt.show()
-    plotPaper()
+#    plotPaper()
 

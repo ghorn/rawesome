@@ -68,7 +68,7 @@ def toKiteProto(lookup,kiteAlpha=1.0,lineAlpha=1.0):
     for (attrName,lookupName) in [('tension','tether_tension'),
                                   ('winch_power','winch_power'),
                                   ('prop_power','prop_power'),
-                                  ('energy','quadrature_energy'),
+                                  ('energy','mechanical_energy'),
                                   ('line_angle_deg', 'line_angle_deg'),
                                   ('r',  'r'),
                                   ('dr', 'dr'),

@@ -47,7 +47,7 @@ def setupModel(dae, conf):
     r = dae['r']
     dr = dae['dr']
     ddr = dae['ddr']
-    
+
     # wind
     def getWind():
         z0 = conf['z0']
@@ -63,10 +63,6 @@ def setupModel(dae, conf):
                                         'e21', 'e22', 'e23',
                                         'e31', 'e32', 'e33']]
                       ).reshape((3,3))
-    print R_n2b
-
-    # Aircraft velocity w.r.t. inertial frame, given in its own reference frame
-    # (needed to compute the aero forces and torques !)
     v_bw_b = C.mul( R_n2b, v_bw_n )
 
     (f1, f2, f3, t1, t2, t3) = aeroForcesTorques(dae, conf, v_bw_n, v_bw_b,
@@ -254,7 +250,14 @@ def crosswindModel(conf):
     dae['delevator_deg_s'] = dae['delevator']*180/C.pi
 
     dae['tether_tension'] = dae['r']*dae['nu']
-    dae['winch_power'] = -dae['tether_tension']*dae['dr']
+
+    dae['mechanical_winch_power'] = -dae['tether_tension']*dae['dr']
+    dae['rpm'] = -dae['dr']/0.1*60/(2*C.pi)
+    dae['torque'] = dae['tether_tension']*0.1
+    dae['electrical_winch_power'] =  293.5816373499238 + \
+                                     0.0003931623408*dae['rpm']*dae['rpm'] + \
+                                     0.0665919381751*dae['torque']*dae['torque'] + \
+                                     0.1078628659825*dae['rpm']*dae['torque']
 
     dae['dcm'] = C.vertcat([C.horzcat([dae['e11'],dae['e12'],dae['e13']]),
                             C.horzcat([dae['e21'],dae['e22'],dae['e23']]),
@@ -304,7 +307,8 @@ def crosswindModel(conf):
         loyds2 = 2/27.0*rho*S*w**3*(cL**2/cD**2 + 1)**(1.5)*cD
         dae["loyds_limit"] = loyds
         dae["loyds_limit_exact"] = loyds2
-        dae['neg_winch_power'] = -dae['winch_power']
+        dae['neg_electrical_winch_power'] = -dae['electrical_winch_power']
+        dae['neg_mechanical_winch_power'] = -dae['mechanical_winch_power']
     addLoydsLimit()
     
     psuedoZVec = C.veccat([dae.ddt(name) for name in \
