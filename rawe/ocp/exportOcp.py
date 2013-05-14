@@ -38,7 +38,8 @@ def writeObjective(ocp, out0, exportName):
 
     # make new SXFunction that is only fcn of [x, u, p]
     inputs = C.veccat([dae.xVec(), dae.uVec(), dae.pVec()])
-    outs = C.veccat( [ out, C.jacobian(out,inputs).T ] )
+    assert len(dae.pNames()) == 0, "parameters not supported right now in ocp export, sorry"
+    outs = C.veccat( [ out, C.jacobian(out,dae.xVec()).T, C.jacobian(out,dae.uVec()).T ] )
     outputFun = C.SXFunction([inputs], [C.densify(outs)])
     outputFun.init()
     assert len(outputFun.getFree()) == 0, 'the "impossible" happened >_<'
