@@ -1,4 +1,4 @@
-from ..utils import pkgconfig
+from ...utils import pkgconfig
 
 def phase1src():
     return '''\
@@ -9,13 +9,13 @@ def phase1src():
 #include <acado/utils/acado_types.hpp>
 
 extern "C"{
-  int makeRienIntegrator( const char * genPath,
-			  int numIntervals,
-			  double timestep,
-			  const char * integratorType,
-			  const char * integratorGrid,
-			  int numIntegratorSteps,
-			  int nx, int nz, int nu);
+  int makeRtIntegrator( const char * genPath,
+                        int numIntervals,
+                        double timestep,
+                        const char * integratorType,
+                        const char * integratorGrid,
+                        int numIntegratorSteps,
+                        int nx, int nz, int nu);
 }
 
 using namespace std;
@@ -51,17 +51,17 @@ map<string, int> makeIntegratorGridMap(void){
   map<string, int> ig;
   ig["EQUIDISTANT_SUBGRID"] = EQUIDISTANT_SUBGRID;
   ig["EQUIDISTANT_GRID"]    = EQUIDISTANT_GRID;
-  ig["ONLINE_GRID"]	    = ONLINE_GRID;
+  ig["ONLINE_GRID"]         = ONLINE_GRID;
   return ig;
 }
 
-int makeRienIntegrator( const char * genPath,
-			const int numIntervals,
-			const double timestep,
-			const char * integratorType,
-			const char * integratorGrid,
-			const int numIntegratorSteps,
-			const int nx, const int nz, const int nu)
+int makeRtIntegrator( const char * genPath,
+                        const int numIntervals,
+                        const double timestep,
+                        const char * integratorType,
+                        const char * integratorGrid,
+                        const int numIntegratorSteps,
+                        const int nx, const int nz, const int nu)
 {
   SIMexport sim(numIntervals, timestep);
 
@@ -126,10 +126,10 @@ LDFLAGS = -lstdc++
 CXXFLAGS += `pkg-config --cflags acado`
 LDFLAGS  += `pkg-config --libs   acado`
 
-CPP_SRC = rienIntegratorInterface.cpp
+CPP_SRC = rtIntegratorInterface.cpp
 
-.PHONY: clean all rienIntegratorInterface.so
-all : $(OBJ) rienIntegratorInterface.so
+.PHONY: clean all rtIntegratorInterface.so
+all : $(OBJ) rtIntegratorInterface.so
 
 %%.o : %%.cpp
 	@echo CPP $@ #: $(CXX) $(CXXFLAGS) -c $< -o $@
@@ -137,9 +137,9 @@ all : $(OBJ) rienIntegratorInterface.so
 
 OBJ = $(CPP_SRC:%%.cpp=%%.o)
 
-rienIntegratorInterface.so::LDFLAGS+=-Wl,-rpath,%(rpathAcado)s
+rtIntegratorInterface.so::LDFLAGS+=-Wl,-rpath,%(rpathAcado)s
 
-rienIntegratorInterface.so : $(OBJ)
+rtIntegratorInterface.so : $(OBJ)
 	@echo LD $@ #: $(CXX) -shared -o $@ $(OBJ) $(LDFLAGS)
 	@$(CXX) -shared -o $@ $(OBJ) $(LDFLAGS)
 

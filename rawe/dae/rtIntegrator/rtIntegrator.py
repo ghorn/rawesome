@@ -4,15 +4,15 @@ import numpy
 
 import casadi as C
 
-import rienModelExport
-import rienIntegratorInterface
+import rtModelExport
+import rtIntegratorInterface
 
-from ..utils import codegen, subprocess_tee
+from ...utils import codegen, subprocess_tee
 
 def loadIntegratorInterface():
     # write the interface file
-    files = {'rienIntegratorInterface.cpp':rienIntegratorInterface.phase1src(),
-             'Makefile':rienIntegratorInterface.phase1makefile()}
+    files = {'rtIntegratorInterface.cpp':rtIntegratorInterface.phase1src(),
+             'Makefile':rtIntegratorInterface.phase1makefile()}
     interfaceDir = codegen.memoizeFiles(files)
 
     # call make to make sure shared lib is build
@@ -21,7 +21,7 @@ def loadIntegratorInterface():
         raise Exception("integrator compilation failed:\n"+msgs)
 
     # load the shared object
-    return ctypes.cdll.LoadLibrary(os.path.join(interfaceDir, 'rienIntegratorInterface.so'))
+    return ctypes.cdll.LoadLibrary(os.path.join(interfaceDir, 'rtIntegratorInterface.so'))
 
 def makeMakefile(cfiles, cxxfiles):
     return """\
@@ -56,16 +56,16 @@ clean :
 """ % {'cfiles':' '.join(cfiles), 'cxxfiles':' '.join(cxxfiles)}
 
 
-def writeRienIntegrator(dae, options):
+def writeRtIntegrator(dae, options):
     nx = len(dae.xNames())
     nz = len(dae.zNames())
     nup = len(dae.uNames()) + len(dae.pNames())
 
-    # call makeRienIntegrator
+    # call makeRtIntegrator
     lib = loadIntegratorInterface()
     numIntervals = 1 # should maybe be hard-coded
     def call(path):
-        ret = lib.makeRienIntegrator(ctypes.c_char_p(path),
+        ret = lib.makeRtIntegrator(ctypes.c_char_p(path),
                                      numIntervals,
                                      ctypes.c_double(1.0),
                                      ctypes.c_char_p(options['integratorType']),
@@ -73,15 +73,15 @@ def writeRienIntegrator(dae, options):
                                      options['numIntegratorSteps'],
                                      nx, nz, nup)
         if ret != 0:
-            raise Exception("Rien integrator creater failed")
+            raise Exception("Rt integrator creater failed")
     return codegen.withTempdir(call)
 
 def exportIntegrator(dae, options):
     # get the exported integrator files
-    exportedFiles = writeRienIntegrator(dae, options)
+    exportedFiles = writeRtIntegrator(dae, options)
 
     # model file
-    rienModelGen = rienModelExport.generateCModel(dae,options['timestep'])
+    rtModelGen = rtModelExport.generateCModel(dae,options['timestep'])
     modelFile = '''\
 #include "acado.h"
 #include "rhs.h"
@@ -100,10 +100,10 @@ ACADOvariables acadoVariables;
     genfiles = {'integrator.c': exportedFiles['integrator.c'],
                 'acado.h': exportedFiles['acado.h'],
                 'model.c': modelFile,
-                'rhs.cpp': '#include "rhs.h"\n'+rienModelGen['rhsFile'][0],
-                'rhs.h': rienModelGen['rhsFile'][1],
-                'rhsJacob.cpp': '#include "rhsJacob.h"\n'+rienModelGen['rhsJacobFile'][0],
-                'rhsJacob.h': rienModelGen['rhsJacobFile'][1],
+                'rhs.cpp': '#include "rhs.h"\n'+rtModelGen['rhsFile'][0],
+                'rhs.h': rtModelGen['rhsFile'][1],
+                'rhsJacob.cpp': '#include "rhsJacob.h"\n'+rtModelGen['rhsJacobFile'][0],
+                'rhsJacob.h': rtModelGen['rhsJacobFile'][1],
                 'workspace.c': workspace,
                 'Makefile': makefile}
     exportpath = codegen.memoizeFiles(genfiles)
@@ -117,10 +117,10 @@ ACADOvariables acadoVariables;
     integratorLib = ctypes.cdll.LoadLibrary(exportpath+'/integrator.so')
     print 'loading '+exportpath+'/model.so'
     modelLib = ctypes.cdll.LoadLibrary(exportpath+'/model.so')
-    return (integratorLib, modelLib, rienModelGen)
+    return (integratorLib, modelLib, rtModelGen)
 
 
-class RienIntegrator(object):
+class RtIntegrator(object):
     _canonicalNames = ['x','z',
                        'dx1_dx0','dz0_dx0','dx1_du','dx1_dp','dz0_du','dz0_dp',
                        'u','p',
@@ -195,10 +195,10 @@ class RienIntegrator(object):
         # setup outputs function
         self._outputsFun = self._dae.outputsFunWithSolve()
 
-        (integratorLib, modelLib, rienModelGen) = exportIntegrator(self._dae, options)
+        (integratorLib, modelLib, rtModelGen) = exportIntegrator(self._dae, options)
         self._integratorLib = integratorLib
         self._modelLib = modelLib
-        self._rienModelGen = rienModelGen
+        self._rtModelGen = rtModelGen
         
         self._initIntegrator = 1
 
@@ -236,7 +236,7 @@ class RienIntegrator(object):
                            )
 
         if compareWithSX:
-            f = self._rienModelGen['rhs']
+            f = self._rtModelGen['rhs']
             f.setInput(dataIn)
             f.evaluate()
             print f.output() - dataOut
@@ -256,14 +256,14 @@ class RienIntegrator(object):
                                ctypes.c_void_p(dataOut.ctypes.data),
                                )
         if compareWithSX:
-            f = self._rienModelGen['rhsJacob']
+            f = self._rtModelGen['rhsJacob']
             f.setInput(dataIn)
             f.evaluate()
             print (f.output() - dataOut)
         return dataOut
 
     def run(self,*args,**kwargs):
-        raise Exception("to step a rien integrator, you now have to call .step(x,u,p) instead of .run(x,u,p)")
+        raise Exception("to step an rt integrator, you now have to call .step(x,u,p) instead of .run(x,u,p)")
 
     def step(self,x=None,u=None,p=None):
         # x,u,p can be dicts or array-like

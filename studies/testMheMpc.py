@@ -79,7 +79,7 @@ if __name__=='__main__':
     dae = makeDae()
     mpc = makeMpc(dae, N, ts)
 
-    sim = rawe.dae.rienIntegrator.RienIntegrator(dae, ts=ts)
+    sim = rawe.dae.RtIntegrator(dae, ts=ts)
 #    sim = rawe.sim.Sim(dae, ts=ts)
 
     print '='*80

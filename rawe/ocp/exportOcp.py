@@ -4,7 +4,7 @@ import phase1
 import qpoases
 from ocprt import OcpRT
 import ocg_interface
-from ..dae import rienModelExport
+from ..dae.rtIntegrator import rtModelExport
 from ..utils import codegen
 
 def validateOptions(defaultOpts, userOpts, optName):
@@ -71,17 +71,17 @@ def exportOcp(ocp, cgOptions, acadoOptions, phase1Options):
     # write the OCP exporter and run it, returning an exported OCP
     files = phase1.runPhase1(ocp, phase1Options, acadoOptions, qpSolver)
 
-    # add model for rien integrator
+    # add model for rt integrator
     files['model.c'] = '''\
 #include "qpoases/solver.hpp"
 #include "rhs.h"
 #include "rhsJacob.h"
 '''
-    rienModelGen = rienModelExport.generateCModel(ocp._dae, ocp._ts)
-    files['rhs.cpp'] = '#include "rhs.h"\n'+rienModelGen['rhsFile'][0]
-    files['rhsJacob.cpp'] = '#include "rhsJacob.h"\n'+rienModelGen['rhsJacobFile'][0]
-    files['rhs.h'] = rienModelGen['rhsFile'][1]
-    files['rhsJacob.h'] = rienModelGen['rhsJacobFile'][1]
+    rtModelGen = rtModelExport.generateCModel(ocp._dae, ocp._ts)
+    files['rhs.cpp'] = '#include "rhs.h"\n'+rtModelGen['rhsFile'][0]
+    files['rhsJacob.cpp'] = '#include "rhsJacob.h"\n'+rtModelGen['rhsJacobFile'][0]
+    files['rhs.h'] = rtModelGen['rhsFile'][1]
+    files['rhsJacob.h'] = rtModelGen['rhsJacobFile'][1]
 
     # add objective and jacobian
     externObj    = writeObjective(ocp, ocp._minLsq, 'lsqExtern')

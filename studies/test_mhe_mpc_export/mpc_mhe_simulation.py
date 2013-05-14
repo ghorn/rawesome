@@ -51,8 +51,8 @@ mheRT, _ = makeMhe(dae,N=N_mpc,dt=Ts)
 mpcLog = InitializeMPC(mpcRT,dae)
 mheLog = InitializeMHE(mheRT,dae)
 
-from rawe.dae.rienIntegrator import RienIntegrator
-Rint = RienIntegrator(dae,ts=Ts, numIntegratorSteps=400, integratorType='INT_IRK_GL2')
+from rawe.dae import RtIntegrator
+Rint = RtIntegrator(dae,ts=Ts, numIntegratorSteps=400, integratorType='INT_IRK_GL2')
 #Rint.getOutputs()
 # Initialize the MPC-MHE scheme
 #mpcRT.initialize()
