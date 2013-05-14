@@ -1,6 +1,7 @@
 import casadi as C
 
 import exportOcp
+from ocprt import OcpRT, MheRT, MpcRT
 
 class Ocp(object):
     def __init__(self, dae, N=None, ts=None):
@@ -200,7 +201,9 @@ class Ocp(object):
         self._minLsqEndTerm = obj
 
     def exportCode(self, codegenOptions={}, acadoOptions=[], phase1Options={}):
-        return exportOcp.exportOcp(self, codegenOptions, acadoOptions, phase1Options)
+        (ocpSoPath, ts, dae) = \
+            exportOcp.exportOcp(self, codegenOptions, acadoOptions, phase1Options)
+        return OcpRT(ocpSoPath, ts, dae)
 
 class Mhe(Ocp):
     def minimizeLsq(self, obj):
@@ -211,8 +214,10 @@ class Mhe(Ocp):
         self.measurementStr = objStr
         self.measurement = C.veccat([self[name] for name in self.measurememtStr])
         Ocp.minimizeLsq(self, self.measurement)
-    def exportCode(self, codegenOptions={}, acadoOptions=[], phase1Options={}):
-        raise Exception('please implement, ya goon') # this returns an MheRT
+    def exportCode(self, *args, **kwargs):
+        (ocpSoPath, ts, dae) = \
+            exportOcp.exportOcp(self, codegenOptions, acadoOptions, phase1Options)
+        return MheRT(ocpSoPath, ts, dae)
 
 class Mpc(Ocp):
     def __init__(self, dae, N=None, ts=None, lqrDae=None):
@@ -230,8 +235,9 @@ class Mpc(Ocp):
         self.reference = C.veccat([self[name] for name in self.referenceStr])
         Ocp.minimizeLsq(self, self.reference)
     def exportCode(self, codegenOptions={}, acadoOptions=[], phase1Options={}):
-        raise Exception('please implement, ya goon') # this returns an MpcRT
-
+        (ocpSoPath, ts, dae) = \
+            exportOcp.exportOcp(self, codegenOptions, acadoOptions, phase1Options)
+        return MpcRT(ocpSoPath, ts, dae)
 
 class MpcMheSim(object):
     def __init__(self, mpcRT, mheRT, simDae):
