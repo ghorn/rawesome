@@ -8,7 +8,7 @@ conf = {'g':9.81,  #  gravitational constant #  [ m /s^2]
         #WIND-TUNNEL PARAMETERS
         #Lift (report p. 67)
         'cLA': 5.064,
-        'cLe': -1.924,
+        'cLe': -1.924*0,
         'cL0': 0.239,
         #Drag (report p. 70)
         'cDA': -0.195,
