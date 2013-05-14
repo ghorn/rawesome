@@ -21,7 +21,7 @@ if __name__=='__main__':
 #    mpc.constrain(mpc['pos'], '==', 0, when='AT_START')
 #    mpc.constrain(mpc['vel'], '==', 0, when='AT_START')
 
-    mpc.constrain(mpc['pos'], '==', 0.38, when='AT_END')
+    mpc.constrain(mpc['pos'], '==', 0.3, when='AT_END')
     mpc.constrain(mpc['vel'], '==', 0, when='AT_END')
 
     mpc.constrain(mpc['vel'], '<=', 0.2)
