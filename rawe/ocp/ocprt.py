@@ -121,7 +121,8 @@ class Logger(object):
 
 class OcpRT(object):
     _canonicalNames = ['x','u','y','yN','x0','S','SN']
-    def __init__(self,libpath, ts):
+    def __init__(self,libpath, ts, dae):
+        self._dae = dae
         self._ts = ts
         print 'loading "'+libpath+'"'
         self._lib = ctypes.cdll.LoadLibrary(libpath)
