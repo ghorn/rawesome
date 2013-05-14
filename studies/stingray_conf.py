@@ -40,7 +40,7 @@ conf = {#[env]
 
      #[kite]
      #'mass':  0.626  #  mass of the kite   #  [ kg],
-     'mass':  7.0,
+     'mass':  2.5,
 
      #TAIL LENGTH
      'lT': 0.4,
@@ -48,7 +48,8 @@ conf = {#[env]
      # how alpha/beta computed
      'alpha_beta_computation':'closed_form',
 
-     'sref': 0.66,
+#     'sref': 0.66,
+     'sref': 0.8,
      'bref': 2.5171, #sqrt(sref*AR),
      'cref': 0.2622, #sqrt(sref/AR),
 
