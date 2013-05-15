@@ -87,7 +87,7 @@ def exportOcp(ocp, cgOptions, acadoOptions, phase1Options):
 #include "rhs.h"
 #include "rhsJacob.h"
 '''
-    rtModelGen = rtModelExport.generateCModel(ocp._dae, ocp._ts)
+    rtModelGen = rtModelExport.generateCModel(ocp._dae, ocp._ts, None)
     files['rhs.cpp'] = '#include "rhs.h"\n'+rtModelGen['rhsFile'][0]
     files['rhsJacob.cpp'] = '#include "rhsJacob.h"\n'+rtModelGen['rhsJacobFile'][0]
     files['rhs.h'] = rtModelGen['rhsFile'][1]

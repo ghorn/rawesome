@@ -2,7 +2,7 @@ import casadi as C
 
 from ...utils import codegen
 
-def generateCModel(dae,timeScaling):
+def generateCModel(dae,timeScaling,outputs):
     xdot = C.veccat([dae.ddt(name) for name in dae.xNames()])
     inputs = C.veccat([dae.xVec(), dae.zVec(), dae.uVec(), dae.pVec(), xdot])
     f = dae.getResidual()
@@ -22,23 +22,28 @@ def generateCModel(dae,timeScaling):
     rhsJacob.init()
     rhsJacobString = codegen.writeCCode(rhsJacob, 'rhsJacob')
 
-    # outputs
-    o = C.veccat( [dae[outname] for outname in dae.outputNames()] )
-    outputs = C.SXFunction( [inputs], [C.densify(o)] )
-    outputs.init()
-    outputsString = codegen.writeCCode(outputs, 'outputs')
+    ret = {'rhs':rhs,
+           'rhsJacob':rhsJacob,
+           'rhsFile':rhsString,
+           'rhsJacobFile':rhsJacobString}
 
-    # outputs jacobian
-    jo = C.veccat( [ C.jacobian(o,inputs).T ] )
-    outputsJacob = C.SXFunction( [inputs], [C.densify(jo)] )
-    outputsJacob.init()
-    outputsJacobString = codegen.writeCCode(outputsJacob, 'outputsJacob')
+    if outputs is not None:
+        # outputs
+        outputsFun = C.SXFunction( [inputs], [outputs] )
+        outputsFun.init()
+        [outputs] = outputsFun.eval([C.veccat([dae.xVec(), dae.zVec(), dae.uVec(), dae.pVec(), xdot/timeScaling])])
+        outputsFun = C.SXFunction( [inputs], [C.densify(outputs)] )
+        outputsFun.init()
+        outputsString = codegen.writeCCode(outputsFun, 'outputs')
+        ret['outputs'] = outputsFun
+        ret['outputsFile'] = outputsString
 
-    return {'rhs':rhs,
-            'rhsJacob':rhsJacob,
-            'oututs':outputs,
-            'outputsJacob':outputs,
-            'rhsFile':rhsString,
-            'rhsJacobFile':rhsJacobString,
-            'oututsFile':outputsString,
-            'outputsJacobFile':outputsJacob}
+        # outputs jacobian
+        jo = C.veccat( [ C.jacobian(outputs,inputs).T ] )
+        outputsJacobFun = C.SXFunction( [inputs], [C.densify(jo)] )
+        outputsJacobFun.init()
+        outputsJacobString = codegen.writeCCode(outputsJacobFun, 'outputsJacob')
+        ret['outputsJacob'] = outputsJacobFun
+        ret['outputsJacobFile'] = outputsJacobString
+
+    return ret
