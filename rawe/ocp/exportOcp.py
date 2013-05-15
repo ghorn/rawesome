@@ -37,12 +37,21 @@ def writeObjective(ocp, out0, exportName):
     [out] = outputFun0.eval([xDot, dae.xVec(), z, dae.uVec(), dae.pVec()])
 
     # make new SXFunction that is only fcn of [x, u, p]
-    inputs = C.veccat([dae.xVec(), dae.uVec(), dae.pVec()])
     assert len(dae.pNames()) == 0, "parameters not supported right now in ocp export, sorry"
-    outs = C.veccat( [ out, C.jacobian(out,dae.xVec()).T, C.jacobian(out,dae.uVec()).T ] )
-    outputFun = C.SXFunction([inputs], [C.densify(outs)])
-    outputFun.init()
-    assert len(outputFun.getFree()) == 0, 'the "impossible" happened >_<'
+    if exportName == 'lsqExtern':
+        inputs = C.veccat([dae.xVec(), dae.uVec(), dae.pVec()])
+        outs = C.veccat( [ out, C.jacobian(out,dae.xVec()).T, C.jacobian(out,dae.uVec()).T ] )
+        outputFun = C.SXFunction([inputs], [C.densify(outs)])
+        outputFun.init()
+        assert len(outputFun.getFree()) == 0, 'the "impossible" happened >_<'
+    elif exportName == 'lsqEndTermExtern':
+        inputs = dae.xVec()
+        outs = C.veccat( [ out, C.jacobian(out,dae.xVec()).T ] )
+        outputFun = C.SXFunction([inputs], [C.densify(outs)])
+        outputFun.init()
+        assert len(outputFun.getFree()) == 0, 'lsqEndTermExtern cannot be a function of controls u, saw: '+str(outputFun.getFree())
+    else:
+        raise Exception('unrecognized name "'+exportName+'"')
 
     return codegen.writeCCode(outputFun,exportName)
 
