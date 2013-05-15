@@ -16,8 +16,7 @@ if __name__=='__main__':
                      dae.ddt('vel') - (force - 3.0*pos - 0.2*vel)])
 
     from rawe.dae import RtIntegrator
-    integrator = RtIntegrator(dae,ts=endTime, outputs=C.veccat([dae.ddt('pos'), vel, force]))
-
+    integrator = RtIntegrator(dae,ts=endTime, measurements=C.veccat([dae.ddt('pos'), vel, force]))
     
     x = {'pos':5.3, 'vel':0.6}
     u = {'force':-4.2}

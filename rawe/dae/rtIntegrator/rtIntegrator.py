@@ -77,27 +77,27 @@ def writeRtIntegrator(dae, options):
             raise Exception("Rt integrator creater failed")
     return codegen.withTempdir(call)
 
-def exportIntegrator(dae, options, outputs):
+def exportIntegrator(dae, options, measurements):
     # get the exported integrator files
     exportedFiles = writeRtIntegrator(dae, options)
 
     # model file
-    rtModelGen = rtModelExport.generateCModel(dae,options['timestep'], outputs)
+    rtModelGen = rtModelExport.generateCModel(dae,options['timestep'], measurements)
     modelFile = '''\
 #include "acado.h"
 #include "rhs.h"
 #include "rhsJacob.h"
 '''
-    if outputs is not None:
+    if measurements is not None:
         modelFile += '''\
-#include "outputs.h"
-#include "outputsJacob.h"
+#include "measurements.h"
+#include "measurementsJacob.h"
 '''
 
     # write the makefile
     symbolicsFiles = ['rhs.cpp','rhsJacob.cpp']
-    if outputs is not None:
-        symbolicsFiles += ['outputs.cpp', 'outputsJacob.cpp']
+    if measurements is not None:
+        symbolicsFiles += ['measurements.cpp', 'measurementsJacob.cpp']
     makefile = makeMakefile(['workspace.c', 'model.c', 'integrator.c'],
                             symbolicsFiles)
 
@@ -116,11 +116,11 @@ ACADOvariables acadoVariables;
                 'rhsJacob.h': rtModelGen['rhsJacobFile'][1],
                 'workspace.c': workspace,
                 'Makefile': makefile}
-    if outputs is not None:
-        genfiles['outputs.cpp'] = '#include "outputs.h"\n'+rtModelGen['outputsFile'][0]
-        genfiles['outputs.h'] = rtModelGen['outputsFile'][1]
-        genfiles['outputsJacob.cpp'] = '#include "outputsJacob.h"\n'+rtModelGen['outputsJacobFile'][0]
-        genfiles['outputsJacob.h'] = rtModelGen['outputsJacobFile'][1]
+    if measurements is not None:
+        genfiles['measurements.cpp'] = '#include "measurements.h"\n'+rtModelGen['measurementsFile'][0]
+        genfiles['measurements.h'] = rtModelGen['measurementsFile'][1]
+        genfiles['measurementsJacob.cpp'] = '#include "measurementsJacob.h"\n'+rtModelGen['measurementsJacobFile'][0]
+        genfiles['measurementsJacob.h'] = rtModelGen['measurementsJacobFile'][1]
     exportpath = codegen.memoizeFiles(genfiles)
 
     # compile the code
@@ -177,7 +177,7 @@ class RtIntegrator(object):
                                         self._dx1z0_dup.flatten(),
                                         self.u,
                                         self.p))
-        if self._outputs is not None:
+        if self._measurements is not None:
             self._dh_dup = numpy.hstack( (self.dh_du, self.dh_dp) )
             self._measData = numpy.concatenate((self.h,
                                                 self.dh_dx0.flatten(),
@@ -202,7 +202,7 @@ class RtIntegrator(object):
         self.dz0_du  = self._dx1z0_dup[nx:,:nu]
         self.dz0_dp  = self._dx1z0_dup[nx:,nu:]
 
-        if self._outputs is not None:
+        if self._measurements is not None:
             i0 = 0
             i1 = 0
             for field in ['h','dh_dx0','_dh_dup']:
@@ -215,33 +215,33 @@ class RtIntegrator(object):
             self.dh_du = self._dh_dup[:,:nu]
             self.dh_dp = self._dh_dup[:,nu:]
 
-    def __init__(self, dae, ts, outputs=None, numIntegratorSteps=10, integratorType='INT_IRK_GL4'):
+    def __init__(self, dae, ts, measurements=None, numIntegratorSteps=10, integratorType='INT_IRK_GL4'):
         self._dae = dae
         self._ts = ts
-        if outputs is None:
-            self._outputs = outputs
+        if measurements is None:
+            self._measurements = measurements
         else:
-            if isinstance(outputs,list):
-                outputs = C.veccat(outputs)
-            self._outputs = outputs
+            if isinstance(measurements,list):
+                measurements = C.veccat(measurements)
+            self._measurements = measurements
 
         # set some options
         options = {}
         options['timestep'] = ts # because we scale xdot
         options['numIntegratorSteps'] = numIntegratorSteps
         options['integratorType'] = integratorType
-        if self._outputs is None:
+        if self._measurements is None:
             options['measurementsGrid'] = None
             options['outputDimension'] = 0
         else:
-            C.makeDense(self._outputs)
+            C.makeDense(self._measurements)
             options['measurementsGrid'] = "EQUIDISTANT_GRID"
-            options['outputDimension'] = self._outputs.size()
+            options['outputDimension'] = self._measurements.size()
 
         # setup outputs function
         self._outputsFun = self._dae.outputsFunWithSolve()
 
-        (integratorLib, modelLib, rtModelGen) = exportIntegrator(self._dae, options, self._outputs)
+        (integratorLib, modelLib, rtModelGen) = exportIntegrator(self._dae, options, self._measurements)
         self._integratorLib = integratorLib
         self._modelLib = modelLib
         self._rtModelGen = rtModelGen
@@ -268,8 +268,8 @@ class RtIntegrator(object):
         self._dx1z0_dx0 = numpy.zeros( (nx+nz, nx) )
         self._dx1z0_dup = numpy.zeros( (nx+nz, nu+np) )
 
-        if self._outputs is not None:
-            nh = self._outputs.size()
+        if self._measurements is not None:
+            nh = self._measurements.size()
             self.h = numpy.zeros( nh )
             self.dh_dx0 = numpy.zeros( (nh, nx) )
             self.dh_du = numpy.zeros( (nh, nu) )
@@ -332,7 +332,7 @@ class RtIntegrator(object):
 
         # call integrator
         self._setData()
-        if self._outputs is None:
+        if self._measurements is None:
             ret = self._integratorLib.integrate(ctypes.c_void_p(self._data.ctypes.data),
                                                 self._initIntegrator)
         else:

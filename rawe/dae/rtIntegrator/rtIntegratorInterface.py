@@ -102,7 +102,7 @@ int makeRtIntegrator( const char * genPath,
 
   // set output/measurements
   if (outputDimension > 0){
-    sim.addOutput( "outputs", "outputsJacob", outputDimension );
+    sim.addOutput( "measurements", "measurementsJacob", outputDimension );
     Vector Meas(1);
     Meas(0) = 1;
     sim.setMeasurements( Meas );

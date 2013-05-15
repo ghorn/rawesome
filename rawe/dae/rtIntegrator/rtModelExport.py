@@ -2,7 +2,7 @@ import casadi as C
 
 from ...utils import codegen
 
-def generateCModel(dae,timeScaling,outputs):
+def generateCModel(dae,timeScaling,measurements):
     xdot = C.veccat([dae.ddt(name) for name in dae.xNames()])
     inputs = C.veccat([dae.xVec(), dae.zVec(), dae.uVec(), dae.pVec(), xdot])
     f = dae.getResidual()
@@ -27,23 +27,23 @@ def generateCModel(dae,timeScaling,outputs):
            'rhsFile':rhsString,
            'rhsJacobFile':rhsJacobString}
 
-    if outputs is not None:
-        # outputs
-        outputsFun = C.SXFunction( [inputs], [outputs] )
-        outputsFun.init()
-        [outputs] = outputsFun.eval([C.veccat([dae.xVec(), dae.zVec(), dae.uVec(), dae.pVec(), xdot/timeScaling])])
-        outputsFun = C.SXFunction( [inputs], [C.densify(outputs)] )
-        outputsFun.init()
-        outputsString = codegen.writeCCode(outputsFun, 'outputs')
-        ret['outputs'] = outputsFun
-        ret['outputsFile'] = outputsString
+    if measurements is not None:
+        # measurements
+        measurementsFun = C.SXFunction( [inputs], [measurements] )
+        measurementsFun.init()
+        [measurements] = measurementsFun.eval([C.veccat([dae.xVec(), dae.zVec(), dae.uVec(), dae.pVec(), xdot/timeScaling])])
+        measurementsFun = C.SXFunction( [inputs], [C.densify(measurements)] )
+        measurementsFun.init()
+        measurementsString = codegen.writeCCode(measurementsFun, 'measurements')
+        ret['measurements'] = measurementsFun
+        ret['measurementsFile'] = measurementsString
 
-        # outputs jacobian
-        jo = C.veccat( [ C.jacobian(outputs,inputs).T ] )
-        outputsJacobFun = C.SXFunction( [inputs], [C.densify(jo)] )
-        outputsJacobFun.init()
-        outputsJacobString = codegen.writeCCode(outputsJacobFun, 'outputsJacob')
-        ret['outputsJacob'] = outputsJacobFun
-        ret['outputsJacobFile'] = outputsJacobString
+        # measurements jacobian
+        jo = C.veccat( [ C.jacobian(measurements,inputs).T ] )
+        measurementsJacobFun = C.SXFunction( [inputs], [C.densify(jo)] )
+        measurementsJacobFun.init()
+        measurementsJacobString = codegen.writeCCode(measurementsJacobFun, 'measurementsJacob')
+        ret['measurementsJacob'] = measurementsJacobFun
+        ret['measurementsJacobFile'] = measurementsJacobString
 
     return ret
