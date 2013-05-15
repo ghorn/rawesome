@@ -27,8 +27,7 @@ endif
 CXX_SRC = \\
 \trhs.cpp \\
 \trhsJacob.cpp \\
-\tlsqExtern.cpp \\
-\tlsqEndTermExtern.cpp \\
+\tacado_external_functions.cpp \\
 %(qpo_src)s \\
 \tqpoases/solver.cpp
 

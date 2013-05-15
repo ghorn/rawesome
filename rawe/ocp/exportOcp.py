@@ -96,13 +96,20 @@ def exportOcp(ocp, cgOptions, acadoOptions, phase1Options):
     # add objective and jacobian
     externObj    = writeObjective(ocp, ocp._minLsq, 'lsqExtern')
     externObjEnd = writeObjective(ocp, ocp._minLsqEndTerm, 'lsqEndTermExtern')
-    files['lsqExtern.cpp'] = '#include "lsqExtern.h"\n'+externObj[0]
-    files['lsqExtern.h']   = externObj[1]
-    files['lsqEndTermExtern.cpp'] = '#include "lsqEndTermExtern.h"\n'+externObjEnd[0]
-    files['lsqEndTermExtern.h']   = externObjEnd[1]
+    externFile  = '''\
+#include "acado_external_functions.h"
+#include <math.h>
+#include <stdio.h>
+'''
+    externFile += externObj[0] + '\n'
+    externFile += externObjEnd[0]
+    files['acado_external_functions.cpp'] = externFile
+    externHeader  = externObj[1] + '\n'
+    externHeader += externObjEnd[1]
+    files['acado_external_functions.h'] = externHeader
 
     # #include objective/jacobian in acado_solver.c
-    files['acado_solver.c'] = '#include "lsqExtern.h"\n#include "lsqEndTermExtern.h"\n'+\
+    files['acado_solver.c'] = '#include "acado_external_functions.h"\n'+\
                               files['acado_solver.c']
 
     # add python_interface.c
