@@ -1,4 +1,3 @@
-import rawe
 import casadi as C
 
 def detectLinearSubsystems(dae):

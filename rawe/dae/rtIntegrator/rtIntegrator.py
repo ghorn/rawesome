@@ -339,6 +339,7 @@ class RtIntegrator(object):
             ret = self._integratorLib.integrate(ctypes.c_void_p(self._data.ctypes.data),
                                                 ctypes.c_void_p(self._measData.ctypes.data),
                                                 self._initIntegrator)
+        assert ret==0, "integrator returned error: "+str(ret)
         self._getData()
         self._initIntegrator = 0
 #        print "h:"

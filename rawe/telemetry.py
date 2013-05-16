@@ -25,7 +25,7 @@ def startTelemetry(ocp, conf, callbacks=[],
                 ocp._gfcn.setInput(xOpt,0)
                 ocp._gfcn.evaluate()
                 g = ocp._gfcn.output()
-                s2 = ocp._constraints.printViolations(g,lbg,ubg,reportThreshold=0)
+                ocp._constraints.printViolations(g,lbg,ubg,reportThreshold=0)
 
             xOptQueue.put(xOpt)
 
