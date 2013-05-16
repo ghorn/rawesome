@@ -185,9 +185,6 @@ class OcpRT(object):
         self._lib.py_initialize()
         self._getAll()
 
-#        if not self._lib.py_get_ACADO_INITIAL_STATE_FIXED():
-#            self._canonicalNames = list(set(ocprt._canonicalNames)-set(['x0']))
-
         self.xNames = self._dae.xNames()
         self.uNames = self._dae.uNames()
         self.Ts = self.getTs()
