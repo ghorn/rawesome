@@ -48,8 +48,8 @@ Tf = 10.    # Simulation duration
 mpcRT, intOpts = makeNmpc(dae,N=N_mpc,dt=Ts)
 mheRT, _ = makeMhe(dae,N=N_mpc,dt=Ts)
 
-mpcLog = InitializeMPC(mpcRT,dae)
-mheLog = InitializeMHE(mheRT,dae)
+InitializeMPC(mpcRT,dae)
+InitializeMHE(mheRT,dae)
 
 from rawe.dae import RtIntegrator
 Rint = RtIntegrator(dae,ts=Ts, numIntegratorSteps=400, integratorType='INT_IRK_GL2')
@@ -95,7 +95,7 @@ while time < Tf:
     PL = PL1
     xL = xL1
     
-    SimulateAndShift(mpcRT,mheRT,sim,mpcLog,mheLog,simLog)
+    SimulateAndShift(mpcRT,mheRT,sim,simLog)
     
     time += Ts
     print time
@@ -104,17 +104,17 @@ while time < Tf:
 
 plt.ion()
 
-Fig_plot(['x','v'],what=['sim','mhe','mpc'],simLog=simLog,mheLog=mheLog,mpcLog=mpcLog)
+Fig_plot(['x','v'],what=['sim','mhe','mpc'],simLog=simLog,mheLog=mheRT,mpcLog=mpcRT)
 
-mpcLog.plot(['x','v'])
-mpcLog.subplot([['x'],['v']])
-mpcLog.plot('u')
+mpcRT.plot(['x','v'])
+mpcRT.subplot([['x'],['v']])
+mpcRT.plot('u')
 
-mpcLog.plot(['x','v'],when='all')
+mpcRT.plot(['x','v'],when='all')
 
 plt.figure()
 for k in range(1,N_mpc):
-    plt.plot(np.array(mpcLog._log['x'])[k,:,0],np.array(mpcLog._log['x'])[k,:,1])
+    plt.plot(np.array(mpcRT._log['x'])[k,:,0],np.array(mpcRT._log['x'])[k,:,1])
 plt.grid()
 
 plt.show()

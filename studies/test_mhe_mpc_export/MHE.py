@@ -17,7 +17,7 @@ def makeMhe(dae,N,dt):
     acadoOpts=[('HESSIAN_APPROXIMATION','GAUSS_NEWTON'),
                ('DISCRETIZATION_TYPE','MULTIPLE_SHOOTING'),
                ('QP_SOLVER','QP_QPOASES'),
-               ('HOTSTART_QP','NO'),
+#               ('HOTSTART_QP','NO'),
                ('SPARSE_QP_SOLUTION','CONDENSING'),
 #               ('SPARSE_QP_SOLUTION','FULL_CONDENSING_U2'),
 #               ('AX_NUM_QP_ITERATIONS','30'),

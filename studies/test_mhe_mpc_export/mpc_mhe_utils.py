@@ -154,9 +154,9 @@ def InitializeMPC(mpcrt,dae):
     
 #    LinearizeSystem(mpcrt,dae)
 
-    mpcLog = rawe.ocp.ocprt.Logger(mpcrt,dae)
-    
-    return mpcLog
+#    mpcLog = rawe.ocp.ocprt.Logger(mpcrt,dae)
+#    
+#    return mpcLog
    
 def InitializeMHE(mhert,dae):
     
@@ -171,14 +171,14 @@ def InitializeMHE(mhert,dae):
 
     mhert.SN[0,0] = 1.0#/(xRms)**2
     
-    mheLog = rawe.ocp.ocprt.Logger(mhert,dae)
+#    mheLog = rawe.ocp.ocprt.Logger(mhert,dae)
     
-    return mheLog
+#    return mheLog
     
-def SimulateAndShift(mpcRT,mheRT,sim,mpcLog,mheLog,simLog):
+def SimulateAndShift(mpcRT,mheRT,sim,simLog):
 
-    mheLog.log(mheRT)    
-    mpcLog.log(mpcRT)
+    mheRT.log()    
+    mpcRT.log()
     
     # Get the measurement BEFORE simulating
     outs = sim.getOutputs(mpcRT.x[0,:],mpcRT.u[0,:],{})
