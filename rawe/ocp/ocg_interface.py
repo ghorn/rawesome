@@ -49,6 +49,13 @@ int py_get_p(real_t * val, const int nr, const int nc){
   return memcpyMat(val, acadoVariables.p, nr, nc, ACADO_NP, 1); }
 #endif
 
+#if ACADO_NXA
+int py_set_z(real_t * val, const int nr, const int nc){
+  return memcpyMat(acadoVariables.z, val, nr, nc, ACADO_N, ACADO_NXA); }
+int py_get_z(real_t * val, const int nr, const int nc){
+  return memcpyMat(val, acadoVariables.z, nr, nc, ACADO_N, ACADO_NXA); }
+#endif
+
 int py_set_y(real_t * val, const int nr, const int nc){
   return memcpyMat(acadoVariables.y, val, nr, nc, ACADO_N, ACADO_NY); }
 int py_get_y(real_t * val, const int nr, const int nc){

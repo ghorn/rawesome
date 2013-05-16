@@ -120,7 +120,7 @@ class Logger(object):
 
 
 class OcpRT(object):
-    _canonicalNames = ['x','u','y','yN','x0','S','SN']
+    _canonicalNames = ['x','u','z','y','yN','x0','S','SN']
     def __init__(self,libpath, ts, dae):
         self._dae = dae
         self._ts = ts
@@ -142,6 +142,10 @@ class OcpRT(object):
                                self._lib.py_get_ACADO_NU()))
         self.y  = numpy.zeros((self._lib.py_get_ACADO_N(),
                                self._lib.py_get_ACADO_NY()))
+        if self._lib.py_get_ACADO_NXA() > 0:
+            self.z  = numpy.zeros((self._lib.py_get_ACADO_N(),
+                                   self._lib.py_get_ACADO_NXA()))
+
         self.yN = numpy.zeros(self._lib.py_get_ACADO_NYN())
         wmt = self._lib.py_get_ACADO_WEIGHTING_MATRICES_TYPE()
         if wmt == 1:
@@ -194,6 +198,8 @@ class OcpRT(object):
         self._callMat(self._lib.py_set_SN, self.SN)
         if self._lib.py_get_ACADO_INITIAL_STATE_FIXED():
             self._callMat(self._lib.py_set_x0, self.x0)
+        if hasattr(self, 'z'):
+            self._callMat(self._lib.py_set_z, self.z)
 
     def _getAll(self):
         self._callMat(self._lib.py_get_x,  self.x)
@@ -204,6 +210,8 @@ class OcpRT(object):
         self._callMat(self._lib.py_get_SN, self.SN)
         if self._lib.py_get_ACADO_INITIAL_STATE_FIXED():
             self._callMat(self._lib.py_get_x0, self.x0)
+        if hasattr(self, 'z'):
+            self._callMat(self._lib.py_get_z, self.z)
 
     def preparationStep(self):
         self._setAll()
