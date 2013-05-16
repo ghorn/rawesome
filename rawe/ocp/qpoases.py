@@ -11,6 +11,7 @@ CFLAGS   = -O3 -fPIC -finline-functions
 
 #CFLAGS   += -Wall -Wextra
 #CXXFLAGS += -Wall -Wextra
+#CXXFLAGS += -DPC_DEBUG # make qpoases print out a bunch of debugging info
 
 LDFLAGS = -lm
 
