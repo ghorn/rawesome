@@ -83,7 +83,8 @@ class OcpRT(object):
                 self._log[field] = []
         self._log['kkt'] = []
         self._log['objective'] = []
-        self._log['timing'] = []
+        self._log['prep_time'] = []
+        self._log['fb_time'] = []
         self.log()
 
     def __setattr__(self, name, value):
@@ -219,7 +220,8 @@ class OcpRT(object):
             self._log[field].append(copy.deepcopy(getattr(self, field)))
         self._log['kkt'].append(self.getKKT())
         self._log['objective'].append(self.getObjective())
-        self._log['timing'].append((self.preparationTime, self.feedbackTime))
+        self._log['prep_time'].append(self.preparationTime)
+        self._log['fb_time'].append(self.feedbackTime)
 
 #     def shiftStates( int strategy, real_t* const xEnd, real_t* const uEnd ):
 #         void shiftStates( int strategy, real_t* const xEnd, real_t* const uEnd );
@@ -317,6 +319,12 @@ class OcpRT(object):
                 ys = numpy.array(self._log['u'])[1:,when,index]
                 ts = numpy.arange(len(ys))*self.Ts
                 plt.step(ts,ys,style)
+                
+            # if it's something else
+            if name in ['kkt','objective','prep_time','fb_time']:
+                ys = numpy.array(self._log[name])[1:]
+                ts = numpy.arange(len(ys))*self.Ts
+                plt.plot(ts,ys,style)
 
         if title is not None:
             assert isinstance(title,str), "title must be a string"
@@ -324,7 +332,7 @@ class OcpRT(object):
         plt.xlabel('time [s]')
         if showLegend is True:
             plt.legend(legend)
-        plt.grid()
+        plt.grid('on')
 
 
 class MpcRT(OcpRT):
