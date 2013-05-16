@@ -8,11 +8,6 @@ import casadi as C
 class Logger(object):
     def __init__(self,ocprt,dae):
 
-        if ocprt._lib.py_get_ACADO_INITIAL_STATE_FIXED():
-            self._canonicalNames = ocprt._canonicalNames
-        else:
-            self._canonicalNames = list(set(ocprt._canonicalNames)-set(['x0']))
-        
         self.xNames = dae.xNames()
         self.uNames = dae.uNames()
         self.Ts = ocprt.getTs()
@@ -20,18 +15,24 @@ class Logger(object):
         self._ocprt = ocprt
         self._dae = dae
         self._log = {}
-        for field in self._canonicalNames:
-            self._log[field] = []
+        self._autologNames = []
+        for field in self._ocprt._canonicalNames:
+            if hasattr(self._ocprt, field):
+                self._autologNames.append(field)
+                self._log[field] = []
         self._log['kkt'] = []
         self._log['objective'] = []
         self._log['timing'] = []
         self.log(ocprt)
         
     def log(self, ocprt):
-        for field in self._canonicalNames:
+        for field in self._autologNames:
+            assert hasattr(ocprt, field), \
+                "ocprt doesn't have field \""+field+"\" which logger was set up with"
             self._log[field].append(copy.deepcopy(getattr(ocprt, field)))
         self._log['kkt'].append(ocprt.getKKT())
         self._log['objective'].append(ocprt.getObjective())
+        self._log['timing'].append((ocprt.preparationTime, ocprt.feedbackTime))
 
     def subplot(self,names,title=None,style='',when=0,showLegend=True):
         assert isinstance(names,list)
@@ -127,11 +128,14 @@ class OcpRT(object):
         print 'loading "'+libpath+'"'
         self._lib = ctypes.cdll.LoadLibrary(libpath)
 
-        # set return types of KKT and objective
+        # set return types of KKT,objective,etc
         self._lib.getKKT.restype = ctypes.c_double
         self._lib.getObjective.restype = ctypes.c_double
         self._lib.preparationStepTimed.restype = ctypes.c_double
         self._lib.feedbackStepTimed.restype = ctypes.c_double
+
+        self.preparationTime = 0.0
+        self.feedbackTime = 0.0
 
         print 'initializing solver'
         self._lib.py_initialize()
