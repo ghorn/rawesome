@@ -142,10 +142,11 @@ if __name__=='__main__':
         # run mpc
         for j in range(2):
             mpc.preparationStep()
-            fbret = mpc.feedbackStep()
-            if fbret != 0:
-                raise Exception("feedbackStep returned error code "+str(fbret))
-            print "timestep",k,"sqp iteration",j,"\tkkts:",mpc.getKKT(),"\tobjective:",mpc.getObjective()
+            mpc.feedbackStep()
+            print "timestep",k,"sqp iteration",j,"\tkkts:",mpc.getKKT(),\
+                "\tobjective:",mpc.getObjective(),\
+                "\tpreparation time:",mpc.preparationTime,"\tfeedback time:",mpc.feedbackTime
+
 
         u['force'] = mpc.u[0,0]
 

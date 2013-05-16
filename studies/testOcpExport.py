@@ -97,10 +97,9 @@ if __name__=='__main__':
     uHistory = [numpy.array(ocpRt.u)]
     for k in range(4):
         ocpRt.preparationStep()
-        fbret = ocpRt.feedbackStep()
-        if fbret != 0:
-            raise Exception("feedbackStep returned error code "+str(fbret))
-        print "sqp iteration",k,"\tkkts:",ocpRt.getKKT(),"\tobjective:",ocpRt.getObjective()
+        ocpRt.feedbackStep()
+        print "sqp iteration",k,"\tkkts:",ocpRt.getKKT(),"\tobjective:",ocpRt.getObjective(),\
+            "\tpreparation time:",ocpRt.preparationTime,"\tfeedback time:",ocpRt.feedbackTime
         xHistory.append(numpy.array(ocpRt.x))
         uHistory.append(numpy.array(ocpRt.u))
 

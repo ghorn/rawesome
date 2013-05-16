@@ -130,7 +130,8 @@ class OcpRT(object):
         # set return types of KKT and objective
         self._lib.getKKT.restype = ctypes.c_double
         self._lib.getObjective.restype = ctypes.c_double
-
+        self._lib.preparationStepTimed.restype = ctypes.c_double
+        self._lib.feedbackStepTimed.restype = ctypes.c_double
 
         print 'initializing solver'
         self._lib.py_initialize()
@@ -215,15 +216,17 @@ class OcpRT(object):
 
     def preparationStep(self):
         self._setAll()
-        ret = self._lib.preparationStep()
+        self.preparationTime = self._lib.preparationStepTimed()
         self._getAll()
-        return ret
 
     def feedbackStep(self):
         self._setAll()
-        ret = self._lib.feedbackStep()
+        ret = ctypes.c_int(0)
+        self.feedbackTime = self._lib.feedbackStepTimed(ctypes.byref(ret))
         self._getAll()
-        return ret
+        if ret.value != 0:
+            raise Exception("feedbackStep returned error code "+str(ret.value))
+
 
     def initializeNodesByForwardSimulation(self):
         self._setAll()
