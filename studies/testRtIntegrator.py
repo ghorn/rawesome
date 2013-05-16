@@ -1,4 +1,5 @@
 import rawe
+import casadi as C
 
 if __name__=='__main__':
 #    print "creating model..."
@@ -9,15 +10,14 @@ if __name__=='__main__':
     [pos,vel] = dae.addX( ["pos","vel"] )
     force = dae.addU( "force" )
     endTime = dae.addP( 'endTime' )
-    
+
     # specify the dae residual
     dae.setResidual([dae.ddt('pos') - vel,
                      dae.ddt('vel') - (force - 3.0*pos - 0.2*vel)])
 
     from rawe.dae import RtIntegrator
-    integrator = RtIntegrator(dae,ts=endTime)
-
-
+    integrator = RtIntegrator(dae,ts=endTime, measurements=C.veccat([dae.ddt('pos'), vel, force]))
+    
     x = {'pos':5.3, 'vel':0.6}
     u = {'force':-4.2}
     p = {'endTime':0.2}

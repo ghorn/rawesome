@@ -13,7 +13,8 @@ extern "C"{
                         int numIntervals,
                         double timestep,
                         const char * integratorType,
-                        const char * integratorGrid,
+                        const char * measurementsGrid,
+                        const int outputDimension,
                         int numIntegratorSteps,
                         int nx, int nz, int nu);
 }
@@ -56,12 +57,13 @@ map<string, int> makeIntegratorGridMap(void){
 }
 
 int makeRtIntegrator( const char * genPath,
-                        const int numIntervals,
-                        const double timestep,
-                        const char * integratorType,
-                        const char * integratorGrid,
-                        const int numIntegratorSteps,
-                        const int nx, const int nz, const int nu)
+                      const int numIntervals,
+                      const double timestep,
+                      const char * integratorType,
+                      const char * measurementsGrid,
+                      const int outputDimension,
+                      const int numIntegratorSteps,
+                      const int nx, const int nz, const int nu)
 {
   SIMexport sim(numIntervals, timestep);
 
@@ -77,16 +79,16 @@ int makeRtIntegrator( const char * genPath,
     return -1;
   }
 
-  // set INTEGRATOR_GRID
-  if (integratorGrid != NULL) {
-    string integratorGridStr(integratorGrid);
+  // set MEASUREMENT_GRID
+  if (measurementsGrid != NULL) {
+    string measurementsGridStr(measurementsGrid);
     map<string, int> igMap = makeIntegratorGridMap();
-    it = igMap.find(integratorGridStr);
+    it = igMap.find(measurementsGridStr);
     if ( it != igMap.end() ) {
       sim.set( MEASUREMENT_GRID, it->second);
-      //cout << "using measurement grid \\"" << integratorGridStr << "\\"\\n";
+      //cout << "using measurement grid \\"" << measurementsGridStr << "\\"\\n";
     } else {
-      cerr << "unrecognized measurement grid \\"" << integratorGridStr << "\\"\\n";
+      cerr << "unrecognized measurement grid \\"" << measurementsGridStr << "\\"\\n";
       return -1;
     }
   }
@@ -97,6 +99,14 @@ int makeRtIntegrator( const char * genPath,
   // 0 == rhs()
   sim.setModel( "model", "rhs", "rhsJacob" );
   sim.setDimensions( nx, nx, nz, nu );
+
+  // set output/measurements
+  if (outputDimension > 0){
+    sim.addOutput( "measurements", "measurementsJacob", outputDimension );
+    Vector Meas(1);
+    Meas(0) = 1;
+    sim.setMeasurements( Meas );
+  }
 
   sim.set( GENERATE_MAKE_FILE, false );
 

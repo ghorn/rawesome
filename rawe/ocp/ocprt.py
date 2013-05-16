@@ -132,18 +132,24 @@ def dlqr(A, B, Q, R, N):
 #        plt.grid()
 
 
+
+
 class OcpRT(object):
-    _canonicalNames = ['x','u','y','yN','x0','S','SN']
+    _canonicalNames = ['x','u','z','y','yN','x0','S','SN']
     def __init__(self,libpath, ts, dae):
         self._dae = dae
         self._ts = ts
         print 'loading "'+libpath+'"'
         self._lib = ctypes.cdll.LoadLibrary(libpath)
 
-        # set return types of KKT and objective
+        # set return types of KKT,objective,etc
         self._lib.getKKT.restype = ctypes.c_double
         self._lib.getObjective.restype = ctypes.c_double
+        self._lib.preparationStepTimed.restype = ctypes.c_double
+        self._lib.feedbackStepTimed.restype = ctypes.c_double
 
+        self.preparationTime = 0.0
+        self.feedbackTime = 0.0
 
         print 'initializing solver'
         self._lib.py_initialize()
@@ -155,6 +161,10 @@ class OcpRT(object):
                                self._lib.py_get_ACADO_NU()))
         self.y  = numpy.zeros((self._lib.py_get_ACADO_N(),
                                self._lib.py_get_ACADO_NY()))
+        if self._lib.py_get_ACADO_NXA() > 0:
+            self.z  = numpy.zeros((self._lib.py_get_ACADO_N(),
+                                   self._lib.py_get_ACADO_NXA()))
+
         self.yN = numpy.zeros(self._lib.py_get_ACADO_NYN())
         wmt = self._lib.py_get_ACADO_WEIGHTING_MATRICES_TYPE()
         if wmt == 1:
@@ -222,6 +232,8 @@ class OcpRT(object):
         self._callMat(self._lib.py_set_SN, self.SN)
         if self._lib.py_get_ACADO_INITIAL_STATE_FIXED():
             self._callMat(self._lib.py_set_x0, self.x0)
+        if hasattr(self, 'z'):
+            self._callMat(self._lib.py_set_z, self.z)
 
     def _getAll(self):
         self._callMat(self._lib.py_get_x,  self.x)
@@ -232,18 +244,22 @@ class OcpRT(object):
         self._callMat(self._lib.py_get_SN, self.SN)
         if self._lib.py_get_ACADO_INITIAL_STATE_FIXED():
             self._callMat(self._lib.py_get_x0, self.x0)
+        if hasattr(self, 'z'):
+            self._callMat(self._lib.py_get_z, self.z)
 
     def preparationStep(self):
         self._setAll()
-        ret = self._lib.preparationStep()
+        self.preparationTime = self._lib.preparationStepTimed()
         self._getAll()
-        return ret
 
     def feedbackStep(self):
         self._setAll()
-        ret = self._lib.feedbackStep()
+        ret = ctypes.c_int(0)
+        self.feedbackTime = self._lib.feedbackStepTimed(ctypes.byref(ret))
         self._getAll()
-        return ret
+        if ret.value != 0:
+            raise Exception("feedbackStep returned error code "+str(ret.value))
+
 
     def initializeNodesByForwardSimulation(self):
         self._setAll()

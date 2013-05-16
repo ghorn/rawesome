@@ -80,16 +80,12 @@ xL = mpcRT.x0
 time = 0
 while time < Tf:
     mheRT.preparationStep()
-    fbret = mheRT.feedbackStep()
-    if fbret != 0:
-        raise Exception("MHE feedbackStep returned error code "+str(fbret))
+    mheRT.feedbackStep()
     
     mpcRT.x0 = np.squeeze(mheRT.x[-1,:])
     
     mpcRT.preparationStep()
-    fbret = mpcRT.feedbackStep()
-    if fbret != 0:
-        raise Exception("MPC feedbackStep returned error code "+str(fbret))
+    mpcRT.feedbackStep()
     
     yL = mheRT.y[0,:]
     x = mheRT.x[0,:]

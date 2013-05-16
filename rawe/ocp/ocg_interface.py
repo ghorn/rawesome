@@ -24,13 +24,19 @@ int memcpyMat(real_t * const dest, real_t const * const src,
   }
 }
 
-// int my_preparation_step(double * time){
-//   timer tmr;
-//   tic(&tmr);
-//   ret = preparationStep();
-//   *time = toc(&tmr);
-//   return ret;
-// }
+real_t preparationStepTimed(void){
+  timer tmr;
+  tic(&tmr);
+  preparationStep();
+  return toc(&tmr);
+}
+
+real_t feedbackStepTimed(int * ret){
+  timer tmr;
+  tic(&tmr);
+  *ret = feedbackStep();
+  return toc(&tmr);
+}
 
 int py_set_x(real_t * val, const int nr, const int nc){
   return memcpyMat(acadoVariables.x, val, nr, nc, ACADO_N + 1, ACADO_NX); }
@@ -47,6 +53,13 @@ int py_set_p(real_t * val, const int nr, const int nc){
   return memcpyMat(acadoVariables.p, val, nr, nc, ACADO_NP, 1); }
 int py_get_p(real_t * val, const int nr, const int nc){
   return memcpyMat(val, acadoVariables.p, nr, nc, ACADO_NP, 1); }
+#endif
+
+#if ACADO_NXA
+int py_set_z(real_t * val, const int nr, const int nc){
+  return memcpyMat(acadoVariables.z, val, nr, nc, ACADO_N, ACADO_NXA); }
+int py_get_z(real_t * val, const int nr, const int nc){
+  return memcpyMat(val, acadoVariables.z, nr, nc, ACADO_N, ACADO_NXA); }
 #endif
 
 int py_set_y(real_t * val, const int nr, const int nc){
