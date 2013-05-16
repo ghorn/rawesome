@@ -174,7 +174,7 @@ class OcpRT(object):
 
         if new_x != None and new_u == None:
             raise Exception('if you provide new_x you must also provide new_u')
-        if new_x != None and sim == None:
+        if new_x != None and sim != None:
             raise Exception('you cannot provide both new_x and sim')
         if new_u != None and new_x != None and sim != None:
             raise Exception('your sim will never be used')
