@@ -15,13 +15,12 @@ int memcpyMat(real_t * const dest, real_t const * const src,
                const int nr1, const int nc1,
                const int nr2, const int nc2){
   int exactMatch = (nr1 == nr2) && (nc1 == nc2);
-  int transposeMatch = (nr1 == nc2) && (nr2 == nc1);
+  int transposeMatch = (nr1 == nc2) && (nr2 == nc1) && (nr1 == 1 || nc1 == 1);
   if (exactMatch || transposeMatch){
     memcpy(dest, src, sizeof(real_t)*nr1*nc1);
     return 0;
-  } else {
-    return 1;
   }
+  return 1;
 }
 
 real_t preparationStepTimed(void){
