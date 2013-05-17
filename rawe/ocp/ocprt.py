@@ -4,6 +4,7 @@ import copy
 import matplotlib.pyplot as plt
 import casadi as C
 import scipy
+import os
 
 def dlqr(A, B, Q, R, N):
 
@@ -132,6 +133,24 @@ class OcpRT(object):
             self._callMat(self._lib.py_get_x0, self.x0)
         if hasattr(self, 'z'):
             self._callMat(self._lib.py_get_z, self.z)
+
+    def writeStateTxtFiles(self,directory=None):
+        '''
+        Loop through the canonical names ["x", "u", "y", etc...] and
+        write them to text files.
+        If directory is not given, files are written in the ocp export directory.
+        '''
+        if directory is None:
+            directory = os.path.split(self._libpath)[0]
+            print directory
+        else:
+            # make directory if it doesn't exist
+            if not os.path.exists(directory):
+                os.makedirs(directory)
+        for name in self._canonicalNames:
+            if hasattr(self,name):
+                numpy.savetxt(os.path.join(directory,name+'.txt'), getattr(self,name))
+
 
     def preparationStep(self):
         self._setAll()

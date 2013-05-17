@@ -106,6 +106,8 @@ if __name__=='__main__':
         kkts.append(ocpRt.getKKT() + 1e-200)
         objs.append(ocpRt.getObjective() + 1e-200)
 
+    ocpRt.writeStateTxtFiles()
+
 #    print "1:"
 #    print xHistory[1].T - xHistory[2].T
 #    print uHistory[1].T - uHistory[2].T
