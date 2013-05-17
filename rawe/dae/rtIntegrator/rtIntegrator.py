@@ -7,12 +7,13 @@ import casadi as C
 
 import rtModelExport
 import rtIntegratorInterface
+from rtIntegratorOptions import RtIntegratorOptions
 
 from ...utils import codegen, subprocess_tee
 
-def loadIntegratorInterface():
+def loadIntegratorInterface(dae, options, measurements):
     # write the interface file
-    files = {'rtIntegratorInterface.cpp':rtIntegratorInterface.phase1src(),
+    files = {'rtIntegratorInterface.cpp':rtIntegratorInterface.phase1src(dae, options, measurements),
              'Makefile':rtIntegratorInterface.phase1makefile()}
     interfaceDir = codegen.memoizeFiles(files)
 
@@ -57,23 +58,11 @@ clean :
 """ % {'cfiles':' '.join(cfiles), 'cxxfiles':' '.join(cxxfiles)}
 
 
-def writeRtIntegrator(dae, options):
-    nx = len(dae.xNames())
-    nz = len(dae.zNames())
-    nup = len(dae.uNames()) + len(dae.pNames())
-
+def writeRtIntegrator(dae, options, measurements):
     # call makeRtIntegrator
     def call(path):
-        lib = loadIntegratorInterface()
-        numIntervals = 1 # should maybe be hard-coded
-        ret = lib.makeRtIntegrator(ctypes.c_char_p(path),
-                                   numIntervals,
-                                   ctypes.c_double(1.0),
-                                   ctypes.c_char_p(options['integratorType']),
-                                   options['measurementsGrid'],
-                                   options['outputDimension'],
-                                   options['numIntegratorSteps'],
-                                   nx, nz, nup)
+        lib = loadIntegratorInterface(dae, options, measurements)
+        ret = lib.makeRtIntegrator(ctypes.c_char_p(path))
         if ret != 0:
             raise Exception("Rt integrator creater failed")
     def callInProcess(q):
@@ -82,17 +71,17 @@ def writeRtIntegrator(dae, options):
     q = Queue()
     p = Process(target=callInProcess,args=(q,))
     p.start()
-    ret = q.get()
     p.join()
-    return ret
+    assert 0 == p.exitcode, "error exporting integrator, see stdout/stderr above"
+    return q.get()
 
 
-def exportIntegrator(dae, options, measurements):
+def exportIntegrator(dae, timestep, options, measurements):
     # get the exported integrator files
-    exportedFiles = writeRtIntegrator(dae, options)
+    exportedFiles = writeRtIntegrator(dae, options, measurements)
 
     # model file
-    rtModelGen = rtModelExport.generateCModel(dae,options['timestep'], measurements)
+    rtModelGen = rtModelExport.generateCModel(dae,timestep, measurements)
     modelFile = '''\
 #include "acado.h"
 #include "rhs.h"
@@ -225,7 +214,7 @@ class RtIntegrator(object):
             self.dh_du = self._dh_dup[:,:nu]
             self.dh_dp = self._dh_dup[:,nu:]
 
-    def __init__(self, dae, ts, measurements=None, numIntegratorSteps=10, integratorType='INT_IRK_GL4'):
+    def __init__(self, dae, ts, measurements=None, options=RtIntegratorOptions()):
         self._dae = dae
         self._ts = ts
         if measurements is None:
@@ -235,23 +224,10 @@ class RtIntegrator(object):
                 measurements = C.veccat(measurements)
             self._measurements = measurements
 
-        # set some options
-        options = {}
-        options['timestep'] = ts # because we scale xdot
-        options['numIntegratorSteps'] = numIntegratorSteps
-        options['integratorType'] = integratorType
-        if self._measurements is None:
-            options['measurementsGrid'] = None
-            options['outputDimension'] = 0
-        else:
-            C.makeDense(self._measurements)
-            options['measurementsGrid'] = "EQUIDISTANT_GRID"
-            options['outputDimension'] = self._measurements.size()
-
         # setup outputs function
         self._outputsFun = self._dae.outputsFunWithSolve()
 
-        (integratorLib, modelLib, rtModelGen) = exportIntegrator(self._dae, options, self._measurements)
+        (integratorLib, modelLib, rtModelGen) = exportIntegrator(self._dae, ts, options, self._measurements)
         self._integratorLib = integratorLib
         self._modelLib = modelLib
         self._rtModelGen = rtModelGen
