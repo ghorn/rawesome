@@ -1,5 +1,6 @@
 import ctypes
 import os
+from multiprocessing import Process, Queue
 
 from rawe.utils import codegen,pkgconfig,subprocess_tee
 import writeAcadoOcpExport
@@ -48,12 +49,12 @@ def runPhase1(ocp, phase1Options, acadoOptions, qpSolver):
     if ret != 0:
         raise Exception("exportOcp phase 1 compilation failed:\n\n"+msgs)
 
-    # load the ocp exporter
-    lib = ctypes.cdll.LoadLibrary(os.path.join(exportpath, 'export_ocp.so'))
-    lib.exportOcp.argtypes = [ctypes.c_int, ctypes.c_double, ctypes.c_char_p]
-
     # run the ocp exporter
     def runOcpExporter(path):
+        # load the ocp exporter
+        lib = ctypes.cdll.LoadLibrary(os.path.join(exportpath, 'export_ocp.so'))
+        lib.exportOcp.argtypes = [ctypes.c_int, ctypes.c_double, ctypes.c_char_p]
+
         if qpSolver == 'QP_QPOASES':
             os.mkdir(os.path.join(path,'qpoases'))
 
@@ -62,4 +63,13 @@ def runPhase1(ocp, phase1Options, acadoOptions, qpSolver):
                             ctypes.c_char_p(path))
         if ret != 0:
             raise Exception("call to export_ocp.so failed")
-    return codegen.withTempdir(runOcpExporter)
+
+    def callExporterInProcess(q):
+        q.put(codegen.withTempdir(runOcpExporter))
+
+    q = Queue()
+    p = Process(target=callExporterInProcess,args=(q,))
+    p.start()
+    ret = q.get()
+    p.join()
+    return ret

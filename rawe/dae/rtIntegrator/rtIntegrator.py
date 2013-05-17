@@ -1,6 +1,7 @@
 import ctypes
 import os
 import numpy
+from multiprocessing import Process, Queue
 
 import casadi as C
 
@@ -62,9 +63,9 @@ def writeRtIntegrator(dae, options):
     nup = len(dae.uNames()) + len(dae.pNames())
 
     # call makeRtIntegrator
-    lib = loadIntegratorInterface()
-    numIntervals = 1 # should maybe be hard-coded
     def call(path):
+        lib = loadIntegratorInterface()
+        numIntervals = 1 # should maybe be hard-coded
         ret = lib.makeRtIntegrator(ctypes.c_char_p(path),
                                    numIntervals,
                                    ctypes.c_double(1.0),
@@ -75,7 +76,16 @@ def writeRtIntegrator(dae, options):
                                    nx, nz, nup)
         if ret != 0:
             raise Exception("Rt integrator creater failed")
-    return codegen.withTempdir(call)
+    def callInProcess(q):
+        q.put(codegen.withTempdir(call))
+
+    q = Queue()
+    p = Process(target=callInProcess,args=(q,))
+    p.start()
+    ret = q.get()
+    p.join()
+    return ret
+
 
 def exportIntegrator(dae, options, measurements):
     # get the exported integrator files
