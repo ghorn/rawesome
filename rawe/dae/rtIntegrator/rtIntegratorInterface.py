@@ -11,13 +11,13 @@ def phase1src(dae,options,measurements):
 #include <acado/utils/acado_types.hpp>
 
 extern "C"{
-  int makeRtIntegrator( const char * genPath);
+  int export_integrator( const char * genPath);
 }
 
 using namespace std;
 USING_NAMESPACE_ACADO
 
-int makeRtIntegrator( const char * genPath)
+int export_integrator( const char * genPath)
 {
   const double timestep = 1.0;
   const int numIntervals = 1;
@@ -74,10 +74,10 @@ LDFLAGS = -lstdc++
 CXXFLAGS += `pkg-config --cflags acado`
 LDFLAGS  += `pkg-config --libs   acado`
 
-CPP_SRC = rtIntegratorInterface.cpp
+CPP_SRC = export_integrator.cpp
 
-.PHONY: clean all rtIntegratorInterface.so
-all : $(OBJ) rtIntegratorInterface.so
+.PHONY: clean all export_integrator.so
+all : $(OBJ) export_integrator.so
 
 %%.o : %%.cpp
 	@echo CPP $@ #: $(CXX) $(CXXFLAGS) -c $< -o $@
@@ -85,9 +85,9 @@ all : $(OBJ) rtIntegratorInterface.so
 
 OBJ = $(CPP_SRC:%%.cpp=%%.o)
 
-rtIntegratorInterface.so::LDFLAGS+=-Wl,-rpath,%(rpathAcado)s
+export_integrator.so::LDFLAGS+=-Wl,-rpath,%(rpathAcado)s
 
-rtIntegratorInterface.so : $(OBJ)
+export_integrator.so : $(OBJ)
 	@echo LD $@ #: $(CXX) -shared -o $@ $(OBJ) $(LDFLAGS)
 	@$(CXX) -shared -o $@ $(OBJ) $(LDFLAGS)
 

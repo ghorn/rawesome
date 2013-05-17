@@ -11,20 +11,6 @@ from rtIntegratorOptions import RtIntegratorOptions
 
 from ...utils import codegen, subprocess_tee
 
-def loadIntegratorInterface(dae, options, measurements):
-    # write the interface file
-    files = {'rtIntegratorInterface.cpp':rtIntegratorInterface.phase1src(dae, options, measurements),
-             'Makefile':rtIntegratorInterface.phase1makefile()}
-    interfaceDir = codegen.memoizeFiles(files)
-
-    # call make to make sure shared lib is build
-    (ret, msgs) = subprocess_tee.call(['make',codegen.makeJobs()], cwd=interfaceDir)
-    if ret != 0:
-        raise Exception("integrator compilation failed:\n"+msgs)
-
-    # load the shared object
-    return ctypes.cdll.LoadLibrary(os.path.join(interfaceDir, 'rtIntegratorInterface.so'))
-
 def makeMakefile(cfiles, cxxfiles):
     return """\
 CC      = gcc
@@ -59,10 +45,21 @@ clean :
 
 
 def writeRtIntegrator(dae, options, measurements):
+    # write the exporter file
+    files = {'export_integrator.cpp':rtIntegratorInterface.phase1src(dae, options, measurements),
+             'Makefile':rtIntegratorInterface.phase1makefile()}
+    interfaceDir = codegen.memoizeFiles(files)
+
+    # call make to make sure shared lib is build
+    (ret, msgs) = subprocess_tee.call(['make',codegen.makeJobs()], cwd=interfaceDir)
+    if ret != 0:
+        raise Exception("integrator compilation failed:\n"+msgs)
+
     # call makeRtIntegrator
     def call(path):
-        lib = loadIntegratorInterface(dae, options, measurements)
-        ret = lib.makeRtIntegrator(ctypes.c_char_p(path))
+        # load the shared object
+        lib = ctypes.cdll.LoadLibrary(os.path.join(interfaceDir, 'export_integrator.so'))
+        ret = lib.export_integrator(ctypes.c_char_p(path))
         if ret != 0:
             raise Exception("Rt integrator creater failed")
     def callInProcess(q):

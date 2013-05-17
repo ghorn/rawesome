@@ -3,3 +3,4 @@ import dae
 import acadoModelExport
 import detectLinearSubsystems
 from rtIntegrator.rtIntegrator import RtIntegrator
+from rtIntegrator.rtIntegratorOptions import RtIntegratorOptions
