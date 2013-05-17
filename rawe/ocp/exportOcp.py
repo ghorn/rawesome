@@ -8,6 +8,10 @@ from ..dae.rtIntegrator import rtModelExport
 from ..utils import codegen
 
 def validateOptions(defaultOpts, userOpts, optName):
+    '''
+    Fill in any missing options which have defaults.
+    Throw an error if any given option is unrecognized (has no default).
+    '''
     assert isinstance(userOpts,dict), optName+" options must be a dictionary"
     # fill in missing default options
     for name in defaultOpts:
