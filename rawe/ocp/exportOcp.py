@@ -28,8 +28,7 @@ def writeObjective(ocp, out0, exportName):
     dae = ocp._dae
 
     # first make out not a function of xDot or z
-    xdot = C.veccat([dae.ddt(name) for name in dae.xNames()])
-    inputs0 = [xdot, dae.xVec(), dae.zVec(), dae.uVec(), dae.pVec()]
+    inputs0 = [dae.xDotVec(), dae.xVec(), dae.zVec(), dae.uVec(), dae.pVec()]
     outputFun0 = C.SXFunction(inputs0, [out0])
 
     (xDotDict, zDict) = dae.solveForXDotAndZ()

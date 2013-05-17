@@ -25,8 +25,9 @@ class OcpRT(object):
     def __init__(self,libpath, ts, dae):
         self._dae = dae
         self._ts = ts
-        print 'loading "'+libpath+'"'
-        self._lib = ctypes.cdll.LoadLibrary(libpath)
+        self._libpath = libpath
+        print 'loading "'+self._libpath+'"'
+        self._lib = ctypes.cdll.LoadLibrary(self._libpath)
 
         # set return types of KKT,objective,etc
         self._lib.getKKT.restype = ctypes.c_double
@@ -36,10 +37,6 @@ class OcpRT(object):
 
         self.preparationTime = 0.0
         self.feedbackTime = 0.0
-
-        print 'initializing solver'
-        self._lib.py_initialize()
-        self._libpath = libpath
 
         self.x  = numpy.zeros((self._lib.py_get_ACADO_N()+1,
                                self._lib.py_get_ACADO_NX()))
@@ -69,6 +66,7 @@ class OcpRT(object):
         if self._lib.py_get_ACADO_INITIAL_STATE_FIXED():
             self.x0 = numpy.zeros(self._lib.py_get_ACADO_NX())
 
+        print 'initializing solver'
         self._lib.py_initialize()
         self._getAll()
 
@@ -142,7 +140,6 @@ class OcpRT(object):
         '''
         if directory is None:
             directory = os.path.split(self._libpath)[0]
-            print directory
         else:
             # make directory if it doesn't exist
             if not os.path.exists(directory):

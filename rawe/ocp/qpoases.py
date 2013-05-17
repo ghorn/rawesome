@@ -96,7 +96,7 @@ def exportPhase2(cgOptions, phase1src):
     qpoSrcPath = os.path.join(qpoStuff['qpOASESsrc'][0].split('qpoases')[0], 'qpoases')
     phase2src = codegen.directoryToDict(qpoSrcPath)
 
-    # merge qpoases source with phase 1 source
+    # merge qpoases source with phase 1 output
     def mergeAll(srcdict,destdict):
         for name,src in srcdict.items():
             if isinstance(src,dict):
@@ -119,7 +119,6 @@ ACADOvariables acadoVariables;
 
     # write all this
     exportpath = codegen.memoizeFiles(genfiles)
-    print exportpath
 
     # compile!
     (ret, msgs) = subprocess_tee.call(['make',codegen.makeJobs()], cwd=exportpath)
