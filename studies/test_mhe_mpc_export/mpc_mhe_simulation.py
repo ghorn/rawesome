@@ -51,8 +51,7 @@ mheRT, _ = makeMhe(dae,N=N_mpc,dt=Ts)
 InitializeMPC(mpcRT,dae)
 InitializeMHE(mheRT,dae)
 
-from rawe.dae import RtIntegrator
-Rint = RtIntegrator(dae,ts=Ts, numIntegratorSteps=400, integratorType='INT_IRK_GL2')
+Rint = rawe.RtIntegrator(dae,ts=Ts, options=intOpts)
 #Rint.getOutputs()
 # Initialize the MPC-MHE scheme
 #mpcRT.initialize()

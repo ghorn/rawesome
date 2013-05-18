@@ -1,135 +1,31 @@
 import ctypes
-import os
 import numpy
-from multiprocessing import Process, Queue
 
 import casadi as C
 
-import rtModelExport
-import rtIntegratorInterface
-from rtIntegratorOptions import RtIntegratorOptions
+from rtIntegratorExport import exportIntegrator
 
-from ...utils import codegen, subprocess_tee
+from ..utils import codegen, subprocess_tee
+from ..utils.options import Options, OptStr, OptInt, OptBool
 
-def makeMakefile(cfiles, cxxfiles):
-    return """\
-CC      = gcc
-CFLAGS  = -O3 -fPIC -finline-functions -I.
-CXX     = g++
-CXXFLAGS = -O3 -fPIC -finline-functions -I.
-LDFLAGS = -lm
-
-C_SRC = %(cfiles)s
-CXX_SRC = %(cxxfiles)s
-OBJ = $(C_SRC:%%.c=%%.o)
-OBJ += $(CXX_SRC:%%.cpp=%%.o)
-
-.PHONY: clean all
-all : $(OBJ) model.so integrator.so
-
-%%.o : %%.c acado.h
-\t@echo CC $@: $(CC) $(CFLAGS) -c $< -o $@
-\t@$(CC) $(CFLAGS) -c $< -o $@
-
-%%.o : %%.cpp acado.h
-\t@echo CXX $@: $(CXX) $(CXXFLAGS) -c $< -o $@
-\t@$(CXX) $(CXXFLAGS) -c $< -o $@
-
-%%.so : $(OBJ)
-\t@echo LD $@: $(CXX) -shared -o $@ $(OBJ) $(LDFLAGS)
-\t@$(CXX) -shared -o $@ $(OBJ) $(LDFLAGS)
-
-clean :
-\trm -f *.o *.so
-""" % {'cfiles':' '.join(cfiles), 'cxxfiles':' '.join(cxxfiles)}
-
-
-def writeRtIntegrator(dae, options, measurements):
-    # write the exporter file
-    files = {'export_integrator.cpp':rtIntegratorInterface.phase1src(dae, options, measurements),
-             'Makefile':rtIntegratorInterface.phase1makefile()}
-    interfaceDir = codegen.memoizeFiles(files)
-
-    # call make to make sure shared lib is build
-    (ret, msgs) = subprocess_tee.call(['make',codegen.makeJobs()], cwd=interfaceDir)
-    if ret != 0:
-        raise Exception("integrator compilation failed:\n"+msgs)
-
-    # call makeRtIntegrator
-    def call(path):
-        # load the shared object
-        lib = ctypes.cdll.LoadLibrary(os.path.join(interfaceDir, 'export_integrator.so'))
-        ret = lib.export_integrator(ctypes.c_char_p(path))
-        if ret != 0:
-            raise Exception("Rt integrator creater failed")
-    def callInProcess(q):
-        q.put(codegen.withTempdir(call))
-
-    q = Queue()
-    p = Process(target=callInProcess,args=(q,))
-    p.start()
-    p.join()
-    assert 0 == p.exitcode, "error exporting integrator, see stdout/stderr above"
-    return q.get()
-
-
-def exportIntegrator(dae, timestep, options, measurements):
-    # get the exported integrator files
-    exportedFiles = writeRtIntegrator(dae, options, measurements)
-
-    # model file
-    rtModelGen = rtModelExport.generateCModel(dae,timestep, measurements)
-    modelFile = '''\
-#include "acado.h"
-#include "rhs.h"
-#include "rhsJacob.h"
-'''
-    if measurements is not None:
-        modelFile += '''\
-#include "measurements.h"
-#include "measurementsJacob.h"
-'''
-
-    # write the makefile
-    symbolicsFiles = ['rhs.cpp','rhsJacob.cpp']
-    if measurements is not None:
-        symbolicsFiles += ['measurements.cpp', 'measurementsJacob.cpp']
-    makefile = makeMakefile(['workspace.c', 'model.c', 'integrator.c'],
-                            symbolicsFiles)
-
-    # write the static workspace file (temporary)
-    workspace = """\
-#include <acado.h>
-ACADOworkspace acadoWorkspace;
-ACADOvariables acadoVariables;
-"""
-    genfiles = {'integrator.c': exportedFiles['integrator.c'],
-                'acado.h': exportedFiles['acado.h'],
-                'model.c': modelFile,
-                'rhs.cpp': '#include "rhs.h"\n'+rtModelGen['rhsFile'][0],
-                'rhs.h': rtModelGen['rhsFile'][1],
-                'rhsJacob.cpp': '#include "rhsJacob.h"\n'+rtModelGen['rhsJacobFile'][0],
-                'rhsJacob.h': rtModelGen['rhsJacobFile'][1],
-                'workspace.c': workspace,
-                'Makefile': makefile}
-    if measurements is not None:
-        genfiles['measurements.cpp'] = '#include "measurements.h"\n'+rtModelGen['measurementsFile'][0]
-        genfiles['measurements.h'] = rtModelGen['measurementsFile'][1]
-        genfiles['measurementsJacob.cpp'] = '#include "measurementsJacob.h"\n'+rtModelGen['measurementsJacobFile'][0]
-        genfiles['measurementsJacob.h'] = rtModelGen['measurementsJacobFile'][1]
-    exportpath = codegen.memoizeFiles(genfiles)
-
-    # compile the code
-    (ret, msgs) = subprocess_tee.call(['make',codegen.makeJobs()], cwd=exportpath)
-    if ret != 0:
-        raise Exception("integrator compilation failed:\n"+msgs)
-
-    print 'loading '+exportpath+'/integrator.so'
-    integratorLib = ctypes.cdll.LoadLibrary(exportpath+'/integrator.so')
-    print 'loading '+exportpath+'/model.so'
-    modelLib = ctypes.cdll.LoadLibrary(exportpath+'/model.so')
-    return (integratorLib, modelLib, rtModelGen)
-
+class RtIntegratorOptions(Options):
+    def __init__(self):
+        Options.__init__(self, 'RtIntegrator')
+        self.add(OptStr('LINEAR_ALGEBRA_SOLVER',['GAUSS_LU','HOUSEHOLDER_QR'],default='GAUSS_LU'))
+        self.add(OptInt('NUM_INTEGRATOR_STEPS',default=1))
+        integratorTypes = \
+            ['INT_EX_EULER',
+             'INT_RK2','INT_RK3','INT_RK4',
+             'INT_IRK_GL2','INT_IRK_GL4','INT_IRK_GL6','INT_IRK_GL8',
+             'INT_IRK_RIIA1','INT_IRK_RIIA3','INT_IRK_RIIA5',
+             'INT_DIRK3','INT_DIRK4','INT_DIRK5',
+             'INT_DT','INT_NARX']
+        self.add(OptStr('INTEGRATOR_TYPE',integratorTypes,default='INT_IRK_GL4'))
+        self.add(OptStr('IMPLICIT_INTEGRATOR_MODE',['IFTR','IFT'],default='IFTR'))
+        self.add(OptInt('IMPLICIT_INTEGRATOR_NUM_ITS',default=1))
+        self.add(OptInt('IMPLICIT_INTEGRATOR_NUM_ITS_INIT',default=1))
+        self.add(OptBool('UNROLL_LINEAR_SOLVER',default=False))
+#        self.add(OptStr('MEASUREMENT_GRID',['EQUIDISTANT_SUBGRID','EQUIDISTANT_GRID','ONLINE_GRID']))
 
 class RtIntegrator(object):
     _canonicalNames = ['x','z',

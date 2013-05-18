@@ -16,12 +16,12 @@ if __name__=='__main__':
 
     # specify the Ocp
     N = 100
-    mpc = rawe.ocp.Ocp(dae, N=N, ts=0.2)
+    mpc = rawe.Ocp(dae, N=N, ts=0.2)
 
 #    mpc.constrain(mpc['pos'], '==', 0, when='AT_START')
 #    mpc.constrain(mpc['vel'], '==', 0, when='AT_START')
 
-    mpc.constrain(mpc['pos'], '==', 0.3, when='AT_END')
+    mpc.constrain(mpc['pos'], '==', 0.1, when='AT_END')
     mpc.constrain(mpc['vel'], '==', 0, when='AT_END')
 
     mpc.constrain(mpc['vel'], '<=', 0.2)
@@ -34,21 +34,23 @@ if __name__=='__main__':
     cgOptions = {'CXX':'g++', 'CC':'gcc'}
 #    cgOptions = {'CXX':'icpc', 'CC':'icc'}
     phase1Opts = {'CXX':'g++'}
-    acadoOptions = [("HESSIAN_APPROXIMATION",     "GAUSS_NEWTON"),
-                    ("DISCRETIZATION_TYPE",       "MULTIPLE_SHOOTING"),
-                    ("INTEGRATOR_TYPE",           "INT_IRK_RIIA3"),
-                    ("NUM_INTEGRATOR_STEPS",      str(N*5)),
-                    ("LINEAR_ALGEBRA_SOLVER",     "GAUSS_LU"),
-#                    ("SPARSE_QP_SOLUTION",        "FULL_CONDENSING"),
-                    ("SPARSE_QP_SOLUTION",        "CONDENSING"),
-                    ("QP_SOLVER",                 "QP_QPOASES"),
-#                    ("SPARSE_QP_SOLUTION",        "SPARSE_SOLVER"),
-#                    ("QP_SOLVER",                 "QP_QPDUNES"),
-                    ("FIX_INITIAL_STATE",         "YES"),
-                    ("HOTSTART_QP",               "YES"),
-                    ("GENERATE_MAKE_FILE",        "NO")]
-#                    ("GENERATE_MATLAB_INTERFACE", "YES")]
-    ocpRt = mpc.exportCode(codegenOptions=cgOptions,acadoOptions=acadoOptions,
+    intOpts = rawe.RtIntegratorOptions()
+    intOpts['INTEGRATOR_TYPE'] = 'INT_IRK_RIIA3'
+    intOpts['NUM_INTEGRATOR_STEPS'] = 5
+
+    ocpOpts = rawe.OcpExportOptions()
+    ocpOpts['QP_SOLVER'] = "QP_QPOASES"
+    ocpOpts['SPARSE_QP_SOLUTION'] = "CONDENSING"
+#    ocpOpts['SPARSE_QP_SOLUTION'] = "FULL_CONDENSING"
+#    ocpOpts['SPARSE_QP_SOLUTION'] = "SPARSE_SOLVER"
+#    ocpOpts['QP_SOLVER'] = "QP_QPDUNES"
+    ocpOpts["FIX_INITIAL_STATE"] = True
+    ocpOpts["HOTSTART_QP"] = True
+#   ocpOpts['GENERATE_MATLAB_INTERFACE'] = True
+
+    ocpRt = mpc.exportCode(codegenOptions=cgOptions,
+                           integratorOptions=intOpts,
+                           ocpOptions=ocpOpts,
                            phase1Options=phase1Opts)
     print '='*80
 

@@ -2,6 +2,23 @@ import casadi as C
 
 import exportOcp
 from ocprt import OcpRT, MheRT, MpcRT
+from ..rtIntegrator import RtIntegratorOptions
+from ..utils.options import Options, OptStr, OptInt, OptBool
+
+class OcpExportOptions(Options):
+    def __init__(self):
+        Options.__init__(self, 'OCP')
+        self.add(OptStr('SPARSE_QP_SOLUTION',
+                        ['CONDENSING','FULL_CONDENSING','FULL_CONDENSING_U2','SPARSE_SOLVER']))
+        self.add(OptStr('QP_SOLVER',['QP_QPOASES','QP_QPDUNES','QP_FORCES']))
+        self.add(OptStr('HESSIAN_APPROXIMATION',['GAUSS_NEWTON'],default='GAUSS_NEWTON'))
+        self.add(OptStr('DISCRETIZATION_TYPE',['MULTIPLE_SHOOTING'],default='MULTIPLE_SHOOTING'))
+        self.add(OptBool('GENERATE_TEST_FILE',default=False))
+        self.add(OptBool('GENERATE_MAKE_FILE',default=False))
+        self.add(OptBool('GENERATE_MATLAB_INTERFACE',default=False))
+        self.add(OptBool('HOTSTART_QP',default=True))
+        self.add(OptBool('FIX_INITIAL_STATE',default=True))
+        self.add(OptBool('CG_USE_C99',default=True))
 
 class Ocp(object):
     def __init__(self, dae, N=None, ts=None):
@@ -200,9 +217,11 @@ class Ocp(object):
         assert not hasattr(self, '_minLsqEndTerm'), 'you can only call minimizeLsqEndTerm once'
         self._minLsqEndTerm = obj
 
-    def exportCode(self, codegenOptions={}, acadoOptions=[], phase1Options={}):
+    def exportCode(self, codegenOptions={},
+                   integratorOptions=RtIntegratorOptions(),ocpOptions=OcpExportOptions(),
+                   phase1Options={}):
         (ocpSoPath, ts, dae) = \
-            exportOcp.exportOcp(self, codegenOptions, acadoOptions, phase1Options)
+            exportOcp.exportOcp(self, codegenOptions, integratorOptions, ocpOptions, phase1Options)
         return OcpRT(ocpSoPath, ts, dae)
 
 class Mhe(Ocp):

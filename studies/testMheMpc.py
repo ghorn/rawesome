@@ -25,22 +25,25 @@ def makeMpc(dae, N, ts):
 #    cgOptions = {'CXX':'clang++', 'CC':'clang'}
     cgOptions = {'CXX':'g++', 'CC':'gcc'}
 #    cgOptions = {'CXX':'icpc', 'CC':'icc'}
-    acadoOptions = [("HESSIAN_APPROXIMATION",     "GAUSS_NEWTON"),
-                    ("DISCRETIZATION_TYPE",       "MULTIPLE_SHOOTING"),
-#                    ("INTEGRATOR_TYPE",           "INT_IRK_RIIA3"),
-                    ("INTEGRATOR_TYPE",           "INT_IRK_GL4"),
-                    ("NUM_INTEGRATOR_STEPS",      str(N*5)),
-                    ("LINEAR_ALGEBRA_SOLVER",     "GAUSS_LU"),
-#                    ("SPARSE_QP_SOLUTION",        "FULL_CONDENSING"),
-                    ("SPARSE_QP_SOLUTION",        "CONDENSING"),
-                    ("QP_SOLVER",                 "QP_QPOASES"),
-#                    ("SPARSE_QP_SOLUTION",        "SPARSE_SOLVER"),
-#                    ("QP_SOLVER",                 "QP_FORCES"),
-                    ("FIX_INITIAL_STATE",         "YES"),
-                    ("HOTSTART_QP",               "YES"),
-                    ("GENERATE_MATLAB_INTERFACE", "YES")]
+    intOpts = rawe.RtIntegratorOptions()
+    intOpts['INTEGRATOR_TYPE'] = 'INT_IRK_GL4'
+    intOpts['NUM_INTEGRATOR_STEPS'] = 5
+    intOpts['LINEAR_ALGEBRA_SOLVER'] = 'GAUSS_LU'
+
+    ocpOpts = rawe.OcpExportOptions()
+    ocpOpts['HESSIAN_APPROXIMATION'] = 'GAUSS_NEWTON'
+    ocpOpts['DISCRETIZATION_TYPE'] = 'MULTIPLE_SHOOTING'
+    ocpOpts['QP_SOLVER'] = 'QP_QPOASES'
+    ocpOpts['SPARSE_QP_SOLUTION'] = 'CONDENSING'
+#    ocpOpts['SPARSE_QP_SOLUTION'] = 'FULL_CONDENSING'
+#    ocpOpts['QP_SOLVER'] = 'QP_FORCES'
+#    ocpOpts['SPARSE_QP_SOLUTION'] = 'SPARSE_SOLVER'
+    ocpOpts['FIX_INITIAL_STATE'] =      True
+    ocpOpts['HOTSTART_QP'] =            True
+    ocpOpts['GENERATE_MATLAB_INTERFACE'] = True
     return mpc.exportCode(codegenOptions=cgOptions,
-                          acadoOptions=acadoOptions)
+                          ocpOptions=ocpOpts,
+                          integratorOptions=intOpts)
 
 def makeMhe(dae, N, ts):
     mhe = rawe.ocp.Ocp(dae, N=N, ts=ts)
@@ -51,22 +54,7 @@ def makeMhe(dae, N, ts):
 #    cgOptions = {'CXX':'clang++', 'CC':'clang'}
     cgOptions = {'CXX':'g++', 'CC':'gcc'}
 #    cgOptions = {'CXX':'icpc', 'CC':'icc'}
-    acadoOptions = [("HESSIAN_APPROXIMATION",     "GAUSS_NEWTON"),
-                    ("DISCRETIZATION_TYPE",       "MULTIPLE_SHOOTING"),
-#                    ("INTEGRATOR_TYPE",           "INT_IRK_RIIA3"),
-                    ("INTEGRATOR_TYPE",           "INT_IRK_GL4"),
-                    ("NUM_INTEGRATOR_STEPS",      str(N*5)),
-                    ("LINEAR_ALGEBRA_SOLVER",     "GAUSS_LU"),
-                    ("SPARSE_QP_SOLUTION",        "FULL_CONDENSING"),
-#                    ("SPARSE_QP_SOLUTION",        "CONDENSING"),
-                    ("QP_SOLVER",                 "QP_QPOASES"),
-#                    ("SPARSE_QP_SOLUTION",        "SPARSE_SOLVER"),
-#                    ("QP_SOLVER",                 "QP_FORCES"),
-                    ("FIX_INITIAL_STATE",         "NO"),
-                    ("HOTSTART_QP",               "YES"),
-                    ("GENERATE_MATLAB_INTERFACE", "YES")]
-    return mhe.exportCode(cgOptions=cgOptions,
-                          acadoOptions=acadoOptions)
+    return mhe.exportCode(cgOptions=cgOptions)
 
 
 if __name__=='__main__':
@@ -79,7 +67,7 @@ if __name__=='__main__':
     dae = makeDae()
     mpc = makeMpc(dae, N, ts)
 
-    sim = rawe.dae.RtIntegrator(dae, ts=ts)
+    sim = rawe.RtIntegrator(dae, ts=ts)
 #    sim = rawe.sim.Sim(dae, ts=ts)
 
     print '='*80

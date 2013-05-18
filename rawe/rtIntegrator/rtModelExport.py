@@ -1,6 +1,6 @@
 import casadi as C
 
-from ...utils import codegen
+from ..utils import codegen
 
 def generateCModel(dae,timeScaling,measurements):
     xdot = C.veccat([dae.ddt(name) for name in dae.xNames()])

@@ -1,6 +1,6 @@
 import casadi as C
 
-from ...utils import pkgconfig
+from ..utils import pkgconfig
 
 def phase1src(dae,options,measurements):
     ret = '''\

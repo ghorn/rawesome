@@ -12,12 +12,13 @@ if __name__=='__main__':
     dae.setResidual([dae.ddt('pos') - vel,
                      dae.ddt('vel') - (force - 3.0*pos - 0.2*vel)])
 
-    from rawe.dae import RtIntegrator, RtIntegratorOptions
-    opts = [ ("INTEGRATOR_TYPE",           "INT_IRK_RIIA3"),
-             ("NUM_INTEGRATOR_STEPS",      5),
-             ("LINEAR_ALGEBRA_SOLVER",     "GAUSS_LU")]
-    integratorOpts = RtIntegratorOptions(opts)
-    integrator = RtIntegrator(dae,ts=endTime, options=integratorOpts, measurements=C.veccat([dae.ddt('pos'), vel, force]))
+    from rawe import RtIntegrator, RtIntegratorOptions
+    intOpts = RtIntegratorOptions()
+    intOpts['INTEGRATOR_TYPE'] = 'INT_IRK_RIIA3'
+    intOpts['NUM_INTEGRATOR_STEPS'] = 5
+    intOpts['LINEAR_ALGEBRA_SOLVER'] = 'GAUSS_LU'
+    integrator = RtIntegrator(dae,ts=endTime, options=intOpts,
+                              measurements=C.veccat([dae.ddt('pos'), vel, force]))
     
     x = {'pos':5.3, 'vel':0.6}
     u = {'force':-4.2}

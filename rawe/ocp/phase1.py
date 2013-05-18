@@ -38,9 +38,9 @@ clean :
 
 # This writes and runs the ocp exporter, returning an exported OCP as a
 # dictionary of files.
-def runPhase1(ocp, phase1Options, acadoOptions, qpSolver):
+def runPhase1(ocp, phase1Options, integratorOptions, ocpOptions):
     # write the ocp exporter cpp file
-    genfiles = {'export_ocp.cpp':writeAcadoOcpExport.generateAcadoOcp(ocp, acadoOptions),
+    genfiles = {'export_ocp.cpp':writeAcadoOcpExport.generateAcadoOcp(ocp, integratorOptions, ocpOptions),
                 'Makefile':makeExportMakefile(phase1Options)}
     exportpath = codegen.memoizeFiles(genfiles)
 
@@ -53,23 +53,25 @@ def runPhase1(ocp, phase1Options, acadoOptions, qpSolver):
     def runOcpExporter(path):
         # load the ocp exporter
         lib = ctypes.cdll.LoadLibrary(os.path.join(exportpath, 'export_ocp.so'))
-        lib.exportOcp.argtypes = [ctypes.c_int, ctypes.c_double, ctypes.c_char_p]
 
-        if qpSolver == 'QP_QPOASES':
+        if ocpOptions['QP_SOLVER'] == 'QP_QPOASES':
             os.mkdir(os.path.join(path,'qpoases'))
 
-        ret = lib.exportOcp(ocp._nk,
-                            ctypes.c_double(1.0),
-                            ctypes.c_char_p(path))
+        ret = lib.exportOcp(ctypes.c_char_p(path))
         if ret != 0:
             raise Exception("call to export_ocp.so failed")
 
     def callExporterInProcess(q):
-        q.put(codegen.withTempdir(runOcpExporter))
+        try:
+            q.put(codegen.withTempdir(runOcpExporter))
+        finally:
+            q.put(None)
 
     q = Queue()
     p = Process(target=callExporterInProcess,args=(q,))
     p.start()
     ret = q.get()
     p.join()
+    assert (0 == p.exitcode) and (ret is not None), \
+        "error exporting ocp, see stdout/stderr above"
     return ret

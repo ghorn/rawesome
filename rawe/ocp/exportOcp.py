@@ -4,7 +4,7 @@ import phase1
 import qpoases
 from ocprt import OcpRT
 import ocg_interface
-from ..dae.rtIntegrator import rtModelExport
+from ..rtIntegrator import rtModelExport
 from ..utils import codegen
 
 def validateOptions(defaultOpts, userOpts, optName):
@@ -59,30 +59,14 @@ def writeObjective(ocp, out0, exportName):
     return codegen.writeCCode(outputFun,exportName)
 
 
-def exportOcp(ocp, cgOptions, acadoOptions, phase1Options):
+def exportOcp(ocp, cgOptions, integratorOptions, ocpOptions, phase1Options):
     defaultCgOptions = {'CXX':'g++', 'CC':'gcc'}
     defaultPhase1Options = {'CXX':'g++'}
     validateOptions(defaultCgOptions, cgOptions, "codegen")
     validateOptions(defaultPhase1Options, phase1Options, "phase 1")
 
-    # validate acado options (sort of)
-    acadoOpsMsg = "acadoOptions must be a list of (string,string) tuples"
-    assert isinstance(acadoOptions,list), acadoOpsMsg
-    try:
-        for key,val in acadoOptions:
-            assert type(key) is str, acadoOpsMsg
-            assert type(val) is str, acadoOpsMsg
-    except Exception:
-        raise Exception(acadoOpsMsg)
-    try:
-        qpSolver = dict(acadoOptions)['QP_SOLVER']
-    except Exception:
-        raise Exception('you must specify the QP_SOLVER in acado options')
-    supportedQps = ['QP_QPOASES','QP_QPDUNES']
-    assert qpSolver in supportedQps, "qp solver must be one of " + str(supportedQps)
-
     # write the OCP exporter and run it, returning an exported OCP
-    files = phase1.runPhase1(ocp, phase1Options, acadoOptions, qpSolver)
+    files = phase1.runPhase1(ocp, phase1Options, integratorOptions, ocpOptions)
 
     # add model for rt integrator
     files['model.c'] = '''\
@@ -118,9 +102,9 @@ def exportOcp(ocp, cgOptions, acadoOptions, phase1Options):
     # add python_interface.c
     files['python_interface.c'] = ocg_interface.ocg_interface
 
-    if qpSolver == 'QP_QPOASES':
+    if ocpOptions['QP_SOLVER'] == 'QP_QPOASES':
         ocpSoPath = qpoases.exportPhase2(cgOptions, files)
     else:
-        raise Exception('the impossible happened, unsupported qp solver: "'+str(qpSolver)+'"')
+        raise Exception('the impossible happened, unsupported qp solver: "'+str(ocpOptions['QP_SOLVER'])+'"')
 
     return (ocpSoPath, ocp._ts, ocp._dae)

@@ -54,7 +54,7 @@ def writeAcadoAlgorithm(ocp, dae):
 
     # Loop over the algorithm
     for i in range(f.getAlgorithmSize()):
-      
+
         # Get the atomic operation
         op = f.getAtomicOperation(i)
         i1 = f.getAtomicOutput(i)
@@ -81,10 +81,10 @@ def writeAcadoAlgorithm(ocp, dae):
                 rowidx = f.output(i1).sparsity().getRow()[i3]
                 colidx = f.output(i1).sparsity().col()[i3]
                 assert colidx==0 and rowidx==0 and i3==0, 'non-scalars not supported in ocp constraints, colIdx: '+str(colidx)+', rowidx: '+str(rowidx)+', i3: '+str(i3)
-    
+
                 write( '%(real)s %(output)s_%(i1)d = %(work)s_%(i2)d;' % replace )
 
-            
+
             ########## BINARY ########
             elif op==C.OP_ADD:
                 makeInfixBinary('+',replace)
@@ -154,7 +154,7 @@ def writeAcadoAlgorithm(ocp, dae):
 
     return (algStrings, constraintData)
 
-def generateAcadoOcp(ocp, acadoOptions):
+def generateAcadoOcp(ocp, integratorOptions, ocpOptions):
     dae = ocp._dae
     #print "WARNING: RE-ENABLE PARAMETER UNSUPPORTED ASSERTION"
     assert len(dae.pNames()) == 0, 'parameters not supported by acado codegen'
@@ -185,10 +185,12 @@ def generateAcadoOcp(ocp, acadoOptions):
     lines.append('')
     lines.append('''\
 /* setup OCP */
+const int N = %(N)d;
+const double Ts = 1.0;
 OCP _ocp(0, N * Ts, N);
 _ocp.setModel( "model", "rhs", "rhsJacob" );
 _ocp.setDimensions( %(nx)d, %(nx)d, %(nz)d, %(nup)d );\
-''' % {'nx':len(dae.xNames()), 'nz':len(dae.zNames()), 'nup':len(dae.uNames())+len(dae.pNames())})
+''' % {'nx':len(dae.xNames()), 'nz':len(dae.zNames()), 'nup':len(dae.uNames())+len(dae.pNames()),'N':ocp._nk})
 
     lines.append('/* complex constraints */')
     for (k, comparison, when) in constraintData:
@@ -264,19 +266,29 @@ _ocp.setDimensions( %(nx)d, %(nx)d, %(nz)d, %(nup)d );\
 
     lines.append('_ocp.minimizeLSQ(        _S,        _lsqExtern);')
     lines.append('_ocp.minimizeLSQEndTerm(_SN, _lsqEndTermExtern);')
-    
+
     lines.append('''
 /* setup OCPexport */
 OCPexport _ocpe( _ocp );\
 ''')
 
-    for name,val in acadoOptions:
+    # write integrator options
+    lines.append('\n/* integrator options */')
+    for name,val in iter(sorted(integratorOptions.getAcadoOpts().items())):
+        # multiply NUM_INTEGRATOR_STEPS by number of control intervals
+        if name == 'NUM_INTEGRATOR_STEPS':
+            val = repr(integratorOptions['NUM_INTEGRATOR_STEPS']*ocp._nk)
         lines.append('_ocpe.set( '+name+', '+val+' );')
+
+    lines.append('\n/* ocp options */')
+    # write default ocp options if user hasn't set them
+    for name,val in iter(sorted(ocpOptions.getAcadoOpts().items())):
+        lines.append('_ocpe.set( '+name+', '+val+' );')
+
 
     lines.append('''
 /* export the code */
 _ocpe.exportCode( exportDir );
-
 return 0;''' )
 
     lines = '\n'.join(['    '+l for l in ('\n'.join(lines)).split('\n')])
@@ -284,12 +296,12 @@ return 0;''' )
 #include <acado_toolkit.hpp>
 #include <ocp_export.hpp>
 
-extern "C" int exportOcp(int N, double Ts, const char * exportDir);
+extern "C" int exportOcp(const char * exportDir);
 
 using namespace std;
 USING_NAMESPACE_ACADO
 
-int exportOcp(int N, double Ts, const char * exportDir){
+int exportOcp(const char * exportDir){
 ''' + lines + '\n}\n'
 
     return lines
