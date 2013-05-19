@@ -276,7 +276,7 @@ def carouselModel(conf,nSteps=None):
         dae_delta_residual = C.veccat([dae.ddt('cos_delta') - (-dae['sin_delta']*dae['ddelta']),
                                        dae.ddt('sin_delta') - dae['cos_delta']*dae['ddelta']])
     else:
-        raise ValueErorr('unrecognized delta_parameterization "'+conf['delta_parameterization']+'"')
+        raise ValueError('unrecognized delta_parameterization "'+conf['delta_parameterization']+'"')
 
     dae.addU( [ "daileron"
               , "delevator"
