@@ -84,7 +84,6 @@ class OcpRT(object):
         self._log['objective'] = []
         self._log['prep_time'] = []
         self._log['fb_time'] = []
-        self.log()
 
     def __setattr__(self, name, value):
         if name in self._canonicalNames:
@@ -320,25 +319,25 @@ class OcpRT(object):
             if name in self.xNames:
                 index = self.xNames.index(name)
                 if when == 'all':
-                    for k in range(numpy.array(self._log['x']).shape[0]-1):
-                        ys = numpy.array(self._log['x'])[1+k,:,index]
+                    for k in range(numpy.array(self._log['x']).shape[0]):
+                        ys = numpy.array(self._log['x'])[k,:,index]
                         ts = numpy.arange(len(ys))*self.Ts + self.Ts*k
                         plt.plot(ts,ys,style)
                 else:
-                    ys = numpy.array(self._log['x'])[1:,when,index]
+                    ys = numpy.array(self._log['x'])[:,when,index]
                     ts = numpy.arange(len(ys))*self.Ts
                     plt.plot(ts,ys,style)
 
             # if it's a control
             if name in self.uNames:
                 index = self.uNames.index(name)
-                ys = numpy.array(self._log['u'])[1:,when,index]
+                ys = numpy.array(self._log['u'])[:,when,index]
                 ts = numpy.arange(len(ys))*self.Ts
                 plt.step(ts,ys,style)
                 
             # if it's something else
             if name in ['kkt','objective','prep_time','fb_time']:
-                ys = numpy.array(self._log[name])[1:]
+                ys = numpy.array(self._log[name])[:]
                 ts = numpy.arange(len(ys))*self.Ts
                 plt.plot(ts,ys,style)
 
