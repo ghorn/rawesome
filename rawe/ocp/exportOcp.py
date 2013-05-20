@@ -25,7 +25,7 @@ def validateOptions(defaultOpts, userOpts, optName):
                                 str(defaultOpts.keys()))
 
 # make sure each element in the output is only a function of x or u, not both
-def testSeparation(dae,out):
+def testSeparation(dae,out,exportName):
     badOnes = {}
     msgs = []
     for k in range(out.size()):
@@ -36,9 +36,9 @@ def testSeparation(dae,out):
         us = fx.getFree()
         xs = fu.getFree()
         if len(us) > 0 and len(xs) > 0:
-            msgs.append('output '+str(k)+' has xs: '+str(xs)+', us: '+str(us))
+            msgs.append('output '+str(k)+', xs: '+str(xs)+', us: '+str(us))
     if len(msgs) > 0:
-        msg = str(len(msgs))+ ' compenents of the objective are a function '+\
+        msg = str(len(msgs))+ ' compenents of '+exportName+' are functions '+\
               'of both x and u:\n'+'\n'.join(msgs)
         raise Exception(msg)
 
@@ -60,7 +60,7 @@ def writeObjective(ocp, out0, exportName):
     assert len(dae.pNames()) == 0, "parameters not supported right now in ocp export, sorry"
 
     # make sure each element in the output is only a function of x or u, not both
-    testSeparation(dae,out)
+    testSeparation(dae,out,exportName)
 
     # make new SXFunction that is only fcn of [x, u, p]
     if exportName == 'lsqExtern':
