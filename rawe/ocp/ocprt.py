@@ -348,8 +348,18 @@ class OcpRT(object):
             names = [names]
         assert isinstance(names,list)
 
-#        if style == None:
-#            style = ''
+        def myStep(xs0,ys0,style):
+            #plt.plot(xs0,ys0,'o')
+            xs0 = numpy.append(xs0, xs0[-1] + xs0[1] - xs0[0])
+            ys0 = numpy.append(ys0, ys0[-1])
+            xs = []
+            ys = []
+            for k in range(xs0.size-1):
+                xs.append(xs0[k])
+                xs.append(xs0[k+1])
+                ys.append(ys0[k])
+                ys.append(ys0[k])
+            plt.plot(xs,ys,style)
 
         legend = []
         for name in names:
@@ -379,14 +389,14 @@ class OcpRT(object):
                         if style == 'o':
                             plt.plot(ts,ys,style)
                         else:
-                            plt.step(ts,ys,style)
+                            myStep(ts,ys,style)
                 else:
                     ys = numpy.array(self._log['u'])[:,when,index]
                     ts = (offset + numpy.arange(len(ys)))*self._ts
                     if style == 'o':
                         plt.plot(ts,ys,style)
                     else:
-                        plt.step(ts,ys,style)
+                        myStep(ts,ys,style)
                 
             # if it's an output
             if name in self.outputNames():
