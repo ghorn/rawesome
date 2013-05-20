@@ -299,7 +299,7 @@ class OcpRT(object):
     def getTs(self):
         return self._ts
 
-    def subplot(self,names,title=None,style='',when=0,showLegend=True):
+    def subplot(self,names,title=None,style='',when=0,showLegend=True,offset=0):
         assert isinstance(names,list)
 
         fig = plt.figure()
@@ -321,11 +321,11 @@ class OcpRT(object):
         for k,name in enumerate(names):
             plt.subplot(n,1,k+1)
             if k==0:
-                self._plot(name,title,style[k],when=when,showLegend=showLegend)
+                self._plot(name,title,style[k],when=when,showLegend=showLegend,offset=offset)
             else:
-                self._plot(name,None,style[k],when=when,showLegend=showLegend)
+                self._plot(name,None,style[k],when=when,showLegend=showLegend,offset=offset)
 
-    def plot(self,names,title=None,style='',when=0,showLegend=True):
+    def plot(self,names,title=None,style='',when=0,showLegend=True,offset=0):
 
         fig = plt.figure()
         if title is None:
@@ -340,10 +340,10 @@ class OcpRT(object):
         fig.canvas.set_window_title(str(title))
 
         plt.clf()
-        self._plot(names,title,style,when=when,showLegend=showLegend)
+        self._plot(names,title,style,when=when,showLegend=showLegend,offset=offset)
 
 
-    def _plot(self,names,title,style,when=0,showLegend=True):
+    def _plot(self,names,title,style,when=0,showLegend=True,offset=0):
         if isinstance(names,str):
             names = [names]
         assert isinstance(names,list)
@@ -362,11 +362,11 @@ class OcpRT(object):
                 if when == 'all':
                     for k in range(numpy.array(self._log['x']).shape[0]):
                         ys = numpy.array(self._log['x'])[k,:,index]
-                        ts = numpy.arange(len(ys))*self._ts + self._ts*k
+                        ts = (offset + numpy.arange(len(ys)) + k)*self._ts
                         plt.plot(ts,ys,style)
                 else:
                     ys = numpy.array(self._log['x'])[:,when,index]
-                    ts = numpy.arange(len(ys))*self._ts
+                    ts = (offset+numpy.arange(len(ys)))*self._ts
                     plt.plot(ts,ys,style)
 
             # if it's a control
@@ -375,14 +375,14 @@ class OcpRT(object):
                 if when == 'all':
                     for k in range(numpy.array(self._log['u']).shape[0]):
                         ys = numpy.array(self._log['u'])[k,:,index]
-                        ts = numpy.arange(len(ys))*self._ts + self._ts*k
+                        ts = (offset + numpy.arange(len(ys)) + k)*self._ts
                         if style == 'o':
                             plt.plot(ts,ys,style)
                         else:
                             plt.step(ts,ys,style)
                 else:
                     ys = numpy.array(self._log['u'])[:,when,index]
-                    ts = numpy.arange(len(ys))*self._ts
+                    ts = (offset + numpy.arange(len(ys)))*self._ts
                     if style == 'o':
                         plt.plot(ts,ys,style)
                     else:
@@ -393,17 +393,17 @@ class OcpRT(object):
                 if when == 'all':
                     for k in range(numpy.array(self._log['outputs'][name]).shape[0]):
                         ys = numpy.array(self._log['outputs'][name])[k,:]
-                        ts = numpy.arange(len(ys))*self._ts + self._ts*k
+                        ts = (offset + numpy.arange(len(ys)) + k)*self._ts
                         plt.plot(ts,ys,style)
                 else:
                     ys = numpy.array(self._log['outputs'][name])[:,when]
-                    ts = numpy.arange(len(ys))*self._ts
+                    ts = (offset + numpy.arange(len(ys)))*self._ts
                     plt.plot(ts,ys,style)
                 
             # if it's something else
             if name in ['_kkt','_objective','_prep_time','_fb_time']:
                 ys = numpy.array(self._log[name])[:]
-                ts = numpy.arange(len(ys))*self._ts
+                ts = (offset + numpy.arange(len(ys)))*self._ts
                 plt.plot(ts,ys,style)
 
         if title is not None:
