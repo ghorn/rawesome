@@ -351,15 +351,27 @@ class OcpRT(object):
             # if it's a control
             if name in self.uNames:
                 index = self.uNames.index(name)
-                ys = numpy.array(self._log['u'])[:,when,index]
-                ts = numpy.arange(len(ys))*self._ts
-                plt.step(ts,ys,style)
+                if when == 'all':
+                    for k in range(numpy.array(self._log['u']).shape[0]):
+                        ys = numpy.array(self._log['u'])[k,:,index]
+                        ts = numpy.arange(len(ys))*self._ts + self._ts*k
+                        plt.plot(ts,ys,style)
+                else:
+                    ys = numpy.array(self._log['u'])[:,when,index]
+                    ts = numpy.arange(len(ys))*self._ts
+                    plt.step(ts,ys,style)
                 
             # if it's an output
             if name in self.outputNames:
-                ys = numpy.array(self._log['outputs'][name])[:,when]
-                ts = numpy.arange(len(ys))*self._ts
-                plt.plot(ts,ys,style)
+                if when == 'all':
+                    for k in range(numpy.array(self._log['outputs'][name]).shape[0]):
+                        ys = numpy.array(self._log['outputs'][name])[k,:]
+                        ts = numpy.arange(len(ys))*self._ts + self._ts*k
+                        plt.plot(ts,ys,style)
+                else:
+                    ys = numpy.array(self._log['outputs'][name])[:,when]
+                    ts = numpy.arange(len(ys))*self._ts
+                    plt.plot(ts,ys,style)
                 
             # if it's something else
             if name in ['_kkt','_objective','_prep_time','_fb_time']:

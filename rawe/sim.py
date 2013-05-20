@@ -64,11 +64,12 @@ class Sim(object):
         self.outputs0names = outputs0names
         
         self.xNames = dae.xNames()
+        self.uNames = dae.uNames()
         self.outputNames = dae.outputNames()
 #        self.uNames = dae.uNames()
         listOut=[]
         for n in self.outputNames: listOut.append([])
-        self._log = {'x':[],'y':[],'yN':[],'outputs':dict(zip(self.outputNames,listOut))}
+        self._log = {'x':[],'u':[],'y':[],'yN':[],'outputs':dict(zip(self.outputNames,listOut))}
         
     def step(self, x, u, p):
         (xVec,uVec,pVec) = vectorizeXUP(x,u,p,self.dae)
@@ -97,9 +98,11 @@ class Sim(object):
             ret[name] = maybeToScalar(C.DMatrix(self.outputsFun0.output(k)))
         return ret
     
-    def log(self,new_x=None,new_y=None,new_yN=None,new_out=None):
+    def log(self,new_x=None,new_u=None,new_y=None,new_yN=None,new_out=None):
         if new_x != None:
             self._log['x'].append(numpy.array(new_x))
+        if new_u != None:
+            self._log['u'].append(numpy.array(new_u))
         if new_y != None:
             self._log['y'].append(numpy.array(new_y))
         if new_yN != None:
@@ -124,6 +127,13 @@ class Sim(object):
                 ys = numpy.squeeze(self._log['x'])[:,index]
                 ts = numpy.arange(len(ys))*self._ts
                 plt.plot(ts,ys,style)
+                
+            # if it's a control
+            if name in self.uNames:
+                index = self.uNames.index(name)
+                ys = numpy.squeeze(self._log['u'])[:,index]
+                ts = numpy.arange(len(ys))*self._ts
+                plt.step(ts,ys,style)
                 
             if name in self.outputNames:
                 index = self.outputNames.index(name)
