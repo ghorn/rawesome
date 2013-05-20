@@ -72,8 +72,8 @@ class OcpRT(object):
 
         self.xNames = self._dae.xNames()
         self.uNames = self._dae.uNames()
-        self.Ts = self.getTs()
-
+        self.outputNames = self._dae.outputNames()
+        
         self._log = {}
         self._autologNames = []
         for field in self._canonicalNames:
@@ -84,6 +84,13 @@ class OcpRT(object):
         self._log['objective'] = []
         self._log['prep_time'] = []
         self._log['fb_time'] = []
+        
+        self._log['outputs'] = {}
+        for outName in self.outputNames:
+            self._log['outputs'][outName] = []
+        
+        # setup outputs function
+        self._outputsFun = self._dae.outputsFunWithSolve()
 
     def __setattr__(self, name, value):
         if name in self._canonicalNames:
@@ -237,7 +244,20 @@ class OcpRT(object):
         self._log['objective'].append(self.getObjective())
         self._log['prep_time'].append(self.preparationTime)
         self._log['fb_time'].append(self.feedbackTime)
-
+        
+        ret = {}
+        for j,name in enumerate(self.outputNames):
+            ret[name] = []
+        for k in range(self.u.shape[0]):
+            self._outputsFun.setInput(self.x[k,:],0)
+            self._outputsFun.setInput(self.u[k,:],1)
+            self._outputsFun.evaluate()
+            for j,name in enumerate(self.outputNames):
+                ret[name].append(numpy.array(self._outputsFun.output(j)))
+        
+        for outName in self.outputNames:
+            self._log['outputs'][outName].append(numpy.squeeze(ret[outName]))
+            
 #     def shiftStates( int strategy, real_t* const xEnd, real_t* const uEnd ):
 #         void shiftStates( int strategy, real_t* const xEnd, real_t* const uEnd );
 
@@ -321,24 +341,30 @@ class OcpRT(object):
                 if when == 'all':
                     for k in range(numpy.array(self._log['x']).shape[0]):
                         ys = numpy.array(self._log['x'])[k,:,index]
-                        ts = numpy.arange(len(ys))*self.Ts + self.Ts*k
+                        ts = numpy.arange(len(ys))*self._ts + self._ts*k
                         plt.plot(ts,ys,style)
                 else:
                     ys = numpy.array(self._log['x'])[:,when,index]
-                    ts = numpy.arange(len(ys))*self.Ts
+                    ts = numpy.arange(len(ys))*self._ts
                     plt.plot(ts,ys,style)
 
             # if it's a control
             if name in self.uNames:
                 index = self.uNames.index(name)
                 ys = numpy.array(self._log['u'])[:,when,index]
-                ts = numpy.arange(len(ys))*self.Ts
+                ts = numpy.arange(len(ys))*self._ts
                 plt.step(ts,ys,style)
+                
+            # if it's an output
+            if name in self.outputNames:
+                ys = numpy.array(self._log['outputs'][name])[:,when]
+                ts = numpy.arange(len(ys))*self._ts
+                plt.plot(ts,ys,style)
                 
             # if it's something else
             if name in ['kkt','objective','prep_time','fb_time']:
                 ys = numpy.array(self._log[name])[:]
-                ts = numpy.arange(len(ys))*self.Ts
+                ts = numpy.arange(len(ys))*self._ts
                 plt.plot(ts,ys,style)
 
         if title is not None:
