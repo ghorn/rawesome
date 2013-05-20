@@ -1,5 +1,7 @@
 import time
 import casadi as C
+import numpy
+import matplotlib.pyplot as plt
 
 def getitemMsg(d,name,msg):
     try:
@@ -60,7 +62,14 @@ class Sim(object):
         self.outputsFunAll = fAll
         self.outputsFun0 = f0
         self.outputs0names = outputs0names
-
+        
+        self.xNames = dae.xNames()
+        self.outputNames = dae.outputNames()
+#        self.uNames = dae.uNames()
+        listOut=[]
+        for n in self.outputNames: listOut.append([])
+        self._log = {'x':[],'y':[],'yN':[],'outputs':dict(zip(self.outputNames,listOut))}
+        
     def step(self, x, u, p):
         (xVec,uVec,pVec) = vectorizeXUP(x,u,p,self.dae)
         self.integrator.setInput(xVec,C.INTEGRATOR_X0)
@@ -87,3 +96,45 @@ class Sim(object):
         for k,name in enumerate(self.outputs0names):
             ret[name] = maybeToScalar(C.DMatrix(self.outputsFun0.output(k)))
         return ret
+    
+    def log(self,new_x=None,new_y=None,new_yN=None,new_out=None):
+        if new_x != None:
+            self._log['x'].append(numpy.array(new_x))
+        if new_y != None:
+            self._log['y'].append(numpy.array(new_y))
+        if new_yN != None:
+            self._log['yN'].append(numpy.array(new_yN))
+        if new_out != None:
+            for name in new_out.keys():
+                self._log['outputs'][name].append(numpy.array(new_out[name]))
+    
+    def _plot(self,names,title,style,when=0,showLegend=True):
+        if isinstance(names,str):
+            names = [names]
+        assert isinstance(names,list)
+
+        legend = []
+        for name in names:
+            assert isinstance(name,str)
+            legend.append(name)
+
+            # if it's a differential state
+            if name in self.xNames:
+                index = self.xNames.index(name)
+                ys = numpy.squeeze(self._log['x'])[:,index]
+                ts = numpy.arange(len(ys))*self._ts
+                plt.plot(ts,ys,style)
+                
+            if name in self.outputNames:
+                index = self.outputNames.index(name)
+                ys = numpy.squeeze(self._log['outputs'][name])
+                ts = numpy.arange(len(ys))*self._ts
+                plt.plot(ts,ys,style)
+
+        if title is not None:
+            assert isinstance(title,str), "title must be a string"
+            plt.title(title)
+        plt.xlabel('time [s]')
+        if showLegend is True:
+            plt.legend(legend)
+        plt.grid()
