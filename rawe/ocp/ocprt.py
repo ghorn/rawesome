@@ -269,9 +269,14 @@ class OcpRT(object):
         ret = {}
         for j,name in enumerate(self.outputNames()):
             ret[name] = []
-        for k in range(self.u.shape[0]):
+        nu = self.u.shape[0]
+        for k in range(nu+1):
             self._outputsFun.setInput(self.x[k,:],0)
-            self._outputsFun.setInput(self.u[k,:],1)
+            if k < nu:
+                self._outputsFun.setInput(self.u[k,:],1)
+            else:
+                # at final state, set u=nan
+                self._outputsFun.setInput(numpy.nan*self.u[k-1,:],1)
             self._outputsFun.evaluate()
             for j,name in enumerate(self.outputNames()):
                 ret[name].append(numpy.array(self._outputsFun.output(j)))
@@ -299,7 +304,7 @@ class OcpRT(object):
     def getTs(self):
         return self._ts
 
-    def subplot(self,names,title=None,style='',when=0,showLegend=True,offset=0):
+    def subplot(self,names,title=None,style='',when=0,showLegend=True,offset=None):
         assert isinstance(names,list)
 
         fig = plt.figure()
@@ -325,7 +330,7 @@ class OcpRT(object):
             else:
                 self._plot(name,None,style[k],when=when,showLegend=showLegend,offset=offset)
 
-    def plot(self,names,title=None,style='',when=0,showLegend=True,offset=0):
+    def plot(self,names,title=None,style='',when=0,showLegend=True,offset=None):
 
         fig = plt.figure()
         if title is None:
@@ -343,7 +348,13 @@ class OcpRT(object):
         self._plot(names,title,style,when=when,showLegend=showLegend,offset=offset)
 
 
-    def _plot(self,names,title,style,when=0,showLegend=True,offset=0):
+    def _plot(self,names,title,style,when=0,showLegend=True,offset=None):
+        if offset is None:
+            offset = 0
+        elif offset == 'mhe':
+            offset = -self._lib.py_get_ACADO_N()
+        else:
+            raise Exception("offset must be either None or 'mhe'")
         if isinstance(names,str):
             names = [names]
         assert isinstance(names,list)
@@ -376,7 +387,7 @@ class OcpRT(object):
                         plt.plot(ts,ys,style)
                 else:
                     ys = numpy.array(self._log['x'])[:,when,index]
-                    ts = (offset+numpy.arange(len(ys)))*self._ts
+                    ts = numpy.arange(len(ys))*self._ts
                     plt.plot(ts,ys,style)
 
             # if it's a control
@@ -392,7 +403,7 @@ class OcpRT(object):
                             myStep(ts,ys,style)
                 else:
                     ys = numpy.array(self._log['u'])[:,when,index]
-                    ts = (offset + numpy.arange(len(ys)))*self._ts
+                    ts = numpy.arange(len(ys))*self._ts
                     if style == 'o':
                         plt.plot(ts,ys,style)
                     else:
@@ -407,7 +418,7 @@ class OcpRT(object):
                         plt.plot(ts,ys,style)
                 else:
                     ys = numpy.array(self._log['outputs'][name])[:,when]
-                    ts = (offset + numpy.arange(len(ys)))*self._ts
+                    ts = numpy.arange(len(ys))*self._ts
                     plt.plot(ts,ys,style)
                 
             # if it's something else
