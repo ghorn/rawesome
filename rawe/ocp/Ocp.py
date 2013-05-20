@@ -222,7 +222,7 @@ class Ocp(object):
                    phase1Options={}):
         (ocpSoPath, ts, dae) = \
             exportOcp.exportOcp(self, codegenOptions, integratorOptions, ocpOptions, phase1Options)
-        return OcpRT(ocpSoPath, ts, dae)
+        return OcpRT(ocpSoPath, ts, dae, integratorOptions)
 
 class Mhe(Ocp):
     def minimizeLsq(self, obj):

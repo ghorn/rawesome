@@ -6,6 +6,8 @@ import casadi as C
 import scipy
 import os
 
+import rawe
+
 def dlqr(A, B, Q, R, N):
 
     if N == None:
@@ -22,7 +24,7 @@ def dlqr(A, B, Q, R, N):
 
 class OcpRT(object):
     _canonicalNames = ['x','u','z','y','yN','x0','S','SN']
-    def __init__(self,libpath, ts, dae):
+    def __init__(self,libpath, ts, dae, integratorOptions):
         self._dae = dae
         self._ts = ts
         self._libpath = libpath
@@ -91,6 +93,10 @@ class OcpRT(object):
         
         # setup outputs function
         self._outputsFun = self._dae.outputsFunWithSolve()
+
+        # export integrator
+        self._integrator = rawe.RtIntegrator(self._dae, ts=self._ts, options=integratorOptions)
+
 
     def __setattr__(self, name, value):
         if name in self._canonicalNames:
