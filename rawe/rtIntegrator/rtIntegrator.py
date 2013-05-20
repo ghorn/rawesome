@@ -22,8 +22,8 @@ class RtIntegratorOptions(Options):
              'INT_DT','INT_NARX']
         self.add(OptStr('INTEGRATOR_TYPE',integratorTypes,default='INT_IRK_GL4'))
         self.add(OptStr('IMPLICIT_INTEGRATOR_MODE',['IFTR','IFT'],default='IFTR'))
-        self.add(OptInt('IMPLICIT_INTEGRATOR_NUM_ITS',default=1))
-        self.add(OptInt('IMPLICIT_INTEGRATOR_NUM_ITS_INIT',default=1))
+        self.add(OptInt('IMPLICIT_INTEGRATOR_NUM_ITS',default=3))
+        self.add(OptInt('IMPLICIT_INTEGRATOR_NUM_ITS_INIT',default=0))
         self.add(OptBool('UNROLL_LINEAR_SOLVER',default=False))
 #        self.add(OptStr('MEASUREMENT_GRID',['EQUIDISTANT_SUBGRID','EQUIDISTANT_GRID','ONLINE_GRID']))
 
