@@ -460,8 +460,11 @@ class MpcRT(OcpRT):
         self.SN = P
 
 class MheRT(OcpRT):
-    def __init__(self,libpath, ts, dae, integratorOptions, yref, yNref):
+    def __init__(self,libpath, ts, dae, integratorOptions, yref, yNref, measNames, endMeasNames):
         OcpRT.__init__(self,libpath, ts, dae, integratorOptions)
+        
+        self.measNames = measNames
+        self.endMeasNames = endMeasNames
         
         # export integrator
         self._integrator_y  = rawe.RtIntegrator(self._dae, ts=self._ts, options=integratorOptions, measurements=yref)

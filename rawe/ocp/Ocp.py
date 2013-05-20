@@ -252,7 +252,7 @@ class Mhe(Ocp):
                    phase1Options={}):
         (ocpSoPath, ts, dae) = \
             exportOcp.exportOcp(self, codegenOptions, integratorOptions, ocpOptions, phase1Options)
-        return MheRT(ocpSoPath, ts, dae, integratorOptions, self._yref, self._yNref)
+        return MheRT(ocpSoPath, ts, dae, integratorOptions, self._yref, self._yNref, self._measNames, self._endMeasNames)
 
 class Mpc(Ocp):
     def __init__(self, dae, N=None, ts=None, lqrDae=None):
