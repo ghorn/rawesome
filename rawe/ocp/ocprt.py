@@ -80,10 +80,10 @@ class OcpRT(object):
             if hasattr(self, field):
                 self._autologNames.append(field)
                 self._log[field] = []
-        self._log['kkt'] = []
-        self._log['objective'] = []
-        self._log['prep_time'] = []
-        self._log['fb_time'] = []
+        self._log['_kkt'] = []
+        self._log['_objective'] = []
+        self._log['_prep_time'] = []
+        self._log['_fb_time'] = []
         
         self._log['outputs'] = {}
         for outName in self.outputNames:
@@ -240,10 +240,10 @@ class OcpRT(object):
             assert hasattr(self, field), \
                 "the \"impossible\" happend: ocprt doesn't have field \""+field+"\""
             self._log[field].append(copy.deepcopy(getattr(self, field)))
-        self._log['kkt'].append(self.getKKT())
-        self._log['objective'].append(self.getObjective())
-        self._log['prep_time'].append(self.preparationTime)
-        self._log['fb_time'].append(self.feedbackTime)
+        self._log['_kkt'].append(self.getKKT())
+        self._log['_objective'].append(self.getObjective())
+        self._log['_prep_time'].append(self.preparationTime)
+        self._log['_fb_time'].append(self.feedbackTime)
         
         ret = {}
         for j,name in enumerate(self.outputNames):
@@ -362,7 +362,7 @@ class OcpRT(object):
                 plt.plot(ts,ys,style)
                 
             # if it's something else
-            if name in ['kkt','objective','prep_time','fb_time']:
+            if name in ['_kkt','_objective','_prep_time','_fb_time']:
                 ys = numpy.array(self._log[name])[:]
                 ts = numpy.arange(len(ys))*self._ts
                 plt.plot(ts,ys,style)
