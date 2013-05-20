@@ -21,7 +21,6 @@ def dlqr(A, B, Q, R, N):
 
     return K, P
 
-
 class OcpRT(object):
     _canonicalNames = ['x','u','z','y','yN','x0','S','SN']
     def __init__(self,libpath, ts, dae, integratorOptions):
@@ -72,10 +71,6 @@ class OcpRT(object):
         self._lib.py_initialize()
         self._getAll()
 
-        self.xNames = self._dae.xNames()
-        self.uNames = self._dae.uNames()
-        self.outputNames = self._dae.outputNames()
-        
         self._log = {}
         self._autologNames = []
         for field in self._canonicalNames:
@@ -88,7 +83,7 @@ class OcpRT(object):
         self._log['_fb_time'] = []
         
         self._log['outputs'] = {}
-        for outName in self.outputNames:
+        for outName in self.outputNames():
             self._log['outputs'][outName] = []
         
         # setup outputs function
@@ -97,6 +92,12 @@ class OcpRT(object):
         # export integrator
         self._integrator = rawe.RtIntegrator(self._dae, ts=self._ts, options=integratorOptions)
 
+    def xNames(self):
+        return self._dae.xNames()
+    def uNames(self):
+        return self._dae.uNames()
+    def outputNames(self):
+        return self._dae.outputNames()
 
     def __setattr__(self, name, value):
         if name in self._canonicalNames:
@@ -266,16 +267,16 @@ class OcpRT(object):
         self._log['_fb_time'].append(self.feedbackTime)
         
         ret = {}
-        for j,name in enumerate(self.outputNames):
+        for j,name in enumerate(self.outputNames()):
             ret[name] = []
         for k in range(self.u.shape[0]):
             self._outputsFun.setInput(self.x[k,:],0)
             self._outputsFun.setInput(self.u[k,:],1)
             self._outputsFun.evaluate()
-            for j,name in enumerate(self.outputNames):
+            for j,name in enumerate(self.outputNames()):
                 ret[name].append(numpy.array(self._outputsFun.output(j)))
         
-        for outName in self.outputNames:
+        for outName in self.outputNames():
             self._log['outputs'][outName].append(numpy.squeeze(ret[outName]))
             
 #     def shiftStates( int strategy, real_t* const xEnd, real_t* const uEnd ):
@@ -356,8 +357,8 @@ class OcpRT(object):
             legend.append(name)
 
             # if it's a differential state
-            if name in self.xNames:
-                index = self.xNames.index(name)
+            if name in self.xNames():
+                index = self.xNames().index(name)
                 if when == 'all':
                     for k in range(numpy.array(self._log['x']).shape[0]):
                         ys = numpy.array(self._log['x'])[k,:,index]
@@ -369,8 +370,8 @@ class OcpRT(object):
                     plt.plot(ts,ys,style)
 
             # if it's a control
-            if name in self.uNames:
-                index = self.uNames.index(name)
+            if name in self.uNames():
+                index = self.uNames().index(name)
                 if when == 'all':
                     for k in range(numpy.array(self._log['u']).shape[0]):
                         ys = numpy.array(self._log['u'])[k,:,index]
@@ -388,7 +389,7 @@ class OcpRT(object):
                         plt.step(ts,ys,style)
                 
             # if it's an output
-            if name in self.outputNames:
+            if name in self.outputNames():
                 if when == 'all':
                     for k in range(numpy.array(self._log['outputs'][name]).shape[0]):
                         ys = numpy.array(self._log['outputs'][name])[k,:]
