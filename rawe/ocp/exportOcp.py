@@ -29,8 +29,8 @@ def testSeparation(dae,out,exportName):
     badOnes = {}
     msgs = []
     for k in range(out.size()):
-        fx = C.SXFunction([out[k]],[dae.xVec(),dae.pVec()])
-        fu = C.SXFunction([out[k]],[dae.uVec(),dae.pVec()])
+        fx = C.SXFunction([dae.xVec(),dae.pVec()],[out[k]])
+        fu = C.SXFunction([dae.uVec(),dae.pVec()],[out[k]])
         fx.init()
         fu.init()
         us = fx.getFree()
