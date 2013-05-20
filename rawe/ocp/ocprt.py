@@ -355,11 +355,17 @@ class OcpRT(object):
                     for k in range(numpy.array(self._log['u']).shape[0]):
                         ys = numpy.array(self._log['u'])[k,:,index]
                         ts = numpy.arange(len(ys))*self._ts + self._ts*k
-                        plt.step(ts,ys,style)
+                        if style == 'o':
+                            plt.plot(ts,ys,style)
+                        else:
+                            plt.step(ts,ys,style)
                 else:
                     ys = numpy.array(self._log['u'])[:,when,index]
                     ts = numpy.arange(len(ys))*self._ts
-                    plt.step(ts,ys,style)
+                    if style == 'o':
+                        plt.plot(ts,ys,style)
+                    else:
+                        plt.step(ts,ys,style)
                 
             # if it's an output
             if name in self.outputNames:
