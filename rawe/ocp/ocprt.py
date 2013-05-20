@@ -180,6 +180,20 @@ class OcpRT(object):
         self._lib.initializeNodesByForwardSimulation()
         self._getAll()
 
+    def shiftStatesControls(self):
+        '''
+        There are N states and N-1 controls in the trajectory.
+        Integrate the Nth state forward using the (N-1)th control.
+        '''
+        self._integrator.x = self.x[-2,:]
+        self._integrator.u = self.u[-1,:]
+        self._integrator.p = {}
+        self._integrator.step()
+        self.x[:-1,:] = self.x[1:,:]
+        self.x[-1,:] = self._integrator.x
+        self.u[:-1,:] = self.u[1:,:]
+        self.u[-1,:] = self._integrator.u
+
     def shift(self,new_x=None,new_u=None,sim=None,new_y=None,new_yN=None,new_S=None,new_SN=None):
         # Shift weighting matrices
         if new_S != None:
