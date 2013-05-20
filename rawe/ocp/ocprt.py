@@ -460,6 +460,24 @@ class MpcRT(OcpRT):
         self.SN = P
 
 class MheRT(OcpRT):
+    def __init__(self,libpath, ts, dae, integratorOptions, yref, yNref):
+        OcpRT.__init__(self,libpath, ts, dae, integratorOptions)
+        
+        # export integrator
+        self._integrator_y  = rawe.RtIntegrator(self._dae, ts=self._ts, options=integratorOptions, measurements=yref)
+        self._integrator_yN = rawe.RtIntegrator(self._dae, ts=self._ts, options=integratorOptions, measurements=yNref)
+    
+    def getY(self,x,u):
+        self._integrator_y.x = numpy.squeeze(x)
+        self._integrator_y.u = numpy.squeeze(u)
+        self._integrator_y.step()
+        return self._integrator_y.h
+        
+    def getYN(self,x):
+        self._integrator_yN.x = numpy.squeeze(x)
+        self._integrator_yN.step()
+        return self._integrator_yN.h
+    
     def UpdateArrivalCost(self):
         ''' Arrival cost implementation.
             Approximate the solution of:
@@ -508,15 +526,15 @@ class MheRT(OcpRT):
         nu = u.shape[0]
         nV = vL.shape[0]
 
-        self.integrator.x = x
-        self.integrator.u = u
-        h = self.integrator.y
-        x1 = self.integrator.step()
-        Xx = self.integrator.dx1_dx0
-        Xu = self.integrator.dx1_du
+        self._integrator_y.x = x
+        self._integrator_y.u = u
+        h = self._integrator_y.y
+        x1 = self._integrator_y.step()
+        Xx = self._integrator_y.dx1_dx0
+        Xu = self._integrator_y.dx1_du
 
-        Hx = self.integrator.dy_dx0
-        Hu = self.integrator.dy_du
+        Hx = self._integrator_y.dh_dx0
+        Hu = self._integrator_y.dh_du
 
         x_tilde = x1 - numpy.dot(Xx,x) - numpy.dot(Xu,u)
         h_tilde =  h - numpy.dot(Hx,x) - numpy.dot(Hu,u)
