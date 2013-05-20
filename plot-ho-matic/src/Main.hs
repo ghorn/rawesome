@@ -32,12 +32,12 @@ main = do
   ip <- getip "plot-ho-matic" "tcp://localhost:5563"
   putStrLn $ "using ip \""++ip++"\""
 
-  (c0, chan0) <- newChannel "multi-carousel"   $(makeAccessors ''MC.MultiCarousel)
-  (c1, chan1) <- newChannel "carousel"         $(makeAccessors ''CS.CarouselState)
-  (c2, chan2) <- newChannel "mhe-mpc-horizons" $(makeAccessors ''MMH.MheMpcHorizons)
-  listenerTid0 <- CC.forkIO (sub ip chan0 "multi-carousel"  )
-  listenerTid1 <- CC.forkIO (sub ip chan1 "carousel"        )
-  listenerTid2 <- CC.forkIO (sub ip chan2 "mhe-mpc-horizons")
+  (c0, write0) <- newChannel "multi-carousel"   $(makeAccessors ''MC.MultiCarousel)
+  (c1, write1) <- newChannel "carousel"         $(makeAccessors ''CS.CarouselState)
+  (c2, write2) <- newChannel "mhe-mpc-horizons" $(makeAccessors ''MMH.MheMpcHorizons)
+  listenerTid0 <- CC.forkIO (sub ip write0 "multi-carousel"  )
+  listenerTid1 <- CC.forkIO (sub ip write1 "carousel"        )
+  listenerTid2 <- CC.forkIO (sub ip write2 "mhe-mpc-horizons")
   
   runPlotter [c0,c1,c2] [listenerTid0, listenerTid1, listenerTid2]
 
@@ -48,8 +48,8 @@ withContext = ZMQ.withContext
 withContext = ZMQ.withContext 1
 #endif
 
-sub :: (PB.Wire a, PB.ReflectDescriptor a) => String -> CC.Chan a -> String -> IO ()
-sub ip chan name = withContext $ \context -> do
+sub :: (PB.Wire a, PB.ReflectDescriptor a) => String -> (a -> IO ()) -> String -> IO ()
+sub ip writeVar name = withContext $ \context -> do
 #if OSX
   let receive = ZMQ.receive
 #else
@@ -67,5 +67,5 @@ sub ip chan name = withContext $ \context -> do
         let cs = case PB.messageGet (BL.fromChunks [msg]) of
               Left err -> error err
               Right (cs',_) -> cs'
-        CC.writeChan chan cs
+        writeVar cs
       else return ()

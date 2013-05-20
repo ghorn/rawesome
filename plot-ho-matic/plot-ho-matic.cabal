@@ -16,7 +16,7 @@ executable plot-ho-matic
   main-is:           Main.hs
 --  other-modules:
   build-depends:     base >= 4.5.0 && < 4.7,
-                     Plot-ho-matic,
+                     Plot-ho-matic >= 0.2.0.0,
                      cmdargs,
                      protocol-buffers,
                      bytestring
