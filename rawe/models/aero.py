@@ -165,9 +165,9 @@ def aeroForcesTorques(dae, conf, v_bw_n, v_bw_b, (w1,w2,w3), (eTe1, eTe2, eTe3),
     # TORQUES (AERO)
     # ###############################
 
-    t1 =  0.5*rho*vKite2*bref*cR
-    t2 =  0.5*rho*vKite2*cref*cP
-    t3 =  0.5*rho*vKite2*bref*cY
+    t1 =  0.5*rho*vKite2*sref*bref*cR
+    t2 =  0.5*rho*vKite2*sref*cref*cP
+    t3 =  0.5*rho*vKite2*sref*bref*cY
 
     dae['aero_fx'] = f1
     dae['aero_fy'] = f2
