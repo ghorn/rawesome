@@ -8,7 +8,7 @@ import os
 
 import rawe
 
-def dlqr(A, B, Q, R, N):
+def dlqr(A, B, Q, R, N=None):
 
     if N == None:
         N = numpy.zeros((Q.shape[0],R.shape[0]))
@@ -91,6 +91,7 @@ class OcpRT(object):
 
         # export integrator
         self._integrator = rawe.RtIntegrator(self._dae, ts=self._ts, options=integratorOptions)
+        self._integratorOptions = integratorOptions
 
     def xNames(self):
         return self._dae.xNames()
@@ -437,31 +438,29 @@ class OcpRT(object):
 
 
 class MpcRT(OcpRT):
-    def __init__(self, dae, lqrDae, libpath, ts, referenceStr, reference):
-        OcpRT.__init__(self, dae, libpath, ts)
-        self.lqrDae = lqrDae
-        self.referenceStr = referenceStr
-        self.reference = reference
+    def __init__(self, libpath, ts, dae, lqrDae, integratorOptions):
+        OcpRT.__init__(self, libpath, ts, dae, integratorOptions)
+        self._lqrDae = lqrDae
+        self._integratorLQR  = rawe.RtIntegrator(self._lqrDae, ts=self._ts, options=integratorOptions)
+        
 
     def computeLqr(self):
         nx = self.x.shape[1]
-#        nu = self.u.shape[1]
 
-        self.integrator.x = self.y[-1,:nx]
-        self.integrator.u = self.y[-1,nx:]
-        self.integrator.step()
-        A = self.integrator.dx1_dx0
-        B = self.integrator.dx1_du
-    #    integrator.getOutputs()
+        self._integratorLQR.x = self.y[-1,:nx]
+        self._integratorLQR.u = self.y[-1,nx:]
+        self._integratorLQR.step()
+        A = self._integratorLQR.dx1_dx0
+        B = self._integratorLQR.dx1_du
 
-        K, P = dlqr(A, B, self.Q, self.R, self.N)
+        K, P = dlqr(A, B, self.Q, self.R)
 
         self.K = K
         self.SN = P
 
 class MheRT(OcpRT):
-    def __init__(self,libpath, ts, dae, integratorOptions, yref, yNref, measNames, endMeasNames):
-        OcpRT.__init__(self,libpath, ts, dae, integratorOptions)
+    def __init__(self, libpath, ts, dae, integratorOptions, yref, yNref, measNames, endMeasNames):
+        OcpRT.__init__(self, libpath, ts, dae, integratorOptions)
         
         self.measNames = measNames
         self.endMeasNames = endMeasNames
