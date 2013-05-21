@@ -27,7 +27,7 @@ message %(topname)sState {
   required DifferentialStates x = 1;
   optional AlgebraicVars z = 2;
   required Controls u = 3;
-  required Parameters p = 4;
+  optional Parameters p = 4;
   optional Outputs outs = 5;
 }
 
@@ -46,12 +46,12 @@ def _toToProto(topname,dae):
     lines.append('    dkp = '+topname+'_pb2.'+topname+'State()')
     lines.append('')
     for (field,names) in [('x',dae.xNames()),
-                          ('u',dae.uNames()),
-                          ('p',dae.pNames())]:
+                          ('u',dae.uNames())]:
         for name in names:
             lines.append('    dkp.'+field+'.'+name+' = lookup(\''+name+'\')')
         lines.append('')
     for (field,names) in [('z',dae.zNames()),
+                          ('p',dae.pNames()),
                           ('outs',dae.outputNames())]:
         for name in names:
             lines.append('    try:')
@@ -62,8 +62,12 @@ def _toToProto(topname,dae):
     lines.append('    return dkp')
     return ('\n'.join(lines)).strip()+'\n'
 
-def writeAll(dae, topname, autogenDir,haskellDirs=[]):
+def writeAll(dae, topname, autogenDir,haskellDirs=[],extraProtos=None,package=None):
     protobufs = _toProtos(topname,dae)
+    if package is not None:
+        protobufs = 'package '+package+';\n'+protobufs
+    if extraProtos is not None:
+        protobufs += '\n'+extraProtos
     toProtobufs = _toToProto(topname,dae)
     module = '''\
 import to%(topname)sProto
