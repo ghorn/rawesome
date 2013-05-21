@@ -36,9 +36,7 @@ def setupOcp(dae,conf,nk,nicp,deg,collPoly):
     # constrain invariants
     def constrainInvariantErrs():
         dcm = ocp.lookup('dcm',timestep=0)
-        err = C.mul(dcm.T,dcm)
-        ocp.constrain( C.veccat([err[0,0] - 1, err[1,1]-1, err[2,2] - 1, err[0,1], err[0,2], err[1,2]]), '==', 0, tag=
-                       ("initial dcm orthonormal",None))
+        rawekite.kiteutils.makeOrthonormal(ocp, dcm)
         ocp.constrain(ocp.lookup('c',timestep=0), '==', 0, tag=('c(0)==0',None))
         ocp.constrain(ocp.lookup('cdot',timestep=0), '==', 0, tag=('cdot(0)==0',None))
     constrainInvariantErrs()

@@ -46,6 +46,15 @@ def getOrthonormalizedDcm(ocp,k):
     m = getDcm(ocp,k)
     return orthonormalizeDcm(m)
 
+def makeOrthonormal(ocp_,R):
+         ocp_.constrain(C.mul(R[0,:],R[0,:].T),'==',1,  tag=('R1[0]: e1^T * e1 == 1',None))
+         ocp_.constrain(C.mul(R[1,:],R[0,:].T),'==',0,  tag=('R1[0]: e2^T * e1 == 0',None))
+         ocp_.constrain(C.mul(R[1,:],R[1,:].T),'==',1,  tag=('R1[0]: e2^T * e2 == 1',None))
+         rhon = C.cross(R[0,:],R[1,:]) - R[2,:]
+         ocp_.constrain(rhon[0],'==',0,  tag=('R1[0]: ( e1^T X e2 - e3 )[0] == 0',None))
+         ocp_.constrain(rhon[2],'==',0,  tag=('R1[0]: ( e1^T X e2 - e3 )[1] == 0',None))
+         ocp_.constrain(rhon[1],'==',0,  tag=('R1[0]: ( e1^T X e2 - e3 )[2] == 0',None))
+
 def matchDcms(ocp,R0,Rf):
     err = C.mul(R0.T, Rf)
     ocp.constrain(err[0,1], '==', 0, tag=('dcm matching',"01"))
