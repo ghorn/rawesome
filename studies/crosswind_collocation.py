@@ -11,19 +11,19 @@ numLoops=1
 
 def setupOcp(dae,conf,nk,nicp,deg,collPoly):
     def addCosts():
-        ddr = dae['ddr']
+        dddr = dae['dddr']
         daileron = dae['daileron']
         delevator = dae['delevator']
 
         daileronSigma = 0.01
         delevatorSigma = 0.8
-        ddrSigma = 20.0
+        dddrSigma = 20.0
 
         nkf = float(nk)
 
         dae['daileronCost'] = daileron*daileron / (daileronSigma*daileronSigma*nkf)
         dae['delevatorCost'] = delevator*delevator / (delevatorSigma*delevatorSigma*nkf)
-        dae['ddrCost'] = ddr*ddr / (ddrSigma*ddrSigma*nkf)
+        dae['dddrCost'] = dddr*dddr / (dddrSigma*dddrSigma*nkf)
     addCosts()
 
     ocp = rawe.collocation.Coll(dae, nk=nk, nicp=nicp, deg=deg, collPoly=collPoly)
@@ -68,7 +68,7 @@ def setupOcp(dae,conf,nk,nicp,deg,collPoly):
     for name in [ "y","z",
                   "dy","dz",
                   "w_bn_b_x","w_bn_b_y","w_bn_b_z",
-                  "r","dr",
+                  "r","dr","ddr",
                   'aileron','elevator'
                   ]:
         ocp.constrain(ocp.lookup(name,timestep=0),'==',ocp.lookup(name,timestep=-1), tag=('periodic diff state \"'+name+'"',None))
@@ -120,7 +120,7 @@ def setupOcp(dae,conf,nk,nicp,deg,collPoly):
 #        # control regularization
         obj += ocp.lookup('daileronCost',timestep=k)
         obj += ocp.lookup('delevatorCost',timestep=k)
-        obj += ocp.lookup('ddrCost',timestep=k)
+        obj += ocp.lookup('dddrCost',timestep=k)
 
     ocp.setQuadratureDdt('mechanical_energy', 'mechanical_winch_power')
     ocp.setQuadratureDdt('electrical_energy', 'electrical_winch_power')

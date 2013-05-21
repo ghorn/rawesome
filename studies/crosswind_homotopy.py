@@ -69,6 +69,7 @@ def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
     ocp.bound('r',(1,2000))
     ocp.bound('dr',(-30,30))
     ocp.bound('ddr',(-15,15))
+    ocp.bound('dddr',(-15,15))
 
     for e in ['e11','e21','e31','e12','e22','e32','e13','e23','e33']:
         ocp.bound(e,(-1.1,1.1))
@@ -225,7 +226,7 @@ if __name__=='__main__':
     ocp.guess('w0',10)
     ocp.guess('r',lineRadiusGuess)
 
-    for name in ['w_bn_b_x','w_bn_b_y','dr','ddr','aileron','elevator','daileron','delevator']:
+    for name in ['w_bn_b_x','w_bn_b_y','dr','ddr','dddr','aileron','elevator','daileron','delevator']:
         ocp.guess(name,0)
 
     ocp.guess('gamma_homotopy',0)

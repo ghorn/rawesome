@@ -228,12 +228,13 @@ def crosswindModel(conf):
               , "w_bn_b_z"
               , "r"
               , "dr"
+              , 'ddr'
               , "aileron"
               , "elevator"
               ] )
     dae.addU( [ "daileron"
               , "delevator"
-              , 'ddr'
+              , 'dddr'
               ] )
     dae.addP( ['w0'] )
     
@@ -275,6 +276,7 @@ def crosswindModel(conf):
 #        C.veccat([dae.ddt(name) for name in ['w1','w2','w3']]) - C.veccat([dae['dw1'],dae['dw2'],dae['dw3']]),
         dae.ddt('r') - dae['dr'],
         dae.ddt('dr') - dae['ddr'],
+        dae.ddt('ddr') - dae['dddr'],
         dae.ddt('aileron') - dae['daileron'],
         dae.ddt('elevator') - dae['delevator']
         ])
