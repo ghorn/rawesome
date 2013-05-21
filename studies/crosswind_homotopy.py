@@ -93,8 +93,9 @@ def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
 
 if __name__=='__main__':
     print "reading config..."
-    from carousel_conf import conf
+    #from carousel_conf import conf
     #from stingray_conf import conf
+    from betty_conf import conf
     conf['runHomotopy'] = True
     conf['minAltitude'] = 0.5
     nk = 40
@@ -106,7 +107,7 @@ if __name__=='__main__':
     print "setting up ocp..."
     ocp = setupOcp(dae,conf,nk=nk)
 
-    lineRadiusGuess = 70.0
+    lineRadiusGuess = 100.0
     circleRadiusGuess = 15.0
 
     # trajectory for homotopy
@@ -254,17 +255,18 @@ if __name__=='__main__':
     traj = ocp.solve(xInit=traj.getDvs())
 
     ocp.bound('gamma_homotopy',(1,1),force=True)
-#    ocp.bound('endTime',(4.0,4.0),force=True)
+    ocp.bound('endTime',(3.5,6.0),force=True)
     traj = ocp.solve(xInit=traj.getDvs())
 
     traj.save("data/crosswind_homotopy.dat")
 
     def printBoundsFeedback():
         # bounds feedback
-        lbx = ocp.solver.input(C.NLP_LBX)
-        ubx = ocp.solver.input(C.NLP_UBX)
+        xOpt = traj.dvMap.vectorize()
+        lbx = ocp.solver.input('lbx')
+        ubx = ocp.solver.input('ubx')
         ocp._bounds.printBoundsFeedback(xOpt,lbx,ubx,reportThreshold=0)
-#    printBoundsFeedback()
+    printBoundsFeedback()
 
     # Plot the results
     def plotResults():
@@ -279,7 +281,7 @@ if __name__=='__main__':
         traj.plot('airspeed')
         traj.subplot([['alpha_deg','alphaTail_deg'],['beta_deg','betaTail_deg']])
         traj.subplot(['cL','cD','L_over_D'])
-        traj.subplot(['winch_power', 'tether_tension'])
+        traj.subplot(['mechanical_winch_power', 'tether_tension'])
         traj.subplot(['w_bn_b_x','w_bn_b_y','w_bn_b_z'])
         traj.subplot(['e11','e12','e13','e21','e22','e23','e31','e32','e33'])
         traj.plot(['nu'])

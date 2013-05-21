@@ -27,12 +27,12 @@ def setupOcp(dae,conf,nk,nicp,deg,collPoly):
     addCosts()
 
     ocp = rawe.collocation.Coll(dae, nk=nk, nicp=nicp, deg=deg, collPoly=collPoly)
-    
+
     print "setting up collocation..."
     ocp.setupCollocation(ocp.lookup('endTime'))
 
     print "moar setting up ocp..."
-    
+
     # constrain invariants
     def constrainInvariantErrs():
         dcm = ocp.lookup('dcm',timestep=0)
@@ -43,24 +43,39 @@ def setupOcp(dae,conf,nk,nicp,deg,collPoly):
 
     # constrain line angle
     for k in range(0,nk):
-        ocp.constrain(ocp.lookup('cos_line_angle',timestep=k),'>=',C.cos(65*pi/180), tag=('line angle',k))
+        for j in range(0,ocp.deg+1):
+            ocp.constrain(ocp.lookup('cos_line_angle',timestep=k,degIdx=j),'>=',C.cos(65*pi/180), tag=('line angle',k))
 
     # constrain airspeed
     def constrainAirspeedAlphaBeta():
         for k in range(0,nk):
             ocp.constrain(ocp.lookup('airspeed',timestep=k), '>=', 10, tag=('airspeed',k))
-            ocp.constrainBnds(ocp.lookup('alpha_deg',timestep=k), (-10,30), tag=('alpha(deg)',k))
+            for j in range(0,ocp.deg+1):
+                ocp.constrainBnds(ocp.lookup('alpha_deg',timestep=k,degIdx=j), (-8.5,9.5), tag=('alpha(deg)',k))
+
             ocp.constrainBnds(ocp.lookup('beta_deg', timestep=k), (-10,10), tag=('beta(deg)',k))
     constrainAirspeedAlphaBeta()
-    def constrainCl():
-        for k in range(0,nk):
-            ocp.constrain(ocp.lookup('cL',timestep=k), '<=', 2.0, tag=('cL',k))
-    constrainCl()
+    #def constrainCl():
+    #    for k in range(0,nk):
+    #        ocp.constrain(ocp.lookup('cL',timestep=k), '<=', 2.0, tag=('cL',k))
+    #constrainCl()
 
     # constrain tether force
     for k in range(nk):
-        ocp.constrain( ocp.lookup('tether_tension',timestep=k,degIdx=1), '>=', 0, tag=('tether tension',k))
-        ocp.constrain( ocp.lookup('tether_tension',timestep=k,degIdx=ocp.deg), '>=', 0, tag=('tether tension',k))
+#        ocp.constrain( ocp.lookup('tether_tension',timestep=k,degIdx=1), '>=', 0, tag=('tether tension positive',k))
+#        ocp.constrain( ocp.lookup('tether_tension',timestep=k,degIdx=ocp.deg), '>=', 0, tag=('tether tension positive',k))
+        for j in range(1,ocp.deg+1):
+            ocp.constrain( ocp.lookup('tether_tension',timestep=k,degIdx=j), '>=', 0, tag=('tether tension positive',k))
+
+    # real motor constraints
+    for k in range(nk):
+#        ocp.constrain( ocp.lookup('torque',timestep=k,degIdx=1),       '<=', 150, tag=('motor torque',k))
+#        ocp.constrain( ocp.lookup('torque',timestep=k,degIdx=ocp.deg), '<=', 150, tag=('motor torque',k))
+##        ocp.constrain( ocp.lookup('torque',timestep=k,degIdx=1),       '<=', 78, tag=('motor torque',k))
+##        ocp.constrain( ocp.lookup('torque',timestep=k,degIdx=ocp.deg), '<=', 78, tag=('motor torque',k))
+
+        ocp.constrain( ocp.lookup('rpm',timestep=k,degIdx=1),       '<=', 1500, tag=('rpm',k))
+        ocp.constrain( ocp.lookup('rpm',timestep=k,degIdx=ocp.deg), '<=', 1500, tag=('rpm',k))
 
     # make it periodic
     for name in [ "y","z",
@@ -83,26 +98,27 @@ def setupOcp(dae,conf,nk,nicp,deg,collPoly):
     ocp.bound('x',(-2000,2000))
     ocp.bound('y',(-2000,2000))
     if 'minAltitude' in conf:
-        ocp.bound('z',(conf['minAltitude'],150))
+        ocp.bound('z',(conf['minAltitude'],2000))
     else:
-        ocp.bound('z',(0.01,150))
+        ocp.bound('z',(0.01,2000))
     ocp.bound('r',(1,500))
     ocp.bound('dr',(-30,30))
     ocp.bound('ddr',(-500,500))
+    ocp.bound('dddr',(-500,500))
 
     for e in ['e11','e21','e31','e12','e22','e32','e13','e23','e33']:
         ocp.bound(e,(-1.1,1.1))
 
     for d in ['dx','dy','dz']:
-        ocp.bound(d,(-70,70))
+        ocp.bound(d,(-200,200))
 
     for w in ['w_bn_b_x',
               'w_bn_b_y',
               'w_bn_b_z']:
-        ocp.bound(w,(-4*pi,4*pi))
+        ocp.bound(w,(-6*pi,6*pi))
 
-    ocp.bound('endTime',(0.5,12))
-#    ocp.bound('endTime',(0.5,numLoops*15))
+#    ocp.bound('endTime',(0.5,12))
+    ocp.bound('endTime',(0.5,numLoops*6))
     ocp.bound('w0',(10,10))
 
     # boundary conditions
@@ -124,24 +140,24 @@ def setupOcp(dae,conf,nk,nicp,deg,collPoly):
     ocp.setQuadratureDdt('electrical_energy', 'electrical_winch_power')
 
     ocp.setObjective( 1e2*obj + \
-                      ocp.lookup('mechanical_energy',timestep=-1)/ocp.lookup('endTime') )
+                      ocp.lookup('electrical_energy',timestep=-1)/ocp.lookup('endTime') )
 
     return ocp
 
 
 if __name__=='__main__':
     print "reading config..."
-    from carousel_conf import conf
+#    from carousel_conf import conf
     #from highwind_carousel_conf import conf
-    #from stingray_conf import conf
-    
-    nk = 40*numLoops
+    from betty_conf import conf
+
+    nk = 60*numLoops
 #    nk = 70
-    
+
     print "creating model..."
     dae = rawe.models.crosswind(conf)
     dae.addP('endTime')
-    
+
     print "setting up ocp..."
     nicp = 1
     deg = 4
@@ -177,6 +193,8 @@ if __name__=='__main__':
                      callback=callback )
 
     ocp.interpolateInitialGuess("data/crosswind_homotopy.dat",force=True,quiet=True,numLoops=numLoops)
+#    ocp.interpolateInitialGuess("data/crosswind_opt_3_loops.dat",force=True,quiet=True,numLoops=numLoops)
+#    ocp.interpolateInitialGuess("data/crosswind_opt_3_loops_mechanical.dat",force=True,quiet=True,numLoops=1)
 #    ocp.interpolateInitialGuess("data/crosswind_opt.dat",force=True,quiet=True,numLoops=numLoops)
 
     traj = ocp.solve()
@@ -189,8 +207,9 @@ if __name__=='__main__':
     print "optimal electrical power: "+str(traj.lookup('electrical_energy',-1)/traj.lookup('endTime'))
     print "endTime: "+str(traj.lookup('endTime'))
 
-    traj.save("data/crosswind_opt.dat")
-#    traj.save("data/crosswind_opt_4_loops.dat")
+#    traj.save("data/crosswind_opt.dat")
+#    traj.save("data/crosswind_opt_3_loops.dat")
+#    traj.save("data/crosswind_opt_3_loops_electrical.dat")
 
     def printBoundsFeedback():
         xOpt = traj.dvMap.vectorize()
@@ -199,41 +218,44 @@ if __name__=='__main__':
         ocp._bounds.printBoundsFeedback(xOpt,lbx,ubx,reportThreshold=0)
     printBoundsFeedback()
 
-#    lbg = ocp.solver.input('lbg')
-#    ubg = ocp.solver.input('ubg')
-#    ocp._gfcn.setInput(traj.getDvs(),0)
-#    ocp._gfcn.evaluate()
-#    g = ocp._gfcn.output()
-#
-#    ocp._constraints.printViolations(g,lbg,ubg,reportThreshold=1e-9)
+    def printConstraintsViolations():
+        lbg = ocp.solver.input('lbg')
+        ubg = ocp.solver.input('ubg')
+        ocp._gfcn.setInput(traj.getDvs(),0)
+        ocp._gfcn.evaluate()
+        g = ocp._gfcn.output()
+        ocp._constraints.printViolations(g,lbg,ubg,reportThreshold=0)#1e-9)
+    printConstraintsViolations()
 
     # Plot the results
     def plotResults():
 #        traj.subplot(['x','y','z'])
 #        traj.subplot(['dx','dy','dz'])
 #        traj.subplot([['aileron','elevator'],['daileron','delevator']],title='control surfaces')
+        traj.subplot([['dddr'],['daileron','delevator']],title='control surfaces')
 #        traj.subplot(['r','dr','ddr'])
-#        traj.subplot(['wind_at_altitude','dr'],title='')
+        traj.subplot(['wind_at_altitude','dr'],title='')
 #        traj.subplot(['c','cdot','cddot'],title="invariants")
         traj.plot('airspeed',title='airspeed')
         traj.subplot([['alpha_deg','alphaTail_deg'],['beta_deg','betaTail_deg']])
-        traj.subplot(['cL','cD','L_over_D'],title='')
+        traj.subplot([['cL'],['cD','cD_tether'],['L_over_D','L_over_D_with_tether']],title='')
 #        traj.subplot([['winch_power'], ['tether_tension'],['accel_g','accel_without_gravity_g']])
         traj.subplot([['rpm'],['dr']])
         traj.subplot([['tether_tension'],['torque']])
         traj.plot(['mechanical_winch_power', 'electrical_winch_power'])
+        traj.plot('r')
 #        traj.subplot([['ddx','ddy','ddz'],['accel','accel without gravity']])
 #        traj.plot(["loyds_limit","loyds_limit_exact","neg_winch_power"])
 #        traj.plot(["loyd's limit","-(winch power)"],title='')
-#        traj.subplot([['daileronCost','delevatorCost','ddrCost'],['winch_power']])
-#        traj.subplot(['w_bn_b_x','w_bn_b_y','w_bn_b_z'])
+        traj.subplot([['daileronCost'],['delevatorCost'],['dddrCost']])
+        traj.subplot(['w_bn_b_x','w_bn_b_y','w_bn_b_z'])
 #        traj.subplot(['e11','e12','e13','e21','e22','e23','e31','e32','e33'])
 #        traj.plot('line_angle_deg')
 #        traj.plot('quadrature_energy')
 #        traj.subplot(['energy','quadrature_energy'])
 #        traj.plot(['energy','quadrature_energy'])
 #        traj.plot('nu')
-        
+
         plt.show()
     plotResults()
 
@@ -275,4 +297,3 @@ if __name__=='__main__':
 
         plt.show()
 #    plotPaper()
-
