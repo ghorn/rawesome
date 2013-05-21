@@ -108,7 +108,7 @@ if __name__=='__main__':
     ocp = setupOcp(dae,conf,nk=nk)
 
     lineRadiusGuess = 100.0
-    circleRadiusGuess = 15.0
+    circleRadiusGuess = 20.0
 
     # trajectory for homotopy
     homotopyTraj = {'x':[],'y':[],'z':[]}
@@ -133,7 +133,7 @@ if __name__=='__main__':
                 xyzDotCircleFrame = numpy.array([0, r*numpy.cos(theta)*thetaDot,  r*numpy.sin(theta)*thetaDot])
 
                 phi = numpy.arcsin(r/lineRadiusGuess) # rotate so it's above ground
-                phi += numpy.arcsin((conf['minAltitude']+0.3)/lineRadiusGuess)
+                phi += numpy.arcsin((conf['minAltitude']+0.3)/lineRadiusGuess) + 10*pi/180
                 R_c2n = numpy.matrix([[ numpy.cos(phi), 0, -numpy.sin(phi)],
                                       [              0, 1,               0],
                                       [ numpy.sin(phi), 0,  numpy.cos(phi)]])
@@ -239,9 +239,9 @@ if __name__=='__main__':
     solverOptions = [("expand_f",True),
                      ("expand_g",True),
                      ("generate_hessian",True),
-                     ("linear_solver","ma57"),
+                     ("linear_solver","ma27"),
                      ("max_iter",1000),
-                     ("tol",1e-11)]
+                     ("tol",1e-10)]
 
     print "setting up solver..."
     ocp.setupSolver( solverOpts=solverOptions,
@@ -255,7 +255,7 @@ if __name__=='__main__':
     traj = ocp.solve(xInit=traj.getDvs())
 
     ocp.bound('gamma_homotopy',(1,1),force=True)
-    ocp.bound('endTime',(3.5,6.0),force=True)
+#    ocp.bound('endTime',(3.5,6.0),force=True)
     traj = ocp.solve(xInit=traj.getDvs())
 
     traj.save("data/crosswind_homotopy.dat")

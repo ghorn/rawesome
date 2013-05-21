@@ -8,6 +8,8 @@ import rawe
 import rawekite
 
 numLoops=1
+#powerType = 'electrical'
+powerType = 'mechanical'
 
 def setupOcp(dae,conf,nk,nicp,deg,collPoly):
     def addCosts():
@@ -15,15 +17,16 @@ def setupOcp(dae,conf,nk,nicp,deg,collPoly):
         daileron = dae['daileron']
         delevator = dae['delevator']
 
-        daileronSigma = 0.01
+        daileronSigma = 0.001
         delevatorSigma = 0.8
         dddrSigma = 20.0
 
+        fudgeFactor = 1e-1
         nkf = float(nk)
+        dae['daileronCost'] =  fudgeFactor*daileron*daileron / (daileronSigma*daileronSigma*nkf)
+        dae['delevatorCost'] = fudgeFactor*delevator*delevator / (delevatorSigma*delevatorSigma*nkf)
+        dae['dddrCost'] =      fudgeFactor*dddr*dddr / (dddrSigma*dddrSigma*nkf)
 
-        dae['daileronCost'] = daileron*daileron / (daileronSigma*daileronSigma*nkf)
-        dae['delevatorCost'] = delevator*delevator / (delevatorSigma*delevatorSigma*nkf)
-        dae['dddrCost'] = dddr*dddr / (dddrSigma*dddrSigma*nkf)
     addCosts()
 
     ocp = rawe.collocation.Coll(dae, nk=nk, nicp=nicp, deg=deg, collPoly=collPoly)
@@ -71,11 +74,11 @@ def setupOcp(dae,conf,nk,nicp,deg,collPoly):
     for k in range(nk):
 #        ocp.constrain( ocp.lookup('torque',timestep=k,degIdx=1),       '<=', 150, tag=('motor torque',k))
 #        ocp.constrain( ocp.lookup('torque',timestep=k,degIdx=ocp.deg), '<=', 150, tag=('motor torque',k))
-##        ocp.constrain( ocp.lookup('torque',timestep=k,degIdx=1),       '<=', 78, tag=('motor torque',k))
-##        ocp.constrain( ocp.lookup('torque',timestep=k,degIdx=ocp.deg), '<=', 78, tag=('motor torque',k))
+        ocp.constrain( ocp.lookup('torque',timestep=k,degIdx=1),       '<=', 78, tag=('motor torque',k))
+        ocp.constrain( ocp.lookup('torque',timestep=k,degIdx=ocp.deg), '<=', 78, tag=('motor torque',k))
 
-        ocp.constrain( ocp.lookup('rpm',timestep=k,degIdx=1),       '<=', 1500, tag=('rpm',k))
-        ocp.constrain( ocp.lookup('rpm',timestep=k,degIdx=ocp.deg), '<=', 1500, tag=('rpm',k))
+        ocp.constrain( ocp.lookup('rpm',timestep=k),       '<=', 1500, tag=('rpm',k))
+        ocp.constrain( -1500, '<=', ocp.lookup('rpm',timestep=k),       tag=('rpm',k))
 
     # make it periodic
     for name in [ "y","z",
@@ -104,7 +107,7 @@ def setupOcp(dae,conf,nk,nicp,deg,collPoly):
     ocp.bound('r',(1,500))
     ocp.bound('dr',(-30,30))
     ocp.bound('ddr',(-500,500))
-    ocp.bound('dddr',(-500,500))
+    ocp.bound('dddr',(-50000,50000))
 
     for e in ['e11','e21','e31','e12','e22','e32','e13','e23','e33']:
         ocp.bound(e,(-1.1,1.1))
@@ -118,7 +121,7 @@ def setupOcp(dae,conf,nk,nicp,deg,collPoly):
         ocp.bound(w,(-6*pi,6*pi))
 
 #    ocp.bound('endTime',(0.5,12))
-    ocp.bound('endTime',(0.5,numLoops*6))
+    ocp.bound('endTime',(0.5,numLoops*7.5))
     ocp.bound('w0',(10,10))
 
     # boundary conditions
@@ -131,7 +134,7 @@ def setupOcp(dae,conf,nk,nicp,deg,collPoly):
     # objective function
     obj = 0
     for k in range(nk):
-#        # control regularization
+        # control regularization
         obj += ocp.lookup('daileronCost',timestep=k)
         obj += ocp.lookup('delevatorCost',timestep=k)
         obj += ocp.lookup('dddrCost',timestep=k)
@@ -139,8 +142,7 @@ def setupOcp(dae,conf,nk,nicp,deg,collPoly):
     ocp.setQuadratureDdt('mechanical_energy', 'mechanical_winch_power')
     ocp.setQuadratureDdt('electrical_energy', 'electrical_winch_power')
 
-    ocp.setObjective( 1e2*obj + \
-                      ocp.lookup('electrical_energy',timestep=-1)/ocp.lookup('endTime') )
+    ocp.setObjective( obj + ocp.lookup(powerType+'_energy',timestep=-1)/ocp.lookup('endTime') )
 
     return ocp
 
@@ -173,7 +175,7 @@ if __name__=='__main__':
     solverOptions = [("expand_f",True),
                      ("expand_g",True),
                      ("generate_hessian",True)]
-    ipoptOptions = solverOptions + [("linear_solver","ma57"),
+    ipoptOptions = solverOptions + [("linear_solver","ma27"),
                                     ("max_iter",1000),
                                     ("tol",1e-12)]
     worhpOptions = solverOptions + [("Max_Iter",5000),
@@ -203,11 +205,12 @@ if __name__=='__main__':
 
 
     print "num loops: "+str(numLoops)
+    print "optimizing "+powerType
     print "optimal mechanical power: "+str(traj.lookup('mechanical_energy',-1)/traj.lookup('endTime'))
     print "optimal electrical power: "+str(traj.lookup('electrical_energy',-1)/traj.lookup('endTime'))
     print "endTime: "+str(traj.lookup('endTime'))
 
-#    traj.save("data/crosswind_opt.dat")
+    traj.save("data/crosswind_opt_"+powerType+".dat")
 #    traj.save("data/crosswind_opt_3_loops.dat")
 #    traj.save("data/crosswind_opt_3_loops_electrical.dat")
 
@@ -233,7 +236,6 @@ if __name__=='__main__':
 #        traj.subplot(['dx','dy','dz'])
 #        traj.subplot([['aileron','elevator'],['daileron','delevator']],title='control surfaces')
         traj.subplot([['dddr'],['daileron','delevator']],title='control surfaces')
-#        traj.subplot(['r','dr','ddr'])
         traj.subplot(['wind_at_altitude','dr'],title='')
 #        traj.subplot(['c','cdot','cddot'],title="invariants")
         traj.plot('airspeed',title='airspeed')
@@ -248,7 +250,8 @@ if __name__=='__main__':
 #        traj.plot(["loyds_limit","loyds_limit_exact","neg_winch_power"])
 #        traj.plot(["loyd's limit","-(winch power)"],title='')
         traj.subplot([['daileronCost'],['delevatorCost'],['dddrCost']])
-        traj.subplot(['w_bn_b_x','w_bn_b_y','w_bn_b_z'])
+        traj.subplot(['r','dr','ddr','dddr'])
+#        traj.subplot(['w_bn_b_x','w_bn_b_y','w_bn_b_z'])
 #        traj.subplot(['e11','e12','e13','e21','e22','e23','e31','e32','e33'])
 #        traj.plot('line_angle_deg')
 #        traj.plot('quadrature_energy')
