@@ -64,12 +64,6 @@ def aeroForcesTorques(dae, conf, v_bw_n, v_bw_b, (w1,w2,w3), (eTe1, eTe2, eTe3),
     vKite = C.sqrt(vKite2) #Airfoil speed
     dae['airspeed'] = vKite
 
-    # CALCULATION OF THE FORCES :
-    # ###############################
-    #
-    #   FORCE ARE COMPUTED IN THE CAROUSEL FRAME @>@>@>
-
-
     # LIFT DIRECTION VECTOR
     # ############
 
@@ -134,11 +128,12 @@ def aeroForcesTorques(dae, conf, v_bw_n, v_bw_b, (w1,w2,w3), (eTe1, eTe2, eTe3),
     cP = -pD*w2 + cPA*alphaTail + cPe*elevator + cP0
     cY = -yD*w3 + cYB*betaTail + cYAB*alphaTail*betaTail
 
-    cD += 0.25*dae['r']*0.004/sref
-
     dae['cL'] = cL
     dae['cD'] = cD
+    dae['cD_tether'] = 0.25*dae['r']*0.001/sref
     dae['L_over_D'] = cL/cD
+    cD = dae['cD'] + dae['cD_tether']
+    dae['L_over_D_with_tether'] = cL/cD
 
     # LIFT :
     # ###############################
