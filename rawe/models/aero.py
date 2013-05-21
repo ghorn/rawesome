@@ -171,3 +171,23 @@ def aeroForcesTorques(dae, conf, v_bw_n, v_bw_b, (w1,w2,w3), (eTe1, eTe2, eTe3),
     dae['aero_my'] = t2
     dae['aero_mz'] = t3
     return (f1, f2, f3, t1, t2, t3)
+
+#def tetherDragLumped( conf, r_n2b_n, v_bn_n, get_v_wn_n, tetherLength, N=10 ):
+#    Cd = 1.1 # meh
+#
+#    forceTotal = C.DMatrix([0.0, 0.0, 0.0])
+#    sumMe = 0
+#    for k in range(N):
+#        scaling = (k + 0.5)/N
+#        sumM += scaling
+#        r_n2t_n = r_n2b_n*scaling # local tether position
+#        v_tn_n  =  v_bn_n*scaling
+#        v_tw_b = v_tn_n - get_v_wn_n(r_n2t_n) # local tether velocity in wind frame
+#        localV2 = C.mul(v_tw_b.T, v_tw_b)
+#        localV = C.sqrt(localV2)
+#
+#        deltaH = scaling*r_n2b_n
+#        hProjected = C.sqrt( C.mul(deltaH.T, deltaH) - C.mul(deltaH.T, v_tw_b)/localV
+#
+#        localForce = 0.5*rho*localV2*Cd*hProjected
+#    raise Exception('summe: ',sumMe)
