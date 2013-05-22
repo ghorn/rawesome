@@ -172,7 +172,7 @@ def writeDimensions(topname, dae, meas, measEnd, mheHorizN, mpcHorizN):
     ret.append('#endif // __'+topname+'_DIMENSIONS_H__')
     return '\n'.join(ret)
 
-def writeAll(dae, topname, autogenDir,haskellDirs=[], measurements=[], measurementsEnd=[], mheHorizN=0, mpcHorizN=0):
+def writeAll(dae, topname, autogenDir, measurements=[], measurementsEnd=[], mheHorizN=0, mpcHorizN=0):
     # make autogen directory if it doesn't exist
     if not os.path.exists(autogenDir):
         os.makedirs(autogenDir)
@@ -260,3 +260,17 @@ import %(topname)s_pb2
     f = open(os.path.join(autogenDir, 'protoConverters.h'),'w')
     f.write(protoConverterHeader)
     f.close()
+
+
+
+#    # call protoc to make python/C++ code
+#    (ret, msgs) = subprocess_tee.call(
+#        ['protoc','--cpp_out=.','--python_out=.',os.path.join(autogenDir,topname+'.proto')])
+#    if ret != 0:
+#        raise Exception('protoc fail\n'+msgs)
+#    for haskellDir in haskellDirs:
+#        (ret,msgs) = subprocess_tee.call(
+#            ['hprotoc','-I../'+autogenDir,'--haskell_out=src',topname+'.proto'],cwd=haskellDir)
+#        if ret != 0:
+#            raise Exception('hrotoc fail\n'+msgs)
+
