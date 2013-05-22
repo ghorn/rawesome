@@ -12,9 +12,9 @@ def dlqr(A, B, Q, R, N=None):
 
     if N == None:
         N = numpy.zeros((Q.shape[0],R.shape[0]))
-
+    raise Exception('scipy LQR does not work, soon we are gonna implement it in a reliable way')
     P = scipy.linalg.solve_discrete_are(A, B, Q, R)
-
+    
     k1 = numpy.dot(numpy.dot(B.T, P), B) + R
     k2 = numpy.dot(numpy.dot(B.T, P), A)
     K = numpy.linalg.solve(k1,k2)
