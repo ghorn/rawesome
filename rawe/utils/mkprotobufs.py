@@ -213,17 +213,6 @@ message MheMpcHorizons {
     f.write(protobufs)
     f.close()
 
-    # call protoc to make python/C++ code
-    (ret, msgs) = subprocess_tee.call(
-        ['protoc','--cpp_out=.','--python_out=.',os.path.join(autogenDir,topname+'.proto')])
-    if ret != 0:
-        raise Exception('protoc fail\n'+msgs)
-    for haskellDir in haskellDirs:
-        (ret,msgs) = subprocess_tee.call(
-            ['hprotoc','-I../'+autogenDir,'--haskell_out=src',topname+'.proto'],cwd=haskellDir)
-        if ret != 0:
-            raise Exception('hrotoc fail\n'+msgs)
-
     # dimensions
     dims = writeDimensions(topname, dae, measurements, measurementsEnd, mheHorizN, mpcHorizN)
     f = open(os.path.join(autogenDir, topname+'_dimensions.h'),'w')
