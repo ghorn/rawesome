@@ -170,7 +170,11 @@ class Dae(object):
 
         self.assertUniqueName(name)
         self._outputNames.append(name)
-        self._syms[name] = val
+
+        try:
+            self._syms[name] = C.DMatrix(val)
+        except:
+            self._syms[name] = val
 
     def outputsFun(self):
         self._freezeOutputs('outputsFun()')
