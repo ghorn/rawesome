@@ -1,6 +1,7 @@
 import casadi as C
 from rawe.dae import Dae
 from aero import aeroForcesTorques
+import numpy
 
 def setupModel(dae, conf):
     #  PARAMETERS OF THE KITE :
@@ -263,6 +264,8 @@ def carouselModel(conf,nSteps=None):
               , "dr"
               , "aileron"
               , "elevator"
+              , "motor_torque"
+              , "ddr"
               ] )
     if conf['delta_parameterization'] == 'linear':
         dae.addX('delta')
@@ -273,15 +276,24 @@ def carouselModel(conf,nSteps=None):
     elif conf['delta_parameterization'] == 'cos_sin':
         dae.addX("cos_delta")
         dae.addX("sin_delta")
-        dae_delta_residual = C.veccat([dae.ddt('cos_delta') - (-dae['sin_delta']*dae['ddelta']),
-                                       dae.ddt('sin_delta') - dae['cos_delta']*dae['ddelta']])
+        norm = dae['cos_delta']**2 + dae['sin_delta']**2
+        
+        if 'stabilize_invariants' in conf and conf['stabilize_invariants'] == True:
+            pole_delta = 1./2.
+        else:
+            pole_delta = 0
+        
+        cos_delta_dot_st = -pole_delta/2.* ( dae['cos_delta'] - dae['cos_delta'] / norm )
+        sin_delta_dot_st = -pole_delta/2.* ( dae['sin_delta'] - dae['sin_delta'] / norm )
+        dae_delta_residual = C.veccat([dae.ddt('cos_delta') - (-dae['sin_delta']*dae['ddelta'] + cos_delta_dot_st),
+                                       dae.ddt('sin_delta') - ( dae['cos_delta']*dae['ddelta'] + sin_delta_dot_st) ])
     else:
         raise ValueError('unrecognized delta_parameterization "'+conf['delta_parameterization']+'"')
 
     dae.addU( [ "daileron"
               , "delevator"
-              , "motor_torque"
-              , 'ddr'
+              , "dmotor_torque"
+              , 'dddr'
               ] )
     # add wind parameter if wind shear is in configuration
     if 'z0' in conf and 'zt_roughness' in conf:
@@ -303,18 +315,28 @@ def carouselModel(conf,nSteps=None):
                             C.horzcat([dae['e21'],dae['e22'],dae['e23']]),
                             C.horzcat([dae['e31'],dae['e32'],dae['e33']])])
     
+#    dae['dcm_dot'] = C.SXMatrix(3,3,0)
+#    for index, state in enumerate(dae['dcm']):
+#        dae['dcm_dot'][index] = dae.ddt(dae['dcm'][index])
+    
     # line angle
     dae['cos_line_angle'] = \
       (dae['e31']*dae['x'] + dae['e32']*dae['y'] + dae['e33']*dae['z']) / C.sqrt(dae['x']**2 + dae['y']**2 + dae['z']**2)
     dae['line_angle_deg'] = C.arccos(dae['cos_line_angle'])*180.0/C.pi
 
     (massMatrix, rhs, dRexp) = setupModel(dae, conf)
-
+    
+    if 'stabilize_invariants' in conf and conf['stabilize_invariants'] == True:
+        RotPole = 1./2.
+    else:
+        RotPole = 0
+    Rst = RotPole*C.mul( dae['dcm'], (C.inv(C.mul(dae['dcm'].T,dae['dcm'])) - numpy.eye(3)) )
+    
     ode = C.veccat([
         C.veccat([dae.ddt(name) for name in ['x','y','z']]) - C.veccat([dae['dx'],dae['dy'],dae['dz']]),
         C.veccat([dae.ddt(name) for name in ["e11","e12","e13",
                                              "e21","e22","e23",
-                                             "e31","e32","e33"]]) - dRexp.trans().reshape([9,1]),
+                                             "e31","e32","e33"]]) - ( dRexp.trans().reshape([9,1]) + Rst.reshape([9,1]) ),
         dae_delta_residual,
 #        C.veccat([dae.ddt(name) for name in ['dx','dy','dz']]) - C.veccat([dae['ddx'],dae['ddy'],dae['ddz']]),
 #        C.veccat([dae.ddt(name) for name in ['w1','w2','w3']]) - C.veccat([dae['dw1'],dae['dw2'],dae['dw3']]),
@@ -322,12 +344,20 @@ def carouselModel(conf,nSteps=None):
         dae.ddt('r') - dae['dr'],
         dae.ddt('dr') - dae['ddr'],
         dae.ddt('aileron') - dae['daileron'],
-        dae.ddt('elevator') - dae['delevator']
+        dae.ddt('elevator') - dae['delevator'],
+        dae.ddt('motor_torque') - dae['dmotor_torque'],
+        dae.ddt('ddr') - dae['dddr']
         ])
 
     if nSteps is not None:
         dae.addP('endTime')
-
+    
+    if 'stabilize_invariants' in conf and conf['stabilize_invariants'] == True:
+        cPole = 1./2.
+    else:
+        cPole = 0
+    rhs[-1] -= 2*cPole*dae['cdot'] + cPole*cPole*dae['c']
+    
     psuedoZVec = C.veccat([dae.ddt(name) for name in ['ddelta','dx','dy','dz','w1','w2','w3']]+[dae['nu']])
     alg = C.mul(massMatrix, psuedoZVec) - rhs
     dae.setResidual([ode,alg])

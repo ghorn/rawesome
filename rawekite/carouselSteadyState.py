@@ -43,7 +43,8 @@ def getSteadyState(dae,conf,omega0,r0,z0):
              'aileron':0,'elevator':0,
              'daileron':0,'delevator':0,
              'nu':300,'motor_torque':10,
-             'ddr':0.0,'w0':0.0}
+             'dmotor_torque':0,'ddr':0,
+             'dddr':0.0,'w0':0.0}
     dotGuess = {'x':0,'y':0,'z':0,'dx':0,'dy':0,'dz':0,
                 'r':0,'dr':0,
                 'e11':omega0,'e12':0,'e13':0,
@@ -52,7 +53,8 @@ def getSteadyState(dae,conf,omega0,r0,z0):
                 'w1':0,'w2':0,'w3':0,
                 'delta':omega0,'ddelta':0,
                 'cos_delta':0,'sin_delta':omega0,
-                'aileron':0,'elevator':0}
+                'aileron':0,'elevator':0,
+                'motor_torque':0,'ddr':0}
 
     guessVec = C.DMatrix([guess[n] for n in dae.xNames()+dae.zNames()+dae.uNames()+dae.pNames()]+
                          [dotGuess[n] for n in dae.xNames()])
@@ -69,7 +71,8 @@ def getSteadyState(dae,conf,omega0,r0,z0):
              'aileron':(-0.2,0.2),'elevator':(-0.2,0.2),
              'daileron':(0,0),'delevator':(0,0),
              'nu':(0,3000),'motor_torque':(0,1000),
-             'ddr':(0,0),'w0':(0,0)}
+             'ddr':(0,0),
+             'dmotor_torque':(0,0),'dddr':(0,0),'w0':(0,0)}
     dotBounds = {'x':(-50,50),'y':(-50,50),'z':(-50,50)
                  ,'dx':(0,0),'dy':(-50,50),'dz':(0,0),
                  'r':(-1,1),'dr':(-1,1),
@@ -79,7 +82,8 @@ def getSteadyState(dae,conf,omega0,r0,z0):
                  'w1':(0,0),'w2':(0,0),'w3':(0,0),
                  'delta':(omega0-1,omega0+1),'ddelta':(0,0),
                  'cos_delta':(-1,1),'sin_delta':(omega0-1,omega0+1),
-                 'aileron':(-1,1),'elevator':(-1,1)}
+                 'aileron':(-1,1),'elevator':(-1,1),
+                 'motor_torque':(-1000,1000),'ddr':(-100,100)}
     boundsVec = [bounds[n] for n in dae.xNames()+dae.zNames()+dae.uNames()+dae.pNames()]+ \
                 [dotBounds[n] for n in dae.xNames()]
     
