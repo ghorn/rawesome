@@ -1,5 +1,5 @@
 import codegen
 import pkgconfig
 import subprocess_tee
-import mkprotos
+import mkprotobufs
 import options
