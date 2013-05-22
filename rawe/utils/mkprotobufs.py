@@ -155,7 +155,24 @@ extern "C" {
     return (protoConverters,''.join(protoConverterHeader))
 
 
-def writeAll(dae, topname, autogenDir,haskellDirs=[], measurements=[], measurementsEnd=[]):
+def writeDimensions(topname, dae, meas, measEnd, mheHorizN, mpcHorizN):
+    ret = []
+    ret.append('#ifndef __'+topname+'_DIMENSIONS_H__')
+    ret.append('#define __'+topname+'_DIMENSIONS_H__')
+    ret.append('\n')
+    ret.append('#define NUM_DIFFSTATES       '+str(len(dae.xNames())))
+    ret.append('#define NUM_ALGVARS          '+str(len(dae.zNames())))
+    ret.append('#define NUM_CONTROLS         '+str(len(dae.uNames())))
+    ret.append('#define NUM_PARAMETERS       '+str(len(dae.pNames())))
+    ret.append('#define NUM_MEASUREMENTS     '+str(len(meas)))
+    ret.append('#define NUM_MEASUREMENTS_END '+str(len(measEnd)))
+    ret.append('#define NUM_MHE_HORIZON      '+str(mheHorizN))
+    ret.append('#define NUM_MPC_HORIZON      '+str(mpcHorizN))
+    ret.append('\n')
+    ret.append('#endif // __'+topname+'_DIMENSIONS_H__')
+    return '\n'.join(ret)
+
+def writeAll(dae, topname, autogenDir,haskellDirs=[], measurements=[], measurementsEnd=[], mheHorizN=0, mpcHorizN=0):
     # make autogen directory if it doesn't exist
     if not os.path.exists(autogenDir):
         os.makedirs(autogenDir)
@@ -206,6 +223,12 @@ message MheMpcHorizons {
             ['hprotoc','-I../'+autogenDir,'--haskell_out=src',topname+'.proto'],cwd=haskellDir)
         if ret != 0:
             raise Exception('hrotoc fail\n'+msgs)
+
+    # dimensions
+    dims = writeDimensions(topname, dae, measurements, measurementsEnd, mheHorizN, mpcHorizN)
+    f = open(os.path.join(autogenDir, topname+'_dimensions.h'),'w')
+    f.write(dims)
+    f.close()
 
     # structs
     structs = writeStructs(dae, topname, measurements, measurementsEnd)
