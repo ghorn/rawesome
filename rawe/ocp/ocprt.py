@@ -175,6 +175,13 @@ class OcpRT(object):
         self._getAll()
         if ret.value != 0:
             raise Exception("feedbackStep returned error code "+str(ret.value))
+        nans = []
+        if numpy.any(numpy.isnan(self.x)):
+            nans.append('x')
+        if numpy.any(numpy.isnan(self.u)):
+            nans.append('u')
+        if len(nans) > 0:
+            raise Exception('qp solver returned success but NaNs found in '+str(nans))
 
 
     def initializeNodesByForwardSimulation(self):
