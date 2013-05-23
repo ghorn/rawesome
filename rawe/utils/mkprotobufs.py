@@ -1,5 +1,6 @@
 import os
 import subprocess_tee
+import casadi as C
 
 def getIndices(sym):
     (nr,nc) = sym.shape
@@ -156,6 +157,8 @@ extern "C" {
 
 
 def writeDimensions(topname, dae, meas, measEnd, mheHorizN, mpcHorizN):
+    nMeas    = C.veccat([dae[n] for n in meas]).size()
+    nMeasEnd = C.veccat([dae[n] for n in measEnd]).size()
     ret = []
     ret.append('#ifndef __'+topname+'_DIMENSIONS_H__')
     ret.append('#define __'+topname+'_DIMENSIONS_H__')
@@ -164,8 +167,8 @@ def writeDimensions(topname, dae, meas, measEnd, mheHorizN, mpcHorizN):
     ret.append('#define NUM_ALGVARS          '+str(len(dae.zNames())))
     ret.append('#define NUM_CONTROLS         '+str(len(dae.uNames())))
     ret.append('#define NUM_PARAMETERS       '+str(len(dae.pNames())))
-    ret.append('#define NUM_MEASUREMENTS     '+str(len(meas)))
-    ret.append('#define NUM_MEASUREMENTS_END '+str(len(measEnd)))
+    ret.append('#define NUM_MEASUREMENTS     '+repr(nMeas))
+    ret.append('#define NUM_MEASUREMENTS_END '+repr(nMeasEnd))
     ret.append('#define NUM_MHE_HORIZON      '+str(mheHorizN))
     ret.append('#define NUM_MPC_HORIZON      '+str(mpcHorizN))
     ret.append('\n')
