@@ -202,24 +202,32 @@ message Mhe {
   repeated Controls u = 2;
   repeated Measurements y = 3;
   required MeasurementsEnd yN = 4;
+  required double kkt = 5;
+  required double objective = 6;
+  required double prepTime = 7;
+  required double fbTime = 8;
 }
 
 message Mpc {
   repeated DifferentialStates x = 1;
   repeated Controls u = 2;
   required DifferentialStates x0 = 3;
-  required Controls u0 = 4;
+  //repeated Dae referenceTrajectory = 4;
+  required double kkt = 5;
+  required double objective = 6;
+  required double prepTime = 7;
+  required double fbTime = 8;
 }
 
 message MheMpcHorizons {
   required Mhe mhe = 1;
   required Mpc mpc = 2;
-  // repeated Dae referenceTrajectory = 4;
-  // required Measurements measurementsLastLatest = 7;
-  // required ControlsApplied controlsApplied = 8;
-  // required VisConf visConf = 9;
-  repeated string messages = 10;
-  required Debug debug = 11;
+  required DifferentialStates mheXN = 3;
+  required Controls mpcU0 = 4;
+  optional DifferentialStates simX = 5;
+  optional Controls simU = 6;
+  repeated string messages = 7;
+  required Debug debug = 8;
 }
 '''
 
