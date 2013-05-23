@@ -86,8 +86,7 @@ def writePythonGenerator(topname,dae):
 
 def writeStruct(vecname,fieldnames,dae,realType='double'):
     ret = []
-    ret.append('\ntypedef struct')
-    ret.append('{')
+    ret.append('\ntypedef struct {')
     k = 0
     for name in fieldnames:
         for idx in getIndices(dae[name]):
@@ -110,14 +109,12 @@ def writeProtoConverter(topname, vecname, fieldnames, dae):
     ret1 = []
     prototype0 = 'void from'+vecname+'('+topname+'::'+vecname+' * proto, const '+vecname+' * data)'
     prototype1 = 'void to'+vecname+'('+vecname+' * data, const '+topname+'::'+vecname+' * proto)'
-    ret0.append(prototype0)
-    ret1.append(prototype1)
-    ret0.append('{')
-    ret1.append('{')
+    ret0.append(prototype0+' {')
+    ret1.append(prototype1+' {')
     for name in fieldnames:
         for idx in getIndices(dae[name]):
-            ret0.append('  proto->set_'+name.lower()+idx+'( data->'+name+idx+' );')
-            ret1.append('  data->'+name+idx+' = proto->'+name.lower()+idx+'(  );')
+            ret0.append('  proto->set_'+name.lower()+idx+'(data->'+name+idx+');')
+            ret1.append('  data->'+name+idx+' = proto->'+name.lower()+idx+'();')
     ret0.append('}\n\n')
     ret1.append('}\n\n')
     return ('\n'.join(ret0), prototype0+';\n','\n'.join(ret1), prototype1+';\n')
