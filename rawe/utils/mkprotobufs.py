@@ -194,13 +194,24 @@ message Debug {
   optional double d9 = 10;
 }
 
+message Mhe {
+  repeated DifferentialStates x = 1;
+  repeated Controls u = 2;
+  repeated Measurements y = 3;
+  required MeasurementsEnd yN = 4;
+}
+
+message Mpc {
+  repeated DifferentialStates x = 1;
+  repeated Controls u = 2;
+  required DifferentialStates x0 = 3;
+  required Controls u0 = 4;
+}
+
 message MheMpcHorizons {
-  required Dae currentState = 1;
-  repeated Dae mheHorizon = 2;
-  repeated Dae mpcHorizon = 3;
-  repeated Dae referenceTrajectory = 4;
-  repeated Measurements measurementsHorizon = 5;
-  required MeasurementsEnd measurementsEnd = 6;
+  required Mhe mhe = 1;
+  required Mpc mpc = 2;
+  // repeated Dae referenceTrajectory = 4;
   // required Measurements measurementsLastLatest = 7;
   // required ControlsApplied controlsApplied = 8;
   // required VisConf visConf = 9;
