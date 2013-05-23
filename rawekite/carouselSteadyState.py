@@ -95,29 +95,30 @@ def getSteadyState(dae,conf,omega0,r0,z0):
 #        if math.isnan(v):
 #            print 'index ',k,' is nan: ',g._tags[k]
 #    import sys; sys.exit()
-    context   = zmq.Context(1)
-    publisher = context.socket(zmq.PUB)
-    publisher.bind("tcp://*:5563")
-    class MyCallback:
-        def __init__(self):
-            import rawekite.kiteproto as kiteproto
-            import rawekite.kite_pb2 as kite_pb2
-            self.kiteproto = kiteproto
-            self.kite_pb2 = kite_pb2
-            self.iter = 0
-        def __call__(self,f,*args):
-            x = C.DMatrix(f.input('x'))
-            sol = {}
-            for k,name in enumerate(dae.xNames()+dae.zNames()+dae.uNames()+dae.pNames()):
-                sol[name] = x[k].at(0)
-            lookup = lambda name: sol[name]
-            kp = self.kiteproto.toKiteProto(lookup,
-                                            lineAlpha=0.2)
-            mc = self.kite_pb2.MultiCarousel()
-            mc.horizon.extend([kp])
-            mc.messages.append("iter: "+str(self.iter))
-            self.iter += 1
-            publisher.send_multipart(["multi-carousel", mc.SerializeToString()])
+
+#    context   = zmq.Context(1)
+#    publisher = context.socket(zmq.PUB)
+#    publisher.bind("tcp://*:5563")
+#    class MyCallback:
+#        def __init__(self):
+#            import rawekite.kiteproto as kiteproto
+#            import rawekite.kite_pb2 as kite_pb2
+#            self.kiteproto = kiteproto
+#            self.kite_pb2 = kite_pb2
+#            self.iter = 0
+#        def __call__(self,f,*args):
+#            x = C.DMatrix(f.input('x'))
+#            sol = {}
+#            for k,name in enumerate(dae.xNames()+dae.zNames()+dae.uNames()+dae.pNames()):
+#                sol[name] = x[k].at(0)
+#            lookup = lambda name: sol[name]
+#            kp = self.kiteproto.toKiteProto(lookup,
+#                                            lineAlpha=0.2)
+#            mc = self.kite_pb2.MultiCarousel()
+#            mc.horizon.extend([kp])
+#            mc.messages.append("iter: "+str(self.iter))
+#            self.iter += 1
+#            publisher.send_multipart(["multi-carousel", mc.SerializeToString()])
 
     
     solver = C.IpoptSolver(ffcn,gfcn)
@@ -142,8 +143,8 @@ def getSteadyState(dae,conf,omega0,r0,z0):
     solver.setInput(C.DMatrix(ub), 'ubx')
 
     solver.solve()
-    publisher.close()
-    context.destroy()
+#    publisher.close()
+#    context.destroy()
     xOpt = solver.output('x')
     k = 0
     sol = {}
