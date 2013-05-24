@@ -252,7 +252,7 @@ class Mhe(Ocp):
 
     def exportCode(self,codegenOptions={},phase1Options={},
                    integratorOptions=RtIntegratorOptions(),
-                   ocpOptions=OcpExportOptions())
+                   ocpOptions=OcpExportOptions()):
         (exportPath, ts, dae) = \
             exportOcp.exportOcp(self, codegenOptions, integratorOptions,
                                 ocpOptions, phase1Options, hashPrefix='mhe')
@@ -285,7 +285,7 @@ class Mpc(Ocp):
         raise Exception("hey, you don't know this is Ocp, the terminal cost is LSQ of X")
     def exportCode(self,codegenOptions={},phase1Options={},
                    integratorOptions=RtIntegratorOptions(),
-                   ocpOptions=OcpExportOptions())
+                   ocpOptions=OcpExportOptions()):
         (exportPath, ts, dae) = \
             exportOcp.exportOcp(self, codegenOptions, integratorOptions,
                                 ocpOptions, phase1Options, hashPrefix='mpc')
