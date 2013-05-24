@@ -81,7 +81,7 @@ def writeObjective(ocp, out0, exportName):
     return codegen.writeCCode(outputFun,exportName)
 
 
-def exportOcp(ocp, cgOptions, integratorOptions, ocpOptions, phase1Options,hashPrefix='ocp'):
+def exportOcp(ocp, cgOptions, integratorOptions, ocpOptions, phase1Options, hashPrefix='ocp'):
     defaultCgOptions = {'CXX':'g++', 'CC':'gcc'}
     defaultPhase1Options = {'CXX':'g++'}
     validateOptions(defaultCgOptions, cgOptions, "codegen")
@@ -127,8 +127,8 @@ def exportOcp(ocp, cgOptions, integratorOptions, ocpOptions, phase1Options,hashP
     files['python_interface.c'] = ocg_interface.ocg_interface
 
     if ocpOptions['QP_SOLVER'] == 'QP_QPOASES':
-        ocpSoPath = qpoases.exportPhase2(cgOptions, files)
+        exportPath = qpoases.exportPhase2(cgOptions, files)
     else:
         raise Exception('the impossible happened, unsupported qp solver: "'+str(ocpOptions['QP_SOLVER'])+'"')
 
-    return (ocpSoPath, ocp._ts, ocp._dae)
+    return (exportPath, ocp._ts, ocp._dae)

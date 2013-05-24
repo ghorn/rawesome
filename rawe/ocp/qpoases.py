@@ -126,4 +126,4 @@ ACADOvariables acadoVariables;
         raise Exception("ocp compilation failed:\n\n"+msgs)
 
     # return shared object
-    return os.path.join(exportpath, 'ocp.so')
+    return exportpath

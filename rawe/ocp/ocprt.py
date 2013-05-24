@@ -14,7 +14,7 @@ def dlqr(A, B, Q, R, N=None):
         N = numpy.zeros((Q.shape[0],R.shape[0]))
     raise Exception('scipy LQR does not work, soon we are gonna implement it in a reliable way')
     P = scipy.linalg.solve_discrete_are(A, B, Q, R)
-    
+
     k1 = numpy.dot(numpy.dot(B.T, P), B) + R
     k2 = numpy.dot(numpy.dot(B.T, P), A)
     K = numpy.linalg.solve(k1,k2)
@@ -23,10 +23,11 @@ def dlqr(A, B, Q, R, N=None):
 
 class OcpRT(object):
     _canonicalNames = ['x','u','z','y','yN','x0','S','SN']
-    def __init__(self,libpath, ts, dae, integratorOptions):
+    def __init__(self,exportpath, ts, dae, integratorOptions):
         self._dae = dae
         self._ts = ts
-        self._libpath = libpath
+        self._exportpath = exportpath
+        self._libpath = os.path.join(self._exportpath, 'ocp.so')
         print 'loading "'+self._libpath+'"'
         self._lib = ctypes.cdll.LoadLibrary(self._libpath)
 
@@ -81,11 +82,11 @@ class OcpRT(object):
         self._log['_objective'] = []
         self._log['_prep_time'] = []
         self._log['_fb_time'] = []
-        
+
         self._log['outputs'] = {}
         for outName in self.outputNames():
             self._log['outputs'][outName] = []
-        
+
         # setup outputs function
         self._outputsFun = self._dae.outputsFunWithSolve()
 
@@ -296,7 +297,7 @@ class OcpRT(object):
         self._log['_objective'].append(self.getObjective())
         self._log['_prep_time'].append(self.preparationTime)
         self._log['_fb_time'].append(self.feedbackTime)
-        
+
         ret = {}
         for j,name in enumerate(self.outputNames()):
             ret[name] = []
@@ -311,10 +312,10 @@ class OcpRT(object):
             self._outputsFun.evaluate()
             for j,name in enumerate(self.outputNames()):
                 ret[name].append(numpy.array(self._outputsFun.output(j)))
-        
+
         for outName in self.outputNames():
             self._log['outputs'][outName].append(numpy.squeeze(ret[outName]))
-            
+
 #     def shiftStates( int strategy, real_t* const xEnd, real_t* const uEnd ):
 #         void shiftStates( int strategy, real_t* const xEnd, real_t* const uEnd );
 
@@ -442,7 +443,7 @@ class OcpRT(object):
                         plt.plot(ts,ys,style)
                     else:
                         myStep(ts,ys,style)
-                
+
             # if it's an output
             if name in self.outputNames():
                 if when == 'all':
@@ -454,7 +455,7 @@ class OcpRT(object):
                     ys = numpy.array(self._log['outputs'][name])[:,when]
                     ts = numpy.arange(len(ys))*self._ts
                     plt.plot(ts,ys,style)
-                
+
             # if it's something else
             if name in ['_kkt','_objective','_prep_time','_fb_time']:
                 ys = numpy.array(self._log[name])[:]
@@ -471,11 +472,11 @@ class OcpRT(object):
 
 
 class MpcRT(OcpRT):
-    def __init__(self, libpath, ts, dae, lqrDae, integratorOptions):
-        OcpRT.__init__(self, libpath, ts, dae, integratorOptions)
+    def __init__(self, exportpath, ts, dae, lqrDae, integratorOptions):
+        OcpRT.__init__(self, exportpath, ts, dae, integratorOptions)
         self._lqrDae = lqrDae
         self._integratorLQR  = rawe.RtIntegrator(self._lqrDae, ts=self._ts, options=integratorOptions)
-        
+
 
     def computeLqr(self):
         nx = self.x.shape[1]
@@ -492,9 +493,9 @@ class MpcRT(OcpRT):
         self.SN = P
 
 class MheRT(OcpRT):
-    def __init__(self, libpath, ts, dae, integratorOptions, yref, yNref, measNames, endMeasNames):
-        OcpRT.__init__(self, libpath, ts, dae, integratorOptions)
-        
+    def __init__(self, exportpath, ts, dae, integratorOptions, yref, yNref, measNames, endMeasNames):
+        OcpRT.__init__(self, exportpath, ts, dae, integratorOptions)
+
         self.yNames = measNames
         self.yNNames = endMeasNames
 
@@ -503,22 +504,22 @@ class MheRT(OcpRT):
         self._yNFun = C.SXFunction([dae.xVec()], [C.densify(yNref)])
         self._yFun.init()
         self._yNFun.init()
-        
+
 #        # export integrator
 #        self._integrator_y  = rawe.RtIntegrator(self._dae, ts=self._ts, options=integratorOptions, measurements=yref)
 #        self._integrator_yN = rawe.RtIntegrator(self._dae, ts=self._ts, options=integratorOptions, measurements=yNref)
-    
+
     def computeY(self,x,u):
         self._yFun.setInput(x,0)
         self._yFun.setInput(u,1)
         self._yFun.evaluate()
         return numpy.squeeze(numpy.array(self._yFun.output(0)))
-        
+
     def computeYN(self,x):
         self._yNFun.setInput(x,0)
         self._yNFun.evaluate()
         return numpy.squeeze(numpy.array(self._yNFun.output(0)))
-    
+
     def UpdateArrivalCost(self):
         ''' Arrival cost implementation.
             Approximate the solution of:
