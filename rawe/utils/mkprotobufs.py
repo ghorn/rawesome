@@ -124,7 +124,7 @@ def writeStructs(dae, topname, measurements, measurementsEnd):
         structs.append(writeStruct(structName,fieldNames,dae))
     structs.append(writeRtIntegratorStructs(dae))
     structs.append('#endif // __'+topname+'_STRUCTS_H__')
-    return '\n'.join(structs)
+    return '\n'.join(structs) + '\n'
 
 def writeProtoConverter(topname, vecname, fieldnames, dae):
     ret0 = []
