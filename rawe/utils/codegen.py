@@ -12,7 +12,7 @@ def makeJobs():
 # Given a recursive dict filename:source, return a unique directory with
 # those files written to it. If these exact files were already memoized,
 # return the existing directory (possible with other stuff, like objects built my make).
-def memoizeFiles(genfiles):
+def memoizeFiles(genfiles,prefix=''):
     # make ~/.rawesome if it doesn't exist
     if not os.path.exists(rawesomeDataPath):
         os.makedirs(rawesomeDataPath)
@@ -32,7 +32,7 @@ def memoizeFiles(genfiles):
                         str(e))
 
     # hash the files
-    exportpath = getExportPath(genfiles)
+    exportpath = _getExportPath(genfiles,prefix)
 
     writeDifferentFiles(exportpath, genfiles)
 
@@ -66,11 +66,11 @@ def writeDifferentFiles(path,gfs):
             except:
                 writeFile()
 
-def getExportPath(genfiles):
+def _getExportPath(genfiles,prefix):
     flattened = flattenFileDict(genfiles)
     flattened.sort()
     return os.path.join(rawesomeDataPath,
-                        hashlib.md5(''.join([''.join(x) for x in flattened])).hexdigest())
+                        prefix+hashlib.md5(''.join([''.join(x) for x in flattened])).hexdigest())
 
 def flattenFileDict(fd,prefix=''):
         assert isinstance(fd,dict)

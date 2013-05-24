@@ -42,7 +42,7 @@ def runPhase1(ocp, phase1Options, integratorOptions, ocpOptions):
     # write the ocp exporter cpp file
     genfiles = {'export_ocp.cpp':writeAcadoOcpExport.generateAcadoOcp(ocp, integratorOptions, ocpOptions),
                 'Makefile':makeExportMakefile(phase1Options)}
-    exportpath = codegen.memoizeFiles(genfiles)
+    exportpath = codegen.memoizeFiles(genfiles,prefix=phase1Options['hashPrefix']+'_phase1__')
 
     # compile the ocp exporter
     (ret, msgs) = subprocess_tee.call(['make',codegen.makeJobs()], cwd=exportpath)

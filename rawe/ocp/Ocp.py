@@ -251,7 +251,8 @@ class Mhe(Ocp):
     def exportCode(self, codegenOptions={}, integratorOptions=RtIntegratorOptions(),ocpOptions=OcpExportOptions(),
                    phase1Options={}):
         (ocpSoPath, ts, dae) = \
-            exportOcp.exportOcp(self, codegenOptions, integratorOptions, ocpOptions, phase1Options)
+            exportOcp.exportOcp(self, codegenOptions, integratorOptions, ocpOptions, phase1Options,
+                                hashPrefix='mhe')
         return MheRT(ocpSoPath, ts, dae, integratorOptions, self._yref, self._yNref, self._measNames, self._endMeasNames)
 
 class Mpc(Ocp):
@@ -283,7 +284,8 @@ class Mpc(Ocp):
     def exportCode(self, codegenOptions={}, integratorOptions=RtIntegratorOptions(),ocpOptions=OcpExportOptions(),
                    phase1Options={}):
         (ocpSoPath, ts, dae) = \
-            exportOcp.exportOcp(self, codegenOptions, integratorOptions, ocpOptions, phase1Options)
+            exportOcp.exportOcp(self, codegenOptions, integratorOptions, ocpOptions, phase1Options,
+                                hashPrefix='mpc')
         return MpcRT(ocpSoPath, ts, dae, self.lqrDae, integratorOptions)
 
 class MpcMheSim(object):

@@ -43,7 +43,7 @@ def writeRtIntegrator(dae, options, measurements):
     # write the exporter file
     files = {'export_integrator.cpp':rtIntegratorInterface.phase1src(dae, options, measurements),
              'Makefile':rtIntegratorInterface.phase1makefile()}
-    interfaceDir = codegen.memoizeFiles(files)
+    interfaceDir = codegen.memoizeFiles(files,prefix='rt_integrator_phase1__')
 
     # call make to make sure shared lib is build
     (ret, msgs) = subprocess_tee.call(['make',codegen.makeJobs()], cwd=interfaceDir)
@@ -116,7 +116,7 @@ ACADOvariables acadoVariables;
         genfiles['measurements.h'] = rtModelGen['measurementsFile'][1]
         genfiles['measurementsJacob.cpp'] = '#include "measurementsJacob.h"\n'+rtModelGen['measurementsJacobFile'][0]
         genfiles['measurementsJacob.h'] = rtModelGen['measurementsJacobFile'][1]
-    exportpath = codegen.memoizeFiles(genfiles)
+    exportpath = codegen.memoizeFiles(genfiles,prefix='rt_integrator__')
 
     # compile the code
     (ret, msgs) = subprocess_tee.call(['make',codegen.makeJobs()], cwd=exportpath)

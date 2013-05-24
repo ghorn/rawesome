@@ -118,7 +118,7 @@ ACADOvariables acadoVariables;
 '''
 
     # write all this
-    exportpath = codegen.memoizeFiles(genfiles)
+    exportpath = codegen.memoizeFiles(genfiles,prefix=cgOptions['hashPrefix']+'__')
 
     # compile!
     (ret, msgs) = subprocess_tee.call(['make',codegen.makeJobs()], cwd=exportpath)
