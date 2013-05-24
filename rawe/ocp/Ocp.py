@@ -9,16 +9,17 @@ class OcpExportOptions(Options):
     def __init__(self):
         Options.__init__(self, 'OCP')
         self.add(OptStr('SPARSE_QP_SOLUTION',
-                        ['CONDENSING','FULL_CONDENSING','FULL_CONDENSING_U2','SPARSE_SOLVER']))
+                        ['CONDENSING','FULL_CONDENSING','FULL_CONDENSING_N2','SPARSE_SOLVER']))
         self.add(OptStr('QP_SOLVER',['QP_QPOASES','QP_QPDUNES','QP_FORCES']))
         self.add(OptStr('HESSIAN_APPROXIMATION',['GAUSS_NEWTON'],default='GAUSS_NEWTON'))
+        # TODO Hide this and set it as default, MS
         self.add(OptStr('DISCRETIZATION_TYPE',['MULTIPLE_SHOOTING'],default='MULTIPLE_SHOOTING'))
         self.add(OptBool('GENERATE_TEST_FILE',default=False))
         self.add(OptBool('GENERATE_MAKE_FILE',default=False))
         self.add(OptBool('GENERATE_MATLAB_INTERFACE',default=False))
-        self.add(OptBool('HOTSTART_QP',default=True))
+        self.add(OptBool('HOTSTART_QP',default=False))
         self.add(OptBool('FIX_INITIAL_STATE',default=True))
-        self.add(OptBool('CG_USE_C99',default=True))
+#        self.add(OptBool('CG_USE_C99',default=True))
 
 class Ocp(object):
     def __init__(self, dae, N=None, ts=None):
