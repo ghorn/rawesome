@@ -62,11 +62,7 @@ if __name__ == "__main__":
     ocp.setObjective(obj)
 #    ocp.setObjective(ocp.lookup('integral vel*vel',timestep=-1))
 
-    solverOptions = [ ("expand_f",True)
-                    , ("expand_g",True)
-                    , ("generate_hessian",True)
-                    , ("tol",1e-9)
-                    ]
+    solverOptions = [ ("tol",1e-9) ]
     ocp.setupSolver(solverOpts=solverOptions)
 
 #    ocp.interpolateInitialGuess("data/rocket_opt.dat",force=True,quiet=True,numLoops=1)
