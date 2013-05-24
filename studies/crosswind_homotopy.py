@@ -236,10 +236,7 @@ if __name__=='__main__':
 #    callback = rawe.telemetry.startTelemetry(ocp, conf, callbacks=[(rawekite.kiteTelemetry.showAllPoints,'multi-carousel')], printBoundViolation=True, printConstraintViolation=True)
 
     # solver
-    solverOptions = [("expand_f",True),
-                     ("expand_g",True),
-                     ("generate_hessian",True),
-                     ("linear_solver","ma27"),
+    solverOptions = [("linear_solver","ma27"),
                      ("max_iter",1000),
                      ("tol",1e-10)]
 

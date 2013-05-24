@@ -172,22 +172,19 @@ if __name__=='__main__':
 #    callback = rawe.telemetry.startTelemetry(ocp, conf, callbacks=[(rawekite.kiteTelemetry.showAllPoints,'multi-carousel')], printBoundViolation=True, printConstraintViolation=True)
 
     # solver
-    solverOptions = [("expand_f",True),
-                     ("expand_g",True),
-                     ("generate_hessian",True)]
-    ipoptOptions = solverOptions + [("linear_solver","ma27"),
-                                    ("max_iter",1000),
-                                    ("tol",1e-12)]
-    worhpOptions = solverOptions + [("Max_Iter",5000),
-                                    #("MaxIter",5000),
-                                    ("Timeout", 1e6),
-                                    ("UserHM", True),
-                                    ("ScaleConIter",True),
-                                    ("ScaledFD",True),
-                                    ("ScaledKKT",True),
-                                    ("ScaledObj",True),
-                                    ("ScaledQP",True)
-                                    ]
+    ipoptOptions = [("linear_solver","ma27"),
+                    ("max_iter",1000),
+                    ("tol",1e-12)]
+    worhpOptions = [("Max_Iter",5000),
+                    #("MaxIter",5000),
+                    ("Timeout", 1e6),
+                    ("UserHM", True),
+                    ("ScaleConIter",True),
+                    ("ScaledFD",True),
+                    ("ScaledKKT",True),
+                    ("ScaledObj",True),
+                    ("ScaledQP",True)
+                    ]
     print "setting up solver..."
     solverOptions = ipoptOptions
 #    solverOptions = worhpOptions

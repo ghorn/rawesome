@@ -443,7 +443,7 @@ class Coll():
             nc = self._constraints.getG().size()
 
             c = CS.PyFunction( callback,
-                               CS.nlpsolverOut(x = CS.sp_dense(nd,1),
+                               CS.nlpSolverOut(x = CS.sp_dense(nd,1),
                                                f = CS.sp_dense(1,1),
                                                lam_x = CS.sp_dense(nd,1),
                                                lam_g = CS.sp_dense(nc,1),
