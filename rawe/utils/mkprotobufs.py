@@ -10,8 +10,8 @@ def getIndices(sym):
         indices = ['__'+str(j) for j in range(nr*nc)]
     else:
         indices = []
-        for jr in range(nr):
-            for jc in range(nc):
+        for jc in range(nc):
+            for jr in range(nr):
                 indices.append('__'+str(jr)+'_'+str(jc))
     return indices
 
@@ -95,12 +95,34 @@ def writeStruct(vecname,fieldnames,dae,realType='double'):
     ret.append('} '+vecname+';\n')
     return '\n'.join(ret)
 
+def writeRtIntegratorStructs(dae,realType='double'):
+    nx = len(dae.xNames())
+    nz = len(dae.zNames())
+    nup = len(dae.uNames()) + len(dae.pNames())
+    return '''\
+typedef struct {
+  DifferentialStates x;
+  AlgebraicVars z;
+  %(realType)s dx1_dx0[%(n_dx1_dx0)d];
+  %(realType)s dz0_dx0[%(n_dz0_dx0)d];
+  %(realType)s dx1_dup[%(n_dx1_dup)d];
+  %(realType)s dz0_dup[%(n_dz0_dup)d];
+  Controls u;
+  Parameters p;
+} rtIntegratorInput;
+''' % {'realType':realType,
+       'n_dx1_dx0':nx*nx,
+       'n_dz0_dx0':nz*nx,
+       'n_dx1_dup':nx*nup,
+       'n_dz0_dup':nz*nup}
+
 def writeStructs(dae, topname, measurements, measurementsEnd):
     structs = []
     structs.append('#ifndef __'+topname+'_STRUCTS_H__')
     structs.append('#define __'+topname+'_STRUCTS_H__')
     for (structName, fieldNames) in daeNames(dae, measurements, measurementsEnd):
         structs.append(writeStruct(structName,fieldNames,dae))
+    structs.append(writeRtIntegratorStructs(dae))
     structs.append('#endif // __'+topname+'_STRUCTS_H__')
     return '\n'.join(structs)
 
@@ -154,8 +176,10 @@ extern "C" {
 
 
 def writeDimensions(topname, dae, meas, measEnd, mheHorizN, mpcHorizN):
-    nMeas    = C.veccat([dae[n] for n in meas]).size()
-    nMeasEnd = C.veccat([dae[n] for n in measEnd]).size()
+    nMeas    = C.veccat([dae[n] for n in meas]).numel()
+    nMeasEnd = C.veccat([dae[n] for n in measEnd]).numel()
+    nOutputs = C.veccat([dae[n] for n in dae.outputNames()]).numel()
+
     ret = []
     ret.append('#ifndef __'+topname+'_DIMENSIONS_H__')
     ret.append('#define __'+topname+'_DIMENSIONS_H__')
@@ -164,6 +188,7 @@ def writeDimensions(topname, dae, meas, measEnd, mheHorizN, mpcHorizN):
     ret.append('#define NUM_ALGVARS          '+str(len(dae.zNames())))
     ret.append('#define NUM_CONTROLS         '+str(len(dae.uNames())))
     ret.append('#define NUM_PARAMETERS       '+str(len(dae.pNames())))
+    ret.append('#define NUM_OUTPUTS          '+repr(nOutputs))
     ret.append('#define NUM_MEASUREMENTS     '+repr(nMeas))
     ret.append('#define NUM_MEASUREMENTS_END '+repr(nMeasEnd))
     ret.append('#define NUM_MHE_HORIZON      '+str(mheHorizN))
@@ -199,10 +224,12 @@ message Mhe {
   repeated Controls u = 2;
   repeated Measurements y = 3;
   required MeasurementsEnd yN = 4;
-  required double kkt = 5;
-  required double objective = 6;
-  required double prepTime = 7;
-  required double fbTime = 8;
+  repeated Measurements y_of_x = 5;
+  optional MeasurementsEnd yN_of_xN = 6;
+  required double kkt = 7;
+  required double objective = 8;
+  required double prepTime = 9;
+  required double fbTime = 10;
 }
 
 message Mpc {
@@ -216,13 +243,21 @@ message Mpc {
   required double fbTime = 8;
 }
 
+message Sim {
+  required DifferentialStates x = 1;
+  required AlgebraicVars z = 2;
+  required Controls u = 3;
+  required Measurements y = 4;
+  required MeasurementsEnd yN = 5;
+  required Outputs outs = 6;
+}
+
 message MheMpcHorizons {
   required Mhe mhe = 1;
   required Mpc mpc = 2;
   required DifferentialStates mheXN = 3;
   required Controls mpcU0 = 4;
-  optional DifferentialStates simX = 5;
-  optional Controls simU = 6;
+  optional Sim sim = 5;
   repeated string messages = 7;
   required Debug debug = 8;
 }
