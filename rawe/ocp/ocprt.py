@@ -100,6 +100,14 @@ class OcpRT(object):
     def outputNames(self):
         return self._dae.outputNames()
 
+    def computeOutputs(self, x, u):
+        self._outputsFun.setInput(x,0)
+        self._outputsFun.setInput(u,1)
+        self._outputsFun.evaluate()
+        outs = [C.DMatrix(self._outputsFun.output(k))
+                for k in range(self._outputsFun.getNumOutputs())]
+        return numpy.squeeze(numpy.array(C.veccat(outs)))
+
     def __setattr__(self, name, value):
         if name in self._canonicalNames:
             if type(value)==C.DMatrix:
@@ -183,25 +191,40 @@ class OcpRT(object):
         if len(nans) > 0:
             raise Exception('qp solver returned success but NaNs found in '+str(nans))
 
-
     def initializeNodesByForwardSimulation(self):
         self._setAll()
         self._lib.initializeNodesByForwardSimulation()
         self._getAll()
 
-    def shiftStatesControls(self):
+    def simpleShiftXZU(self):
         '''
-        There are N states and N-1 controls in the trajectory.
+        There are N states and N-1 controls/alg vars in the trajectory.
         Integrate the Nth state forward using the (N-1)th control.
         '''
         self._integrator.x = self.x[-2,:]
+        self._integrator.z = self.z[-1,:]
         self._integrator.u = self.u[-1,:]
         self._integrator.p = {}
+
         self._integrator.step()
+
         self.x[:-1,:] = self.x[1:,:]
-        self.x[-1,:] = self._integrator.x
+        self.z[:-1,:] = self.z[1:,:]
         self.u[:-1,:] = self.u[1:,:]
+
+        self.x[-1,:] = self._integrator.x
+        self.z[-1,:] = self._integrator.z
         self.u[-1,:] = self._integrator.u
+
+    def simpleShiftReference(self,y_Nm1, yN):
+        '''
+        There are N-1 measurements y and an Nth measurement of different size yN
+        Given a new final y and a new yN, firs shift y_{1..N-1} to y_{0..N-2}
+        and then put the new y_{N-1} and yN in.
+        '''
+        self.y[:-1,:] = self.y[1:,:]
+        self.y[-1,:] = y_Nm1
+        self.yN = yN
 
     def shift(self,new_x=None,new_u=None,sim=None,new_y=None,new_yN=None,new_S=None,new_SN=None):
         # Shift weighting matrices
@@ -311,6 +334,9 @@ class OcpRT(object):
 
     def getTs(self):
         return self._ts
+
+    def getN(self):
+        return self._lib.py_get_ACADO_N()
 
     def subplot(self,names,title=None,style='',when=0,showLegend=True,offset=None):
         assert isinstance(names,list)
@@ -469,23 +495,29 @@ class MheRT(OcpRT):
     def __init__(self, libpath, ts, dae, integratorOptions, yref, yNref, measNames, endMeasNames):
         OcpRT.__init__(self, libpath, ts, dae, integratorOptions)
         
-        self.measNames = measNames
-        self.endMeasNames = endMeasNames
+        self.yNames = measNames
+        self.yNNames = endMeasNames
+
+        # measurement function
+        self._yFun  = C.SXFunction([dae.xVec(), dae.uVec()], [C.densify(yref)])
+        self._yNFun = C.SXFunction([dae.xVec()], [C.densify(yNref)])
+        self._yFun.init()
+        self._yNFun.init()
         
-        # export integrator
-        self._integrator_y  = rawe.RtIntegrator(self._dae, ts=self._ts, options=integratorOptions, measurements=yref)
-        self._integrator_yN = rawe.RtIntegrator(self._dae, ts=self._ts, options=integratorOptions, measurements=yNref)
+#        # export integrator
+#        self._integrator_y  = rawe.RtIntegrator(self._dae, ts=self._ts, options=integratorOptions, measurements=yref)
+#        self._integrator_yN = rawe.RtIntegrator(self._dae, ts=self._ts, options=integratorOptions, measurements=yNref)
     
-    def getY(self,x,u):
-        self._integrator_y.x = numpy.squeeze(x)
-        self._integrator_y.u = numpy.squeeze(u)
-        self._integrator_y.step()
-        return self._integrator_y.h
+    def computeY(self,x,u):
+        self._yFun.setInput(x,0)
+        self._yFun.setInput(u,1)
+        self._yFun.evaluate()
+        return numpy.squeeze(numpy.array(self._yFun.output(0)))
         
-    def getYN(self,x):
-        self._integrator_yN.x = numpy.squeeze(x)
-        self._integrator_yN.step()
-        return self._integrator_yN.h
+    def computeYN(self,x):
+        self._yNFun.setInput(x,0)
+        self._yNFun.evaluate()
+        return numpy.squeeze(numpy.array(self._yNFun.output(0)))
     
     def UpdateArrivalCost(self):
         ''' Arrival cost implementation.
