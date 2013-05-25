@@ -284,7 +284,7 @@ class Mpc(Ocp):
     @property
     def yN(self):
         return self._yN
-    def __init__(self, dae, N=None, ts=None, lqrDae=None, yNames=None, yNNames=None):
+    def __init__(self, dae, N=None, ts=None, yNames=None, yNNames=None):
         Ocp.__init__(self, dae, N=N, ts=ts)
         self.hashPrefix = 'mpc'
 
@@ -305,11 +305,6 @@ class Mpc(Ocp):
         Ocp.minimizeLsq(self,self.y)
         self._yN  = C.veccat( [self[n] for n in self.yNNames] )
         Ocp.minimizeLsqEndTerm(self,self.yN)
-
-        if lqrDae is None:
-            self.lqrDae = dae
-        else:
-            self.lqrDae = lqrDae
 
     def minimizeLsq(self, obj):
         raise Exception("hey, you don't know this is Ocp, the LSQ to be minimized is [X,U]")
