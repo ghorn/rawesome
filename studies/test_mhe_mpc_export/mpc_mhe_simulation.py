@@ -11,7 +11,7 @@ import numpy as np
 
 import matplotlib.pyplot as plt
 
-from NMPC import makeNmpc
+from NMPC import makeNmpc, intOpts
 from MHE import makeMhe
 from mpc_mhe_utils import *
 
@@ -45,8 +45,8 @@ Ts = 0.1    # Sampling time
 Tf = 10.    # Simulation duration
 
 # Create the MPC class
-mpcRT, intOpts = makeNmpc(dae,N=N_mpc,dt=Ts)
-mheRT, _ = makeMhe(dae,N=N_mpc,dt=Ts)
+mpcRT = makeNmpc(dae,N=N_mpc,dt=Ts)
+mheRT = makeMhe(dae,N=N_mpc,dt=Ts)
 
 InitializeMPC(mpcRT,dae)
 InitializeMHE(mheRT,dae)

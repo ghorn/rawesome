@@ -30,9 +30,9 @@ if __name__=='__main__':
     mpc.minimizeLsq(C.veccat([mpc['pos'],mpc['vel'],mpc['force']]))
     mpc.minimizeLsqEndTerm(C.veccat([mpc['pos'], mpc['vel']]))
 
-#    cgOptions = {'CXX':'clang++', 'CC':'clang'}
-    cgOptions = {'CXX':'g++', 'CC':'gcc'}
-#    cgOptions = {'CXX':'icpc', 'CC':'icc'}
+#    cgOpts = {'CXX':'clang++', 'CC':'clang'}
+    cgOpts = {'CXX':'g++', 'CC':'gcc'}
+#    cgOpts = {'CXX':'icpc', 'CC':'icc'}
     phase1Opts = {'CXX':'g++'}
     intOpts = rawe.RtIntegratorOptions()
     intOpts['INTEGRATOR_TYPE'] = 'INT_IRK_RIIA3'
@@ -48,10 +48,8 @@ if __name__=='__main__':
     ocpOpts["HOTSTART_QP"] = True
 #   ocpOpts['GENERATE_MATLAB_INTERFACE'] = True
 
-    ocpRt = mpc.exportCode(codegenOptions=cgOptions,
-                           integratorOptions=intOpts,
-                           ocpOptions=ocpOpts,
-                           phase1Options=phase1Opts)
+    ocpRt = rawe.OcpRT(mpc, ocpOptions=ocpOpts, integratorOptions=intOpts,
+                       codegenOptions=cgOpts, phase1Options=phase1Opts)
     print '='*80
 
     # set the cost hessians

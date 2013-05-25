@@ -155,7 +155,7 @@ def writeAcadoAlgorithm(ocp, dae):
     return (algStrings, constraintData)
 
 def generateAcadoOcp(ocp, integratorOptions, ocpOptions):
-    dae = ocp._dae
+    dae = ocp.dae
     #print "WARNING: RE-ENABLE PARAMETER UNSUPPORTED ASSERTION"
     assert len(dae.pNames()) == 0, 'parameters not supported by acado codegen'
 
@@ -190,7 +190,7 @@ const double Ts = 1.0;
 OCP _ocp(0, N * Ts, N);
 _ocp.setModel( "model", "rhs", "rhsJacob" );
 _ocp.setDimensions( %(nx)d, %(nx)d, %(nz)d, %(nup)d );\
-''' % {'nx':len(dae.xNames()), 'nz':len(dae.zNames()), 'nup':len(dae.uNames())+len(dae.pNames()),'N':ocp._nk})
+''' % {'nx':len(dae.xNames()), 'nz':len(dae.zNames()), 'nup':len(dae.uNames())+len(dae.pNames()),'N':ocp.N})
 
     lines.append('/* complex constraints */')
     for (k, comparison, when) in constraintData:
@@ -277,7 +277,7 @@ OCPexport _ocpe( _ocp );\
     for name,val in iter(sorted(integratorOptions.getAcadoOpts().items())):
         # multiply NUM_INTEGRATOR_STEPS by number of control intervals
         if name == 'NUM_INTEGRATOR_STEPS':
-            val = repr(integratorOptions['NUM_INTEGRATOR_STEPS']*ocp._nk)
+            val = repr(integratorOptions['NUM_INTEGRATOR_STEPS']*ocp.N)
         lines.append('_ocpe.set( '+name+', '+val+' );')
 
     lines.append('\n/* ocp options */')

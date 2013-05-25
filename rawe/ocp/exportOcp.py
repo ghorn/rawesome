@@ -2,7 +2,6 @@ import casadi as C
 
 import phase1
 import qpoases
-from ocprt import OcpRT
 import ocg_interface
 from ..rtIntegrator import rtModelExport
 from ..utils import codegen
@@ -43,7 +42,7 @@ def testSeparation(dae,out,exportName):
         raise Exception(msg)
 
 def writeObjective(ocp, out0, exportName):
-    dae = ocp._dae
+    dae = ocp.dae
 
     # first make out not a function of xDot or z
     inputs0 = [dae.xDotVec(), dae.xVec(), dae.zVec(), dae.uVec(), dae.pVec()]
@@ -81,7 +80,7 @@ def writeObjective(ocp, out0, exportName):
     return codegen.writeCCode(outputFun,exportName)
 
 
-def exportOcp(ocp, cgOptions, integratorOptions, ocpOptions, phase1Options, hashPrefix='ocp'):
+def exportOcp(ocp, ocpOptions, integratorOptions, cgOptions, phase1Options, hashPrefix='ocp'):
     defaultCgOptions = {'CXX':'g++', 'CC':'gcc'}
     defaultPhase1Options = {'CXX':'g++'}
     validateOptions(defaultCgOptions, cgOptions, "codegen")
@@ -98,7 +97,7 @@ def exportOcp(ocp, cgOptions, integratorOptions, ocpOptions, phase1Options, hash
 #include "rhs.h"
 #include "rhsJacob.h"
 '''
-    rtModelGen = rtModelExport.generateCModel(ocp._dae, ocp._ts, None)
+    rtModelGen = rtModelExport.generateCModel(ocp.dae, ocp.ts, None)
     files['rhs.cpp'] = '#include "rhs.h"\n'+rtModelGen['rhsFile'][0]
     files['rhsJacob.cpp'] = '#include "rhsJacob.h"\n'+rtModelGen['rhsJacobFile'][0]
     files['rhs.h'] = rtModelGen['rhsFile'][1]
@@ -131,4 +130,4 @@ def exportOcp(ocp, cgOptions, integratorOptions, ocpOptions, phase1Options, hash
     else:
         raise Exception('the impossible happened, unsupported qp solver: "'+str(ocpOptions['QP_SOLVER'])+'"')
 
-    return (exportPath, ocp._ts, ocp._dae)
+    return exportPath

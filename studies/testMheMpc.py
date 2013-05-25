@@ -16,15 +16,15 @@ def makeDae():
     return dae
 
 def makeMpc(dae, N, ts):
-    mpc = rawe.ocp.Ocp(dae, N=N, ts=ts)
+    mpc = rawe.Ocp(dae, N=N, ts=ts)
     mpc.constrain(-2.5, '<=', mpc['force'], '<=', 2.5)
 
     mpc.minimizeLsq([mpc['pos'],mpc['vel'],mpc['force']])
     mpc.minimizeLsqEndTerm([mpc['pos'],mpc['vel']])
 
-#    cgOptions = {'CXX':'clang++', 'CC':'clang'}
-    cgOptions = {'CXX':'g++', 'CC':'gcc'}
-#    cgOptions = {'CXX':'icpc', 'CC':'icc'}
+#    cgOpts = {'CXX':'clang++', 'CC':'clang'}
+    cgOpts = {'CXX':'g++', 'CC':'gcc'}
+#    cgOpts = {'CXX':'icpc', 'CC':'icc'}
     intOpts = rawe.RtIntegratorOptions()
     intOpts['INTEGRATOR_TYPE'] = 'INT_IRK_GL4'
     intOpts['NUM_INTEGRATOR_STEPS'] = 5
@@ -41,9 +41,8 @@ def makeMpc(dae, N, ts):
     ocpOpts['FIX_INITIAL_STATE'] =      True
     ocpOpts['HOTSTART_QP'] =            True
     ocpOpts['GENERATE_MATLAB_INTERFACE'] = True
-    return mpc.exportCode(codegenOptions=cgOptions,
-                          ocpOptions=ocpOpts,
-                          integratorOptions=intOpts)
+    return rawe.OcpRT(mpc, ocpOptions=ocpOpts, integratorOptions=intOpts,
+                       codegenOptions=cgOpts)
 
 def makeMhe(dae, N, ts):
     mhe = rawe.ocp.Ocp(dae, N=N, ts=ts)
@@ -51,10 +50,10 @@ def makeMhe(dae, N, ts):
     mhe.minimizeLsq([mhe['pos'],mhe['vel']])
     mhe.minimizeLsqEndTerm([mhe['pos'],mhe['vel']])
 
-#    cgOptions = {'CXX':'clang++', 'CC':'clang'}
-    cgOptions = {'CXX':'g++', 'CC':'gcc'}
-#    cgOptions = {'CXX':'icpc', 'CC':'icc'}
-    return mhe.exportCode(cgOptions=cgOptions)
+#    cgOpts = {'CXX':'clang++', 'CC':'clang'}
+    cgOpts = {'CXX':'g++', 'CC':'gcc'}
+#    cgOpts = {'CXX':'icpc', 'CC':'icc'}
+    return rawe.OcpRT(mhe, codegenOptions=cgOpts)
 
 
 if __name__=='__main__':

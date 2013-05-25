@@ -7,6 +7,8 @@ import scipy
 import os
 
 import rawe
+from Ocp import OcpExportOptions
+from ..rtIntegrator import RtIntegratorOptions
 
 def dlqr(A, B, Q, R, N=None):
 
@@ -23,12 +25,30 @@ def dlqr(A, B, Q, R, N=None):
 
 class OcpRT(object):
     _canonicalNames = ['x','u','z','y','yN','x0','S','SN']
-    def __init__(self,exportpath, ts, dae, integratorOptions):
-        self._dae = dae
-        self._ts = ts
-        self._exportpath = exportpath
-        self._libpath = os.path.join(self._exportpath, 'ocp.so')
-        print 'loading "'+self._libpath+'"'
+
+    @property
+    def ocp(self):
+        return self._ocp
+
+    def __init__(self, ocp,
+                 ocpOptions=None,
+                 integratorOptions=None,
+                 codegenOptions=None,
+                 phase1Options=None):
+        if ocpOptions is None:
+            ocpOptions=OcpExportOptions(),
+        if integratorOptions is None:
+            integratorOptions=RtIntegratorOptions(),
+        if codegenOptions is None:
+            codegenOptions={}
+        if phase1Options is None:
+            phase1Options={}
+
+        exportPath = ocp.exportCode(ocpOptions, integratorOptions,
+                                    codegenOptions, phase1Options)
+        self._ocp = ocp
+        self._exportPath = exportPath
+        self._libpath = os.path.join(self._exportPath, 'ocp.so')
         self._lib = ctypes.cdll.LoadLibrary(self._libpath)
 
         # set return types of KKT,objective,etc
@@ -88,18 +108,19 @@ class OcpRT(object):
             self._log['outputs'][outName] = []
 
         # setup outputs function
-        self._outputsFun = self._dae.outputsFunWithSolve()
+        self._outputsFun = self.ocp.dae.outputsFunWithSolve()
 
         # export integrator
-        self._integrator = rawe.RtIntegrator(self._dae, ts=self._ts, options=integratorOptions)
+        self._integrator = rawe.RtIntegrator(self.ocp.dae, ts=self.ocp.ts,
+                                             options=integratorOptions)
         self._integratorOptions = integratorOptions
 
     def xNames(self):
-        return self._dae.xNames()
+        return self.ocp.dae.xNames()
     def uNames(self):
-        return self._dae.uNames()
+        return self.ocp.dae.uNames()
     def outputNames(self):
-        return self._dae.outputNames()
+        return self.ocp.dae.outputNames()
 
     def computeOutputs(self, x, u):
         self._outputsFun.setInput(x,0)
@@ -333,12 +354,6 @@ class OcpRT(object):
         self._setAll()
         return self._lib.getObjective()
 
-    def getTs(self):
-        return self._ts
-
-    def getN(self):
-        return self._lib.py_get_ACADO_N()
-
     def subplot(self,names,title=None,style='',when=0,showLegend=True,offset=None):
         assert isinstance(names,list)
 
@@ -418,11 +433,11 @@ class OcpRT(object):
                 if when == 'all':
                     for k in range(numpy.array(self._log['x']).shape[0]):
                         ys = numpy.array(self._log['x'])[k,:,index]
-                        ts = (offset + numpy.arange(len(ys)) + k)*self._ts
+                        ts = (offset + numpy.arange(len(ys)) + k)*self.ocp.ts
                         plt.plot(ts,ys,style)
                 else:
                     ys = numpy.array(self._log['x'])[:,when,index]
-                    ts = numpy.arange(len(ys))*self._ts
+                    ts = numpy.arange(len(ys))*self.ocp.ts
                     plt.plot(ts,ys,style)
 
             # if it's a control
@@ -431,14 +446,14 @@ class OcpRT(object):
                 if when == 'all':
                     for k in range(numpy.array(self._log['u']).shape[0]):
                         ys = numpy.array(self._log['u'])[k,:,index]
-                        ts = (offset + numpy.arange(len(ys)) + k)*self._ts
+                        ts = (offset + numpy.arange(len(ys)) + k)*self.ocp.ts
                         if style == 'o':
                             plt.plot(ts,ys,style)
                         else:
                             myStep(ts,ys,style)
                 else:
                     ys = numpy.array(self._log['u'])[:,when,index]
-                    ts = numpy.arange(len(ys))*self._ts
+                    ts = numpy.arange(len(ys))*self.ocp.ts
                     if style == 'o':
                         plt.plot(ts,ys,style)
                     else:
@@ -449,17 +464,17 @@ class OcpRT(object):
                 if when == 'all':
                     for k in range(numpy.array(self._log['outputs'][name]).shape[0]):
                         ys = numpy.array(self._log['outputs'][name])[k,:]
-                        ts = (offset + numpy.arange(len(ys)) + k)*self._ts
+                        ts = (offset + numpy.arange(len(ys)) + k)*self.ocp.ts
                         plt.plot(ts,ys,style)
                 else:
                     ys = numpy.array(self._log['outputs'][name])[:,when]
-                    ts = numpy.arange(len(ys))*self._ts
+                    ts = numpy.arange(len(ys))*self.ocp.ts
                     plt.plot(ts,ys,style)
 
             # if it's something else
             if name in ['_kkt','_objective','_prep_time','_fb_time']:
                 ys = numpy.array(self._log[name])[:]
-                ts = (offset + numpy.arange(len(ys)))*self._ts
+                ts = (offset + numpy.arange(len(ys)))*self.ocp.ts
                 plt.plot(ts,ys,style)
 
         if title is not None:
@@ -472,10 +487,10 @@ class OcpRT(object):
 
 
 class MpcRT(OcpRT):
-    def __init__(self, exportpath, ts, dae, lqrDae, integratorOptions):
-        OcpRT.__init__(self, exportpath, ts, dae, integratorOptions)
+    def __init__(self, exportPath, ts, dae, lqrDae, integratorOptions):
+        OcpRT.__init__(self, exportPath, ts, dae, integratorOptions)
         self._lqrDae = lqrDae
-        self._integratorLQR  = rawe.RtIntegrator(self._lqrDae, ts=self._ts, options=integratorOptions)
+        self._integratorLQR  = rawe.RtIntegrator(self._lqrDae, ts=self.ocp.ts, options=integratorOptions)
 
 
     def computeLqr(self):
@@ -493,8 +508,8 @@ class MpcRT(OcpRT):
         self.SN = P
 
 class MheRT(OcpRT):
-    def __init__(self, exportpath, ts, dae, integratorOptions, yref, yNref, measNames, endMeasNames):
-        OcpRT.__init__(self, exportpath, ts, dae, integratorOptions)
+    def __init__(self, exportPath, ts, dae, integratorOptions, yref, yNref, measNames, endMeasNames):
+        OcpRT.__init__(self, exportPath, ts, dae, integratorOptions)
 
         self.yNames = measNames
         self.yNNames = endMeasNames
@@ -506,8 +521,8 @@ class MheRT(OcpRT):
         self._yNFun.init()
 
 #        # export integrator
-#        self._integrator_y  = rawe.RtIntegrator(self._dae, ts=self._ts, options=integratorOptions, measurements=yref)
-#        self._integrator_yN = rawe.RtIntegrator(self._dae, ts=self._ts, options=integratorOptions, measurements=yNref)
+#        self._integrator_y  = rawe.RtIntegrator(self.dae, ts=self.ocp.ts, options=integratorOptions, measurements=yref)
+#        self._integrator_yN = rawe.RtIntegrator(self.dae, ts=self.ocp.ts, options=integratorOptions, measurements=yNref)
 
     def computeY(self,x,u):
         self._yFun.setInput(x,0)

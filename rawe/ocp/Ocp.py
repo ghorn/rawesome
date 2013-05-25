@@ -1,7 +1,6 @@
 import casadi as C
 
 import exportOcp
-from ocprt import OcpRT, MheRT, MpcRT
 from ..rtIntegrator import RtIntegratorOptions
 from ..utils.options import Options, OptStr, OptInt, OptBool
 
@@ -29,7 +28,7 @@ class Ocp(object):
             raise Exception('please initialize Ocp with Ocp(dae, N=.., ts=..)')
         assert type(N) is int, "N must be an int, got type: "+str(type(N))
         assert type(ts) in [int,float], "ts must be an int or float, got type: "+str(type(ts))
-        self._nk = N
+        self._N = N
         self._ts = float(ts)
 
         self._ebndmap = {}
@@ -50,15 +49,25 @@ class Ocp(object):
 
         self._dbgMessages = []
 
+    @property
+    def N(self):
+        return self._N
+    @property
+    def ts(self):
+        return self._ts
+    @property
+    def dae(self):
+        return self._dae
+
     # stuff inherited from dae
     def __getitem__(self,name):
-        return self._dae[name]
+        return self.dae[name]
     def __contains__(self,name):
         if not isinstance(name,str):
             raise KeyError('key must be a string')
-        return name in self._dae
+        return name in self.dae
     def ddt(self,name):
-        return self._dae.ddt(name)
+        return self.dae.ddt(name)
 
     # debugging message
     def debug(self,msg):
@@ -66,7 +75,7 @@ class Ocp(object):
 
     # add a linear constraint
     def _bound(self, name, bnd, upperLowerEq, when=None):
-        assert name in self._dae.xNames()+self._dae.uNames(), "you can't bound "+name+\
+        assert name in self.dae.xNames()+self.dae.uNames(), "you can't bound "+name+\
             " because only differential state and control bounds are supported"
 
         if upperLowerEq == 'lower':
@@ -131,7 +140,7 @@ class Ocp(object):
 
         # detect simple constraints in x and u
         def maybeAddBoxConstraint():
-            inputs = C.veccat([self._dae.xVec(),self._dae.uVec()])
+            inputs = C.veccat([self.dae.xVec(),self.dae.uVec()])
             # make sure only x and u are in rhs,lhs
             rml = rhs-lhs
             f = C.SXFunction([inputs],[rml])
@@ -157,7 +166,7 @@ class Ocp(object):
             # alright, we've found a box constraint!
             j = coeffs.keys()[0]
             coeff = coeffs[j]
-            name = (self._dae.xNames()+self._dae.uNames())[j]
+            name = (self.dae.xNames()+self.dae.uNames())[j]
             [f0] = f.eval([0*inputs])
             # if we just divided by a negative number (coeff), flip the comparison
             if not coeff.toScalar().isNonNegative():
@@ -218,13 +227,11 @@ class Ocp(object):
         assert not hasattr(self, '_minLsqEndTerm'), 'you can only call minimizeLsqEndTerm once'
         self._minLsqEndTerm = obj
 
-    def exportCode(self,codegenOptions={},phase1Options={},
-                   integratorOptions=RtIntegratorOptions(),
-                   ocpOptions=OcpExportOptions()):
-        (exportPath, ts, dae) = \
-            exportOcp.exportOcp(self, codegenOptions, integratorOptions,
-                                ocpOptions, phase1Options)
-        return OcpRT(exportPath, ts, dae, integratorOptions)
+    def exportCode(self, ocpOptions, integratorOptions, codegenOptions, phase1Options):
+        assert isinstance(ocpOptions, OcpExportOptions)
+        assert isinstance(integratorOptions, RtIntegratorOptions)
+        return exportOcp.exportOcp(self, ocpOptions, integratorOptions,
+                                   codegenOptions, phase1Options)
 
 class Mhe(Ocp):
     def __init__(self, dae, N=None, ts=None, measNames=None, endMeasNames=None):
