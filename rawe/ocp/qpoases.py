@@ -57,7 +57,7 @@ HEADERS = \\
 \tacado_common.h
 
 .PHONY: clean all ocp.a ocp.so
-all : $(CXX_OBJ) $(C_OBJ) ocp.a ocp.so
+all : $(CXX_OBJ) $(C_OBJ) ocp.a ocp.so ocp.o
 
 $(CXX_OBJ) : %%.o : %%.cpp $(HEADERS)
 \t@echo CXX $@: $(CXX) $(CXXFLAGS) -c $< -o $@
@@ -77,6 +77,10 @@ ocp.so : $(CXX_OBJ) $(C_OBJ)
 ocp.a : $(CXX_OBJ) $(C_OBJ)
 \t@echo AR $@ : ar r $@ $?
 \t@ar r $@ $?
+
+ocp.o : $(CXX_OBJ) $(C_OBJ)
+\t@echo ld $@ : ld -r $? -o $@
+\t@ld -r $? -o $@
 
 clean :
 \t@echo rm -f ocp.so ocp.a $(CXX_OBJ) $(C_OBJ) #*.o *.a ./qpoases/SRC/*.o ./qpoases/SRC/*.a test
