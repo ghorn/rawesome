@@ -17,10 +17,10 @@ LDFLAGS = -lm `pkg-config --libs acado` `pkg-config --libs ocg2`
 CXX_SRC = export_ocp.cpp
 OBJ = $(CXX_SRC:%%.cpp=%%.o)
 
-.PHONY: clean all export_ocp.so
-all : $(OBJ) export_ocp.so
+.PHONY: clean all export_ocp.so run_export
+all : $(OBJ) export_ocp.so run_export
 
-%%.o : %%.cpp #acado.h
+%%.o : %%.cpp
 \t@echo CXX $@: $(CXX) $(CXXFLAGS) -c $< -o $@
 \t@$(CXX) $(CXXFLAGS) -c $< -o $@
 
@@ -30,6 +30,10 @@ export_ocp.so::LDFLAGS+=-Wl,-rpath,%(rpathOcg2)s
 export_ocp.so : $(OBJ)
 \t@echo LD $@ : $(CXX) -shared -o $@ $(OBJ) $(LDFLAGS)
 \t@$(CXX) -shared -o $@ $(OBJ) $(LDFLAGS)
+
+run_export : export_ocp.so
+	@echo $(CXX) export_ocp.so -Wl,-rpath,. -o $@
+	@$(CXX) run_export.cpp export_ocp.so -Wl,-rpath,. -o $@
 
 clean :
 \trm -f *.o *.so
@@ -42,6 +46,14 @@ def runPhase1(ocp, phase1Options, integratorOptions, ocpOptions):
     # write the ocp exporter cpp file
     genfiles = {'export_ocp.cpp':writeAcadoOcpExport.generateAcadoOcp(ocp, integratorOptions, ocpOptions),
                 'Makefile':makeExportMakefile(phase1Options)}
+    # add a file which just runs the export in the current directory
+    genfiles['run_export.cpp'] = '''\
+extern "C" int exportOcp(const char * exportDir);
+
+int main(void){
+    return exportOcp(".");
+}
+'''
     exportpath = codegen.memoizeFiles(genfiles,prefix=phase1Options['hashPrefix']+'_phase1__')
 
     # compile the ocp exporter

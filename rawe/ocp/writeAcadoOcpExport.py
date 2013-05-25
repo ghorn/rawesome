@@ -160,7 +160,9 @@ def generateAcadoOcp(ocp, integratorOptions, ocpOptions):
     assert len(dae.pNames()) == 0, 'parameters not supported by acado codegen'
 
     lines = []
-
+    lines.append('/* comment the following in to enable terminal barf: */')
+    lines.append('// Logger::instance().setLogLevel( LVL_DEBUG );')
+    lines.append('')
     lines.append('/* differential states */')
     for name in dae.xNames():
         lines.append('DifferentialState '+name+';')
