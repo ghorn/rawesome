@@ -23,6 +23,7 @@ class OcpExportOptions(Options):
 class Ocp(object):
     def __init__(self, dae, N=None, ts=None):
         dae.assertNoFreeParams()
+        self.hashPrefix = 'ocp'
         self._dae = dae
         if N is None or ts is None:
             raise Exception('please initialize Ocp with Ocp(dae, N=.., ts=..)')
@@ -234,74 +235,83 @@ class Ocp(object):
                                    codegenOptions, phase1Options)
 
 class Mhe(Ocp):
-    def __init__(self, dae, N=None, ts=None, measNames=None, endMeasNames=None):
+    @property
+    def yNames(self):
+        return self._yNames
+    @property
+    def yNNames(self):
+        return self._yNNames
+    @property
+    def y(self):
+        return self._y
+    @property
+    def yN(self):
+        return self._yN
+    def __init__(self, dae, N=None, ts=None, yNames=None, yNNames=None):
         Ocp.__init__(self, dae, N=N, ts=ts)
+        self.hashPrefix = 'mhe'
 
-        if (measNames == None) or ( not isinstance(measNames,list) ):
-            raise Exception("you have to provide the measurements as a list of strings")
-        if (endMeasNames == None) or ( not isinstance(endMeasNames,list) ):
-            raise Exception("you have to provide the final measurements as a list of strings")
+        if yNames is None:
+            yNames = dae.xNames() + dae.uNames()
+        if yNNames is None:
+            yNNames = dae.xNames()
+        if not isinstance(yNames,list):
+            raise Exception("If you decide to provide measurements, "+\
+                            "you have to provide them as a list of strings")
+        if not isinstance(yNNames,list):
+            raise Exception("If you decide to provide end measurements, "+\
+                            "you have to provide them as a list of strings")
+        self._yNames = yNames
+        self._yNNames = yNNames
 
-        yref  = C.veccat( [self[n] for n in measNames] )
-        Ocp.minimizeLsq(self,yref)
-        yNref  = C.veccat( [self[n] for n in endMeasNames] )
-        Ocp.minimizeLsqEndTerm(self,yNref)
+        self._y  = C.veccat( [self[n] for n in self.yNames] )
+        Ocp.minimizeLsq(self,self.y)
+        self._yN  = C.veccat( [self[n] for n in self.yNNames] )
+        Ocp.minimizeLsqEndTerm(self,self.yN)
 
-        self._measNames  = measNames
-        self._endMeasNames = endMeasNames
-        self._yref  = yref
-        self._yNref = yNref
 
-    def minimizeLsq(self, obj):
-        raise Exception("hey, you don't know this is Ocp")
-    def minimizeLsqEndTerm(self, obj):
-        raise Exception("hey, you don't know this is Ocp")
-
-    def exportCode(self,codegenOptions={},phase1Options={},
-                   integratorOptions=RtIntegratorOptions(),
-                   ocpOptions=OcpExportOptions()):
-        (exportPath, ts, dae) = \
-            exportOcp.exportOcp(self, codegenOptions, integratorOptions,
-                                ocpOptions, phase1Options, hashPrefix='mhe')
-        return MheRT(exportPath, ts, dae, integratorOptions, self._yref, self._yNref, self._measNames, self._endMeasNames)
 
 class Mpc(Ocp):
-    def __init__(self, dae, N=None, ts=None, lqrDae=None, measNames=[], endMeasNames=[]):
+    @property
+    def yNames(self):
+        return self._yNames
+    @property
+    def yNNames(self):
+        return self._yNNames
+    @property
+    def y(self):
+        return self._y
+    @property
+    def yN(self):
+        return self._yN
+    def __init__(self, dae, N=None, ts=None, lqrDae=None, yNames=None, yNNames=None):
         Ocp.__init__(self, dae, N=N, ts=ts)
-        if lqrDae == None:
+        self.hashPrefix = 'mpc'
+
+        if yNames is None:
+            yNames = dae.xNames() + dae.uNames()
+        if yNNames is None:
+            yNNames = dae.xNames()
+        if not isinstance(yNames,list):
+            raise Exception("If you decide to provide measurements, "+\
+                            "you have to provide them as a list of strings")
+        if not isinstance(yNNames,list):
+            raise Exception("If you decide to provide end measurements, "+\
+                            "you have to provide them as a list of strings")
+        self._yNames = yNames
+        self._yNNames = yNNames
+
+        self._y  = C.veccat( [self[n] for n in self.yNames] )
+        Ocp.minimizeLsq(self,self.y)
+        self._yN  = C.veccat( [self[n] for n in self.yNNames] )
+        Ocp.minimizeLsqEndTerm(self,self.yN)
+
+        if lqrDae is None:
             self.lqrDae = dae
         else:
             self.lqrDae = lqrDae
-        if not isinstance(measNames,list):
-            raise Exception("If you decide to provide measurements, you have to provide them as a list of strings")
-        if not isinstance(endMeasNames,list):
-            raise Exception("If you decide to provide end measurements, you have to provide them as a list of strings")
-
-        if measNames == []:
-            measNames = dae.xNames() + dae.uNames()
-        if endMeasNames == []:
-            endMeasNames = dae.xNames()
-        yref  = C.veccat( [self[n] for n in measNames] )
-        Ocp.minimizeLsq(self,yref)
-        yNref  = C.veccat( [self[n] for n in endMeasNames] )
-        Ocp.minimizeLsqEndTerm(self,yNref)
 
     def minimizeLsq(self, obj):
         raise Exception("hey, you don't know this is Ocp, the LSQ to be minimized is [X,U]")
     def minimizeLsqEndTerm(self, obj):
         raise Exception("hey, you don't know this is Ocp, the terminal cost is LSQ of X")
-    def exportCode(self,codegenOptions={},phase1Options={},
-                   integratorOptions=RtIntegratorOptions(),
-                   ocpOptions=OcpExportOptions()):
-        (exportPath, ts, dae) = \
-            exportOcp.exportOcp(self, codegenOptions, integratorOptions,
-                                ocpOptions, phase1Options, hashPrefix='mpc')
-        return MpcRT(exportPath, ts, dae, self.lqrDae, integratorOptions)
-
-class MpcMheSim(object):
-    def __init__(self, mpcRT, mheRT, simDae):
-        self.mpcRT = mpcRT
-        self.mheRT = mheRT
-
-    def step(self):
-        pass

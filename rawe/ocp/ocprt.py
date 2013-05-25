@@ -7,7 +7,7 @@ import scipy
 import os
 
 import rawe
-from Ocp import OcpExportOptions
+from Ocp import OcpExportOptions,Ocp,Mhe,Mpc
 from ..rtIntegrator import RtIntegratorOptions
 
 def dlqr(A, B, Q, R, N=None):
@@ -43,10 +43,11 @@ class OcpRT(object):
             codegenOptions={}
         if phase1Options is None:
             phase1Options={}
+        assert isinstance(ocp, Ocp), "OcpRT must be given an Ocp object, you gave: "+str(type(ocp))
 
-        exportPath = ocp.exportCode(ocpOptions, integratorOptions,
-                                    codegenOptions, phase1Options)
         self._ocp = ocp
+        exportPath = self.ocp.exportCode(ocpOptions, integratorOptions,
+                                         codegenOptions, phase1Options)
         self._exportPath = exportPath
         self._libpath = os.path.join(self._exportPath, 'ocp.so')
         self._lib = ctypes.cdll.LoadLibrary(self._libpath)
@@ -487,11 +488,28 @@ class OcpRT(object):
 
 
 class MpcRT(OcpRT):
-    def __init__(self, exportPath, ts, dae, lqrDae, integratorOptions):
-        OcpRT.__init__(self, exportPath, ts, dae, integratorOptions)
+    def __init__(self, ocp, lqrDae,
+                 ocpOptions=None,
+                 integratorOptions=None,
+                 codegenOptions=None,
+                 phase1Options=None):
+        assert isinstance(ocp, Mpc), "MpcRT must be given an Mpc object, you gave: "+str(type(ocp))
+
+        # call the parent init
+        OcpRT.__init__(self, ocp,
+                       ocpOptions=ocpOptions,
+                       integratorOptions=integratorOptions,
+                       codegenOptions=codegenOptions,
+                       phase1Options=phase1Options)
+
+        # set up measurement functions
+        self._yFun  = C.SXFunction([ocp.dae.xVec(), ocp.dae.uVec()], [C.densify(self.ocp.y)])
+        self._yNFun = C.SXFunction([ocp.dae.xVec()], [C.densify(self.ocp.yN)])
+        self._yFun.init()
+        self._yNFun.init()
+
         self._lqrDae = lqrDae
         self._integratorLQR  = rawe.RtIntegrator(self._lqrDae, ts=self.ocp.ts, options=integratorOptions)
-
 
     def computeLqr(self):
         nx = self.x.shape[1]
@@ -507,22 +525,27 @@ class MpcRT(OcpRT):
         self.K = K
         self.SN = P
 
+
 class MheRT(OcpRT):
-    def __init__(self, exportPath, ts, dae, integratorOptions, yref, yNref, measNames, endMeasNames):
-        OcpRT.__init__(self, exportPath, ts, dae, integratorOptions)
+    def __init__(self, ocp,
+                 ocpOptions=None,
+                 integratorOptions=None,
+                 codegenOptions=None,
+                 phase1Options=None):
+        assert isinstance(ocp, Mhe), "MheRT must be given an Mhe object, you gave: "+str(type(ocp))
 
-        self.yNames = measNames
-        self.yNNames = endMeasNames
+        # call the parent init
+        OcpRT.__init__(self, ocp,
+                       ocpOptions=ocpOptions,
+                       integratorOptions=integratorOptions,
+                       codegenOptions=codegenOptions,
+                       phase1Options=phase1Options)
 
-        # measurement function
-        self._yFun  = C.SXFunction([dae.xVec(), dae.uVec()], [C.densify(yref)])
-        self._yNFun = C.SXFunction([dae.xVec()], [C.densify(yNref)])
+        # set up measurement functions
+        self._yFun  = C.SXFunction([ocp.dae.xVec(), ocp.dae.uVec()], [C.densify(self.ocp.y)])
+        self._yNFun = C.SXFunction([ocp.dae.xVec()], [C.densify(self.ocp.yN)])
         self._yFun.init()
         self._yNFun.init()
-
-#        # export integrator
-#        self._integrator_y  = rawe.RtIntegrator(self.dae, ts=self.ocp.ts, options=integratorOptions, measurements=yref)
-#        self._integrator_yN = rawe.RtIntegrator(self.dae, ts=self.ocp.ts, options=integratorOptions, measurements=yNref)
 
     def computeY(self,x,u):
         self._yFun.setInput(x,0)

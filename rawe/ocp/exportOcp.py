@@ -80,13 +80,13 @@ def writeObjective(ocp, out0, exportName):
     return codegen.writeCCode(outputFun,exportName)
 
 
-def exportOcp(ocp, ocpOptions, integratorOptions, cgOptions, phase1Options, hashPrefix='ocp'):
+def exportOcp(ocp, ocpOptions, integratorOptions, cgOptions, phase1Options):
     defaultCgOptions = {'CXX':'g++', 'CC':'gcc','hideSymbols':False}
     defaultPhase1Options = {'CXX':'g++'}
     validateOptions(defaultCgOptions, cgOptions, "codegen")
     validateOptions(defaultPhase1Options, phase1Options, "phase 1")
-    cgOptions['hashPrefix'] = hashPrefix
-    phase1Options['hashPrefix'] = hashPrefix
+    cgOptions['hashPrefix'] = ocp.hashPrefix
+    phase1Options['hashPrefix'] = ocp.hashPrefix
 
     # write the OCP exporter and run it, returning an exported OCP
     files = phase1.runPhase1(ocp, phase1Options, integratorOptions, ocpOptions)
