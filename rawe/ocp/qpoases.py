@@ -3,11 +3,18 @@ from rawe.utils import pkgconfig, codegen, subprocess_tee
 
 def mkMakefile(cgOptions, qposrc):
     qposrc = ' \\\n'.join(['\t'+os.path.join('qpoases', q.split('qpoases'+os.sep)[1]) for q in qposrc])
+    if cgOptions['hideSymbols']:
+        c_visibility = ' -fvisibility=hidden'
+        cxx_visibility = ' -fvisibility=hidden -fvisibility-inlines-hidden'
+    else:
+        c_visibility = ''
+        cxx_visibility = ''
+
     makefile = """\
 CXX      = %(CXX)s
 CC       = %(CC)s
-CXXFLAGS = -O3 -fPIC -finline-functions
-CFLAGS   = -O3 -fPIC -finline-functions
+CXXFLAGS = -O3 -fPIC -finline-functions%(cxx_visibility)s
+CFLAGS   = -O3 -fPIC -finline-functions%(c_visibility)s
 
 #CFLAGS   += -Wall -Wextra
 #CXXFLAGS += -Wall -Wextra
@@ -83,9 +90,12 @@ ocp.o : $(CXX_OBJ) $(C_OBJ)
 \t@ld -r $? -o $@
 
 clean :
-\t@echo rm -f ocp.so ocp.a $(CXX_OBJ) $(C_OBJ) #*.o *.a ./qpoases/SRC/*.o ./qpoases/SRC/*.a test
-\t@rm -f ocp.so ocp.a $(CXX_OBJ) $(C_OBJ)
-""" % {'CXX':cgOptions['CXX'], 'CC':cgOptions['CC'], 'qpo_src':qposrc}
+\t@echo rm -f ocp.a $(CXX_OBJ) $(C_OBJ) ocp.so
+\t@rm -f ocp.a ocp.so ocp.o $(CXX_OBJ) $(C_OBJ)
+""" % {'CXX':cgOptions['CXX'], 'CC':cgOptions['CC'],
+       'c_visibility':c_visibility,
+       'cxx_visibility':cxx_visibility,
+       'qpo_src':qposrc}
     return makefile
 
 

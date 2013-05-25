@@ -81,7 +81,7 @@ def writeObjective(ocp, out0, exportName):
 
 
 def exportOcp(ocp, ocpOptions, integratorOptions, cgOptions, phase1Options, hashPrefix='ocp'):
-    defaultCgOptions = {'CXX':'g++', 'CC':'gcc'}
+    defaultCgOptions = {'CXX':'g++', 'CC':'gcc','hideSymbols':False}
     defaultPhase1Options = {'CXX':'g++'}
     validateOptions(defaultCgOptions, cgOptions, "codegen")
     validateOptions(defaultPhase1Options, phase1Options, "phase 1")
