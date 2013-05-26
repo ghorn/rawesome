@@ -428,14 +428,33 @@ class Coll():
         lbg = self._constraints.getLb()
         ubg = self._constraints.getUb()
 
-        # Nonlinear constraint function
-        gfcn = CS.MXFunction([self._dvMap.vectorize()],[g])
-        setFXOptions(gfcn,constraintFunOpts)
-
-        # Objective function of the NLP
+        # Objective function/constraints of the NLP
         if not hasattr(self,'_objective'):
             raise ValueError('need to set objective function')
-        ofcn = CS.MXFunction([self._dvMap.vectorize()],[self._objective])
+        nlp = CS.MXFunction(CS.nlpIn(x=self._dvMap.vectorize()),CS.nlpOut(f=self._objective, g=g))
+        setFXOptions(nlp,constraintFunOpts)
+        nlp.init()
+
+        print "COLLOCATION ONLY DOING DEBUGGING RIGHT NOW"
+        import numpy
+        nlp.setInput(100 + numpy.zeros(self._dvMap.vectorize().shape),'x')
+        nlp.evaluate()
+        print "objective:"
+        print nlp.output(0)
+
+        nlp.setAdjSeed(1.0,"f")
+        nlp.setAdjSeed(0.0,"g")
+        nlp.evaluate(0,1)
+        print "adjSens:"
+        print nlp.adjSens("x")
+
+        f = nlp.gradient("x","f")
+        f.init()
+        f.setInput(100 + numpy.zeros(self._dvMap.vectorize().shape))
+        f.evaluate()
+        print "gradient:"
+        print f.output()
+        import sys; sys.exit()
 
         # solver callback (optional)
         if callback is not None:
@@ -454,9 +473,9 @@ class Coll():
             solverOpts.append( ("iteration_callback", c) )
 
         # Allocate an NLP solver
-        self.solver = CS.IpoptSolver(ofcn,gfcn)
-#        self.solver = CS.WorhpSolver(ofcn,gfcn)
-#        self.solver = CS.SQPMethod(ofcn,gfcn)
+        self.solver = CS.IpoptSolver(nlp)
+#        self.solver = CS.WorhpSolver(nlp)
+#        self.solver = CS.SQPMethod(nlp)
 
         # Set options
         setFXOptions(self.solver, solverOpts)
@@ -468,6 +487,10 @@ class Coll():
         self.solver.setInput(lbg,'lbg')
         self.solver.setInput(ubg,'ubg')
 
+        ## Nonlinear constraint function, for debugging
+        gfcn = CS.MXFunction([self._dvMap.vectorize()],[g])
+        gfcn.init()
+        setFXOptions(gfcn,constraintFunOpts)
         self._gfcn = gfcn
 
     def solve(self,xInit=None,warnZBounds=False,warnZGuess=False):
