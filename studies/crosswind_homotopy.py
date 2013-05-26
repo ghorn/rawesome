@@ -8,7 +8,7 @@ import pickle
 import rawe
 import rawekite
 
-def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
+def setupOcp(dae,conf,nk,nicp=1,deg=4):
     ocp = rawe.collocation.Coll(dae, nk=nk,nicp=nicp,deg=deg)
 
     print "setting up collocation..."
@@ -44,7 +44,7 @@ def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
                   "dy","dz",
                   "w_bn_b_x","w_bn_b_y","w_bn_b_z",
                   "r","dr",
-                  'aileron','elevator'
+                  'aileron','elevator','rudder'
                   ]:
         ocp.constrain(ocp.lookup(name,timestep=0),'==',ocp.lookup(name,timestep=-1))
 
@@ -56,8 +56,10 @@ def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
     # bounds
     ocp.bound('aileron',(-0.04,0.04))
     ocp.bound('elevator',(-0.1,0.1))
+    ocp.bound('rudder',(-0.1,0.1))
     ocp.bound('daileron',(-2.0,2.0))
     ocp.bound('delevator',(-2.0,2.0))
+    ocp.bound('drudder',(-2.0,2.0))
 
     ocp.bound('x',(-2000,2000))
     ocp.bound('y',(-2000,2000))
@@ -105,7 +107,7 @@ if __name__=='__main__':
     dae.addP('endTime')
 
     print "setting up ocp..."
-    ocp = setupOcp(dae,conf,nk=nk)
+    ocp = setupOcp(dae,conf,nk)
 
     lineRadiusGuess = 100.0
     circleRadiusGuess = 20.0
@@ -196,16 +198,19 @@ if __name__=='__main__':
         ddr = ocp.lookup('ddr',timestep=k)
         daileron = ocp.lookup('daileron',timestep=k)
         delevator = ocp.lookup('delevator',timestep=k)
+        drudder = ocp.lookup('drudder',timestep=k)
 
         daileronSigma = 0.01
         delevatorSigma = 0.1
+        drudderSigma = 0.1
         ddrSigma = 1.0
 
         ailObj = daileron*daileron / (daileronSigma*daileronSigma)
         eleObj = delevator*delevator / (delevatorSigma*delevatorSigma)
+        rudObj = drudder*drudder / (drudderSigma*drudderSigma)
         winchObj = ddr*ddr / (ddrSigma*ddrSigma)
 
-        obj += 1e-2*(ailObj + eleObj + winchObj)/float(ocp.nk)
+        obj += 1e-2*(ailObj + eleObj + rudObj + winchObj)/float(ocp.nk)
 
     # homotopy forces/torques regularization
     homoReg = 0
@@ -226,7 +231,8 @@ if __name__=='__main__':
     ocp.guess('w0',10)
     ocp.guess('r',lineRadiusGuess)
 
-    for name in ['w_bn_b_x','w_bn_b_y','dr','ddr','dddr','aileron','elevator','daileron','delevator']:
+    for name in ['w_bn_b_x','w_bn_b_y','dr','ddr','dddr','aileron','rudder',
+                 'elevator','daileron','delevator','drudder']:
         ocp.guess(name,0)
 
     ocp.guess('gamma_homotopy',0)

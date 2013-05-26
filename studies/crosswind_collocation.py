@@ -16,15 +16,18 @@ def setupOcp(dae,conf,nk,nicp,deg,collPoly):
         dddr = dae['dddr']
         daileron = dae['daileron']
         delevator = dae['delevator']
+        drudder = dae['drudder']
 
         daileronSigma = 0.001
         delevatorSigma = 0.8
         dddrSigma = 20.0
+        drudderSigma = 0.1
 
         fudgeFactor = 1e-1
         nkf = float(nk)
         dae['daileronCost'] =  fudgeFactor*daileron*daileron / (daileronSigma*daileronSigma*nkf)
         dae['delevatorCost'] = fudgeFactor*delevator*delevator / (delevatorSigma*delevatorSigma*nkf)
+        dae['drudderCost'] =   fudgeFactor*drudder*drudder / (drudderSigma*drudderSigma)
         dae['dddrCost'] =      fudgeFactor*dddr*dddr / (dddrSigma*dddrSigma*nkf)
 
     addCosts()
@@ -56,7 +59,7 @@ def setupOcp(dae,conf,nk,nicp,deg,collPoly):
             for j in range(0,ocp.deg+1):
                 ocp.constrainBnds(ocp.lookup('alpha_deg',timestep=k,degIdx=j), (-8.5,9.5), tag=('alpha(deg)',k))
 
-            ocp.constrainBnds(ocp.lookup('beta_deg', timestep=k), (-10,10), tag=('beta(deg)',k))
+            ocp.constrainBnds(ocp.lookup('beta_deg', timestep=k), (-1,1), tag=('beta(deg)',k))
     constrainAirspeedAlphaBeta()
     #def constrainCl():
     #    for k in range(0,nk):
@@ -85,7 +88,7 @@ def setupOcp(dae,conf,nk,nicp,deg,collPoly):
                   "dy","dz",
                   "w_bn_b_x","w_bn_b_y","w_bn_b_z",
                   "r","dr","ddr",
-                  'aileron','elevator'
+                  'aileron','elevator','rudder'
                   ]:
         ocp.constrain(ocp.lookup(name,timestep=0),'==',ocp.lookup(name,timestep=-1), tag=('periodic diff state \"'+name+'"',None))
 
@@ -95,8 +98,10 @@ def setupOcp(dae,conf,nk,nicp,deg,collPoly):
     # bounds
     ocp.bound('aileron',(-0.04,0.04))
     ocp.bound('elevator',(-0.1,0.5))
+    ocp.bound('rudder',(-0.2,0.2))
     ocp.bound('daileron',(-2.0,2.0))
     ocp.bound('delevator',(-2.0,2.0))
+    ocp.bound('drudder',(-2.0,2.0))
 
     ocp.bound('x',(-2000,2000))
     ocp.bound('y',(-2000,2000))
@@ -122,7 +127,7 @@ def setupOcp(dae,conf,nk,nicp,deg,collPoly):
 
 #    ocp.bound('endTime',(0.5,12))
     ocp.bound('endTime',(0.5,numLoops*7.5))
-    ocp.bound('w0',(10,10))
+    ocp.bound('w0',(4,4))
 
     # boundary conditions
     ocp.bound('y',(0,0),timestep=0,quiet=True)
@@ -137,6 +142,7 @@ def setupOcp(dae,conf,nk,nicp,deg,collPoly):
         # control regularization
         obj += ocp.lookup('daileronCost',timestep=k)
         obj += ocp.lookup('delevatorCost',timestep=k)
+        obj += ocp.lookup('drudderCost',timestep=k)
         obj += ocp.lookup('dddrCost',timestep=k)
 
     ocp.setQuadratureDdt('mechanical_energy', 'mechanical_winch_power')
@@ -231,8 +237,8 @@ if __name__=='__main__':
     def plotResults():
 #        traj.subplot(['x','y','z'])
 #        traj.subplot(['dx','dy','dz'])
-#        traj.subplot([['aileron','elevator'],['daileron','delevator']],title='control surfaces')
-        traj.subplot([['dddr'],['daileron','delevator']],title='control surfaces')
+        traj.subplot(['aileron','elevator','rudder'],title='control surfaces')
+        traj.subplot([['dddr'],['daileron','delevator','drudder']],title='control surfaces')
         traj.subplot(['wind_at_altitude','dr'],title='')
 #        traj.subplot(['c','cdot','cddot'],title="invariants")
         traj.plot('airspeed',title='airspeed')
@@ -246,7 +252,7 @@ if __name__=='__main__':
 #        traj.subplot([['ddx','ddy','ddz'],['accel','accel without gravity']])
 #        traj.plot(["loyds_limit","loyds_limit_exact","neg_winch_power"])
 #        traj.plot(["loyd's limit","-(winch power)"],title='')
-        traj.subplot([['daileronCost'],['delevatorCost'],['dddrCost']])
+        traj.subplot(['daileronCost','delevatorCost','ddrCost','dddrCost'])
         traj.subplot(['r','dr','ddr','dddr'])
 #        traj.subplot(['w_bn_b_x','w_bn_b_y','w_bn_b_z'])
 #        traj.subplot(['e11','e12','e13','e21','e22','e23','e31','e32','e33'])

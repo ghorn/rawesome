@@ -37,6 +37,7 @@ conf = {#[env]
      #Yaw (report p. 76)
      'cYB': 0.05,
      'cYAB': 0.229,
+     'cYrudder': 0.5,
 
      #[kite]
      'mass':  4.5,

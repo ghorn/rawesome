@@ -231,9 +231,11 @@ def crosswindModel(conf):
               , 'ddr'
               , "aileron"
               , "elevator"
+              , "rudder"
               ] )
     dae.addU( [ "daileron"
               , "delevator"
+              , "drudder"
               , 'dddr'
               ] )
     dae.addP( ['w0'] )
@@ -247,8 +249,10 @@ def crosswindModel(conf):
     
     dae['aileron_deg']     = dae['aileron']*180/C.pi
     dae['elevator_deg']    = dae['elevator']*180/C.pi
+    dae['rudder_deg']      = dae['rudder']*180/C.pi
     dae['daileron_deg_s']  = dae['daileron']*180/C.pi
     dae['delevator_deg_s'] = dae['delevator']*180/C.pi
+    dae['drudder_deg_s']   = dae['drudder']*180/C.pi
 
     dae['tether_tension'] = dae['r']*dae['nu']
 
@@ -278,7 +282,8 @@ def crosswindModel(conf):
         dae.ddt('dr') - dae['ddr'],
         dae.ddt('ddr') - dae['dddr'],
         dae.ddt('aileron') - dae['daileron'],
-        dae.ddt('elevator') - dae['delevator']
+        dae.ddt('elevator') - dae['delevator'],
+        dae.ddt('rudder') - dae['drudder']
         ])
 
     # acceleration
