@@ -1,4 +1,3 @@
-print "ALPHA BETA COMPUTATION IN DEBUGGING MODE"
 conf = {#[env]
      'g': 9.81,  #  gravitational constant #  [ m /s^2]
      'rho': 1.23,  #  density of the air #  [ kg/m^3]
@@ -47,8 +46,8 @@ conf = {#[env]
      'lT': 0.4,
 
      # how alpha/beta computed
-     'alpha_beta_computation':'first_order',
-#     'alpha_beta_computation':'closed_form',
+#     'alpha_beta_computation':'first_order',
+     'alpha_beta_computation':'closed_form',
 
      'sref': 0.684,
      'bref': 2.904, #sqrt(sref*AR),

@@ -136,9 +136,7 @@ def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
     callback = rawe.telemetry.startTelemetry(ocp, conf, callbacks=[(rawekite.kiteTelemetry.showAllPoints,'multi-carousel')])
 
     # solver
-    solverOptions = [ ("expand_f",True)
-                    , ("expand_g",True)
-                    , ("generate_hessian",True)
+    solverOptions = [ ("expand",True)
 #                     ,("qp_solver",C.NLPQPSolver)
 #                     ,("qp_solver_options",{'nlp_solver': C.IpoptSolver, "nlp_solver_options":{"linear_solver":"ma57"}})
                     , ("linear_solver","ma57")

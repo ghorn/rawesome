@@ -435,27 +435,6 @@ class Coll():
         setFXOptions(nlp,constraintFunOpts)
         nlp.init()
 
-        print "COLLOCATION ONLY DOING DEBUGGING RIGHT NOW"
-        import numpy
-        nlp.setInput(100 + numpy.zeros(self._dvMap.vectorize().shape),'x')
-        nlp.evaluate()
-        print "objective:"
-        print nlp.output(0)
-
-        nlp.setAdjSeed(1.0,"f")
-        nlp.setAdjSeed(0.0,"g")
-        nlp.evaluate(0,1)
-        print "adjSens:"
-        print nlp.adjSens("x")
-
-        f = nlp.gradient("x","f")
-        f.init()
-        f.setInput(100 + numpy.zeros(self._dvMap.vectorize().shape))
-        f.evaluate()
-        print "gradient:"
-        print f.output()
-        import sys; sys.exit()
-
         # solver callback (optional)
         if callback is not None:
             nd = self._dvMap.vectorize().size()

@@ -225,9 +225,7 @@ if __name__=='__main__':
                 homoReg += ocp.lookup('t3_homotopy',timestep=k,nicpIdx=nicpIdx,degIdx=degIdx)**2
     obj += 1e-2*homoReg/float(ocp.nk*ocp.nicp*ocp.deg)
 
-    print "HOMOTOPY OBJECTIVE IN DEBUGGING MODE"
-    #ocp.setObjective( obj )
-    ocp.setObjective( 42 )
+    ocp.setObjective( obj )
 
     # initial guesses
     ocp.guess('w0',10)
@@ -246,6 +244,7 @@ if __name__=='__main__':
     # solver
     solverOptions = [("linear_solver","ma27"),
                      ("max_iter",1000),
+                     ("expand",True),
                      ("tol",1e-10)]
 
     print "setting up solver..."
@@ -255,8 +254,6 @@ if __name__=='__main__':
     xInit = None
     ocp.bound('gamma_homotopy',(1e-4,1e-4),force=True)
     traj = ocp.solve(xInit=xInit)
-    print "HOMOTOPY ONLY SOLVING AT ONE GAMMA"
-    import sys; sys.exit()
 
     ocp.bound('gamma_homotopy',(0,1),force=True)
     traj = ocp.solve(xInit=traj.getDvs())

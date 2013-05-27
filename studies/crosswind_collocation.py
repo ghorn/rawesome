@@ -179,9 +179,11 @@ if __name__=='__main__':
 
     # solver
     ipoptOptions = [("linear_solver","ma27"),
+                    ("expand",True),
                     ("max_iter",1000),
                     ("tol",1e-12)]
     worhpOptions = [("Max_Iter",5000),
+                    ("expand",True),
                     #("MaxIter",5000),
                     ("Timeout", 1e6),
                     ("UserHM", True),
