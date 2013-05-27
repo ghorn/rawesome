@@ -176,6 +176,27 @@ class Coll():
         self._quadratureManager.setQuadratureDdt(quadratureStateName,quadratureStateDotName,
                                                  self.lookup,self.lagrangePoly,self.h,self._dvMap.vectorize())
 
+        """
+        V = struct_msym([
+           entry("x",repeat=[N,nicp,deg+1],struct=struct(dae.xNames())),
+           entry("xN",struct=struct(dae.xNames())),
+           entry("z",repeat=[N,nicp,deg],struct=struct(dae.zNames())),
+           entry("u",repeat=N,struct=struct(dae.uNames())),
+           entry("p",struct=struct(dae.pNames()))
+        ])
+        
+        V.cat
+       
+        solution = V(solver.output())
+       
+        solution["x",:]
+       
+        lbx = V(0)
+        ubx = V(0)
+       
+        lbx["x",0] = ubx["x",0] = 123 
+        """
+
     def setupCollocation(self,tf):
         if self.collocationIsSetup:
             raise ValueError("you can't setup collocation twice")
