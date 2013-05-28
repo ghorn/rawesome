@@ -271,7 +271,7 @@ def carouselModel(conf,nSteps=None):
         dae.addX('delta')
         dae['cos_delta'] = C.cos(dae['delta'])
         dae['sin_delta'] = C.sin(dae['delta'])
-        dae_delta_residual = dae.ddt('delta') - dae['ddelta'],
+        dae_delta_residual = dae.ddt('delta') - dae['ddelta']
 
     elif conf['delta_parameterization'] == 'cos_sin':
         dae.addX("cos_delta")
