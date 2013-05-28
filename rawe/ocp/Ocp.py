@@ -234,42 +234,6 @@ class Ocp(object):
         return exportOcp.exportOcp(self, ocpOptions, integratorOptions,
                                    codegenOptions, phase1Options)
 
-class Mhe(Ocp):
-    @property
-    def yNames(self):
-        return self._yNames
-    @property
-    def yNNames(self):
-        return self._yNNames
-    @property
-    def y(self):
-        return self._y
-    @property
-    def yN(self):
-        return self._yN
-    def __init__(self, dae, N=None, ts=None, yNames=None, yNNames=None):
-        Ocp.__init__(self, dae, N=N, ts=ts)
-        self.hashPrefix = 'mhe'
-
-        if yNames is None:
-            yNames = dae.xNames() + dae.uNames()
-        if yNNames is None:
-            yNNames = dae.xNames()
-        if not isinstance(yNames,list):
-            raise Exception("If you decide to provide measurements, "+\
-                            "you have to provide them as a list of strings")
-        if not isinstance(yNNames,list):
-            raise Exception("If you decide to provide end measurements, "+\
-                            "you have to provide them as a list of strings")
-        self._yNames = yNames
-        self._yNNames = yNNames
-
-        self._y  = C.veccat( [self[n] for n in self.yNames] )
-        Ocp.minimizeLsq(self,self.y)
-        self._yN  = C.veccat( [self[n] for n in self.yNNames] )
-        Ocp.minimizeLsqEndTerm(self,self.yN)
-
-
 
 class Mpc(Ocp):
     @property
@@ -310,3 +274,39 @@ class Mpc(Ocp):
         raise Exception("hey, you don't know this is Ocp, the LSQ to be minimized is [X,U]")
     def minimizeLsqEndTerm(self, obj):
         raise Exception("hey, you don't know this is Ocp, the terminal cost is LSQ of X")
+
+
+class Mhe(Ocp):
+    @property
+    def yNames(self):
+        return self._yNames
+    @property
+    def yNNames(self):
+        return self._yNNames
+    @property
+    def y(self):
+        return self._y
+    @property
+    def yN(self):
+        return self._yN
+    def __init__(self, dae, N=None, ts=None, yNames=None, yNNames=None):
+        Ocp.__init__(self, dae, N=N, ts=ts)
+        self.hashPrefix = 'mhe'
+
+        if yNames is None:
+            yNames = dae.xNames() + dae.uNames()
+        if yNNames is None:
+            yNNames = dae.xNames()
+        if not isinstance(yNames,list):
+            raise Exception("If you decide to provide measurements, "+\
+                            "you have to provide them as a list of strings")
+        if not isinstance(yNNames,list):
+            raise Exception("If you decide to provide end measurements, "+\
+                            "you have to provide them as a list of strings")
+        self._yNames = yNames
+        self._yNNames = yNNames
+
+        self._y  = C.veccat( [self[n] for n in self.yNames] )
+        Ocp.minimizeLsq(self,self.y)
+        self._yN  = C.veccat( [self[n] for n in self.yNNames] )
+        Ocp.minimizeLsqEndTerm(self,self.yN)
