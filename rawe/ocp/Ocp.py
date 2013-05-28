@@ -248,22 +248,12 @@ class Mpc(Ocp):
     @property
     def yN(self):
         return self._yN
-    def __init__(self, dae, N=None, ts=None, yNames=None, yNNames=None):
+    def __init__(self, dae, N=None, ts=None):
         Ocp.__init__(self, dae, N=N, ts=ts)
         self.hashPrefix = 'mpc'
 
-        if yNames is None:
-            yNames = dae.xNames() + dae.uNames()
-        if yNNames is None:
-            yNNames = dae.xNames()
-        if not isinstance(yNames,list):
-            raise Exception("If you decide to provide measurements, "+\
-                            "you have to provide them as a list of strings")
-        if not isinstance(yNNames,list):
-            raise Exception("If you decide to provide end measurements, "+\
-                            "you have to provide them as a list of strings")
-        self._yNames = yNames
-        self._yNNames = yNNames
+        self._yNames = dae.xNames() + dae.uNames()
+        self._yNNames = dae.xNames()
 
         self._y  = C.veccat( [self[n] for n in self.yNames] )
         Ocp.minimizeLsq(self,self.y)
