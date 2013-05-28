@@ -222,7 +222,30 @@ class OcpRT(object):
         self._lib.initializeNodesByForwardSimulation()
         self._getAll()
 
-    def simpleShiftXZU(self):
+    def shiftXZU(self,strategy='simulate', xEnd=None, uEnd=None):
+        null_ptr = ctypes.POINTER(ctypes.c_double)()
+        if strategy == 'copy':
+            stratN = 1
+        elif strategy == 'simulate':
+            stratN = 2
+        else:
+            raise Exception('strategy: "'+str(strategy)+'" must be {simulate,copy}')
+
+        if xEnd is None:
+            xptr = null_ptr
+        else:
+            xptr = ctypes.c_void_p(numpy.ascontiguousarray(xEnd, dtype=numpy.double).ctypes.data)
+        if uEnd is None:
+            uptr = null_ptr
+        else:
+            uptr = ctypes.c_void_p(numpy.ascontiguousarray(uEnd, dtype=numpy.double).ctypes.data)
+
+        self._setAll()
+        self._lib.shiftStates(stratN, xptr, uptr)
+        self._lib.shiftControls(uptr)
+        self._getAll()
+
+    def pythonShiftXZU(self):
         '''
         There are N+1 states and N controls/alg vars in the trajectory.
         Integrate the Nth state forward using the (N-1)th control.
