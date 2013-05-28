@@ -34,7 +34,8 @@ class OcpRT(object):
                  ocpOptions=None,
                  integratorOptions=None,
                  codegenOptions=None,
-                 phase1Options=None):
+                 phase1Options=None,
+                 integratorMeasurements=None):
         if ocpOptions is None:
             ocpOptions=OcpExportOptions(),
         if integratorOptions is None:
@@ -43,6 +44,7 @@ class OcpRT(object):
             codegenOptions={}
         if phase1Options is None:
             phase1Options={}
+
         assert isinstance(ocp, Ocp), "OcpRT must be given an Ocp object, you gave: "+str(type(ocp))
 
         self._ocp = ocp
@@ -113,7 +115,8 @@ class OcpRT(object):
 
         # export integrator
         self._integrator = rawe.RtIntegrator(self.ocp.dae, ts=self.ocp.ts,
-                                             options=integratorOptions)
+                                             options=integratorOptions,
+                                             measurements=integratorMeasurements)
         self._integratorOptions = integratorOptions
 
     def xNames(self):
@@ -539,7 +542,8 @@ class MheRT(OcpRT):
                        ocpOptions=ocpOptions,
                        integratorOptions=integratorOptions,
                        codegenOptions=codegenOptions,
-                       phase1Options=phase1Options)
+                       phase1Options=phase1Options,
+                       integratorMeasurements=ocp.y)
 
         # set up measurement functions
         self._yFun  = C.SXFunction([ocp.dae.xVec(), ocp.dae.uVec()], [C.densify(self.ocp.y)])
