@@ -221,10 +221,10 @@ class OcpRT(object):
 
     def simpleShiftXZU(self):
         '''
-        There are N states and N-1 controls/alg vars in the trajectory.
+        There are N+1 states and N controls/alg vars in the trajectory.
         Integrate the Nth state forward using the (N-1)th control.
         '''
-        self._integrator.x = self.x[-2,:]
+        self._integrator.x = self.x[-1,:]
         self._integrator.z = self.z[-1,:]
         self._integrator.u = self.u[-1,:]
         self._integrator.p = {}
@@ -241,9 +241,9 @@ class OcpRT(object):
 
     def simpleShiftReference(self,y_Nm1, yN):
         '''
-        There are N-1 measurements y and an Nth measurement of different size yN
-        Given a new final y and a new yN, firs shift y_{1..N-1} to y_{0..N-2}
-        and then put the new y_{N-1} and yN in.
+        There are N measurements y and an Nth measurement of different size yN
+        Given a new final y and a new yN, first shift y_{1..N-1} to y_{0..N-2}
+        and then put the new given y_{N-1} and yN in.
         '''
         self.y[:-1,:] = self.y[1:,:]
         self.y[-1,:] = y_Nm1
