@@ -25,8 +25,8 @@ import rawe
 import rawekite
 
 numLoops=1
-#powerType = 'electrical'
-powerType = 'mechanical'
+#powerType = 'mechanical'
+powerType = 'electrical'
 
 def setupOcp(dae,conf,nk,nicp,deg,collPoly):
     def addCosts():
@@ -76,7 +76,7 @@ def setupOcp(dae,conf,nk,nicp,deg,collPoly):
             for j in range(0,ocp.deg+1):
                 ocp.constrainBnds(ocp.lookup('alpha_deg',timestep=k,degIdx=j), (-8.5,9.5), tag=('alpha(deg)',k))
 
-            ocp.constrainBnds(ocp.lookup('beta_deg', timestep=k), (-1,1), tag=('beta(deg)',k))
+            ocp.constrainBnds(ocp.lookup('beta_deg', timestep=k), (-5,5), tag=('beta(deg)',k))
     constrainAirspeedAlphaBeta()
     #def constrainCl():
     #    for k in range(0,nk):
@@ -191,13 +191,14 @@ if __name__=='__main__':
     ocp = setupOcp(dae,conf,nk,nicp,deg,collPoly)
 
     # spawn telemetry thread
-    callback = rawe.telemetry.startTelemetry(ocp, conf, callbacks=[(rawekite.kiteTelemetry.showAllPoints,'multi-carousel')])
+#    callback = rawe.telemetry.startTelemetry(ocp, conf, callbacks=[(rawekite.kiteTelemetry.showAllPoints,'multi-carousel')])
+    callback = rawe.telemetry.startTelemetry(ocp, conf, callbacks=[(rawekite.kiteTelemetry.normalCallback,'multi-carousel')])
 #    callback = rawe.telemetry.startTelemetry(ocp, conf, callbacks=[(rawekite.kiteTelemetry.showAllPoints,'multi-carousel')], printBoundViolation=True, printConstraintViolation=True)
 
     # solver
     ipoptOptions = [("linear_solver","ma27"),
                     ("expand",True),
-                    ("max_iter",1000),
+                    ("max_iter",2000),
                     ("tol",1e-12)]
     worhpOptions = [("Max_Iter",5000),
                     ("expand",True),
@@ -217,14 +218,11 @@ if __name__=='__main__':
                      callback=callback )
 
     ocp.interpolateInitialGuess("data/crosswind_homotopy.dat",force=True,quiet=True,numLoops=numLoops)
-#    ocp.interpolateInitialGuess("data/crosswind_opt_3_loops.dat",force=True,quiet=True,numLoops=numLoops)
-#    ocp.interpolateInitialGuess("data/crosswind_opt_3_loops_mechanical.dat",force=True,quiet=True,numLoops=1)
+    ocp.interpolateInitialGuess('data/crosswind_opt_'+powerType+'_1_loops.dat',
+                                force=True,quiet=True,numLoops=numLoops)
 #    ocp.interpolateInitialGuess("data/crosswind_opt.dat",force=True,quiet=True,numLoops=numLoops)
 
     traj = ocp.solve()
-#    from rawe.collocation import trajectory
-#    traj = trajectory.TrajectoryPlotter(ocp,numpy.array(ocp._guess.vectorize()))
-
 
     print "num loops: "+str(numLoops)
     print "optimizing "+powerType
@@ -232,9 +230,9 @@ if __name__=='__main__':
     print "optimal electrical power: "+str(traj.lookup('electrical_energy',-1)/traj.lookup('endTime'))
     print "endTime: "+str(traj.lookup('endTime'))
 
-    traj.save("data/crosswind_opt_"+powerType+".dat")
-#    traj.save("data/crosswind_opt_3_loops.dat")
-#    traj.save("data/crosswind_opt_3_loops_electrical.dat")
+    traj.saveMat('data/crosswind_opt_'+powerType+'_'+str(numLoops)+'_loops.mat',
+                 dataname='crosswind_opt_'+powerType+'_'+str(numLoops)+'_loops')
+    traj.save('data/crosswind_opt_'+powerType+'_'+str(numLoops)+'_loops.dat')
 
     def printBoundsFeedback():
         xOpt = traj.dvMap.vectorize()
@@ -271,7 +269,7 @@ if __name__=='__main__':
 #        traj.subplot([['ddx','ddy','ddz'],['accel','accel without gravity']])
 #        traj.plot(["loyds_limit","loyds_limit_exact","neg_winch_power"])
 #        traj.plot(["loyd's limit","-(winch power)"],title='')
-        traj.subplot(['daileronCost','delevatorCost','ddrCost','dddrCost'])
+        traj.subplot(['daileronCost','delevatorCost','dddrCost'])
         traj.subplot(['r','dr','ddr','dddr'])
 #        traj.subplot(['w_bn_b_x','w_bn_b_y','w_bn_b_z'])
 #        traj.subplot(['e11','e12','e13','e21','e22','e23','e31','e32','e33'])
