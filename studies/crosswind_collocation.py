@@ -76,7 +76,7 @@ def setupOcp(dae,conf,nk,nicp,deg,collPoly):
             for j in range(0,ocp.deg+1):
                 ocp.constrainBnds(ocp.lookup('alpha_deg',timestep=k,degIdx=j), (-8.5,9.5), tag=('alpha(deg)',k))
 
-            ocp.constrainBnds(ocp.lookup('beta_deg', timestep=k), (-5,5), tag=('beta(deg)',k))
+#            ocp.constrainBnds(ocp.lookup('beta_deg', timestep=k), (-5,5), tag=('beta(deg)',k))
     constrainAirspeedAlphaBeta()
     #def constrainCl():
     #    for k in range(0,nk):
@@ -144,7 +144,7 @@ def setupOcp(dae,conf,nk,nicp,deg,collPoly):
 
 #    ocp.bound('endTime',(0.5,12))
     ocp.bound('endTime',(0.5,numLoops*7.5))
-    ocp.bound('w0',(4,4))
+    ocp.bound('w0',(10,10))
 
     # boundary conditions
     ocp.bound('y',(0,0),timestep=0,quiet=True)
@@ -199,7 +199,7 @@ if __name__=='__main__':
     ipoptOptions = [("linear_solver","ma27"),
                     ("expand",True),
                     ("max_iter",2000),
-                    ("tol",1e-12)]
+                    ("tol",1e-10)]
     worhpOptions = [("Max_Iter",5000),
                     ("expand",True),
                     #("MaxIter",5000),
@@ -218,9 +218,10 @@ if __name__=='__main__':
                      callback=callback )
 
     ocp.interpolateInitialGuess("data/crosswind_homotopy.dat",force=True,quiet=True,numLoops=numLoops)
-    ocp.interpolateInitialGuess('data/crosswind_opt_'+powerType+'_1_loops.dat',
-                                force=True,quiet=True,numLoops=numLoops)
+#    ocp.interpolateInitialGuess('data/crosswind_opt_'+powerType+'_1_loops.dat',
+#                                force=True,quiet=True,numLoops=numLoops)
 #    ocp.interpolateInitialGuess("data/crosswind_opt.dat",force=True,quiet=True,numLoops=numLoops)
+#    ocp.interpolateInitialGuess("data/crosswind_opt_electrical_2_loops.dat",force=True,quiet=True,numLoops=1)
 
     traj = ocp.solve()
 
