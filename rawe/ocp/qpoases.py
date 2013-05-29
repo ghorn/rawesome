@@ -30,8 +30,8 @@ def mkMakefile(cgOptions, qposrc):
     makefile = """\
 CXX      = %(CXX)s
 CC       = %(CC)s
-CXXFLAGS = -O3 -fPIC -finline-functions%(cxx_visibility)s
-CFLAGS   = -O3 -fPIC -finline-functions%(c_visibility)s
+CXXFLAGS = %(CXXFLAGS)s%(cxx_visibility)s
+CFLAGS   = %(CFLAGS)s%(c_visibility)s
 
 #CFLAGS   += -Wall -Wextra
 #CXXFLAGS += -Wall -Wextra
@@ -110,6 +110,7 @@ clean :
 \t@echo rm -f ocp.a $(CXX_OBJ) $(C_OBJ) ocp.so
 \t@rm -f ocp.a ocp.so ocp.o $(CXX_OBJ) $(C_OBJ)
 """ % {'CXX':cgOptions['CXX'], 'CC':cgOptions['CC'],
+       'CXXFLAGS':cgOptions['CXXFLAGS'], 'CFLAGS':cgOptions['CFLAGS'],
        'c_visibility':c_visibility,
        'cxx_visibility':cxx_visibility,
        'qpo_src':qposrc}
