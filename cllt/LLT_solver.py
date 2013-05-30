@@ -3,8 +3,65 @@ import pylab
 import numpy
 import scipy.linalg
 
+def woohoo(operAlpha, aIncFromZeroLift, aIncGeometric, lltCLa, lltTheta, lltChord, n, geomAR, geomBref):
+    alphaFromZeroLift = operAlpha + aIncFromZeroLift
+    alphaGeometric    = operAlpha + aIncGeometric
 
-def LLT_sovler(operAseq, operRates, geomRoot, geomTip, aeroCLaRoot, aeroCLaTip):
+    #
+    #setup function to obtain B and RHS for the Fourier series calc
+    #
+    def getBandRHS(iterAlphaiLoc):
+        iterAlphaLoc    = alphaFromZeroLift - iterAlphaiLoc
+        lltAlphaLoc     = alphaGeometric    - iterAlphaiLoc
+        iterCLALoc   = (lltCLa[0,:]*lltAlphaLoc[:]**3 + lltCLa[1,:]*lltAlphaLoc[:]**2 + lltCLa[2,:]*lltAlphaLoc[:] + lltCLa[3,:])/(iterAlphaLoc[:])
+        RHS             = iterAlphaLoc*numpy.sin(lltTheta)*lltChord*iterCLALoc/(4.*geomBref)
+        B               = numpy.zeros((n,n))
+        mu              = lltChord * iterCLALoc/(4.*geomBref)
+        for i in range(n):
+            l       = float(2*i+1)
+            B[:,i]  = numpy.sin(l*lltTheta)*(mu*l+numpy.sin(lltTheta))
+        return (B,RHS)
+
+    iterAlphaiLoc   = (lltCLa[0,:]*alphaGeometric[:]**3 + lltCLa[1,:]*alphaGeometric[:]**2 + lltCLa[2,:]*alphaGeometric[:] + lltCLa[3,:])/(numpy.pi*geomAR)
+
+    #
+    #iterate to solve for Fourier Coefficients
+    #
+    iterConvCrit    = 1e-6
+    iterResAlphai   = 10
+    while iterResAlphai > iterConvCrit:
+        iterAlphaiLocOld = numpy.copy(iterAlphaiLoc)
+        (iterB, iterRHS)    = getBandRHS(iterAlphaiLoc)
+        iterAn              = scipy.linalg.solve(iterB, iterRHS)
+        #
+        #calculate induced alphas
+        #
+        sumN = numpy.linspace(1,2*n+1,num=n,endpoint=True)
+        for i in range(n):
+            iterAlphaiLoc[i] = sum(sumN*iterAn*numpy.sin(sumN*lltTheta[i])/numpy.sin(lltTheta[i]))
+        #
+        #update local alphas and calculate residuals
+        #
+        iterResAlphai   = numpy.max(numpy.absolute(iterAlphaiLocOld - iterAlphaiLoc))
+        print 'Residual = ', iterResAlphai
+    #
+    #Compute CL
+    #
+    CL  = iterAn[0]*numpy.pi*geomAR
+    #print CL, iterAn[0]
+    #
+    #Compute CDi
+    #
+    CD0 = 1
+    if iterAn[0] != 0:
+        for i in range(1,n):
+            CD0 = CD0 + (2.*i+1)*iterAn[i]**2/(iterAn[0]**2)
+    CDi     = numpy.pi*geomAR*iterAn[0]**2*CD0
+
+    return (CL, CDi, iterAn)
+
+
+def LLT_sovler(operAlphaDegLst, operRates, geomRoot, geomTip, aeroCLaRoot, aeroCLaTip):
     #setup defining variables from inputs
     #
     #geomRoot is a 1x3 vector containing chord, span location and angle of incidence
@@ -15,19 +72,17 @@ def LLT_sovler(operAseq, operRates, geomRoot, geomTip, aeroCLaRoot, aeroCLaTip):
     geomTipChord    = geomTip[0]
     geomTipY        = geomTip[1]
     geomTipAinc     = numpy.radians(geomTip[2])
-    geomBref        = 2*(geomTipY-geomRootY)                                                     #reference span for A/C
-    geomCref        = 0.5*(geomRootChord+geomTipChord)                                       #reference chord for A/c
+    geomBref        = 2*(geomTipY-geomRootY) #reference span for A/C
+    geomCref        = 0.5*(geomRootChord+geomTipChord)  #reference chord for A/c
     geomSref        = (geomBref*geomTipChord)+(0.5*geomBref*abs(geomRootChord-geomTipChord)) #reference wing surface area (projected)
-    geomAR          = (geomBref**2)/geomSref                                                   #Aspect ratio Bref^2/Sref
+    geomAR          = (geomBref**2)/geomSref  #Aspect ratio Bref^2/Sref
     #
     #aeroCLaRoot and aeroCLaTip are 1x4 vectors, containing coefficients for a cubic polynomial describing a curve representing
     #the function CL(Alpha) for a 2D airfoil. Once this polynomial is setup, we perform an analytical differentiation to obtain
     #curves for CL_alpha(Alpha), ie, the lift slope as a function of Alpha
     #
-    aeroCLAaRoot    = numpy.zeros(3)
-    aeroCLAaTip     = numpy.zeros(3)
-    aeroCLAaRoot[:] = [3*aeroCLaRoot[0], 2*aeroCLaRoot[1], 1*aeroCLaRoot[2]]
-    aeroCLAaTip[:]  = [3*aeroCLaTip[0], 2*aeroCLaTip[1], 1*aeroCLaTip[2]]
+    aeroCLAaRoot = numpy.array([3*aeroCLaRoot[0], 2*aeroCLaRoot[1], 1*aeroCLaRoot[2]])
+    aeroCLAaTip  = numpy.array([3*aeroCLaTip[0], 2*aeroCLaTip[1], 1*aeroCLaTip[2]])
     #
     #Now the minimum absolute root of the polynomial for CLa provides us the zero-lift andgles
     #
@@ -38,16 +93,17 @@ def LLT_sovler(operAseq, operRates, geomRoot, geomTip, aeroCLaRoot, aeroCLaTip):
     #
     #operAlpha is a 1x3 vector containing initial alpha, final alpha and alpha increment for a sweep.
     #
-    operAseqMin     = numpy.radians(operAseq[0])
-    operAseqMax     = numpy.radians(operAseq[1])
-    operAseqIncr    = numpy.radians(operAseq[2])
+#    operAseqMin     = numpy.radians(operAseq[0])
+#    operAseqMax     = numpy.radians(operAseq[1])
+#    operAseqIncr    = numpy.radians(operAseq[2])
     #
     #now let's setup the range of alphas we are going to run this calc over
-    operAlphaLst = []
-    tempAlpha = operAseqMin
-    while tempAlpha < (operAseqMax + operAseqIncr / 10):
-        operAlphaLst.append(tempAlpha)
-        tempAlpha = tempAlpha + operAseqIncr
+#    operAlphaLst = []
+#    tempAlpha = operAseqMin
+#    while tempAlpha < (operAseqMax + operAseqIncr / 10):
+#        operAlphaLst.append(tempAlpha)
+#        tempAlpha = tempAlpha + operAseqIncr
+    operAlphaLst = [numpy.radians(x)+1e-18 for x in operAlphaDegLst]
     #################Alpha hard set option
     #operAlphaLst=[0]
     ##########################################
@@ -55,15 +111,13 @@ def LLT_sovler(operAseq, operRates, geomRoot, geomTip, aeroCLaRoot, aeroCLaTip):
     #
     #Before we start iterating, let's setup lists for storing lift and induced drag
     #
-    operCLLst   = numpy.zeros(len(operAlphaLst))
-    operCDiLst  = numpy.zeros(len(operAlphaLst))
+    operCLLst   = []
+    operCDiLst  = []
     #
     #Next, lets choose the number of spanwise stations (and hence number of Fourier series terms) that we will divide each half wing into
     #We will also pick a suitable convergence criterion for the non-linear iteration and a relaxation factor to aid convergence
     #
-    n               = 20
-    iterConvCrit    = 0.0000001
-    relax           = 1
+    n = 20
     #
     #Finally, let's create n span stations at which LLT equations will be solved and define some fixed wing properties at each station
     #
@@ -73,93 +127,18 @@ def LLT_sovler(operAseq, operRates, geomRoot, geomTip, aeroCLaRoot, aeroCLaTip):
     iterAinc    = geomRootAinc - (aeroAlphaCLoRoot + 2.*(aeroAlphaCLoTip - aeroAlphaCLoRoot + geomRootAinc - geomTipAinc)*lltY/geomBref)
     lltAinc     = geomRootAinc - (2.*(geomRootAinc - geomTipAinc)*lltY/geomBref)
     lltCLa      = numpy.zeros((4,n))    #setup lift slope curves for each station
-    for i in range(n):                  
+    for i in range(n):
         lltCLa[:,i]    = aeroCLaRoot[:] + 2.*(aeroCLaTip[:] - aeroCLaRoot[:])*lltY[i]/geomBref
     #
     #Now let's iterate over the Alphas and solve LLT equations to obtain lift for each one
     #
-    operCounter=0
     for operAlpha in operAlphaLst:
         print 'Current Alpha = ', numpy.degrees(operAlpha)
-        iterAlpha       = operAlpha + iterAinc
-        lltAlpha        = operAlpha + lltAinc
-        iterResAlphai    = 10
-        iterAlphaLoc    = numpy.zeros(n) + iterAlpha
-        lltAlphaLoc     = numpy.zeros(n) + lltAlpha
-        #print 'Local Alpha = ', numpy.degrees(iterAlphaLoc)
-        iterCLALoc      = numpy.zeros(n)
-        iterCLLoc       = numpy.zeros(n)
-        iterAlphaiLoc   = numpy.zeros(n)
-        diffAlphaiLoc   = numpy.zeros(n)
-        tempAlphaiLoc   = numpy.zeros(n)
-        iterAlphaiLoc[:]= (lltCLa[0,:]*lltAlphaLoc[:]**3 + lltCLa[1,:]*lltAlphaLoc[:]**2 + lltCLa[2,:]*lltAlphaLoc[:] + lltCLa[3,:])/(numpy.pi*geomAR)
-        iterAlphaLoc    = iterAlphaLoc - iterAlphaiLoc
-        lltAlphaLoc     = lltAlphaLoc - iterAlphaiLoc
-        #
-        #setup n x n system of equations for Fourier coefficients A1, A3, ..., A2n-1
-        #B*An=RHS
-        #
-        iterAn  = numpy.zeros(n)
-        iterB   = numpy.zeros((n,n))
-        iterRHS = numpy.zeros(n)
-        #
-        #iterate to solve for Fourier Coefficients
-        #
-        iterCount=0
-        while iterResAlphai > iterConvCrit:
-        
-            tempAlphaiLoc=iterAlphaiLoc
-            #
-            #setup function to obtain B and RHS for the Fourier series calc
-            #
-            def getBandRHS(iterAlphaLoc, lltAlphaLoc):
-                iterCLALoc[:]   = (lltCLa[0,:]*lltAlphaLoc[:]**3 + lltCLa[1,:]*lltAlphaLoc[:]**2 + lltCLa[2,:]*lltAlphaLoc[:] + lltCLa[3,:])/(iterAlphaLoc[:])
-                RHS             = iterAlphaLoc*numpy.sin(lltTheta)*lltChord*iterCLALoc/(4.*geomBref)
-                B               = numpy.zeros((n,n))
-                mu              = lltChord * iterCLALoc/(4.*geomBref)
-                for i in range(n):
-                    l       = float(2*i+1)
-                    B[:,i]  = numpy.sin(l*lltTheta)*(mu*l+numpy.sin(lltTheta))
-                return (B,RHS)
-            #
-            #end function
-            #    
-            (iterB, iterRHS)    = getBandRHS(iterAlphaLoc, lltAlphaLoc)
-            iterAn              = scipy.linalg.solve(iterB, iterRHS)
-            #
-            #calculate induced alphas
-            #
-            sumN            = numpy.linspace(1,2*n+1,num=n,endpoint=True)
-            for i in range(n):
-                iterAlphaiLoc   = sum(sumN*iterAn*numpy.sin(sumN*lltTheta[i])/numpy.sin(lltTheta[i]))
-            #print numpy.degrees(iterAlphaiLoc)
-            #
-            #update local alphas and calculate residuals
-            #
-            diffAlphaiLoc   = tempAlphaiLoc - iterAlphaiLoc
-            #print numpy.degrees(diffAlphaiLoc)
-            iterAlphaLoc    = iterAlphaLoc - relax*diffAlphaiLoc
-            lltAlphaLoc     = lltAlphaLoc - relax*diffAlphaiLoc
-            iterResAlphai   = numpy.max(numpy.absolute(diffAlphaiLoc))
-            print 'Residual = ', iterResAlphai
-            iterCount=iterCount+1
-        print iterCount
-        #
-        #Compute CL
-        #
-        CL  = iterAn[0]*numpy.pi*geomAR
-        #print CL, iterAn[0]
-        operCLLst[operCounter]=CL
-        #
-        #Compute CDi
-        #
-        CD0 = 1
-        if iterAn[0] != 0:
-            for i in range(1,n):
-                CD0 = CD0 + (2.*i+1)*iterAn[i]**2/(iterAn[0]**2)
-        CDi     = numpy.pi*geomAR*iterAn[0]**2*CD0
-        operCDiLst[operCounter]=CDi
-        operCounter=operCounter+1
+        (CL, CDi, iterAn) = woohoo(operAlpha, iterAinc, lltAinc, lltCLa, lltTheta, lltChord, n, geomAR, geomBref)
+        operCLLst.append(CL)
+        operCDiLst.append(CDi)
+    operCLLst = numpy.array(operCLLst)
+    operCDiLst = numpy.array(operCDiLst)
     #
     #plot polar
     #
@@ -167,18 +146,12 @@ def LLT_sovler(operAseq, operRates, geomRoot, geomTip, aeroCLaRoot, aeroCLaTip):
     pylab.xlabel('Alpha')
     pylab.ylabel('CL')
     pylab.show()
-    pylab.plot(numpy.degrees(operAlphaLst),operCDiLst,'r',numpy.degrees(operAlphaLst),operCLLst[:]**2/(numpy.pi*geomAR),'b',numpy.degrees(operAlphaLst),(operCLLst[:]*(geomAR+2)/geomAR)**2/(numpy.pi*geomAR),'g')
+    pylab.plot(numpy.degrees(operAlphaLst),operCDiLst,'r',numpy.degrees(operAlphaLst),operCLLst[:]**2/(numpy.pi*geomAR),'b')
+    pylab.legend(['llt CDi','flat plate CDi'])
     pylab.xlabel('Alpha')
     pylab.ylabel('CDi')
-    pylab.show()    
+    pylab.show()
     pylab.plot(operCDiLst,operCLLst)
     pylab.xlabel('CDi')
     pylab.ylabel('CL')
-    pylab.show()  
-
-            
-
-
-
-        
-    
+    pylab.show()
