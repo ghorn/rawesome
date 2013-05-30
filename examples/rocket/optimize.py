@@ -17,8 +17,11 @@
 
 import matplotlib.pyplot as plt
 
+import rawe
 from rawe.collocation import Coll
 import rocket_dae
+from autogen.torocketProto import toProto
+from autogen.rocket_pb2 import Trajectory
 
 if __name__ == "__main__":
     dae = rocket_dae.makeDae()
@@ -65,8 +68,14 @@ if __name__ == "__main__":
     ocp.setObjective(obj)
 #    ocp.setObjective(ocp.lookup('integral vel*vel',timestep=-1))
 
+    callback = rawe.telemetry.startTelemetry(
+        ocp, callbacks=[
+            (rawe.telemetry.trajectoryCallback(toProto, Trajectory), 'rocket trajectory')
+        ])
+
     solverOptions = [ ("tol",1e-9) ]
-    ocp.setupSolver(solverOpts=solverOptions)
+    ocp.setupSolver(solverOpts=solverOptions,
+                    callback=callback)
 
 #    ocp.interpolateInitialGuess("data/rocket_opt.dat",force=True,quiet=True,numLoops=1)
     traj = ocp.solve()

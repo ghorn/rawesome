@@ -66,13 +66,13 @@ message Dae {
   required DifferentialStates differentialStates = 1;
   optional AlgebraicVars algebraicVars = 2;
   required Controls controls = 3;
-  required Parameters parameters = 4;
+  optional Parameters parameters = 4;
   optional Outputs outputs = 5;
 }
 
 message Trajectory {
   repeated Dae traj = 1;
-  required int32 iteration = 2;
+  optional int32 iteration = 2;
   repeated string messages = 3;
 }
 '''
@@ -82,22 +82,24 @@ def writePythonGenerator(topname,dae):
     lines = ['import '+topname+'_pb2']
     lines.append('')
     lines.append('def toProto(lookup):')
-    lines.append('    dkp = '+topname+'_pb2.'+topname+'State()')
+    lines.append('    dkp = '+topname+'_pb2.Dae()')
     lines.append('')
-    for (field,names) in [('x',dae.xNames()),
-                          ('u',dae.uNames()),
-                          ('p',dae.pNames())]:
+    for (field,names) in [('differentialStates',dae.xNames()),
+                          ('controls',dae.uNames()),
+                          ('parameters',dae.pNames())]:
+        lines.append('    # '+field)
         for name in names:
             lines.append('    dkp.'+field+'.'+name+' = lookup(\''+name+'\')')
         lines.append('')
-    for (field,names) in [('z',dae.zNames()),
-                          ('outs',dae.outputNames())]:
+    for (field,names) in [('algebraicVars',dae.zNames()),
+                          ('outputs',dae.outputNames())]:
+        lines.append('    # '+field)
         for name in names:
             lines.append('    try:')
             lines.append('        dkp.'+field+'.'+name+' = lookup(\''+name+'\')')
             lines.append('    except Exception:')
             lines.append('        pass')
-    lines.append('')
+        lines.append('')
     lines.append('    return dkp')
     return ('\n'.join(lines)).strip()+'\n'
 

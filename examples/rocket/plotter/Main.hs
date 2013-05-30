@@ -17,7 +17,6 @@
 
 {-# OPTIONS_GHC -Wall #-}
 {-# Language CPP #-}
-{-# Language DoAndIfThenElse #-}
 {-# Language TemplateHaskell #-}
 
 module Main ( main ) where
@@ -28,7 +27,7 @@ import qualified System.ZMQ3 as ZMQ
 import qualified System.ZMQ as ZMQ
 #endif
 import qualified Control.Concurrent as CC
-import Control.Monad ( forever )
+import Control.Monad ( when, forever )
 import qualified Data.ByteString.Lazy as BL
 import qualified Text.ProtocolBuffers as PB
 
@@ -65,11 +64,9 @@ sub ip writeChan name = withContext $ \context -> do
     forever $ do
       _ <- receive subscriber
       mre <- ZMQ.moreToReceive subscriber
-      if mre
-      then do
+      when mre $ do
         msg <- receive subscriber
         let cs = case PB.messageGet (BL.fromChunks [msg]) of
               Left err -> error err
               Right (cs',_) -> cs'
         writeChan cs
-      else return ()
