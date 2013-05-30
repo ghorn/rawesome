@@ -48,7 +48,7 @@ alpha = zeros(0,0);
 beta  = zeros(0,0);
 CD    = zeros(0,0);
 for k=1:n
-    if adat.Alpha(k) >= -4.5 && adat.Alpha(k) <= 8.5
+    if adat.Alpha(k) >= -4.5 && adat.Alpha(k) <= 9.5
         alpha = [alpha; adat.Alpha(k)];
         beta = [beta; adat.Beta(k)];
         CD = [CD; adat.CD_tot(k)];
