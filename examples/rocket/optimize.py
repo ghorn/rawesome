@@ -17,26 +17,12 @@
 
 import matplotlib.pyplot as plt
 
-from rawe.dae import Dae
 from rawe.collocation import Coll
+import rocket_dae
 
 if __name__ == "__main__":
-    ######## make the Dae #######
-    dae = Dae()
+    dae = rocket_dae.makeDae()
 
-    [pos,vel,mass] = dae.addX( ["pos","vel","mass"] )
-    thrust = dae.addU( "thrust" )
-    
-    # some extra outputs for the dae model
-    dae['posvel'] = pos*vel
-    dae['velvel'] = vel*vel
-
-    # specify the ode residual
-    dae.setResidual([dae.ddt('pos') - vel,
-                     dae.ddt('vel') - thrust/mass,
-                     dae.ddt('mass') - 0.1*thrust*thrust])
-
-    ######## make the collocation scheme ########
     N = 100
     ocp = Coll(dae, nk=N, nicp=1, collPoly="RADAU", deg=4)
 
@@ -84,21 +70,6 @@ if __name__ == "__main__":
 
 #    ocp.interpolateInitialGuess("data/rocket_opt.dat",force=True,quiet=True,numLoops=1)
     traj = ocp.solve()
-
-#    maxErr = 0.0
-#    for k in range(ocp.nk):
-#        for d in range(ocp.deg+1):
-#            n1 = traj.lookup('integral vel*vel',timestep=k,nicpIdx=0,degIdx=d)
-#            n2 = traj.lookup('integral vel*vel2',timestep=k,nicpIdx=0,degIdx=d)
-#            err = 100.0*(n1-n2)/(n1+1e-12)
-#            if abs(err) > abs(maxErr):
-#                maxErr = float(err)
-#    n1 = traj.lookup('integral vel*vel',timestep=-1)
-#    n2 = traj.lookup('integral vel*vel2',timestep=-1)
-#    err = 100.0*(n1-n2)/(n1+1e-12)
-#    if abs(err) > abs(maxErr):
-#        maxErr = float(err)
-#    print "maxErr: "+str(err)+" %"
 
 
     print "final position: "+str(traj.lookup('pos',-1))

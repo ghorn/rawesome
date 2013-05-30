@@ -15,11 +15,9 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with rawesome.  If not, see <http://www.gnu.org/licenses/>.
 
-import models
-import sim
-import collocation
-import telemetry
+import rawe
+import rocket_dae
 
-from rtIntegrator import RtIntegrator,RtIntegratorOptions
-from ocp import Ocp,Mhe,Mpc,OcpRT,MheRT,MpcRT,OcpExportOptions
-from dae import Dae
+if __name__=='__main__':
+    dae = rocket_dae.makeDae()
+    rawe.utils.mkprotobufs.writeAll(dae, 'rocket', 'autogen')

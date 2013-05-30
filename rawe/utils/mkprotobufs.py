@@ -333,4 +333,3 @@ import %(topname)s_pb2
 #            ['hprotoc','-I../'+autogenDir,'--haskell_out=src',topname+'.proto'],cwd=haskellDir)
 #        if ret != 0:
 #            raise Exception('hrotoc fail\n'+msgs)
-

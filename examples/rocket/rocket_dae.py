@@ -15,11 +15,21 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with rawesome.  If not, see <http://www.gnu.org/licenses/>.
 
-import models
-import sim
-import collocation
-import telemetry
+import rawe
 
-from rtIntegrator import RtIntegrator,RtIntegratorOptions
-from ocp import Ocp,Mhe,Mpc,OcpRT,MheRT,MpcRT,OcpExportOptions
-from dae import Dae
+def makeDae():
+    dae = rawe.Dae()
+
+    [pos,vel,mass] = dae.addX( ["pos","vel","mass"] )
+    thrust = dae.addU( "thrust" )
+    
+    # some extra outputs, why not
+    dae['posvel'] = pos*vel
+    dae['velvel'] = vel*vel
+
+    # residual
+    dae.setResidual([dae.ddt('pos') - vel,
+                     dae.ddt('vel') - thrust/mass,
+                     dae.ddt('mass') - 0.1*thrust*thrust])
+
+    return dae

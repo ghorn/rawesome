@@ -15,11 +15,25 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with rawesome.  If not, see <http://www.gnu.org/licenses/>.
 
-import models
-import sim
-import collocation
-import telemetry
+topname = rocket
+ag = autogen
 
-from rtIntegrator import RtIntegrator,RtIntegratorOptions
-from ocp import Ocp,Mhe,Mpc,OcpRT,MheRT,MpcRT,OcpExportOptions
-from dae import Dae
+autogenTargets = \
+	$(ag)/__init__.py \
+	$(ag)/protoConverters.cpp \
+	$(ag)/protoConverters.h \
+	$(ag)/$(topname)_dimensions.h \
+	$(ag)/$(topname).proto \
+	$(ag)/$(topname)_structs.h \
+	$(ag)/to$(topname)Proto.py
+
+ALL : $(autogenTargets) $(ag)/$(topname)_pb2.py
+
+$(autogenTargets) : make_rocket_protos.py rocket_dae.py
+	python -B make_rocket_protos.py
+
+$(ag)/$(topname)_pb2.py : $(ag)/$(topname).proto
+	protoc --python_out=. $<
+
+clean :
+	rm -rf autogen
