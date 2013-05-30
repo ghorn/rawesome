@@ -7,7 +7,7 @@ geomRoot = [1,0,0]
 geomTip = [1,5,0]
 aeroCLaRoot = numpy.array([0.0, 0.0, 2*numpy.pi, 0.0])
 aeroCLaTip  = numpy.array([0.0, 0.0, 2*numpy.pi, 0.0])
-#aeroCLaRoot[:]=[ -28.2136, 16.4140, 0.9568,-0.4000]
-#aeroCLaTip[:]=[ -28.2136, 16.4140, 0.9568, -0.4000]
+#aeroCLaRoot = numpy.array([ -28.2136, 16.4140, 0.9568,-0.4000])
+#aeroCLaTip = numpy.array([ -28.2136, 16.4140, 0.9568, -0.4000])
 
 LLT_solver.LLT_sovler(operAlphaDegLst, operRates, geomRoot, geomTip, aeroCLaRoot, aeroCLaTip)

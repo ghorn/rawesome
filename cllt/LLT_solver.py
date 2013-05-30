@@ -1,20 +1,18 @@
 #This solver is meant to provide a lifting line theory based aerodynamic prediction for a supplied alpha range and gerometry.
 import pylab
 import numpy
-import scipy.linalg
 import casadi as C
 
-def solveForAns(operAlpha, aIncFromZeroLift, aIncGeometric, clPolyLoc, thetaLoc, chordLoc, n, geomAR, geomBref):
+def setupImplicitFunction(aIncFromZeroLift, aIncGeometric, clPolyLoc, thetaLoc, chordLoc, sumN, geomAR, geomBref):
+    operAlpha = C.ssym('alpha')
     alphaFromZeroLift = operAlpha + aIncFromZeroLift
     alphaGeometric    = operAlpha + aIncGeometric
 
-    sumN = numpy.linspace(1,2*n+1,num=n,endpoint=True)
-#    sumN = numpy.linspace(1,n,num=n,endpoint=True)
-    #
+    n = sumN.size
+
     #setup function to obtain B and RHS for the Fourier series calc
-    #
     def getBandRHS(iterAlphaiLoc):
-        alphaLoc = alphaGeometric    - iterAlphaiLoc
+        alphaLoc = alphaGeometric - iterAlphaiLoc
         clLoc = clPolyLoc[0,:]*alphaLoc**3 + \
                 clPolyLoc[1,:]*alphaLoc**2 + \
                 clPolyLoc[2,:]*alphaLoc + \
@@ -31,34 +29,27 @@ def solveForAns(operAlpha, aIncFromZeroLift, aIncGeometric, clPolyLoc, thetaLoc,
 
     (B,RHS) = getBandRHS(iterAlphaiLoc)
     makeMeZero = RHS - C.mul(B, iterAn)
+#    makeMeZero = C.solve(B,RHS) - iterAn
 
 #    fIterAlphaiLoc = C.SXFunction([iterAn],[iterAlphaiLoc])
 #    fIterAlphaiLoc.init()
-
-    f = C.SXFunction([iterAn], [makeMeZero])
-    f.init()
-
-    i = C.NLPImplicitSolver(f)
-    i.setOption('nlp_solver', C.IpoptSolver)
-    i.init()
-
-    i.evaluate()
-    iterAn = numpy.squeeze(numpy.array(i.output()))
-
 #    fIterAlphaiLoc.setInput(iterAn)
 #    fIterAlphaiLoc.evaluate()
 #    iterAlphaiLoc = numpy.array(fIterAlphaiLoc.output())
 
-    #Compute CL/CDi
-    CL  = iterAn[0]*numpy.pi*geomAR
-    CD0 = 0
-    if iterAn[0] != 0:
-        for i in range(n):
-            k = sumN[i]
-            CD0 += k*iterAn[i]**2/(iterAn[0]**2)
-    CDi = numpy.pi*geomAR*iterAn[0]**2*CD0
+    print "setting up function"
+    f = C.SXFunction([iterAn,operAlpha], [makeMeZero])
+    print "initializing function"
+    f.init()
 
-    return (CL, CDi, iterAn)
+    print "setting up solver"
+    i = C.NLPImplicitSolver(f)
+    i.setOption('nlp_solver', C.IpoptSolver)
+    print "initializing solver"
+    i.init()
+
+    print "done"
+    return i
 
 
 def LLT_sovler(operAlphaDegLst, operRates, geomRoot, geomTip, aeroCLaRoot, aeroCLaTip):
@@ -116,7 +107,7 @@ def LLT_sovler(operAlphaDegLst, operRates, geomRoot, geomTip, aeroCLaRoot, aeroC
     #Next, lets choose the number of spanwise stations (and hence number of Fourier series terms) that we will divide each half wing into
     #We will also pick a suitable convergence criterion for the non-linear iteration and a relaxation factor to aid convergence
     #
-    n = 20
+    n = 50
     #
     #Finally, let's create n span stations at which LLT equations will be solved and define some fixed wing properties at each station
     #
@@ -131,17 +122,33 @@ def LLT_sovler(operAlphaDegLst, operRates, geomRoot, geomTip, aeroCLaRoot, aeroC
     #
     #Now let's iterate over the Alphas and solve LLT equations to obtain lift for each one
     #
+    sumN = numpy.linspace(1,2*n+1,num=n,endpoint=True)
+    f = setupImplicitFunction(iterAinc, lltAinc, lltCLa, lltTheta, lltChord, sumN, geomAR, geomBref)
     for operAlpha in operAlphaLst:
         print 'Current Alpha = ', numpy.degrees(operAlpha)
-        (CL, CDi, iterAn) = solveForAns(operAlpha, iterAinc, lltAinc, lltCLa, lltTheta, lltChord, n, geomAR, geomBref)
+        f.setOutput(numpy.zeros(n))
+        f.setInput(operAlpha)
+        f.evaluate()
+        iterAn = numpy.squeeze(numpy.array(f.output()))
+
+        #Compute CL/CDi
+        CL  = iterAn[0]*numpy.pi*geomAR
+        CD0 = 0
+        if iterAn[0] != 0:
+            for i in range(n):
+                k = sumN[i]
+                CD0 += k*iterAn[i]**2/(iterAn[0]**2)
+        CDi = numpy.pi*geomAR*iterAn[0]**2*CD0
+
         operCLLst.append(CL)
         operCDiLst.append(CDi)
     operCLLst = numpy.array(operCLLst)
     operCDiLst = numpy.array(operCDiLst)
+
     #
-    #plot polar
+    # plot everything
     #
-    pylab.plot(numpy.degrees(operAlphaLst),operCLLst,'r',numpy.degrees(operAlphaLst), numpy.array(operAlphaLst)*2*numpy.pi)
+    pylab.plot(numpy.degrees(operAlphaLst),operCLLst,'r',numpy.degrees(operAlphaLst), numpy.array(operAlphaLst)*2*numpy.pi*10.0/12.0)
     pylab.xlabel('Alpha')
     pylab.ylabel('CL')
     pylab.legend(['llt CL','flat plate CL'])
