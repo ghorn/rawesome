@@ -2,61 +2,61 @@
 import pylab
 import numpy
 import scipy.linalg
+import casadi as C
 
-def woohoo(operAlpha, aIncFromZeroLift, aIncGeometric, lltCLa, lltTheta, lltChord, n, geomAR, geomBref):
+def solveForAns(operAlpha, aIncFromZeroLift, aIncGeometric, clPolyLoc, thetaLoc, chordLoc, n, geomAR, geomBref):
     alphaFromZeroLift = operAlpha + aIncFromZeroLift
     alphaGeometric    = operAlpha + aIncGeometric
 
+    sumN = numpy.linspace(1,2*n+1,num=n,endpoint=True)
+#    sumN = numpy.linspace(1,n,num=n,endpoint=True)
     #
     #setup function to obtain B and RHS for the Fourier series calc
     #
     def getBandRHS(iterAlphaiLoc):
-        iterAlphaLoc    = alphaFromZeroLift - iterAlphaiLoc
-        lltAlphaLoc     = alphaGeometric    - iterAlphaiLoc
-        iterCLALoc   = (lltCLa[0,:]*lltAlphaLoc[:]**3 + lltCLa[1,:]*lltAlphaLoc[:]**2 + lltCLa[2,:]*lltAlphaLoc[:] + lltCLa[3,:])/(iterAlphaLoc[:])
-        RHS             = iterAlphaLoc*numpy.sin(lltTheta)*lltChord*iterCLALoc/(4.*geomBref)
-        B               = numpy.zeros((n,n))
-        mu              = lltChord * iterCLALoc/(4.*geomBref)
-        for i in range(n):
-            l       = float(2*i+1)
-            B[:,i]  = numpy.sin(l*lltTheta)*(mu*l+numpy.sin(lltTheta))
+        alphaLoc = alphaGeometric    - iterAlphaiLoc
+        clLoc = clPolyLoc[0,:]*alphaLoc**3 + \
+                clPolyLoc[1,:]*alphaLoc**2 + \
+                clPolyLoc[2,:]*alphaLoc + \
+                clPolyLoc[3,:]
+        RHS = clLoc*chordLoc/(4.0*geomBref)
+        B = numpy.sin(numpy.outer(thetaLoc, sumN))
         return (B,RHS)
 
-    iterAlphaiLoc   = (lltCLa[0,:]*alphaGeometric[:]**3 + lltCLa[1,:]*alphaGeometric[:]**2 + lltCLa[2,:]*alphaGeometric[:] + lltCLa[3,:])/(numpy.pi*geomAR)
+    iterAn = C.ssym('iterAn',n)
+    iterAlphaiLoc = []
+    for i in range(n):
+        iterAlphaiLoc.append(sum(sumN*iterAn*numpy.sin(sumN*thetaLoc[i])/numpy.sin(thetaLoc[i])))
+    iterAlphaiLoc = C.veccat(iterAlphaiLoc)
 
-    #
-    #iterate to solve for Fourier Coefficients
-    #
-    iterConvCrit    = 1e-6
-    iterResAlphai   = 10
-    while iterResAlphai > iterConvCrit:
-        iterAlphaiLocOld = numpy.copy(iterAlphaiLoc)
-        (iterB, iterRHS)    = getBandRHS(iterAlphaiLoc)
-        iterAn              = scipy.linalg.solve(iterB, iterRHS)
-        #
-        #calculate induced alphas
-        #
-        sumN = numpy.linspace(1,2*n+1,num=n,endpoint=True)
-        for i in range(n):
-            iterAlphaiLoc[i] = sum(sumN*iterAn*numpy.sin(sumN*lltTheta[i])/numpy.sin(lltTheta[i]))
-        #
-        #update local alphas and calculate residuals
-        #
-        iterResAlphai   = numpy.max(numpy.absolute(iterAlphaiLocOld - iterAlphaiLoc))
-        print 'Residual = ', iterResAlphai
-    #
-    #Compute CL
-    #
+    (B,RHS) = getBandRHS(iterAlphaiLoc)
+    makeMeZero = RHS - C.mul(B, iterAn)
+
+#    fIterAlphaiLoc = C.SXFunction([iterAn],[iterAlphaiLoc])
+#    fIterAlphaiLoc.init()
+
+    f = C.SXFunction([iterAn], [makeMeZero])
+    f.init()
+
+    i = C.NLPImplicitSolver(f)
+    i.setOption('nlp_solver', C.IpoptSolver)
+    i.init()
+
+    i.evaluate()
+    iterAn = numpy.squeeze(numpy.array(i.output()))
+
+#    fIterAlphaiLoc.setInput(iterAn)
+#    fIterAlphaiLoc.evaluate()
+#    iterAlphaiLoc = numpy.array(fIterAlphaiLoc.output())
+
+    #Compute CL/CDi
     CL  = iterAn[0]*numpy.pi*geomAR
-    #print CL, iterAn[0]
-    #
-    #Compute CDi
-    #
-    CD0 = 1
+    CD0 = 0
     if iterAn[0] != 0:
-        for i in range(1,n):
-            CD0 = CD0 + (2.*i+1)*iterAn[i]**2/(iterAn[0]**2)
-    CDi     = numpy.pi*geomAR*iterAn[0]**2*CD0
+        for i in range(n):
+            k = sumN[i]
+            CD0 += k*iterAn[i]**2/(iterAn[0]**2)
+    CDi = numpy.pi*geomAR*iterAn[0]**2*CD0
 
     return (CL, CDi, iterAn)
 
@@ -107,7 +107,6 @@ def LLT_sovler(operAlphaDegLst, operRates, geomRoot, geomTip, aeroCLaRoot, aeroC
     #################Alpha hard set option
     #operAlphaLst=[0]
     ##########################################
-    print "Alphas= ", operAlphaLst, numpy.degrees(operAlphaLst)
     #
     #Before we start iterating, let's setup lists for storing lift and induced drag
     #
@@ -134,7 +133,7 @@ def LLT_sovler(operAlphaDegLst, operRates, geomRoot, geomTip, aeroCLaRoot, aeroC
     #
     for operAlpha in operAlphaLst:
         print 'Current Alpha = ', numpy.degrees(operAlpha)
-        (CL, CDi, iterAn) = woohoo(operAlpha, iterAinc, lltAinc, lltCLa, lltTheta, lltChord, n, geomAR, geomBref)
+        (CL, CDi, iterAn) = solveForAns(operAlpha, iterAinc, lltAinc, lltCLa, lltTheta, lltChord, n, geomAR, geomBref)
         operCLLst.append(CL)
         operCDiLst.append(CDi)
     operCLLst = numpy.array(operCLLst)
@@ -142,9 +141,10 @@ def LLT_sovler(operAlphaDegLst, operRates, geomRoot, geomTip, aeroCLaRoot, aeroC
     #
     #plot polar
     #
-    pylab.plot(numpy.degrees(operAlphaLst),operCLLst)
+    pylab.plot(numpy.degrees(operAlphaLst),operCLLst,'r',numpy.degrees(operAlphaLst), numpy.array(operAlphaLst)*2*numpy.pi)
     pylab.xlabel('Alpha')
     pylab.ylabel('CL')
+    pylab.legend(['llt CL','flat plate CL'])
     pylab.show()
     pylab.plot(numpy.degrees(operAlphaLst),operCDiLst,'r',numpy.degrees(operAlphaLst),operCLLst[:]**2/(numpy.pi*geomAR),'b')
     pylab.legend(['llt CDi','flat plate CDi'])
