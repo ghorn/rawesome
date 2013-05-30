@@ -62,8 +62,8 @@ def LLT_sovler(operAseq, operRates, geomRoot, geomTip, aeroCLaRoot, aeroCLaTip):
     #We will also pick a suitable convergence criterion for the non-linear iteration and a relaxation factor to aid convergence
     #
     n               = 20
-    iterConvCrit    = 0.01
-    relax           = 0.001
+    iterConvCrit    = 0.0000001
+    relax           = 1
     #
     #Finally, let's create n span stations at which LLT equations will be solved and define some fixed wing properties at each station
     #
@@ -83,13 +83,18 @@ def LLT_sovler(operAseq, operRates, geomRoot, geomTip, aeroCLaRoot, aeroCLaTip):
         print 'Current Alpha = ', numpy.degrees(operAlpha)
         iterAlpha       = operAlpha + iterAinc
         lltAlpha        = operAlpha + lltAinc
-        iterResAlpha    = 10
+        iterResAlphai    = 10
         iterAlphaLoc    = numpy.zeros(n) + iterAlpha
         lltAlphaLoc     = numpy.zeros(n) + lltAlpha
         #print 'Local Alpha = ', numpy.degrees(iterAlphaLoc)
         iterCLALoc      = numpy.zeros(n)
         iterCLLoc       = numpy.zeros(n)
         iterAlphaiLoc   = numpy.zeros(n)
+        diffAlphaiLoc   = numpy.zeros(n)
+        tempAlphaiLoc   = numpy.zeros(n)
+        iterAlphaiLoc[:]= (lltCLa[0,:]*lltAlphaLoc[:]**3 + lltCLa[1,:]*lltAlphaLoc[:]**2 + lltCLa[2,:]*lltAlphaLoc[:] + lltCLa[3,:])/(numpy.pi*geomAR)
+        iterAlphaLoc    = iterAlphaLoc - iterAlphaiLoc
+        lltAlphaLoc     = lltAlphaLoc - iterAlphaiLoc
         #
         #setup n x n system of equations for Fourier coefficients A1, A3, ..., A2n-1
         #B*An=RHS
@@ -101,9 +106,9 @@ def LLT_sovler(operAseq, operRates, geomRoot, geomTip, aeroCLaRoot, aeroCLaTip):
         #iterate to solve for Fourier Coefficients
         #
         iterCount=0
-        while iterResAlpha > iterConvCrit:
+        while iterResAlphai > iterConvCrit:
         
-            tempAlphaLoc=iterAlphaLoc
+            tempAlphaiLoc=iterAlphaiLoc
             #
             #setup function to obtain B and RHS for the Fourier series calc
             #
@@ -131,9 +136,12 @@ def LLT_sovler(operAseq, operRates, geomRoot, geomTip, aeroCLaRoot, aeroCLaTip):
             #
             #update local alphas and calculate residuals
             #
-            iterAlphaLoc    = iterAlphaLoc - relax*iterAlphaiLoc
-            lltAlphaLoc     = lltAlphaLoc - relax*iterAlphaiLoc
-            iterResAlpha    = max(abs(tempAlphaLoc - iterAlphaLoc))
+            diffAlphaiLoc   = tempAlphaiLoc - iterAlphaiLoc
+            #print numpy.degrees(diffAlphaiLoc)
+            iterAlphaLoc    = iterAlphaLoc - relax*diffAlphaiLoc
+            lltAlphaLoc     = lltAlphaLoc - relax*diffAlphaiLoc
+            iterResAlphai   = numpy.max(numpy.absolute(diffAlphaiLoc))
+            print 'Residual = ', iterResAlphai
             iterCount=iterCount+1
         print iterCount
         #
@@ -159,7 +167,7 @@ def LLT_sovler(operAseq, operRates, geomRoot, geomTip, aeroCLaRoot, aeroCLaTip):
     pylab.xlabel('Alpha')
     pylab.ylabel('CL')
     pylab.show()
-    pylab.plot(numpy.degrees(operAlphaLst),operCDiLst,'r',numpy.degrees(operAlphaLst),operCLLst[:]**2/(numpy.pi*geomAR),'b')
+    pylab.plot(numpy.degrees(operAlphaLst),operCDiLst,'r',numpy.degrees(operAlphaLst),operCLLst[:]**2/(numpy.pi*geomAR),'b',numpy.degrees(operAlphaLst),(operCLLst[:]*(geomAR+2)/geomAR)**2/(numpy.pi*geomAR),'g')
     pylab.xlabel('Alpha')
     pylab.ylabel('CDi')
     pylab.show()    
