@@ -15,9 +15,14 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with rawesome.  If not, see <http://www.gnu.org/licenses/>.
 
+import sys
+
 import rawe
 import rocket_dae
 
 if __name__=='__main__':
+    assert len(sys.argv)==3
+    topname = sys.argv[1]
+    autogenDir = sys.argv[2]
     dae = rocket_dae.makeDae()
-    rawe.utils.mkprotobufs.writeAll(dae, 'rocket', 'autogen')
+    rawe.utils.mkprotobufs.writeAll(dae, topname, autogenDir)

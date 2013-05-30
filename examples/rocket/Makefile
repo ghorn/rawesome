@@ -17,6 +17,8 @@
 
 topname = rocket
 ag = autogen
+genscript = make_rocket_protos.py
+daefile = rocket_dae.py
 
 autogenTargets = \
 	$(ag)/__init__.py \
@@ -27,13 +29,24 @@ autogenTargets = \
 	$(ag)/$(topname)_structs.h \
 	$(ag)/to$(topname)Proto.py
 
-ALL : $(autogenTargets) $(ag)/$(topname)_pb2.py
+plotter = plotter/dist/build/plotter/plotter
 
-$(autogenTargets) : make_rocket_protos.py rocket_dae.py
-	python -B make_rocket_protos.py
+hstopname = $(shell echo $(topname)  | python -c "print raw_input().capitalize()")
+
+ALL : $(autogenTargets) $(ag)/$(topname)_pb2.py $(ag)/$(hstopname).hs $(plotter)
+
+$(autogenTargets) : $(genscript) $(daefile)
+	python -B $(genscript) $(topname) $(ag)
 
 $(ag)/$(topname)_pb2.py : $(ag)/$(topname).proto
 	protoc --python_out=. $<
 
+$(ag)/$(hstopname).hs : $(ag)/$(topname).proto
+	hprotoc --haskell_out=$(ag) $<
+
+$(plotter) : $(ag)/$(hstopname).hs
+	cd plotter && cabal configure && cabal build
+
 clean :
 	rm -rf autogen
+	cd plotter && cabal clean
