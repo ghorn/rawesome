@@ -281,10 +281,6 @@ message MheMpcHorizons {
 }
 '''
 
-    f = open(os.path.join(autogenDir,topname+'.proto'),'w')
-    f.write(protobufs)
-    f.close()
-
     # dimensions
     dims = writeDimensions(topname, dae, measurements, measurementsEnd, mheHorizN, mpcHorizN)
     f = open(os.path.join(autogenDir, topname+'_dimensions.h'),'w')
@@ -322,7 +318,9 @@ import %(topname)s_pb2
     f.write(protoConverterHeader)
     f.close()
 
-
+    f = open(os.path.join(autogenDir,topname+'.proto'),'w')
+    f.write(protobufs)
+    f.close()
 
 #    # call protoc to make python/C++ code
 #    (ret, msgs) = subprocess_tee.call(

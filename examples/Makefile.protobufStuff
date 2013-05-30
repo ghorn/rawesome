@@ -16,32 +16,32 @@
 # along with rawesome.  If not, see <http://www.gnu.org/licenses/>.
 
 autogenTargets = \
-	$(ag)/__init__.py \
-	$(ag)/protoConverters.cpp \
-	$(ag)/protoConverters.h \
-	$(ag)/$(topname)_dimensions.h \
 	$(ag)/$(topname).proto \
-	$(ag)/$(topname)_structs.h \
-	$(ag)/to$(topname)Proto.py
+#	$(ag)/__init__.py \
+#	$(ag)/protoConverters.cpp \
+#	$(ag)/protoConverters.h \
+#	$(ag)/$(topname)_dimensions.h \
+#	$(ag)/$(topname)_structs.h \
+#	$(ag)/to$(topname)Proto.py
 
 plotter = plotter/dist/build/plotter/plotter
 
 hstopname = $(shell echo $(topname)  | python -c "print raw_input().capitalize()")
 
-ALL : $(autogenTargets) $(ag)/$(topname)_pb2.py $(ag)/$(hstopname).hs $(plotter)
+all :: $(autogenTargets) $(ag)/$(topname)_pb2.py $(ag)/$(hstopname).hs $(plotter)
 
-$(autogenTargets) : $(genscript) $(daefile).py
+$(autogenTargets) : $(daefile).py
 	python -c "import rawe; import $(daefile); rawe.utils.mkprotobufs.writeAll($(daefile).makeDae(), '$(topname)', '$(ag)')"
 
 $(ag)/$(topname)_pb2.py : $(ag)/$(topname).proto
 	protoc --python_out=. $<
 
 $(ag)/$(hstopname).hs : $(ag)/$(topname).proto
-	hprotoc --haskell_out=$(ag) $<
+	hprotoc --haskell_out=$(ag) $< > /dev/null
 
 $(plotter) : $(ag)/$(hstopname).hs plotter/*.hs
-	cd plotter && cabal configure && cabal build
+	cd plotter && cabal configure -v0 && cabal build -v0
 
-clean :
+clean ::
 	rm -rf autogen
-	cd plotter && cabal clean
+	cd plotter && cabal clean -v0

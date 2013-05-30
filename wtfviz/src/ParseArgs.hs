@@ -35,18 +35,12 @@ myargs = VisArgs { ipfile = "" &= CA.help "file to read IP address out of" &= CA
                  , followkite = False &= CA.help "rotate the camera to follow the current estimate"
                  } &= CA.summary "the kite visualizer program"
 
-getip :: String -> String -> IO (String,Bool)
-getip programname defaultip = do
-  a <- CA.cmdArgs (myargs &= CA.program programname)
+getip :: String -> IO (String,Bool)
+getip defaultip = do
+  a <- CA.cmdArgs (myargs &= CA.program "wtfviz")
   ip' <- case (ipfile a,ip a) of
     ("","") -> return defaultip
     ("",x) -> return x
     (f,"") -> fmap (head . lines) (readFile f)
     (_,_) -> error "please only specify your ip address one way"
   return (ip', followkite a)
---  
---main :: IO ()
---main = do
---  ip' <- getip "defaultip"
---  print ip'
---  putStrLn "finished successfully"
