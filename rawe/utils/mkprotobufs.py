@@ -55,11 +55,10 @@ def simpleMessage(dae, messagename, fieldnames, qualifier='required'):
 def writeProtoSpec(topname, dae, measurements, measurementsEnd):
     protobufs = 'package '+topname+';\n\n'
     for (msgname,fieldnames) in daeNames(dae, measurements, measurementsEnd):
-        protobufs += simpleMessage(dae, msgname, fieldnames)
-        #if msgname == 'Measurements':
-        #    protobufs += simpleMessage(dae, msgname, fieldnames,qualifier='optional')
-        #else:
-        #    protobufs += simpleMessage(dae, msgname, fieldnames)
+        if msgname in ['Outputs']:
+            protobufs += simpleMessage(dae, msgname, fieldnames, qualifier='optional')
+        else:
+            protobufs += simpleMessage(dae, msgname, fieldnames)
 
     protobufs += '''\
 message Dae {

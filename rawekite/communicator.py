@@ -16,7 +16,6 @@
 # along with rawesome.  If not, see <http://www.gnu.org/licenses/>.
 
 import zmq
-import kiteproto
 
 class Communicator(object):
     def __init__(self):

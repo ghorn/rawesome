@@ -24,6 +24,9 @@ import pickle
 
 import rawe
 import rawekite
+import pumping_dae
+from autogen.topumpingProto import toProto
+from autogen.pumping_pb2 import Trajectory
 
 def setupOcp(dae,conf,nk,nicp=1,deg=4):
     ocp = rawe.collocation.Coll(dae, nk=nk,nicp=nicp,deg=deg)
@@ -112,14 +115,14 @@ def setupOcp(dae,conf,nk,nicp=1,deg=4):
 
 if __name__=='__main__':
     print "reading config..."
-    #from carousel_conf import conf
-    #from stingray_conf import conf
-    from betty_conf import conf
+    from betty_conf import makeConf
+    conf = makeConf()
     conf['runHomotopy'] = True
     conf['minAltitude'] = 0.5
     nk = 40
 
     print "creating model..."
+    dae = pumping_dae.makeDae()
     dae = rawe.models.crosswind(conf)
     dae.addP('endTime')
 
@@ -255,8 +258,10 @@ if __name__=='__main__':
     ocp.guess('gamma_homotopy',0)
 
     # spawn telemetry thread
-    callback = rawe.telemetry.startTelemetry(ocp, conf, callbacks=[(rawekite.kiteTelemetry.showAllPoints,'multi-carousel')])
-#    callback = rawe.telemetry.startTelemetry(ocp, conf, callbacks=[(rawekite.kiteTelemetry.showAllPoints,'multi-carousel')], printBoundViolation=True, printConstraintViolation=True)
+    callback = rawe.telemetry.startTelemetry(
+        ocp, callbacks=[
+            (rawe.telemetry.trajectoryCallback(toProto, Trajectory, showAllPoints=True), 'pumping trajectory')
+        ])
 
     # solver
     solverOptions = [("linear_solver","ma27"),

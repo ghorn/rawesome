@@ -15,6 +15,10 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with rawesome.  If not, see <http://www.gnu.org/licenses/>.
 
-import communicator
-import kiteutils
-import carouselSteadyState
+import rawe
+import betty_conf
+
+def makeDae(conf=None):
+    if conf is None:
+        conf = betty_conf.makeConf()
+    return rawe.models.crosswind(conf)

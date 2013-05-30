@@ -15,6 +15,8 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with rawesome.  If not, see <http://www.gnu.org/licenses/>.
 
-import communicator
-import kiteutils
-import carouselSteadyState
+topname = pumping
+ag = autogen
+daefile = pumping_dae
+
+include ../Makefile.protobufStuff
