@@ -46,6 +46,8 @@ def setupImplicitFunction(aIncFromZeroLift, aIncGeometric, clPolyLoc, thetaLoc, 
     i = C.NLPImplicitSolver(f)
     i.setOption('nlp_solver', C.IpoptSolver)
     print "initializing solver"
+    i.setOption('nlp_solver_options',{'suppress_all_output':'yes',
+                                      'print_time':False})
     i.init()
 
     print "done"
@@ -94,7 +96,7 @@ def LLT_sovler(operAlphaDegLst, operRates, geomRoot, geomTip, aeroCLaRoot, aeroC
 #    while tempAlpha < (operAseqMax + operAseqIncr / 10):
 #        operAlphaLst.append(tempAlpha)
 #        tempAlpha = tempAlpha + operAseqIncr
-    operAlphaLst = [numpy.radians(x)+1e-18 for x in operAlphaDegLst]
+    operAlphaLst = [numpy.radians(x) for x in operAlphaDegLst]
     #################Alpha hard set option
     #operAlphaLst=[0]
     ##########################################
