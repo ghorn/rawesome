@@ -9,8 +9,8 @@ def setupImplicitFunction(operAlpha, An, geom):
     def getBandRHS(alphaiLoc):
         alphaLoc = geom.alphaGeometric(operAlpha) - alphaiLoc
         clLoc = geom.clLoc(alphaLoc)
-        RHS = clLoc*geom.chordLoc/(4.0*geom.bref)
-        B = numpy.sin(numpy.outer(geom.thetaLoc, geom.sumN))
+        RHS = clLoc*geom.chordLoc
+        B = numpy.sin(numpy.outer(geom.thetaLoc, geom.sumN))*(4.0*geom.bref)
         return (B,RHS)
 
     alphaiLoc = []
