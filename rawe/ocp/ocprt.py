@@ -40,6 +40,17 @@ def dlqr(A, B, Q, R, N=None):
 
     return K, P
 
+def secretAccess(f):
+    def blah(self,*args,**kwargs):
+        if not hasattr(self, '_locked'):
+            object.__setattr__(self, '_locked', 0)
+        object.__setattr__(self, '_locked', self._locked+1)
+        try:
+            return f(self, *args, **kwargs)
+        finally:
+            object.__setattr__(self, '_locked', self._locked-1)
+    return blah
+
 class OcpRT(object):
     _canonicalNames = ['x','u','z','y','yN','x0','S','SN']
 
@@ -47,6 +58,7 @@ class OcpRT(object):
     def ocp(self):
         return self._ocp
 
+    @secretAccess
     def __init__(self, ocp,
                  ocpOptions=None,
                  integratorOptions=None,
@@ -161,7 +173,10 @@ class OcpRT(object):
                     'assign it something with dimension '+str(value.shape)
             object.__setattr__(self, name, numpy.ascontiguousarray(value, dtype=numpy.double))
         else:
-            object.__setattr__(self, name, value)
+            if self._locked == 0:
+                raise Exception('you cannot set field "'+name+'"')
+            else:
+                object.__setattr__(self, name, value)
 
     def _callMat(self,call,mat):
         sh = mat.shape
@@ -197,7 +212,7 @@ class OcpRT(object):
         if hasattr(self, 'z'):
             self._callMat(self._lib.py_get_z, self.z)
 
-    def writeStateTxtFiles(self,directory=None):
+    def writeStateTxtFiles(self,prefix='',directory=None):
         '''
         Loop through the canonical names ["x", "u", "y", etc...] and
         write them to text files.
@@ -211,14 +226,16 @@ class OcpRT(object):
                 os.makedirs(directory)
         for name in self._canonicalNames:
             if hasattr(self,name):
-                numpy.savetxt(os.path.join(directory,name+'.txt'), getattr(self,name))
+                numpy.savetxt(os.path.join(directory,prefix+name+'.txt'), getattr(self,name))
 
 
+    @secretAccess
     def preparationStep(self):
         self._setAll()
         self.preparationTime = self._lib.preparationStepTimed()
         self._getAll()
 
+    @secretAccess
     def feedbackStep(self):
         self._setAll()
         ret = ctypes.c_int(0)
@@ -292,6 +309,7 @@ class OcpRT(object):
         self.y[-1,:] = y_Nm1
         self.yN = yN
 
+    @secretAccess
     def shift(self,new_x=None,new_u=None,sim=None,new_y=None,new_yN=None,new_S=None,new_SN=None):
         # Shift weighting matrices
         if new_S != None:
@@ -531,6 +549,7 @@ class OcpRT(object):
 
 
 class MpcRT(OcpRT):
+    @secretAccess
     def __init__(self, ocp, lqrDae,
                  ocpOptions=None,
                  integratorOptions=None,
@@ -546,10 +565,10 @@ class MpcRT(OcpRT):
                        phase1Options=phase1Options)
 
         # set up measurement functions
-        self._yFun  = C.SXFunction([ocp.dae.xVec(), ocp.dae.uVec()], [C.densify(self.ocp.y)])
-        self._yNFun = C.SXFunction([ocp.dae.xVec()], [C.densify(self.ocp.yN)])
-        self._yFun.init()
-        self._yNFun.init()
+        self._yxFun = C.SXFunction([ocp.dae.xVec()], [C.densify(self.ocp.yx)])
+        self._yuFun = C.SXFunction([ocp.dae.uVec()], [C.densify(self.ocp.yu)])
+        self._yxFun.init()
+        self._yuFun.init()
 
         self._lqrDae = lqrDae
         self._integratorLQR  = rawe.RtIntegrator(self._lqrDae, ts=self.ocp.ts, options=integratorOptions)
@@ -570,6 +589,7 @@ class MpcRT(OcpRT):
 
 
 class MheRT(OcpRT):
+    @secretAccess
     def __init__(self, ocp,
                  ocpOptions=None,
                  integratorOptions=None,
@@ -583,24 +603,23 @@ class MheRT(OcpRT):
                        integratorOptions=integratorOptions,
                        codegenOptions=codegenOptions,
                        phase1Options=phase1Options,
-                       integratorMeasurements=ocp.y)
+                       integratorMeasurements=C.veccat([ocp.yx,ocp.yu]))
 
         # set up measurement functions
-        self._yFun  = C.SXFunction([ocp.dae.xVec(), ocp.dae.uVec()], [C.densify(self.ocp.y)])
-        self._yNFun = C.SXFunction([ocp.dae.xVec()], [C.densify(self.ocp.yN)])
-        self._yFun.init()
-        self._yNFun.init()
+        self._yxFun = C.SXFunction([ocp.dae.xVec()], [C.densify(self.ocp.yx)])
+        self._yuFun = C.SXFunction([ocp.dae.uVec()], [C.densify(self.ocp.yu)])
+        self._yxFun.init()
+        self._yuFun.init()
 
-    def computeY(self,x,u):
-        self._yFun.setInput(x,0)
-        self._yFun.setInput(u,1)
-        self._yFun.evaluate()
-        return numpy.squeeze(numpy.array(self._yFun.output(0)))
+    def computeYX(self,x):
+        self._yxFun.setInput(x,0)
+        self._yxFun.evaluate()
+        return numpy.squeeze(numpy.array(self._yxFun.output(0)))
 
-    def computeYN(self,x):
-        self._yNFun.setInput(x,0)
-        self._yNFun.evaluate()
-        return numpy.squeeze(numpy.array(self._yNFun.output(0)))
+    def computeYU(self,u):
+        self._yuFun.setInput(u,0)
+        self._yuFun.evaluate()
+        return numpy.squeeze(numpy.array(self._yuFun.output(0)))
 
     def UpdateArrivalCost(self):
         ''' Arrival cost implementation.
