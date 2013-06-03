@@ -1,5 +1,5 @@
 import LLT_solver
-from geometry import Geometry
+import geometry
 import numpy
 import casadi as C
 import pylab
@@ -13,7 +13,7 @@ aeroCLaTip  = numpy.array([0.0, 0.0, 2*numpy.pi, 0.0])
 #aeroCLaTip = numpy.array([ -28.2136, 16.4140, 0.9568, -0.4000])
 
 n = 30
-geom = Geometry(geomRoot, geomTip, aeroCLaRoot, aeroCLaTip, n)
+geom = geometry.simpleGeometry(geomRoot, geomTip, aeroCLaRoot, aeroCLaTip, n)
 LLT_solver.LLT_solver(operAlphaDegLst, geom)
 
 

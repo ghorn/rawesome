@@ -32,14 +32,14 @@ def getIndices(sym):
                 indices.append('__'+str(jr)+'_'+str(jc))
     return indices
 
-def daeNames(dae,measurements,measurementsEnd):
+def daeNames(dae,measurementsX,measurementsU):
     return [('DifferentialStates',dae.xNames()),
             ('AlgebraicVars',dae.zNames()),
             ('Controls',dae.uNames()),
             ('Parameters',dae.pNames()),
             ('Outputs', dae.outputNames()),
-            ('Measurements',measurements),
-            ('MeasurementsEnd',measurementsEnd)]
+            ('MeasurementsX',measurementsX),
+            ('MeasurementsU',measurementsU)]
 
 def simpleMessage(dae, messagename, fieldnames, qualifier='required'):
     ret = []
@@ -52,9 +52,9 @@ def simpleMessage(dae, messagename, fieldnames, qualifier='required'):
     ret.append('}\n\n')
     return '\n'.join(ret)
 
-def writeProtoSpec(topname, dae, measurements, measurementsEnd):
+def writeProtoSpec(topname, dae, measurementsX, measurementsU):
     protobufs = 'package '+topname+';\n\n'
-    for (msgname,fieldnames) in daeNames(dae, measurements, measurementsEnd):
+    for (msgname,fieldnames) in daeNames(dae, measurementsX, measurementsU):
         if msgname in ['Outputs']:
             protobufs += simpleMessage(dae, msgname, fieldnames, qualifier='optional')
         else:
@@ -134,11 +134,11 @@ typedef struct {
        'n_dx1_dup':nx*nup,
        'n_dz0_dup':nz*nup}
 
-def writeStructs(dae, topname, measurements, measurementsEnd):
+def writeStructs(dae, topname, measurementsX, measurementsU):
     structs = []
     structs.append('#ifndef __'+topname+'_STRUCTS_H__')
     structs.append('#define __'+topname+'_STRUCTS_H__')
-    for (structName, fieldNames) in daeNames(dae, measurements, measurementsEnd):
+    for (structName, fieldNames) in daeNames(dae, measurementsX, measurementsU):
         structs.append(writeStruct(structName,fieldNames,dae))
     structs.append(writeRtIntegratorStructs(dae))
     structs.append('#endif // __'+topname+'_STRUCTS_H__')
@@ -159,7 +159,7 @@ def writeProtoConverter(topname, vecname, fieldnames, dae):
     ret1.append('}\n\n')
     return ('\n'.join(ret0), prototype0+';\n','\n'.join(ret1), prototype1+';\n')
 
-def writeProtoConverters(dae, topname, measurements, measurementsEnd):
+def writeProtoConverters(dae, topname, measurementsX, measurementsU):
     protoConverters = '#include "protoConverters.h"\n\n'
     protoConverterHeader = []
     def write(blah):
@@ -176,7 +176,7 @@ extern "C" {
 #endif
 
 ''' % {'topname':topname})
-    for (vecname,fieldnames) in daeNames(dae, measurements, measurementsEnd):
+    for (vecname,fieldnames) in daeNames(dae, measurementsX, measurementsU):
         (pc0,pcpt0,pc1,pcpt1) = writeProtoConverter(topname, vecname, fieldnames, dae)
         protoConverters += pc0
         protoConverters += pc1
@@ -193,35 +193,35 @@ extern "C" {
     return (protoConverters,''.join(protoConverterHeader))
 
 
-def writeDimensions(topname, dae, meas, measEnd, mheHorizN, mpcHorizN):
-    nMeas    = C.veccat([dae[n] for n in meas]).numel()
-    nMeasEnd = C.veccat([dae[n] for n in measEnd]).numel()
+def writeDimensions(topname, dae, measX, measU, mheHorizN, mpcHorizN):
+    nMeasX = C.veccat([dae[n] for n in measX]).numel()
+    nMeasU = C.veccat([dae[n] for n in measU]).numel()
     nOutputs = C.veccat([dae[n] for n in dae.outputNames()]).numel()
 
     ret = []
     ret.append('#ifndef __'+topname+'_DIMENSIONS_H__')
     ret.append('#define __'+topname+'_DIMENSIONS_H__')
     ret.append('\n')
-    ret.append('#define NUM_DIFFSTATES       '+str(len(dae.xNames())))
-    ret.append('#define NUM_ALGVARS          '+str(len(dae.zNames())))
-    ret.append('#define NUM_CONTROLS         '+str(len(dae.uNames())))
-    ret.append('#define NUM_PARAMETERS       '+str(len(dae.pNames())))
-    ret.append('#define NUM_OUTPUTS          '+repr(nOutputs))
-    ret.append('#define NUM_MEASUREMENTS     '+repr(nMeas))
-    ret.append('#define NUM_MEASUREMENTS_END '+repr(nMeasEnd))
-    ret.append('#define NUM_MHE_HORIZON      '+str(mheHorizN))
-    ret.append('#define NUM_MPC_HORIZON      '+str(mpcHorizN))
+    ret.append('#define NUM_DIFFSTATES     '+str(len(dae.xNames())))
+    ret.append('#define NUM_ALGVARS        '+str(len(dae.zNames())))
+    ret.append('#define NUM_CONTROLS       '+str(len(dae.uNames())))
+    ret.append('#define NUM_PARAMETERS     '+str(len(dae.pNames())))
+    ret.append('#define NUM_OUTPUTS        '+repr(nOutputs))
+    ret.append('#define NUM_MEASUREMENTS_X '+repr(nMeasX))
+    ret.append('#define NUM_MEASUREMENTS_U '+repr(nMeasU))
+    ret.append('#define NUM_MHE_HORIZON    '+str(mheHorizN))
+    ret.append('#define NUM_MPC_HORIZON    '+str(mpcHorizN))
     ret.append('\n')
     ret.append('#endif // __'+topname+'_DIMENSIONS_H__')
     return '\n'.join(ret)
 
-def writeAll(dae, topname, autogenDir, measurements=[], measurementsEnd=[], mheHorizN=0, mpcHorizN=0):
+def writeAll(dae, topname, autogenDir, measurementsX=[], measurementsU=[], mheHorizN=0, mpcHorizN=0):
     # make autogen directory if it doesn't exist
     if not os.path.exists(autogenDir):
         os.makedirs(autogenDir)
 
     # write files in autogen directory
-    protobufs = writeProtoSpec(topname,dae,measurements,measurementsEnd)
+    protobufs = writeProtoSpec(topname,dae,measurementsX,measurementsU)
 
     protobufs += '''
 message Debug {
@@ -240,14 +240,14 @@ message Debug {
 message Mhe {
   repeated DifferentialStates x = 1;
   repeated Controls u = 2;
-  repeated Measurements y = 3;
-  required MeasurementsEnd yN = 4;
-  repeated Measurements y_of_x = 5;
-  optional MeasurementsEnd yN_of_xN = 6;
-  required double kkt = 7;
-  required double objective = 8;
-  required double prepTime = 9;
-  required double fbTime = 10;
+  repeated MeasurementsX yx = 3;
+  repeated MeasurementsU yu = 4;
+  repeated MeasurementsX yx_of_x = 6;
+  repeated MeasurementsU yu_of_u = 7;
+  required double kkt = 8;
+  required double objective = 9;
+  required double prepTime = 10;
+  required double fbTime = 11;
 }
 
 message Mpc {
@@ -265,8 +265,8 @@ message Sim {
   required DifferentialStates x = 1;
   required AlgebraicVars z = 2;
   required Controls u = 3;
-  required Measurements y = 4;
-  required MeasurementsEnd yN = 5;
+  required MeasurementsX yx = 4;
+  required MeasurementsU yu = 5;
   required Outputs outs = 6;
 }
 
@@ -276,19 +276,19 @@ message MheMpcHorizons {
   required DifferentialStates mheXN = 3;
   required Controls mpcU0 = 4;
   optional Sim sim = 5;
-  repeated string messages = 7;
-  required Debug debug = 8;
+  repeated string messages = 6;
+  required Debug debug = 7;
 }
 '''
 
     # dimensions
-    dims = writeDimensions(topname, dae, measurements, measurementsEnd, mheHorizN, mpcHorizN)
+    dims = writeDimensions(topname, dae, measurementsX, measurementsU, mheHorizN, mpcHorizN)
     f = open(os.path.join(autogenDir, topname+'_dimensions.h'),'w')
     f.write(dims)
     f.close()
 
     # structs
-    structs = writeStructs(dae, topname, measurements, measurementsEnd)
+    structs = writeStructs(dae, topname, measurementsX, measurementsU)
     f = open(os.path.join(autogenDir, topname+'_structs.h'),'w')
     f.write(structs)
     f.close()
@@ -310,7 +310,7 @@ import %(topname)s_pb2
 
     # C++ proto converters
     (protoConverters, protoConverterHeader) = \
-        writeProtoConverters(dae, topname, measurements, measurementsEnd)
+        writeProtoConverters(dae, topname, measurementsX, measurementsU)
     f = open(os.path.join(autogenDir, 'protoConverters.cpp'),'w')
     f.write(protoConverters)
     f.close()
