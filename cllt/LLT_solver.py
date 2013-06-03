@@ -22,7 +22,14 @@ def setupImplicitFunction(operAlpha, An, geom):
     (B,RHS) = getBandRHS(alphaiLoc)
     makeMeZero = RHS - C.mul(B, An)
 
-    return (makeMeZero, alphaiLoc)
+    CL  = An[0]*numpy.pi*geom.AR
+    CDi = 0.0
+    for i in range(geom.n):
+        k = geom.sumN[i]
+        CDi += k * An[i]**2 / An[0]**2
+    CDi *= numpy.pi*geom.AR*An[0]**2
+
+    return (makeMeZero, alphaiLoc, CL, CDi)
 
 
 def LLT_solver(operAlphaDegLst, geom):
@@ -34,7 +41,7 @@ def LLT_solver(operAlphaDegLst, geom):
     #
     alpha = C.ssym('alpha')
     An = C.ssym('A',geom.n)
-    (makeMeZero, alphaiLoc) = setupImplicitFunction(alpha, An, geom)
+    (makeMeZero, alphaiLoc, _, _) = setupImplicitFunction(alpha, An, geom)
     
     # make the solver
     f = C.SXFunction([An,alpha], [makeMeZero])
