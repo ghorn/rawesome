@@ -254,28 +254,28 @@ class Ocp(object):
 
 class Mpc(Ocp):
     @property
-    def yNames(self):
-        return self._yNames
+    def yxNames(self):
+        return self._yxNames
     @property
-    def yNNames(self):
-        return self._yNNames
+    def yuNames(self):
+        return self._yuNames
     @property
-    def y(self):
-        return self._y
+    def yx(self):
+        return self._yx
     @property
-    def yN(self):
-        return self._yN
+    def yu(self):
+        return self._yu
     def __init__(self, dae, N=None, ts=None):
         Ocp.__init__(self, dae, N=N, ts=ts)
         self.hashPrefix = 'mpc'
 
-        self._yNames = dae.xNames() + dae.uNames()
-        self._yNNames = dae.xNames()
+        self._yxNames = dae.xNames()
+        self._yuNames = dae.uNames()
 
-        self._y  = C.veccat( [self[n] for n in self.yNames] )
-        Ocp.minimizeLsq(self,self.y)
-        self._yN  = C.veccat( [self[n] for n in self.yNNames] )
-        Ocp.minimizeLsqEndTerm(self,self.yN)
+        self._yx  = C.veccat( [self[n] for n in self.yxNames] )
+        self._yu  = C.veccat( [self[n] for n in self.yuNames] )
+        Ocp.minimizeLsq(self, C.veccat([self.yx,self.yu]))
+        Ocp.minimizeLsqEndTerm(self, self.yx)
 
     def minimizeLsq(self, obj):
         raise Exception("hey, you don't know this is Ocp, the LSQ to be minimized is [X,U]")
@@ -285,38 +285,42 @@ class Mpc(Ocp):
 
 class Mhe(Ocp):
     @property
-    def yNames(self):
-        return self._yNames
+    def yxNames(self):
+        return self._yxNames
     @property
-    def yNNames(self):
-        return self._yNNames
+    def yuNames(self):
+        return self._yuNames
     @property
-    def y(self):
-        return self._y
+    def yx(self):
+        return self._yx
     @property
-    def yN(self):
-        return self._yN
-    def __init__(self, dae, N=None, ts=None, yNames=None, yNNames=None):
+    def yu(self):
+        return self._yu
+    def __init__(self, dae, N=None, ts=None, yxNames=None, yuNames=None):
         Ocp.__init__(self, dae, N=N, ts=ts)
         self.hashPrefix = 'mhe'
 
-        if yNames is None:
-            yNames = dae.xNames() + dae.uNames()
-        if yNNames is None:
-            yNNames = dae.xNames()
-        if not isinstance(yNames,list):
+        if yxNames is None:
+            yxNames = dae.xNames()
+        if yuNames is None:
+            yuNames = dae.uNames()
+        if not isinstance(yxNames,list):
             raise Exception("If you decide to provide measurements, "+\
                             "you have to provide them as a list of strings")
-        if not isinstance(yNNames,list):
+        if not isinstance(yuNames,list):
             raise Exception("If you decide to provide end measurements, "+\
                             "you have to provide them as a list of strings")
-        self._yNames = yNames
-        self._yNNames = yNNames
+        self._yxNames = yxNames
+        self._yuNames = yuNames
 
-        self._y  = C.veccat( [self[n] for n in self.yNames] )
-        Ocp.minimizeLsq(self,self.y)
-        self._yN  = C.veccat( [self[n] for n in self.yNNames] )
-        Ocp.minimizeLsqEndTerm(self,self.yN)
+        self._yx  = C.veccat( [self[n] for n in self.yxNames] )
+        self._yu  = C.veccat( [self[n] for n in self.yuNames] )
+
+        assert not C.dependsOn(self.yx, self.dae.uVec()), "error: x measurement depends on u"
+        assert not C.dependsOn(self.yu, self.dae.xVec()), "error: u measurement depends on x"
+
+        Ocp.minimizeLsq(self,C.veccat([self.yx, self.yu]))
+        Ocp.minimizeLsqEndTerm(self,self.yx)
 
     def minimizeLsq(self, obj):
         raise Exception("hey, you don't know this is Ocp")
