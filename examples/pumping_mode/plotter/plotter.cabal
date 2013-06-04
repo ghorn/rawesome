@@ -16,7 +16,7 @@ executable plotter
 
   if os(OSX)
     cpp-options:     -DOSX
-    build-depends:   zeromq3-haskell
+    build-depends:   zeromq3-haskell == 0.2.*
   else
     build-depends:   zeromq-haskell
 
