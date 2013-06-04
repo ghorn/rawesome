@@ -87,7 +87,9 @@ def makeConf():
          'jCarousel': 1e2,
          'cfric': 0,#100,
 
-         #[wind shear]
-         'z0': 100,
-         'zt_roughness': 0.1
+         # wind model
+         'wind_model':{'name':'wind_shear',
+                       'z0':100,
+                       'zt_roughness': 0.1}
+#         'wind_model':{'name':'constant'}
         }
