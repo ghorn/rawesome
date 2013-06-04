@@ -23,6 +23,8 @@ from numpy import pi
 
 import rawe
 import rawekite
+from autogen.topumpingProto import toProto
+from autogen.pumping_pb2 import Trajectory
 
 numLoops=1
 #powerType = 'mechanical'
@@ -174,14 +176,16 @@ if __name__=='__main__':
     print "reading config..."
 #    from carousel_conf import conf
     #from highwind_carousel_conf import conf
-    from betty_conf import conf
+    from betty_conf import makeConf
 
     nk = 60*numLoops
 #    nk = 70
 
     print "creating model..."
+    conf = makeConf()
     dae = rawe.models.crosswind(conf)
     dae.addP('endTime')
+    conf['minAltitude'] = 0.5
 
     print "setting up ocp..."
     nicp = 1
@@ -191,9 +195,10 @@ if __name__=='__main__':
     ocp = setupOcp(dae,conf,nk,nicp,deg,collPoly)
 
     # spawn telemetry thread
-#    callback = rawe.telemetry.startTelemetry(ocp, conf, callbacks=[(rawekite.kiteTelemetry.showAllPoints,'multi-carousel')])
-    callback = rawe.telemetry.startTelemetry(ocp, conf, callbacks=[(rawekite.kiteTelemetry.normalCallback,'multi-carousel')])
-#    callback = rawe.telemetry.startTelemetry(ocp, conf, callbacks=[(rawekite.kiteTelemetry.showAllPoints,'multi-carousel')], printBoundViolation=True, printConstraintViolation=True)
+    callback = rawe.telemetry.startTelemetry(
+        ocp, callbacks=[
+            (rawe.telemetry.trajectoryCallback(toProto, Trajectory, showAllPoints=True), 'pumping trajectory')
+        ])
 
     # solver
     ipoptOptions = [("linear_solver","ma27"),
