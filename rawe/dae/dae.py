@@ -44,9 +44,17 @@ class Dae(object):
         self._dummyDdtMap = {}
         
     def _freezeXzup(self,msg):
+        '''
+        call this when it's illegal for user to add any more states/controls/params
+        to lock the model
+        '''
         self._xzupFrozen.add(msg)
 
     def _freezeOutputs(self,msg):
+        '''
+        call this when it's illegal for user to add any more outputs
+        to lock the model
+        '''
         self._outputsFrozen.add(msg)
 
     def _getAllNames(self):
@@ -61,13 +69,15 @@ class Dae(object):
             raise ValueError("can't perform this operation because Dae has been frozen by: "+str([n for n in self._outputsFrozen]))
 
     def assertUniqueName(self, name):
+        '''
+        raise an error if given name is already used, or is illegal
+        '''
         if name in (self._getAllNames() + self._illegalNames):
             raise ValueError('name "'+name+'" is not unique or illegal')
 
         # make sure it's a valid variable name (useful for codegen)
         if not re.match("^[A-Za-z0-9_]+$", name):
             raise Exception('invalid name: "'+name+'"')
-
 
         if name[0]=='_':
             raise ValueError("underscores before names are illegal")
@@ -87,6 +97,9 @@ class Dae(object):
         return ret
 
     def ddt(self,name):
+        '''
+        get the time derivative of a differential state
+        '''
         if name not in self._xNames:
             raise ValueError("unrecognized state \""+name+"\"")
         try:
@@ -96,6 +109,10 @@ class Dae(object):
             return self.ddt(name)
 
     def setResidual(self,res):
+        '''
+        set the dae implicit residual vector f
+        where f(x,xdot,z,u,p) == 0
+        '''
         if hasattr(self,'_residual'):
             raise ValueError('residual already set')
         if isinstance(res,list):
@@ -127,34 +144,64 @@ class Dae(object):
         return self._addVar(name,self._pNames)
     
     def xVec(self):
+        '''
+        get differential state vector
+        '''
         self._freezeXzup('xVec()')
         return C.veccat([self._syms[n] for n in self._xNames])
     def zVec(self):
+        '''
+        get algebraic variable
+        '''
         self._freezeXzup('zVec()')
         return C.veccat([self._syms[n] for n in self._zNames])
     def uVec(self):
+        '''
+        get control vector
+        '''
         self._freezeXzup('uVec()')
         return C.veccat([self._syms[n] for n in self._uNames])
     def pVec(self):
+        '''
+        get parameter vector
+        '''
         self._freezeXzup('pVec()')
         return C.veccat([self._syms[n] for n in self._pNames])
     def xDotVec(self):
+        '''
+        get differential state derivative vector
+        '''
         self._freezeXzup('xDotVec()')
         return C.veccat([self.ddt(n) for n in self._xNames])
 
     def xNames(self):
+        '''
+        get list of names of all differential states
+        '''
         self._freezeXzup('xNames()')
         return self._xNames
     def zNames(self):
+        '''
+        get list of names of all algebraic variables
+        '''
         self._freezeXzup('zNames()')
         return self._zNames
     def uNames(self):
+        '''
+        get list of names of all controls
+        '''
         self._freezeXzup('uNames()')
         return self._uNames
     def pNames(self):
+        '''
+        get list of names of all parameters
+        '''
         self._freezeXzup('pNames()')
         return self._pNames
     def outputNames(self):
+        '''
+        get list of names of all outputs
+        '''
         self._freezeOutputs('outputNames()')
         return self._outputNames
 
@@ -194,6 +241,12 @@ class Dae(object):
             self._syms[name] = val
 
     def outputsFun(self):
+        '''
+        return (fAll, (f0,outputs0)) where
+        fAll = all outputs as fAll(xdot, x, z, u, p)
+        f0 = outputs defined by f0(x, u, p)
+        outputs0 is list of names of f0 outputs
+        '''
         self._freezeOutputs('outputsFun()')
 
         # which outputs are defined at tau_i0
@@ -230,6 +283,10 @@ class Dae(object):
         return (fAll,(f0,outputs0))
 
     def outputsFunWithSolve(self):
+        '''
+        this solves for unknown xdot and z symbolically
+        then gives all outputs as function of only f(x,u,p)
+        '''
         # get output fun as fcn of [xdot, x, z, u, p]
         (fAll, _) = self.outputsFun()
         if fAll == None:
@@ -250,6 +307,9 @@ class Dae(object):
         return f
 
     def getResidual(self):
+        '''
+        return the dae residual vector
+        '''
         self._freezeXzup('getResidual()')
         if not hasattr(self,'_residual'):
             raise ValueError('need to set the residual')
@@ -277,6 +337,10 @@ class Dae(object):
                              C.daeOut( alg=f, ode=xdot) )
 
     def solveForXDotAndZ(self):
+        '''
+        returns (xDotDict,zDict) where these dictionaries contain symbolic
+        xdot and z which are only a function of x,u,p        
+        '''
         # get the residual fg(xdot,x,z)
         fg = self.getResidual()
 
@@ -311,6 +375,11 @@ class Dae(object):
         return (xDotDict, zDict)
 
     def convertToOde(self):
+        '''
+        EXPERIMENTAL!
+        Solve for xdot and z as fcns of x,u,p, then backsubstitude these in.
+        return dae with no xdot or z, and residual/outputs are same as before.
+        '''
         (xDotDict,zDict) = self.solveForXDotAndZ()
         xDot = C.veccat([xDotDict[name] for name in self.xNames()])
         z = C.veccat([zDict[name] for name in self.zNames()])
@@ -344,6 +413,10 @@ class Dae(object):
         return dae
 
     def assertNoFreeParams(self):
+        '''
+        throw exception if there are some symbolics in the dae which were not added
+        with add{X,Z,U,P} or dae.ddt(blah)
+        '''
         # get the residual fg(xdot,x,z,u,p)
         fg = self.getResidual()
         alloutputs = [fg] + [self[name] for name in self.outputNames()]
