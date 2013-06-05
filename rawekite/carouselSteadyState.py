@@ -147,7 +147,7 @@ def getSteadyState(dae,conf,omega0,r0,z0):
         solver.setOption("iteration_callback", c)
 #    addCallback()
     solver.setOption('max_iter',10000)
-    solver.setOption('tol',1e-20)
+    solver.setOption('tol',1e-14)
     solver.setOption('suppress_all_output','yes')
     solver.setOption('print_time',False)
     solver.init()
@@ -160,6 +160,9 @@ def getSteadyState(dae,conf,omega0,r0,z0):
     solver.setInput(C.DMatrix(ub), 'ubx')
 
     solver.solve()
+    ret = solver.getStat('return_status')
+    assert ret in ['Solve_Succeeded','Solved_To_Acceptable_Level'], 'Solver failed: '+ret
+
 #    publisher.close()
 #    context.destroy()
     xOpt = solver.output('x')
