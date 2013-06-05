@@ -254,11 +254,12 @@ message Mpc {
   repeated DifferentialStates x = 1;
   repeated Controls u = 2;
   required DifferentialStates x0 = 3;
-  //repeated Dae referenceTrajectory = 4;
-  required double kkt = 5;
-  required double objective = 6;
-  required double prepTime = 7;
-  required double fbTime = 8;
+  repeated DifferentialStates xref = 4;
+  repeated Controls uref = 5;
+  required double kkt = 6;
+  required double objective = 7;
+  required double prepTime = 8;
+  required double fbTime = 9;
 }
 
 message Sim {
