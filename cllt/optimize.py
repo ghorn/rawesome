@@ -90,16 +90,23 @@ ubx['chordLoc'] = 1.0
 #print ubx['chordLoc']
 
 solver.solve()
+ret = solver.getStat('return_status')
+assert ret in ['Solve_Succeeded','Solved_To_Acceptable_Level'], 'Solver failed: '+ret
 
 result = dvs(solver.output("x"))
 
 pylab.figure()
 pylab.plot(yLoc, result['chordLoc'])
-pylab.legend(['chordLoc'])
+pylab.xlabel('span [m]')
+pylab.ylabel('chord [m]')
+pylab.legend(['chord'])
+pylab.axes().set_aspect('equal')
 
 pylab.figure()
 pylab.plot(yLoc, result['aIncGeometricLoc']*180.0/numpy.pi)
-pylab.legend(['aIncGeometricLoc(deg)'])
+pylab.legend(['twist (deg)'])
+pylab.xlabel('span [m]')
+pylab.ylabel('twist [deg]')
 
 outputsFcn.setInput(result.cat)
 outputsFcn.evaluate()
@@ -111,6 +118,8 @@ sref = outputsFcn.output(3)
 pylab.figure()
 pylab.plot(yLoc, alphaiLoc*180.0/numpy.pi)
 pylab.legend(['alphaiLoc(deg)'])
+pylab.xlabel('span [m]')
+pylab.ylabel('induced AOA [deg]')
 
 print "oper alpha: "+str(result['operAlpha']*180/C.pi)+" degrees"
 print "sref:",sref
