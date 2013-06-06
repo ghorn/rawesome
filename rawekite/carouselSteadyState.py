@@ -76,7 +76,7 @@ def getSteadyState(dae,conf,omega0,r0,z0):
     guessVec = C.DMatrix([guess[n] for n in dae.xNames()+dae.zNames()+dae.uNames()+dae.pNames()]+
                          [dotGuess[n] for n in dae.xNames()])
 
-    bounds = {'x':(0.01,r0+1),'y':(-1,0),'z':(z0,z0),
+    bounds = {'x':(0.01,r0*2),'y':(-r0,0),'z':(z0,z0),
              'dx':(-50,50),'dy':(0,0),'dz':(0,0),
              'r':(r0,r0),'dr':(0,0),
              'e11':(-2,2),'e12':(-2,2),'e13':(-2,2),
@@ -147,7 +147,7 @@ def getSteadyState(dae,conf,omega0,r0,z0):
         solver.setOption("iteration_callback", c)
 #    addCallback()
     solver.setOption('max_iter',10000)
-    solver.setOption('tol',1e-14)
+#    solver.setOption('tol',1e-14)
     solver.setOption('suppress_all_output','yes')
     solver.setOption('print_time',False)
     solver.init()
