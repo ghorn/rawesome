@@ -18,7 +18,7 @@
 import casadi as C
 
 def getWindAnglesFrom_v_bw_b(airspeed, v_bw_b):
-    alpha =  C.arctan2( v_bw_b[2], v_bw_b[0] )
+    alpha =  C.arctan2(-v_bw_b[2], v_bw_b[0] )
     beta  =  C.arcsin (-v_bw_b[1] / airspeed )
     return (alpha, beta)
 
@@ -114,10 +114,10 @@ def aeroForcesTorques(dae, conf, v_bw_n, v_bw_b, (w1,w2,w3), (eTe1, eTe2, eTe3),
     #omega @>@>
     if conf['alpha_beta_computation'] == 'first_order':
         alpha = alpha0-v_bw_b_z/v_bw_b_x
-        beta = v_bw_b_y/v_bw_b_x
+        beta = -v_bw_b_y/v_bw_b_x
 #        beta = v_bw_b_y/C.sqrt(v_bw_b_x*v_bw_b_x + v_bw_b_z*v_bw_b_z)
         alphaTail = alpha0-v_tailw_b_z/v_tailw_b_x
-        betaTail = v_tailw_b_y/v_tailw_b_x
+        betaTail = -v_tailw_b_y/v_tailw_b_x
 #        betaTail = v_tailw_b_y/C.sqrt(v_tailw_b_x*v_tailw_b_x + v_tailw_b_z*v_tailw_b_z)
 
     elif conf['alpha_beta_computation'] == 'closed_form':
