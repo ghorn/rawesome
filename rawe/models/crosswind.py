@@ -78,7 +78,7 @@ def setupModel(dae, conf):
             # zt is surface roughness characteristic length
             z0 = conf['wind_model']['z0']
             zt_roughness = conf['wind_model']['zt_roughness']
-            return dae['w0']*C.log((z+zt_roughness)/zt_roughness)/C.log(z0/zt_roughness)
+            return dae['w0']*C.log((-z+zt_roughness)/zt_roughness)/C.log(z0/zt_roughness)
         elif conf['wind_model']['name'] == 'constant':
             # constant wind
             return dae['w0']
@@ -90,12 +90,8 @@ def setupModel(dae, conf):
     dae['v_bn_n'] = C.veccat( [ dx , dy, dz ] )
     # body velocity w.r.t. wind in NED
     v_bw_n =  dae['v_bn_n'] - dae['v_wn_n']
-    R_n2b = C.veccat( [dae[n] for n in ['e11', 'e12', 'e13',
-                                        'e21', 'e22', 'e23',
-                                        'e31', 'e32', 'e33']]
-                      ).reshape((3,3))
     # body velocity w.r.t. wind in body frame
-    v_bw_b = C.mul( R_n2b, v_bw_n )
+    v_bw_b = C.mul( dae['R_n2b'], v_bw_n )
 
     # compute aerodynamic forces and moments
     (f1, f2, f3, t1, t2, t3) = aeroForcesTorques(dae, conf, v_bw_n, v_bw_b,
@@ -286,6 +282,7 @@ def crosswindModel(conf):
     dae['ddt_w_bn_b_x'] = dae.ddt('w_bn_b_x')
     dae['ddt_w_bn_b_y'] = dae.ddt('w_bn_b_y')
     dae['ddt_w_bn_b_z'] = dae.ddt('w_bn_b_z')
+    dae['w_bn_b'] = C.veccat([dae['w_bn_b_x'], dae['w_bn_b_y'], dae['w_bn_b_z']])
 
     # some outputs in degrees for plotting
     dae['aileron_deg']     = dae['aileron']*180/C.pi
@@ -310,9 +307,9 @@ def crosswindModel(conf):
                                      0.1078628659825*dae['rpm']*dae['torque']
 
     # what is the convension on this rotation matrix?
-    dae['dcm'] = C.vertcat([C.horzcat([dae['e11'],dae['e12'],dae['e13']]),
-                            C.horzcat([dae['e21'],dae['e22'],dae['e23']]),
-                            C.horzcat([dae['e31'],dae['e32'],dae['e33']])])
+    dae['R_n2b'] = C.vertcat([C.horzcat([dae['e11'],dae['e12'],dae['e13']]),
+                              C.horzcat([dae['e21'],dae['e22'],dae['e23']]),
+                              C.horzcat([dae['e31'],dae['e32'],dae['e33']])])
 
     # get mass matrix, rhs
     (massMatrix, rhs, dRexp) = setupModel(dae, conf)
@@ -344,7 +341,7 @@ def crosswindModel(conf):
 
     # line angle
     dae['cos_line_angle'] = \
-      (dae['e31']*dae['x'] + dae['e32']*dae['y'] + dae['e33']*dae['z']) / C.sqrt(dae['x']**2 + dae['y']**2 + dae['z']**2)
+      -(dae['e31']*dae['x'] + dae['e32']*dae['y'] + dae['e33']*dae['z']) / C.sqrt(dae['x']**2 + dae['y']**2 + dae['z']**2)
     dae['line_angle_deg'] = C.arccos(dae['cos_line_angle'])*180.0/C.pi
 
     # add local loyd's limit

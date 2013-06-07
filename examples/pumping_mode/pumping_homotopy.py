@@ -36,8 +36,8 @@ def setupOcp(dae,conf,nk,nicp=1,deg=4):
 
     # constrain invariants
     def constrainInvariantErrs():
-        dcm = ocp.lookup('dcm',timestep=0)
-        rawekite.kiteutils.makeOrthonormal(ocp, dcm)
+        R_n2b = ocp.lookup('R_n2b',timestep=0)
+        rawekite.kiteutils.makeOrthonormal(ocp, R_n2b)
         ocp.constrain(ocp.lookup('c',timestep=0), '==', 0, tag=('initial c 0',None))
         ocp.constrain(ocp.lookup('cdot',timestep=0), '==', 0, tag=('initial cdot 0',None))
     constrainInvariantErrs()
@@ -50,7 +50,7 @@ def setupOcp(dae,conf,nk,nicp=1,deg=4):
     def constrainAirspeedAlphaBeta():
         for k in range(0,nk):
             ocp.constrain(ocp.lookup('airspeed',timestep=k), '>=', 20, tag=('airspeed',nk))
-            ocp.constrainBnds(ocp.lookup('alpha_deg',timestep=k), (-5,15), tag=('alpha',nk))
+            ocp.constrainBnds(ocp.lookup('alpha_deg',timestep=k), (-4.5,15), tag=('alpha',nk))
             ocp.constrainBnds(ocp.lookup('beta_deg', timestep=k), (-10,10), tag=('beta',nk))
     constrainAirspeedAlphaBeta()
 
@@ -84,9 +84,9 @@ def setupOcp(dae,conf,nk,nicp=1,deg=4):
     ocp.bound('x',(-2000,2000))
     ocp.bound('y',(-2000,2000))
     if 'minAltitude' in conf:
-        ocp.bound('z',(conf['minAltitude'],2000))
+        ocp.bound('z',(-2000, -conf['minAltitude']))
     else:
-        ocp.bound('z',(0.5,2000))
+        ocp.bound('z',(-2000, -0.5))
     ocp.bound('r',(1,2000))
     ocp.bound('dr',(-30,30))
     ocp.bound('ddr',(-15,15))
@@ -148,17 +148,19 @@ if __name__=='__main__':
                 nTurns = 1
 
                 # path following
+                # theta should be collocation points
                 theta = nTurns*2*pi*k/float(ocp.nk*ocp.nicp*(ocp.deg+1)-1)
 
                 thetaDot = nTurns*2*pi/(ocp._guess.lookup('endTime'))
                 xyzCircleFrame    = numpy.array([h, r*numpy.sin(theta),          -r*numpy.cos(theta)])
                 xyzDotCircleFrame = numpy.array([0, r*numpy.cos(theta)*thetaDot,  r*numpy.sin(theta)*thetaDot])
 
-                phi = numpy.arcsin(r/lineRadiusGuess) # rotate so it's above ground
-                phi += numpy.arcsin((conf['minAltitude']+0.3)/lineRadiusGuess) + 10*pi/180
-                R_c2n = numpy.matrix([[ numpy.cos(phi), 0, -numpy.sin(phi)],
-                                      [              0, 1,               0],
-                                      [ numpy.sin(phi), 0,  numpy.cos(phi)]])
+                phi  = numpy.arcsin(r/lineRadiusGuess) # rotate so it's above ground
+                phi += numpy.arcsin((conf['minAltitude']+0.3)/lineRadiusGuess)
+                phi += 10*pi/180
+                R_c2n = numpy.matrix([[  numpy.cos(phi), 0, numpy.sin(phi)],
+                                      [               0, 1,              0],
+                                      [ -numpy.sin(phi), 0, numpy.cos(phi)]])
                 xyz    = numpy.dot(R_c2n, xyzCircleFrame)
                 xyzDot = numpy.dot(R_c2n, xyzDotCircleFrame)
 
@@ -185,7 +187,7 @@ if __name__=='__main__':
                 p0 = numpy.array([x,y,z])
                 dp0 = numpy.array([dx,dy,dz])
                 e1 = dp0/numpy.linalg.norm(dp0)
-                e3 = p0/lineRadiusGuess
+                e3 = -p0/lineRadiusGuess
                 e2 = numpy.cross(e3,e1)
 
                 ocp.guess('e11',e1[0],timestep=nkIdx,nicpIdx=nicpIdx,degIdx=degIdx)
@@ -202,7 +204,7 @@ if __name__=='__main__':
 
                 k += 1
 
-    ocp.guess('w_bn_b_z', 2.0*pi/ocp._guess.lookup('endTime'))
+    ocp.guess('w_bn_b_z', -2.0*pi/ocp._guess.lookup('endTime'))
 
     # objective function
     obj = -1e6*ocp.lookup('gamma_homotopy')

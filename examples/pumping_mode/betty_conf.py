@@ -15,63 +15,62 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with rawesome.  If not, see <http://www.gnu.org/licenses/>.
 
+from numpy import pi
+
 def makeConf():
     return \
         {'g': 9.81,  #  gravitational constant #  [ m /s^2]
          'rho': 1.23,  #  density of the air #  [ kg/m^3]
 
-         #[aero]
          'alpha0deg': 0,
 
-         #ROLL DAMPING
-         'rD': 0.3e-2 ,
-         'pD': 0,#1e-3,
-         'yD': 0,#1e-3,
-
-         #WIND-TUNNEL PARAMETERS
-         #Lift (report p. 67)
-         'cLA': 5.786876,
-         'cLe': -1.924*0,
+         # forces
          'cL0': 0.203530,
+         'cL_A':5.786876,
 
-         #Drag (report p. 70)
-         'cDA': 0.018751,
-         'cDA2': 1.529989,
-         'cDB2': 0,
+         'cD_A': 0.018751,
+         'cD_A2': 1.529989,
+         'cD_B2': -0.16247,
+         'cD0': 0.008767,
 
-         'cD0': 0.006952,
+         'cY_B':-0.239789,
 
-         #Roll (report p. 72)
-         'cRB': -0.062,
-         'cRAB': -0.271 ,
-         'cRr': -5.637e-1,
+         # stability derivatives
+         'cl_p':-0.576, 'cl_q':  0.0, 'cl_r': 0.0707,
+         'cm_p':   0.0, 'cm_q':-15.5, 'cm_r':    0.0,
+         'cn_p':-0.036, 'cn_q':  0.0, 'cn_r':-0.0667,
 
-         #Pitch (report p. 74)
-         'cPA': 0.293,
-         'cPe': -4.9766e-1,
+         'cl_B':-0.051808,
+         'cl_AB':-0.208344,
+         'cm_A':-0.450643,
+         # cm0 valid for CG/bridle location 0.1 meters behind main wing leading edge
+         'cm0':0.028980,
+         'cn_B':0.037183,
+         'cn_AB':-0.028933,
 
-         'cP0': 0.03,
+         # control surface moments
+         'cl_ail':0.0073*180/pi,
+         'cm_elev':0.0352*180/pi,
+         'cm_flaps':0.0026*180/pi,
+         'cn_rudder':0.001176*180/pi,
 
-         #Yaw (report p. 76)
-         'cYB': 0.05,
-         'cYAB': 0.229,
-         'cYrudder': 0.5,
+         # control surface forces
+         'cL_elev':-0.0105*180/pi,
+         'cL_flaps':0.0184*180/pi,
+         'cY_rudder':0.0035*180/pi,
 
          #[kite]
          'mass':  4.5,
 
-         #TAIL LENGTH
-         'lT': 0.4,
-
          # how alpha/beta computed
-         #     'alpha_beta_computation':'first_order',
+         #'alpha_beta_computation':'first_order',
          'alpha_beta_computation':'closed_form',
 
          'sref': 0.684,
          'bref': 2.904, #sqrt(sref*AR),
          'cref': 0.2512, #sqrt(sref/AR),
 
-         'zt': -0.01,
+         'zt': 0.01,
 
          #INERTIA MATRIX (Kurt's direct measurements)
          'j1': 0.0163,

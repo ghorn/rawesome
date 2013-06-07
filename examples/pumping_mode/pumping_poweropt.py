@@ -60,8 +60,8 @@ def setupOcp(dae,conf,nk,nicp,deg,collPoly):
 
     # constrain invariants
     def constrainInvariantErrs():
-        dcm = ocp.lookup('dcm',timestep=0)
-        rawekite.kiteutils.makeOrthonormal(ocp, dcm)
+        R_n2b = ocp.lookup('R_n2b',timestep=0)
+        rawekite.kiteutils.makeOrthonormal(ocp, R_n2b)
         ocp.constrain(ocp.lookup('c',timestep=0), '==', 0, tag=('c(0)==0',None))
         ocp.constrain(ocp.lookup('cdot',timestep=0), '==', 0, tag=('cdot(0)==0',None))
     constrainInvariantErrs()
@@ -76,7 +76,7 @@ def setupOcp(dae,conf,nk,nicp,deg,collPoly):
         for k in range(0,nk):
             ocp.constrain(ocp.lookup('airspeed',timestep=k), '>=', 10, tag=('airspeed',k))
             for j in range(0,ocp.deg+1):
-                ocp.constrainBnds(ocp.lookup('alpha_deg',timestep=k,degIdx=j), (-8.5,9.5), tag=('alpha(deg)',k))
+                ocp.constrainBnds(ocp.lookup('alpha_deg',timestep=k,degIdx=j), (-4.5,9.5), tag=('alpha(deg)',k))
 
 #            ocp.constrainBnds(ocp.lookup('beta_deg', timestep=k), (-5,5), tag=('beta(deg)',k))
     constrainAirspeedAlphaBeta()
@@ -116,7 +116,7 @@ def setupOcp(dae,conf,nk,nicp,deg,collPoly):
 
     # bounds
     ocp.bound('aileron',(-0.04,0.04))
-    ocp.bound('elevator',(-0.1,0.5))
+    ocp.bound('elevator',(-0.5,0.5))
     ocp.bound('rudder',(-0.2,0.2))
     ocp.bound('daileron',(-2.0,2.0))
     ocp.bound('delevator',(-2.0,2.0))
@@ -125,9 +125,9 @@ def setupOcp(dae,conf,nk,nicp,deg,collPoly):
     ocp.bound('x',(-2000,2000))
     ocp.bound('y',(-2000,2000))
     if 'minAltitude' in conf:
-        ocp.bound('z',(conf['minAltitude'],2000))
+        ocp.bound('z',(-2000, -conf['minAltitude']))
     else:
-        ocp.bound('z',(0.01,2000))
+        ocp.bound('z',(-2000, -0.05))
     ocp.bound('r',(1,500))
     ocp.bound('dr',(-30,30))
     ocp.bound('ddr',(-500,500))
@@ -258,6 +258,8 @@ if __name__=='__main__':
 
     # Plot the results
     def plotResults():
+        traj.subplot(['aero_fx','aero_fy','aero_fz'])
+        traj.subplot(['aero_mx','aero_my','aero_mz'])
 #        traj.subplot(['x','y','z'])
 #        traj.subplot(['dx','dy','dz'])
         traj.subplot(['aileron','elevator','rudder'],title='control surfaces')
