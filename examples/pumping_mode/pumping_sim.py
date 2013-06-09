@@ -101,9 +101,9 @@ def run_sim():
             # try to take a simulation step of dt
             try:
                 js = joy.getAll()
-                rudder = js['axes'][0]*numpy.radians(10)
-                aileron = js['axes'][3]*numpy.radians(10)
-                elevator = js['axes'][4]*numpy.radians(10)
+                rudder = js['axes'][0]*numpy.radians(5)
+                aileron = js['axes'][3]*numpy.radians(5)
+                elevator = js['axes'][4]*numpy.radians(5)
                 #print "rudder: ",rudder
                 #print "aileron: ",aileron
                 #print "elevator: ",elevator

@@ -70,7 +70,7 @@ def makeConf():
          'bref': 2.904, #sqrt(sref*AR),
          'cref': 0.2512, #sqrt(sref/AR),
 
-         'zt': 0.05,
+         'zt': 0.10,
 
          # INERTIA MATRIX: THIS IS A WILD GUESS
          'j1': 0.565,
