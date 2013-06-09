@@ -22,7 +22,7 @@ def getWindAnglesFrom_v_bw_b(airspeed, v_bw_b):
     beta  =  C.arcsin (v_bw_b[1] / airspeed )
     return (alpha, beta)
 
-def aeroForcesTorques(dae, conf, v_bw_n, v_bw_b, (w1,w2,w3), (eTe1, eTe2, eTe3), (aileron,elevator)):
+def aeroForcesTorques(dae, conf, v_bw_n, v_bw_b, (w1,w2,w3), (eTe1, eTe2, eTe3)):
     rho = conf['rho']
     alpha0 = conf['alpha0deg']*C.pi/180
 
@@ -30,7 +30,7 @@ def aeroForcesTorques(dae, conf, v_bw_n, v_bw_b, (w1,w2,w3), (eTe1, eTe2, eTe3),
     bref = conf['bref']
     cref = conf['cref']
 
-    #Airfoil speed in carousel frame
+    # airfoil speed in wind frame
     v_bw_n_x = v_bw_n[0]
     v_bw_n_y = v_bw_n[1]
     v_bw_n_z = v_bw_n[2]
@@ -39,11 +39,11 @@ def aeroForcesTorques(dae, conf, v_bw_n, v_bw_b, (w1,w2,w3), (eTe1, eTe2, eTe3),
     vKite = C.sqrt(vKite2) #Airfoil speed
     dae['airspeed'] = vKite
 
-    # Lift axis ** Normed to we @>@> **
-    eLe = C.cross(C.veccat([eTe1,eTe2,eTe3]), v_bw_n)
-    eLe1 = eLe[0]
-    eLe2 = eLe[1]
-    eLe3 = eLe[2]
+    # Lift axis, normed to airspeed
+    eLe_v = C.cross(C.veccat([eTe1,eTe2,eTe3]), v_bw_n)
+
+    # sideforce axis, normalized to airspeed^2
+    eYe_v2 = C.cross(eLe_v, -v_bw_n)
 
     # Relative wind speed in Airfoil's referential 'E'
     v_bw_b_x = v_bw_b[0]
@@ -70,7 +70,7 @@ def aeroForcesTorques(dae, conf, v_bw_n, v_bw_b, (w1,w2,w3), (eTe1, eTe2, eTe3),
     cY = conf['cY_B']*beta
 
     # with control surfaces
-    cL += conf['cL_elev']*elevator
+    cL += conf['cL_elev']*dae['elevator']
     print "PUT CD_{FLAPS,RUDDER,AILERONS,ELEVATOR} IN (please)"
     if 'flaps' in dae:
         cL += conf['cL_flaps']*dae['flaps']
@@ -79,6 +79,7 @@ def aeroForcesTorques(dae, conf, v_bw_n, v_bw_b, (w1,w2,w3), (eTe1, eTe2, eTe3),
 
     dae['cL'] = cL
     dae['cD'] = cD
+    dae['cY'] = cY
     dae['cD_tether'] = 0.25*dae['r']*0.001/sref
     dae['L_over_D'] = cL/cD
     cD = dae['cD'] + dae['cD_tether']
@@ -87,28 +88,38 @@ def aeroForcesTorques(dae, conf, v_bw_n, v_bw_b, (w1,w2,w3), (eTe1, eTe2, eTe3),
 
     ######## moment coefficients #######
     # offset
-    momentCoeffs = C.DMatrix([0, conf['cm0'], 0])
+    dae['momentCoeffs0'] = C.DMatrix([0, conf['cm0'], 0])
 
     # with roll rates
-    momentCoeffs += C.mul(C.vertcat([C.horzcat([conf['cl_p'],conf['cl_q'],conf['cl_r']]),
-                                     C.horzcat([conf['cm_p'],conf['cm_q'],conf['cm_r']]),
-                                     C.horzcat([conf['cn_p'],conf['cn_q'],conf['cn_r']])]),
-                          dae['w_bn_b'])
+    # non-dimensionalized angular velocity
+    w_bn_b_hat = C.veccat([0.5*conf['bref']/dae['airspeed']*dae['w_bn_b_x'],
+                           0.5*conf['cref']/dae['airspeed']*dae['w_bn_b_y'],
+                           0.5*conf['bref']/dae['airspeed']*dae['w_bn_b_z']])
+    momentCoeffs_pqr = C.mul(C.vertcat([C.horzcat([conf['cl_p'],conf['cl_q'],conf['cl_r']]),
+                                        C.horzcat([conf['cm_p'],conf['cm_q'],conf['cm_r']]),
+                                        C.horzcat([conf['cn_p'],conf['cn_q'],conf['cn_r']])]),
+                             w_bn_b_hat)
+    dae['momentCoeffs_pqr'] = momentCoeffs_pqr
 
     # with alpha beta
-    momentCoeffs += C.mul(C.vertcat([C.horzcat([           0, conf['cl_B'], conf['cl_AB']]),
-                                     C.horzcat([conf['cm_A'],            0,             0]),
-                                     C.horzcat([           0, conf['cn_B'], conf['cn_AB']])]),
-                          C.vertcat([alpha, beta, alpha*beta]))
+    momentCoeffs_AB = C.mul(C.vertcat([C.horzcat([           0, conf['cl_B'], conf['cl_AB']]),
+                                       C.horzcat([conf['cm_A'],            0,             0]),
+                                       C.horzcat([           0, conf['cn_B'], conf['cn_AB']])]),
+                            C.vertcat([alpha, beta, alpha*beta]))
+    dae['momentCoeffs_AB'] = momentCoeffs_AB
 
     # with control surfaces
-    momentCoeffs[0] += conf['cl_ail']*dae['aileron']
-    momentCoeffs[1] += conf['cm_elev']*dae['elevator']
+    momentCoeffs_surf = C.SXMatrix(3,1,0)
+    momentCoeffs_surf[0] += conf['cl_ail']*dae['aileron']
+    momentCoeffs_surf[1] += conf['cm_elev']*dae['elevator']
     if 'flaps' in dae:
-        momentCoeffs[1] += conf['cm_flaps']*dae['flaps']
+        momentCoeffs_surf[1] += conf['cm_flaps']*dae['flaps']
     if 'rudder' in dae:
-        momentCoeffs[2] += conf['cn_rudder']*dae['rudder']
+        momentCoeffs_surf[2] += conf['cn_rudder']*dae['rudder']
+    dae['momentCoeffs_surf'] = momentCoeffs_surf
 
+    momentCoeffs = dae['momentCoeffs0'] + dae['momentCoeffs_pqr'] + \
+                   dae['momentCoeffs_AB'] + dae['momentCoeffs_surf']
     dae['cl'] = momentCoeffs[0]
     dae['cm'] = momentCoeffs[1]
     dae['cn'] = momentCoeffs[2]
@@ -116,23 +127,27 @@ def aeroForcesTorques(dae, conf, v_bw_n, v_bw_b, (w1,w2,w3), (eTe1, eTe2, eTe3),
 
 
     # LIFT :
-    # ###############################
-    dae['fL'] = sref*rho*cL*vKite2/2.0
-    fL1 =  sref*rho*cL*eLe1*vKite/2.0
-    fL2 =  sref*rho*cL*eLe2*vKite/2.0
-    fL3 =  sref*rho*cL*eLe3*vKite/2.0
+    dae['fL'] = 0.5*rho*vKite2*sref*cL
+    fLx =  0.5*rho*vKite*sref*cL*eLe_v[0]
+    fLy =  0.5*rho*vKite*sref*cL*eLe_v[1]
+    fLz =  0.5*rho*vKite*sref*cL*eLe_v[2]
 
     # DRAG :
-    # #############################
-    dae['fD'] = sref*rho*vKite*cD*2.0
-    fD1 = -sref*rho*vKite*cD*v_bw_n_x/2.0
-    fD2 = -sref*rho*vKite*cD*v_bw_n_y/2.0
-    fD3 = -sref*rho*vKite*cD*v_bw_n_z/2.0
+    dae['fD'] = 0.5*rho*vKite2*sref*cD
+    fDx = -0.5*rho*sref*vKite*cD*v_bw_n_x
+    fDy = -0.5*rho*sref*vKite*cD*v_bw_n_y
+    fDz = -0.5*rho*sref*vKite*cD*v_bw_n_z
+
+    # sideforce
+    dae['fY'] = 0.5*rho*vKite2*sref*dae['cY']
+    fYx = 0.5*rho*sref*cY*eYe_v2[0]
+    fYy = 0.5*rho*sref*cY*eYe_v2[1]
+    fYz = 0.5*rho*sref*cY*eYe_v2[2]
 
     # aero forces
-    f1 = fL1 + fD1
-    f2 = fL2 + fD2
-    f3 = fL3 + fD3
+    f1 = fLx + fDx + fYx
+    f2 = fLy + fDy + fYy
+    f3 = fLz + fDz + fYz
 
     # aero torques
     t1 =  0.5*rho*vKite2*sref*bref*dae['cl']

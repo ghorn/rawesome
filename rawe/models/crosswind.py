@@ -96,8 +96,7 @@ def setupModel(dae, conf):
     # compute aerodynamic forces and moments
     (f1, f2, f3, t1, t2, t3) = aeroForcesTorques(dae, conf, v_bw_n, v_bw_b,
                                                  (dae['w_bn_b_x'], dae['w_bn_b_y'], dae['w_bn_b_z']),
-                                                 (dae['e21'], dae['e22'], dae['e23']),
-                                                 (dae['aileron'],dae['elevator'])
+                                                 (dae['e21'], dae['e22'], dae['e23'])
                                                  )
     # if we are running a homotopy, add psudeo forces and moments as algebraic states
     if 'runHomotopy' in conf and conf['runHomotopy']:
