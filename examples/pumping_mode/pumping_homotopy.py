@@ -205,10 +205,19 @@ if __name__=='__main__':
 
     # objective function
     obj = -1e6*ocp.lookup('gamma_homotopy')
+    mean_x = numpy.mean(homotopyTraj['x'])
+    mean_y = numpy.mean(homotopyTraj['y'])
+    mean_z = numpy.mean(homotopyTraj['z'])
     for k in range(ocp.nk+1):
-        obj += (homotopyTraj['x'][k] - ocp.lookup('x',timestep=k))**2
-        obj += (homotopyTraj['y'][k] - ocp.lookup('y',timestep=k))**2
-        obj += (homotopyTraj['z'][k] - ocp.lookup('z',timestep=k))**2
+        x = ocp.lookup('x',timestep=k)
+        y = ocp.lookup('y',timestep=k)
+        z = ocp.lookup('z',timestep=k)
+        obj += ((x-mean_x)**2 + (y-mean_y)**2 + (z-mean_z)**2 - circleRadiusGuess**2)**2
+
+#    for k in range(ocp.nk+1):
+#        obj += (homotopyTraj['x'][k] - ocp.lookup('x',timestep=k))**2
+#        obj += (homotopyTraj['y'][k] - ocp.lookup('y',timestep=k))**2
+#        obj += (homotopyTraj['z'][k] - ocp.lookup('z',timestep=k))**2
     ocp.setQuadratureDdt('mechanical_energy', 'mechanical_winch_power')
     ocp.setQuadratureDdt('electrical_energy', 'electrical_winch_power')
 
