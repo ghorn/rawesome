@@ -21,31 +21,24 @@ from aero import aeroForcesTorques
 import numpy
 
 def setupModel(dae, conf):
-    #  PARAMETERS OF THE KITE :
-    #  ##############
-    m =  conf['mass'] #  mass of the kite               #  [ kg    ]
-                 
-    #   PHYSICAL CONSTANTS :
-    #  ##############
-    g = conf['g'] #  gravitational constant         #  [ m /s^2]
-    
-    #  PARAMETERS OF THE CABLE :
-    #  ##############
-     
-    #INERTIA MATRIX (Kurt's direct measurements)
+    '''
+    take the dae that has x/z/u/p added to it already and return
+    the states added to it and return mass matrix and rhs of the dae residual
+    '''
+    m =  conf['mass']
+    g = conf['g']
+
     j1 =  conf['j1']
     j31 = conf['j31']
     j2 =  conf['j2']
     j3 =  conf['j3']
-    
-    #Carousel Friction & inertia
+
     jCarousel = conf['jCarousel']
     cfric = conf['cfric']
 
     zt = conf['zt']
     rA = conf['rArm']
 
-    ###########     model integ ###################
     e11 = dae['e11']
     e12 = dae['e12']
     e13 = dae['e13']
@@ -57,7 +50,7 @@ def setupModel(dae, conf):
     e31 = dae['e31']
     e32 = dae['e32']
     e33 = dae['e33']
-                   
+
     x =   dae['x']
     y =   dae['y']
     z =   dae['z']
@@ -66,27 +59,36 @@ def setupModel(dae, conf):
     dy  =  dae['dy']
     dz  =  dae['dz']
 
-    w1  =  dae['w1']
-    w2  =  dae['w2']
-    w3  =  dae['w3']
+    w1 =  dae['w_bn_b_x']
+    w2 =  dae['w_bn_b_y']
+    w3 =  dae['w_bn_b_z']
 
     ddelta = dae['ddelta']
 
     r = dae['r']
     dr = dae['dr']
-    
+
     ddr = dae['ddr']
-    
+
     tc = dae['motor_torque'] #Carousel motor torque
 
-    # wind
-    if 'w0' in dae:
-        z0 = conf['z0']
-        zt_roughness = conf['zt_roughness']
-        zsat = 0.5*(z+C.sqrt(z*z))
-        wind_x = dae['w0']*C.log((zsat+zt_roughness+2)/zt_roughness)/C.log(z0/zt_roughness)
-    else:
-        wind_x = 0
+    # wind model
+    def getWind():
+        if 'wind_model' not in conf:
+            return 0
+        if conf['wind_model']['name'] == 'wind_shear':
+            # use a logarithmic wind shear model
+            # wind(z) = w0 * log((z+zt)/zt) / log(z0/zt)
+            # where w0 is wind at z0 altitude
+            # zt is surface roughness characteristic length
+            z0 = conf['wind_model']['z0']
+            zt_roughness = conf['wind_model']['zt_roughness']
+            zsat = 0.5*(-z+C.sqrt(z*z))
+            return dae['w0']*C.log((zsat+zt_roughness+2)/zt_roughness)/C.log(z0/zt_roughness)
+        elif conf['wind_model']['name'] == 'constant':
+            # constant wind
+            return dae['w0']
+    wind_x = getWind()
     dae['wind_at_altitude'] = wind_x
 
     dp_carousel_frame = C.veccat( [ dx - ddelta*y
@@ -103,9 +105,8 @@ def setupModel(dae, conf):
     dpE = C.mul( R_c2b, dp_carousel_frame )
 
     (f1, f2, f3, t1, t2, t3) = aeroForcesTorques(dae, conf, dp_carousel_frame, dpE,
-                                                 (dae['w1'], dae['w2'], dae['w3']),
-                                                 (dae['e21'], dae['e22'], dae['e23']),
-                                                 (dae['aileron'],dae['elevator'])
+                                                 dae['w_bn_b'],
+                                                 (dae['e21'], dae['e22'], dae['e23'])
                                                  )
 
     # mass matrix
@@ -188,7 +189,7 @@ def setupModel(dae, conf):
           [ tc - cfric*ddelta - f1*y + f2*(rA + x) + dy*m*(dx - 2*ddelta*y) - dx*m*(dy + 2*ddelta*rA + 2*ddelta*x) 
           , f1 + ddelta*m*(dy + ddelta*rA + ddelta*x) + ddelta*dy*m 
           , f2 - ddelta*m*(dx - ddelta*y) - ddelta*dx*m 
-          , f3 - g*m 
+          , f3 + g*m 
           , t1 - w2*(j3*w3 + j31*w1) + j2*w2*w3 
           , t2 + w1*(j3*w3 + j31*w1) - w3*(j1*w1 + j31*w3) 
           , t3 + w2*(j1*w1 + j31*w3) - j2*w1*w2
@@ -222,8 +223,8 @@ def setupModel(dae, conf):
     ddx = dae.ddt('dx')
     ddy = dae.ddt('dy')
     ddz = dae.ddt('dz')
-    dw1 = dae.ddt('w1')
-    dw2 = dae.ddt('w2')
+    dw1 = dae.ddt('w_bn_b_x')
+    dw2 = dae.ddt('w_bn_b_y')
     dddelta = dae.ddt('ddelta')
     
     cddot = -(w1-ddelta*e13)*(zt*e23*(dz+zt*e13*w2-zt*e23*w1)+zt*e33*(w1*z+zt*e33*w1+ddelta*e11*x+ddelta*e12*y+zt*ddelta*e11*e31+zt*ddelta*e12*e32)+zt*e21*(dx+zt*e11*w2-zt*e21*w1-zt*ddelta*e11*e23+zt*ddelta*e13*e21)+zt*e22*(dy+zt*e12*w2-zt*e22*w1-zt*ddelta*e12*e23+zt*ddelta*e13*e22)+zt*e31*(x+zt*e31)*(w1-ddelta*e13)+zt*e32*(y+zt*e32)*(w1-ddelta*e13))+(w2-ddelta*e23)*(zt*e13*(dz+zt*e13*w2-zt*e23*w1)-zt*e33*(w2*z+zt*e33*w2+ddelta*e21*x+ddelta*e22*y+zt*ddelta*e21*e31+zt*ddelta*e22*e32)+zt*e11*(dx+zt*e11*w2-zt*e21*w1-zt*ddelta*e11*e23+zt*ddelta*e13*e21)+zt*e12*(dy+zt*e12*w2-zt*e22*w1-zt*ddelta*e12*e23+zt*ddelta*e13*e22)-zt*e31*(x+zt*e31)*(w2-ddelta*e23)-zt*e32*(y+zt*e32)*(w2-ddelta*e23))-ddr*r+(zt*w1*(e11*x+e12*y+e13*z+zt*e11*e31+zt*e12*e32+zt*e13*e33)+zt*w2*(e21*x+e22*y+e23*z+zt*e21*e31+zt*e22*e32+zt*e23*e33))*(w3-ddelta*e33)+dx*(dx+zt*e11*w2-zt*e21*w1-zt*ddelta*e11*e23+zt*ddelta*e13*e21)+dy*(dy+zt*e12*w2-zt*e22*w1-zt*ddelta*e12*e23+zt*ddelta*e13*e22)+dz*(dz+zt*e13*w2-zt*e23*w1)+ddx*(x+zt*e31)+ddy*(y+zt*e32)+ddz*(z+zt*e33)-dr*dr+zt*(dw2-dddelta*e23)*(e11*x+e12*y+e13*z+zt*e11*e31+zt*e12*e32+zt*e13*e33)-zt*(dw1-dddelta*e13)*(e21*x+e22*y+e23*z+zt*e21*e31+zt*e22*e32+zt*e23*e33)-zt*dddelta*(e11*e23*x-e13*e21*x+e12*e23*y-e13*e22*y+zt*e11*e23*e31-zt*e13*e21*e31+zt*e12*e23*e32-zt*e13*e22*e32)
@@ -245,18 +246,14 @@ def setupModel(dae, conf):
     dae['cddot'] = cddot
     return (mm, rhs, dRexp)
         
-def carouselModel(conf,nSteps=None):
+def carouselModel(conf):
+    '''
+    pass this a conf, and it'll return you a dae
+    '''
+    # empty Dae
     dae = Dae()
         
-#    dae.addZ( [ "dddelta"
-#              , "ddx"
-#              , "ddy"
-#              , "ddz"
-#              , "dw1"
-#              , "dw2"
-#              , "dw3"
-#              , "nu"
-#              ] )
+    # add some differential states/algebraic vars/controls/params
     dae.addZ("nu")
     dae.addX( [ "x"
               , "y"
@@ -273,9 +270,9 @@ def carouselModel(conf,nSteps=None):
               , "dx"
               , "dy"
               , "dz"
-              , "w1"
-              , "w2"
-              , "w3"
+              , "w_bn_b_x"
+              , "w_bn_b_y"
+              , "w_bn_b_z"
               , "ddelta"
               , "r"
               , "dr"
@@ -296,9 +293,9 @@ def carouselModel(conf,nSteps=None):
         norm = dae['cos_delta']**2 + dae['sin_delta']**2
         
         if 'stabilize_invariants' in conf and conf['stabilize_invariants'] == True:
-            pole_delta = 1./2.
+            pole_delta = 0.5
         else:
-            pole_delta = 0
+            pole_delta = 0.0
         
         cos_delta_dot_st = -pole_delta/2.* ( dae['cos_delta'] - dae['cos_delta'] / norm )
         sin_delta_dot_st = -pole_delta/2.* ( dae['sin_delta'] - dae['sin_delta'] / norm )
@@ -313,10 +310,19 @@ def carouselModel(conf,nSteps=None):
               , 'dddr'
               ] )
     # add wind parameter if wind shear is in configuration
-    if 'z0' in conf and 'zt_roughness' in conf:
+    if 'wind_model' in conf:
         dae.addP( ['w0'] )
 
-    
+    # set some state derivatives as outputs
+    dae['ddx'] = dae.ddt('dx')
+    dae['ddy'] = dae.ddt('dy')
+    dae['ddz'] = dae.ddt('dz')
+    dae['ddt_w_bn_b_x'] = dae.ddt('w_bn_b_x')
+    dae['ddt_w_bn_b_y'] = dae.ddt('w_bn_b_y')
+    dae['ddt_w_bn_b_z'] = dae.ddt('w_bn_b_z')
+    dae['w_bn_b'] = C.veccat([dae['w_bn_b_x'], dae['w_bn_b_y'], dae['w_bn_b_z']])
+
+    # some outputs in for plotting
     dae['RPM'] = dae['ddelta']*60/(2*C.pi)
     dae['aileron_deg'] = dae['aileron']*180/C.pi
     dae['elevator_deg'] = dae['elevator']*180/C.pi
@@ -332,21 +338,17 @@ def carouselModel(conf,nSteps=None):
                             C.horzcat([dae['e21'],dae['e22'],dae['e23']]),
                             C.horzcat([dae['e31'],dae['e32'],dae['e33']])])
     
-#    dae['dcm_dot'] = C.SXMatrix(3,3,0)
-#    for index, state in enumerate(dae['dcm']):
-#        dae['dcm_dot'][index] = dae.ddt(dae['dcm'][index])
-    
     # line angle
     dae['cos_line_angle'] = \
-      (dae['e31']*dae['x'] + dae['e32']*dae['y'] + dae['e33']*dae['z']) / C.sqrt(dae['x']**2 + dae['y']**2 + dae['z']**2)
+      -(dae['e31']*dae['x'] + dae['e32']*dae['y'] + dae['e33']*dae['z']) / C.sqrt(dae['x']**2 + dae['y']**2 + dae['z']**2)
     dae['line_angle_deg'] = C.arccos(dae['cos_line_angle'])*180.0/C.pi
 
     (massMatrix, rhs, dRexp) = setupModel(dae, conf)
     
     if 'stabilize_invariants' in conf and conf['stabilize_invariants'] == True:
-        RotPole = 1./2.
+        RotPole = 0.5
     else:
-        RotPole = 0
+        RotPole = 0.0
     Rst = RotPole*C.mul( dae['dcm'], (C.inv(C.mul(dae['dcm'].T,dae['dcm'])) - numpy.eye(3)) )
     
     ode = C.veccat([
@@ -366,20 +368,14 @@ def carouselModel(conf,nSteps=None):
         dae.ddt('ddr') - dae['dddr']
         ])
 
-    if nSteps is not None:
-        dae.addP('endTime')
-    
     if 'stabilize_invariants' in conf and conf['stabilize_invariants'] == True:
-        cPole = 1./2.
+        cPole = 0.5
     else:
-        cPole = 0
+        cPole = 0.0
     rhs[-1] -= 2*cPole*dae['cdot'] + cPole*cPole*dae['c']
     
-    psuedoZVec = C.veccat([dae.ddt(name) for name in ['ddelta','dx','dy','dz','w1','w2','w3']]+[dae['nu']])
+    psuedoZVec = C.veccat([dae.ddt(name) for name in ['ddelta','dx','dy','dz','w_bn_b_x','w_bn_b_y','w_bn_b_z']]+[dae['nu']])
     alg = C.mul(massMatrix, psuedoZVec) - rhs
     dae.setResidual([ode,alg])
     
     return dae
-
-if __name__=='__main__':
-    (f,others) = carouselModel()

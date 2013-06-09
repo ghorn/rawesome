@@ -48,19 +48,19 @@ toNice dae = NiceKite { nk_xyz = xyz
     x = PX.x daeX
     y = PX.y daeX
     z = PX.z daeX
-    
+
     e11 = PX.e11 daeX
     e12 = PX.e12 daeX
     e13 = PX.e13 daeX
-    
+
     e21 = PX.e21 daeX
     e22 = PX.e22 daeX
     e23 = PX.e23 daeX
-    
+
     e31 = PX.e31 daeX
     e32 = PX.e32 daeX
     e33 = PX.e33 daeX
-    
+
     delta = 0 -- CS.delta cs
 
     q'n'a = Quat (cos(0.5*delta)) 0 0 (sin(-0.5*delta))
@@ -77,7 +77,7 @@ toNice dae = NiceKite { nk_xyz = xyz
 
     zt = 0 --CS.zt cs
     r'n0'a0 = rotVecByQuatB2A q'n'a rArm
-    r'n0't0 = xyz + (rotVecByQuatB2A q'n'b $ Xyz 0 0 (-zt))
+    r'n0't0 = xyz + (rotVecByQuatB2A q'n'b $ Xyz 0 0 zt)
 
 toState :: PT.Trajectory -> State
 toState ptTraj = State nicekites messages

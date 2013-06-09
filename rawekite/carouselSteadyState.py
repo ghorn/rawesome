@@ -22,25 +22,33 @@ from rawe.ocputils import Constraints
 
 pi = C.pi
 
+def makeOrthonormal(g,R):
+         g.add(C.mul(R[0,:],R[0,:].T),'==',1,  tag=('R1[0]: e1^T * e1 == 1',None))
+         g.add(C.mul(R[1,:],R[0,:].T),'==',0,  tag=('R1[0]: e2^T * e1 == 0',None))
+         g.add(C.mul(R[1,:],R[1,:].T),'==',1,  tag=('R1[0]: e2^T * e2 == 1',None))
+         rhon = C.cross(R[0,:],R[1,:]) - R[2,:]
+         g.add(rhon[0],'==',0,  tag=('R1[0]: ( e1^T X e2 - e3 )[0] == 0',None))
+         g.add(rhon[2],'==',0,  tag=('R1[0]: ( e1^T X e2 - e3 )[1] == 0',None))
+         g.add(rhon[1],'==',0,  tag=('R1[0]: ( e1^T X e2 - e3 )[2] == 0',None))
+
+
 def getSteadyState(dae,conf,omega0,r0,z0):
     # make steady state model
     g = Constraints()
     g.add(dae.getResidual(),'==',0,tag=('dae residual',None))
     def constrainInvariantErrs():
         dcm = dae['dcm']
-        err = C.mul(dcm.T,dcm)
-        g.add( C.veccat([err[0,0] - 1, err[1,1]-1, err[2,2] - 1, err[0,1], err[0,2], err[1,2]]), '==', 0, tag=
-                       ("initial dcm orthonormal",None))
+        makeOrthonormal(g, dcm)
         g.add(dae['c'], '==', 0, tag=('c(0)==0',None))
         g.add(dae['cdot'], '==', 0, tag=('cdot(0)==0',None))
     constrainInvariantErrs()
-    
+
     # Rotational velocity time derivative
-    g.add(C.mul(dae['dcm'].T,C.veccat([dae['w1'],dae['w2'],dae['w3']])) - C.veccat([0,0,omega0]) , '==', 0, tag=
+    g.add(C.mul(dae['dcm'].T,dae['w_bn_b']) - C.veccat([0,0,omega0]) , '==', 0, tag=
                        ("Rotational velocities",None))
-#    g.add(C.veccat([dae['w1'],dae['w2'],dae['w3']]) - C.mul(dae['dcm'],C.veccat([0,0,omega0])), '==', 0, tag=
-#                       ("Rotational velocities",None))
-    
+    g.addBnds(dae['alpha_deg'], (-4.0, 8.0), tag=("alpha deg",None))
+    g.addBnds(dae['beta_deg'], (-7.0, 7.0), tag=("beta deg",None))
+
     dvs = C.veccat([dae.xVec(), dae.zVec(), dae.uVec(), dae.pVec(), dae.xDotVec()])
 #    ffcn = C.SXFunction([dvs],[sum([dae[n]**2 for n in ['aileron','elevator','y','z']])])
     ffcn = C.SXFunction([dvs],[(dae['cL']-0.5)**2])
@@ -51,24 +59,24 @@ def getSteadyState(dae,conf,omega0,r0,z0):
     guess = {'x':r0,'y':0,'z':0,
              'r':r0,'dr':0,
              'e11':0, 'e12':1, 'e13':0,
-             'e21':0, 'e22':0, 'e23':1,
-             'e31':1, 'e32':0, 'e33':0,
+             'e21':0, 'e22':0, 'e23':-1,
+             'e31':-1, 'e32':0, 'e33':0,
              'dx':0,'dy':0,'dz':0,
-             'w1':0,'w2':omega0,'w3':0,
-             'delta':0,'ddelta':omega0,
+             'w_bn_b_x':0,'w_bn_b_y':-omega0,'w_bn_b_z':0,
+             'ddelta':omega0,
              'cos_delta':1,'sin_delta':0,
              'aileron':0,'elevator':0,
              'daileron':0,'delevator':0,
-             'nu':300,'motor_torque':10,
+             'nu':100,'motor_torque':10,
              'dmotor_torque':0,'ddr':0,
              'dddr':0.0,'w0':0.0}
     dotGuess = {'x':0,'y':0,'z':0,'dx':0,'dy':0,'dz':0,
                 'r':0,'dr':0,
-                'e11':omega0,'e12':0,'e13':0,
-                'e21':0,'e22':-omega0,'e23':0,
+                'e11':0,'e12':0,'e13':0,
+                'e21':0,'e22':0,'e23':0,
                 'e31':0,'e32':0,'e33':0,
-                'w1':0,'w2':0,'w3':0,
-                'delta':omega0,'ddelta':0,
+                'w_bn_b_x':0,'w_bn_b_y':0,'w_bn_b_z':0,
+                'ddelta':0,
                 'cos_delta':0,'sin_delta':omega0,
                 'aileron':0,'elevator':0,
                 'motor_torque':0,'ddr':0}
@@ -76,14 +84,14 @@ def getSteadyState(dae,conf,omega0,r0,z0):
     guessVec = C.DMatrix([guess[n] for n in dae.xNames()+dae.zNames()+dae.uNames()+dae.pNames()]+
                          [dotGuess[n] for n in dae.xNames()])
 
-    bounds = {'x':(0.01,r0*2),'y':(-r0,0),'z':(z0,z0),
+    bounds = {'x':(0.01,r0*2),'y':(-r0,r0),'z':(z0,z0),
              'dx':(-50,50),'dy':(0,0),'dz':(0,0),
              'r':(r0,r0),'dr':(0,0),
              'e11':(-2,2),'e12':(-2,2),'e13':(-2,2),
              'e21':(-2,2),'e22':(-2,2),'e23':(-2,2),
-             'e31':(-2,2),'e32':(-2,2),'e33':(-2,2),
-             'w1':(-50,50),'w2':(0,50),'w3':(-50,50),
-             'delta':(0,0),'ddelta':(omega0,omega0),
+              'e31':(-2,0),'e32':(-2,2),'e33':(-2,2),
+             'w_bn_b_x':(-50,50),'w_bn_b_y':(-50,50),'w_bn_b_z':(-50,50),
+             'ddelta':(omega0,omega0),
              'cos_delta':(1,1),'sin_delta':(0,0),
              'aileron':(-0.2,0.2),'elevator':(-0.2,0.2),
              'daileron':(0,0),'delevator':(0,0),
@@ -96,14 +104,14 @@ def getSteadyState(dae,conf,omega0,r0,z0):
                  'e11':(-50,50),'e12':(-50,50),'e13':(-50,50),
                  'e21':(-50,50),'e22':(-50,50),'e23':(-50,50),
                  'e31':(-50,50),'e32':(-50,50),'e33':(-50,50),
-                 'w1':(0,0),'w2':(0,0),'w3':(0,0),
-                 'delta':(omega0-1,omega0+1),'ddelta':(0,0),
+                 'w_bn_b_x':(0,0),'w_bn_b_y':(0,0),'w_bn_b_z':(0,0),
+                 'ddelta':(0,0),
                  'cos_delta':(-1,1),'sin_delta':(omega0-1,omega0+1),
                  'aileron':(-1,1),'elevator':(-1,1),
                  'motor_torque':(-1000,1000),'ddr':(-100,100)}
     boundsVec = [bounds[n] for n in dae.xNames()+dae.zNames()+dae.uNames()+dae.pNames()]+ \
                 [dotBounds[n] for n in dae.xNames()]
-    
+
 
 #    gfcn.setInput(guessVec)
 #    gfcn.evaluate()
@@ -137,7 +145,7 @@ def getSteadyState(dae,conf,omega0,r0,z0):
 #            self.iter += 1
 #            publisher.send_multipart(["multi-carousel", mc.SerializeToString()])
 
-    
+
     solver = C.IpoptSolver(ffcn,gfcn)
     def addCallback():
         nd = len(boundsVec)
@@ -148,8 +156,8 @@ def getSteadyState(dae,conf,omega0,r0,z0):
 #    addCallback()
     solver.setOption('max_iter',10000)
 #    solver.setOption('tol',1e-14)
-    solver.setOption('suppress_all_output','yes')
-    solver.setOption('print_time',False)
+#    solver.setOption('suppress_all_output','yes')
+#    solver.setOption('print_time',False)
     solver.init()
 
     solver.setInput(g.getLb(),'lbg')
@@ -178,4 +186,3 @@ def getSteadyState(dae,conf,omega0,r0,z0):
         k += 1
 #        print 'DDT('+name+'):\t',dotSol[name]
     return sol, dotSol
-

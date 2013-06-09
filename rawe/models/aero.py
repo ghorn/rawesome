@@ -22,7 +22,7 @@ def getWindAnglesFrom_v_bw_b(airspeed, v_bw_b):
     beta  =  C.arcsin (v_bw_b[1] / airspeed )
     return (alpha, beta)
 
-def aeroForcesTorques(dae, conf, v_bw_n, v_bw_b, (w1,w2,w3), (eTe1, eTe2, eTe3)):
+def aeroForcesTorques(dae, conf, v_bw_n, v_bw_b, w_bn_b, (eTe1, eTe2, eTe3)):
     rho = conf['rho']
     alpha0 = conf['alpha0deg']*C.pi/180
 
@@ -40,7 +40,7 @@ def aeroForcesTorques(dae, conf, v_bw_n, v_bw_b, (w1,w2,w3), (eTe1, eTe2, eTe3))
     dae['airspeed'] = vKite
 
     # Lift axis, normed to airspeed
-    eLe_v = C.cross(C.veccat([eTe1,eTe2,eTe3]), v_bw_n)
+    eLe_v = C.cross(C.veccat([eTe1, eTe2, eTe3]), v_bw_n)
 
     # sideforce axis, normalized to airspeed^2
     eYe_v2 = C.cross(eLe_v, -v_bw_n)
@@ -92,12 +92,12 @@ def aeroForcesTorques(dae, conf, v_bw_n, v_bw_b, (w1,w2,w3), (eTe1, eTe2, eTe3))
 
     # with roll rates
     # non-dimensionalized angular velocity
-    w_bn_b_hat = C.veccat([0.5*conf['bref']/dae['airspeed']*dae['w_bn_b_x'],
-                           0.5*conf['cref']/dae['airspeed']*dae['w_bn_b_y'],
-                           0.5*conf['bref']/dae['airspeed']*dae['w_bn_b_z']])
-    momentCoeffs_pqr = C.mul(C.vertcat([C.horzcat([conf['cl_p'],conf['cl_q'],conf['cl_r']]),
-                                        C.horzcat([conf['cm_p'],conf['cm_q'],conf['cm_r']]),
-                                        C.horzcat([conf['cn_p'],conf['cn_q'],conf['cn_r']])]),
+    w_bn_b_hat = C.veccat([0.5*conf['bref']/dae['airspeed']*w_bn_b[0],
+                           0.5*conf['cref']/dae['airspeed']*w_bn_b[1],
+                           0.5*conf['bref']/dae['airspeed']*w_bn_b[2]])
+    momentCoeffs_pqr = C.mul(C.vertcat([C.horzcat([conf['cl_p'], conf['cl_q'], conf['cl_r']]),
+                                        C.horzcat([conf['cm_p'], conf['cm_q'], conf['cm_r']]),
+                                        C.horzcat([conf['cn_p'], conf['cn_q'], conf['cn_r']])]),
                              w_bn_b_hat)
     dae['momentCoeffs_pqr'] = momentCoeffs_pqr
 
@@ -109,7 +109,7 @@ def aeroForcesTorques(dae, conf, v_bw_n, v_bw_b, (w1,w2,w3), (eTe1, eTe2, eTe3))
     dae['momentCoeffs_AB'] = momentCoeffs_AB
 
     # with control surfaces
-    momentCoeffs_surf = C.SXMatrix(3,1,0)
+    momentCoeffs_surf = C.SXMatrix(3, 1, 0)
     momentCoeffs_surf[0] += conf['cl_ail']*dae['aileron']
     momentCoeffs_surf[1] += conf['cm_elev']*dae['elevator']
     if 'flaps' in dae:
@@ -120,9 +120,9 @@ def aeroForcesTorques(dae, conf, v_bw_n, v_bw_b, (w1,w2,w3), (eTe1, eTe2, eTe3))
 
     momentCoeffs = dae['momentCoeffs0'] + dae['momentCoeffs_pqr'] + \
                    dae['momentCoeffs_AB'] + dae['momentCoeffs_surf']
-    dae['cl'] = momentCoeffs[0]
-    dae['cm'] = momentCoeffs[1]
-    dae['cn'] = momentCoeffs[2]
+    dae['cl_small'] = momentCoeffs[0]
+    dae['cm_small'] = momentCoeffs[1]
+    dae['cn_small'] = momentCoeffs[2]
 
 
 
@@ -150,9 +150,9 @@ def aeroForcesTorques(dae, conf, v_bw_n, v_bw_b, (w1,w2,w3), (eTe1, eTe2, eTe3))
     f3 = fLz + fDz + fYz
 
     # aero torques
-    t1 =  0.5*rho*vKite2*sref*bref*dae['cl']
-    t2 =  0.5*rho*vKite2*sref*cref*dae['cm']
-    t3 =  0.5*rho*vKite2*sref*bref*dae['cn']
+    t1 =  0.5*rho*vKite2*sref*bref*dae['cl_small']
+    t2 =  0.5*rho*vKite2*sref*cref*dae['cm_small']
+    t3 =  0.5*rho*vKite2*sref*bref*dae['cn_small']
 
     dae['aero_fx'] = f1
     dae['aero_fy'] = f2

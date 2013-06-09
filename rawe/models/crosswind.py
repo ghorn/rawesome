@@ -24,27 +24,16 @@ def setupModel(dae, conf):
     take the dae that has x/z/u/p added to it already and return
     the states added to it and return mass matrix and rhs of the dae residual
     '''
-    #  PARAMETERS OF THE KITE :
-    #  ##############
-    m =  conf['mass'] #  mass of the kite               #  [ kg    ]
+    m =  conf['mass']
+    g = conf['g']
 
-    #   PHYSICAL CONSTANTS :
-    #  ##############
-    g = conf['g'] #  gravitational constant         #  [ m /s^2]
-
-    #  PARAMETERS OF THE CABLE :
-    #  ##############
-
-    #INERTIA MATRIX (Kurt's direct measurements)
     j1 =  conf['j1']
     j31 = conf['j31']
     j2 =  conf['j2']
     j3 =  conf['j3']
 
-    #Carousel Friction & inertia
     zt = conf['zt']
 
-    ###########     model integ ###################
     e11 = dae['e11']
     e12 = dae['e12']
     e13 = dae['e13']
@@ -95,7 +84,7 @@ def setupModel(dae, conf):
 
     # compute aerodynamic forces and moments
     (f1, f2, f3, t1, t2, t3) = aeroForcesTorques(dae, conf, v_bw_n, v_bw_b,
-                                                 (dae['w_bn_b_x'], dae['w_bn_b_y'], dae['w_bn_b_z']),
+                                                 dae['w_bn_b'],
                                                  (dae['e21'], dae['e22'], dae['e23'])
                                                  )
     # if we are running a homotopy, add psudeo forces and moments as algebraic states
