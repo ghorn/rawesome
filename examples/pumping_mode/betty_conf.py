@@ -72,11 +72,11 @@ def makeConf():
 
          'zt': 0.01,
 
-         #INERTIA MATRIX (Kurt's direct measurements)
-         'j1': 0.0163,
-         'j31': 0.0006,
-         'j2': 0.0078,
-         'j3': 0.0229,
+         # INERTIA MATRIX: THIS IS A WILD GUESS
+         'j1': 0.565,
+         'j31': 0.0,
+         'j2': 0.161,
+         'j3': 0.723,
 
          #[carousel]
          #'rArm': 1.085 #(dixit Kurt),
