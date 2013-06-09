@@ -52,13 +52,17 @@ class Timer(object):
         self.dt = dt
 
     def start(self):
-        self.nextTime = time.time() + self.dt
+        self._t0 = time.time()
+        self.nextTime = self._t0 + self.dt
 
     def sleep(self):
         tToWait = self.nextTime - time.time()
         if tToWait > 0:
             time.sleep(tToWait)
         self.nextTime = self.nextTime + self.dt
+
+    def get(self):
+        return self.nextTime - self.dt - self._t0
 
 class Sim(object):
     def __init__(self, dae, ts):

@@ -31,7 +31,8 @@ import Control.Monad ( when, forever )
 import qualified Data.ByteString.Lazy as BL
 import qualified Text.ProtocolBuffers as PB
 
-import qualified Pumping.Trajectory as RT
+import qualified Pumping.Trajectory as PT
+import qualified Pumping.Dae as PD
 
 import Plotter ( runPlotter, newChannel, makeAccessors )
 
@@ -39,10 +40,13 @@ main :: IO ()
 main = do
   let ip = "tcp://localhost:5563"
       zmqChan0 = "pumping trajectory"
-  (c0, write0) <- newChannel zmqChan0 $(makeAccessors ''RT.Trajectory)
+      zmqChan1 = "pumping sim"
+  (c0, write0) <- newChannel zmqChan0 $(makeAccessors ''PT.Trajectory)
+  (c1, write1) <- newChannel zmqChan1 $(makeAccessors ''PD.Dae)
   listenerTid0 <- CC.forkIO (sub ip write0 zmqChan0)
+  listenerTid1 <- CC.forkIO (sub ip write1 zmqChan1)
   
-  runPlotter [c0] [listenerTid0]
+  runPlotter [c0,c1] [listenerTid0,listenerTid1]
 
 withContext :: (ZMQ.Context -> IO a) -> IO a
 #if OSX
