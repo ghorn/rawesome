@@ -155,7 +155,7 @@ def getSteadyState(dae,r0,v0):
 
     solver.setInput(g.getLb(),'lbg')
     solver.setInput(g.getUb(),'ubg')
-    guessVec = numpy.load('steady_state_guess.npy')
+    #guessVec = numpy.load('steady_state_guess.npy')
     solver.setInput(guessVec,'x0')
     lb,ub = zip(*boundsVec)
     solver.setInput(C.DMatrix(lb), 'lbx')

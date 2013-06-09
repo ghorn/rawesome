@@ -49,9 +49,10 @@ def setupOcp(dae,conf,nk,nicp=1,deg=4):
     # constrain airspeed
     def constrainAirspeedAlphaBeta():
         for k in range(0,nk):
-            ocp.constrain(ocp.lookup('airspeed',timestep=k), '>=', 20, tag=('airspeed',nk))
-            ocp.constrainBnds(ocp.lookup('alpha_deg',timestep=k), (-4.5,15), tag=('alpha',nk))
-            ocp.constrainBnds(ocp.lookup('beta_deg', timestep=k), (-10,10), tag=('beta',nk))
+            for j in range(0,deg+1):
+                ocp.constrain(ocp.lookup('airspeed',timestep=k,degIdx=j), '>=', 20, tag=('airspeed',nk))
+                ocp.constrainBnds(ocp.lookup('alpha_deg',timestep=k,degIdx=j), (-4.5,8.5), tag=('alpha',nk))
+                ocp.constrainBnds(ocp.lookup('beta_deg', timestep=k,degIdx=j), (-10,10), tag=('beta',nk))
     constrainAirspeedAlphaBeta()
 
     # constrain tether force
@@ -74,9 +75,9 @@ def setupOcp(dae,conf,nk,nicp=1,deg=4):
     rawekite.kiteutils.periodicDcm(ocp)
 
     # bounds
-    ocp.bound('aileron',(-0.04,0.04))
-    ocp.bound('elevator',(-0.1,0.1))
-    ocp.bound('rudder',(-0.1,0.1))
+    ocp.bound('aileron', (numpy.radians(-10),numpy.radians(10)))
+    ocp.bound('elevator',(numpy.radians(-10),numpy.radians(10)))
+    ocp.bound('rudder',  (numpy.radians(-10),numpy.radians(10)))
     ocp.bound('daileron',(-2.0,2.0))
     ocp.bound('delevator',(-2.0,2.0))
     ocp.bound('drudder',(-2.0,2.0))
@@ -114,15 +115,11 @@ def setupOcp(dae,conf,nk,nicp=1,deg=4):
 
 
 if __name__=='__main__':
-    print "reading config..."
     from betty_conf import makeConf
     conf = makeConf()
     conf['runHomotopy'] = True
     conf['minAltitude'] = 0.5
     nk = 40
-
-    print "creating model..."
-    dae = pumping_dae.makeDae()
     dae = rawe.models.crosswind(conf)
     dae.addP('endTime')
 
@@ -263,7 +260,7 @@ if __name__=='__main__':
     callback = rawe.telemetry.startTelemetry(
         ocp, callbacks=[
             (rawe.telemetry.trajectoryCallback(toProto, Trajectory, showAllPoints=True), 'pumping trajectory')
-        ])
+            ])#], printBoundViolation=True, printConstraintViolation=True)
 
     # solver
     solverOptions = [("linear_solver","ma27"),
@@ -307,7 +304,7 @@ if __name__=='__main__':
         traj.subplot(['wind_at_altitude','dr','dx'])
         traj.subplot(['c','cdot','cddot'],title="invariants")
         traj.plot('airspeed')
-        traj.subplot([['alpha_deg','alphaTail_deg'],['beta_deg','betaTail_deg']])
+        traj.subplot([['alpha_deg'],['beta_deg']])
         traj.subplot(['cL','cD','L_over_D'])
         traj.subplot(['mechanical_winch_power', 'tether_tension'])
         traj.subplot(['w_bn_b_x','w_bn_b_y','w_bn_b_z'])

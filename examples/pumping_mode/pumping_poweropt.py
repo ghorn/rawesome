@@ -78,7 +78,7 @@ def setupOcp(dae,conf,nk,nicp,deg,collPoly):
             for j in range(0,ocp.deg+1):
                 ocp.constrainBnds(ocp.lookup('alpha_deg',timestep=k,degIdx=j), (-4.5,9.5), tag=('alpha(deg)',k))
 
-#            ocp.constrainBnds(ocp.lookup('beta_deg', timestep=k), (-5,5), tag=('beta(deg)',k))
+            ocp.constrainBnds(ocp.lookup('beta_deg', timestep=k), (-9,9), tag=('beta(deg)',k))
     constrainAirspeedAlphaBeta()
     #def constrainCl():
     #    for k in range(0,nk):
@@ -115,9 +115,9 @@ def setupOcp(dae,conf,nk,nicp,deg,collPoly):
     rawekite.kiteutils.periodicDcm(ocp)
 
     # bounds
-    ocp.bound('aileron',(-0.04,0.04))
-    ocp.bound('elevator',(-0.5,0.5))
-    ocp.bound('rudder',(-0.2,0.2))
+    ocp.bound('aileron', (numpy.radians(-10),numpy.radians(10)))
+    ocp.bound('elevator',(numpy.radians(-10),numpy.radians(10)))
+    ocp.bound('rudder',  (numpy.radians(-10),numpy.radians(10)))
     ocp.bound('daileron',(-2.0,2.0))
     ocp.bound('delevator',(-2.0,2.0))
     ocp.bound('drudder',(-2.0,2.0))
@@ -267,7 +267,7 @@ if __name__=='__main__':
         traj.subplot(['wind_at_altitude','dr'],title='')
 #        traj.subplot(['c','cdot','cddot'],title="invariants")
         traj.plot('airspeed',title='airspeed')
-        traj.subplot([['alpha_deg','alphaTail_deg'],['beta_deg','betaTail_deg']])
+        traj.subplot([['alpha_deg'],['beta_deg']])
         traj.subplot([['cL'],['cD','cD_tether'],['L_over_D','L_over_D_with_tether']],title='')
 #        traj.subplot([['winch_power'], ['tether_tension'],['accel_g','accel_without_gravity_g']])
         traj.subplot([['rpm'],['dr']])
