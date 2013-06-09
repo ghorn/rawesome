@@ -111,107 +111,107 @@ def setupModel(dae, conf):
 
     # mass matrix
     mm = C.SXMatrix(8, 8)
-    mm[0,0] = jCarousel + m*rA*rA + m*x*x + m*y*y + 2*m*rA*x 
-    mm[0,1] = -m*y 
-    mm[0,2] = m*(rA + x) 
-    mm[0,3] = 0 
-    mm[0,4] = 0 
-    mm[0,5] = 0 
-    mm[0,6] = 0 
+    mm[0,0] = jCarousel + m*rA*rA + m*x*x + m*y*y + 2*m*rA*x
+    mm[0,1] = -m*y
+    mm[0,2] = m*(rA + x)
+    mm[0,3] = 0
+    mm[0,4] = 0
+    mm[0,5] = 0
+    mm[0,6] = 0
     mm[0,7] = 0
-    
-    mm[1,0] = -m*y 
-    mm[1,1] = m 
-    mm[1,2] = 0 
-    mm[1,3] = 0 
-    mm[1,4] = 0 
-    mm[1,5] = 0 
-    mm[1,6] = 0 
+
+    mm[1,0] = -m*y
+    mm[1,1] = m
+    mm[1,2] = 0
+    mm[1,3] = 0
+    mm[1,4] = 0
+    mm[1,5] = 0
+    mm[1,6] = 0
     mm[1,7] = x + zt*e31
-    
-    mm[2,0] = m*(rA + x) 
-    mm[2,1] = 0 
-    mm[2,2] = m 
-    mm[2,3] = 0 
-    mm[2,4] = 0 
-    mm[2,5] = 0 
-    mm[2,6] = 0 
+
+    mm[2,0] = m*(rA + x)
+    mm[2,1] = 0
+    mm[2,2] = m
+    mm[2,3] = 0
+    mm[2,4] = 0
+    mm[2,5] = 0
+    mm[2,6] = 0
     mm[2,7] = y + zt*e32
-    
-    mm[3,0] = 0 
-    mm[3,1] = 0 
-    mm[3,2] = 0 
-    mm[3,3] = m 
-    mm[3,4] = 0 
-    mm[3,5] = 0 
-    mm[3,6] = 0 
+
+    mm[3,0] = 0
+    mm[3,1] = 0
+    mm[3,2] = 0
+    mm[3,3] = m
+    mm[3,4] = 0
+    mm[3,5] = 0
+    mm[3,6] = 0
     mm[3,7] = z + zt*e33
-    
-    mm[4,0] = 0 
-    mm[4,1] = 0 
-    mm[4,2] = 0 
-    mm[4,3] = 0 
-    mm[4,4] = j1 
-    mm[4,5] = 0 
-    mm[4,6] = j31 
+
+    mm[4,0] = 0
+    mm[4,1] = 0
+    mm[4,2] = 0
+    mm[4,3] = 0
+    mm[4,4] = j1
+    mm[4,5] = 0
+    mm[4,6] = j31
     mm[4,7] = -zt*(e21*x + e22*y + e23*z + zt*e21*e31 + zt*e22*e32 + zt*e23*e33)
-    
-    mm[5,0] = 0 
-    mm[5,1] = 0 
-    mm[5,2] = 0 
-    mm[5,3] = 0 
-    mm[5,4] = 0 
-    mm[5,5] = j2 
-    mm[5,6] = 0 
+
+    mm[5,0] = 0
+    mm[5,1] = 0
+    mm[5,2] = 0
+    mm[5,3] = 0
+    mm[5,4] = 0
+    mm[5,5] = j2
+    mm[5,6] = 0
     mm[5,7] = zt*(e11*x + e12*y + e13*z + zt*e11*e31 + zt*e12*e32 + zt*e13*e33)
-    
-    mm[6,0] = 0 
-    mm[6,1] = 0 
-    mm[6,2] = 0 
-    mm[6,3] = 0 
-    mm[6,4] = j31 
-    mm[6,5] = 0 
-    mm[6,6] = j3 
+
+    mm[6,0] = 0
+    mm[6,1] = 0
+    mm[6,2] = 0
+    mm[6,3] = 0
+    mm[6,4] = j31
+    mm[6,5] = 0
+    mm[6,6] = j3
     mm[6,7] = 0
-    
-    mm[7,0] = -zt*(e11*e23*x - e13*e21*x + e12*e23*y - e13*e22*y + zt*e11*e23*e31 - zt*e13*e21*e31 + zt*e12*e23*e32 - zt*e13*e22*e32) 
-    mm[7,1] = x + zt*e31 
-    mm[7,2] = y + zt*e32 
-    mm[7,3] = z + zt*e33 
-    mm[7,4] = -zt*(e21*x + e22*y + e23*z + zt*e21*e31 + zt*e22*e32 + zt*e23*e33) 
-    mm[7,5] = zt*(e11*x + e12*y + e13*z + zt*e11*e31 + zt*e12*e32 + zt*e13*e33) 
-    mm[7,6] = 0 
+
+    mm[7,0] = -zt*(e11*e23*x - e13*e21*x + e12*e23*y - e13*e22*y + zt*e11*e23*e31 - zt*e13*e21*e31 + zt*e12*e23*e32 - zt*e13*e22*e32)
+    mm[7,1] = x + zt*e31
+    mm[7,2] = y + zt*e32
+    mm[7,3] = z + zt*e33
+    mm[7,4] = -zt*(e21*x + e22*y + e23*z + zt*e21*e31 + zt*e22*e32 + zt*e23*e33)
+    mm[7,5] = zt*(e11*x + e12*y + e13*z + zt*e11*e31 + zt*e12*e32 + zt*e13*e33)
+    mm[7,6] = 0
     mm[7,7] = 0
 
     # right hand side
     zt2 = zt*zt
     rhs = C.veccat(
-          [ tc - cfric*ddelta - f1*y + f2*(rA + x) + dy*m*(dx - 2*ddelta*y) - dx*m*(dy + 2*ddelta*rA + 2*ddelta*x) 
-          , f1 + ddelta*m*(dy + ddelta*rA + ddelta*x) + ddelta*dy*m 
-          , f2 - ddelta*m*(dx - ddelta*y) - ddelta*dx*m 
-          , f3 + g*m 
-          , t1 - w2*(j3*w3 + j31*w1) + j2*w2*w3 
-          , t2 + w1*(j3*w3 + j31*w1) - w3*(j1*w1 + j31*w3) 
+          [ tc - cfric*ddelta - f1*y + f2*(rA + x) + dy*m*(dx - 2*ddelta*y) - dx*m*(dy + 2*ddelta*rA + 2*ddelta*x)
+          , f1 + ddelta*m*(dy + ddelta*rA + ddelta*x) + ddelta*dy*m
+          , f2 - ddelta*m*(dx - ddelta*y) - ddelta*dx*m
+          , f3 + g*m
+          , t1 - w2*(j3*w3 + j31*w1) + j2*w2*w3
+          , t2 + w1*(j3*w3 + j31*w1) - w3*(j1*w1 + j31*w3)
           , t3 + w2*(j1*w1 + j31*w3) - j2*w1*w2
           , ddr*r-(zt*w1*(e11*x+e12*y+e13*z+zt*e11*e31+zt*e12*e32+zt*e13*e33)+zt*w2*(e21*x+e22*y+e23*z+zt*e21*e31+zt*e22*e32+zt*e23*e33))*(w3-ddelta*e33)-dx*(dx-zt*e21*(w1-ddelta*e13)+zt*e11*(w2-ddelta*e23))-dy*(dy-zt*e22*(w1-ddelta*e13)+zt*e12*(w2-ddelta*e23))-dz*(dz-zt*e23*(w1-ddelta*e13)+zt*e13*(w2-ddelta*e23))+dr*dr+(w1-ddelta*e13)*(e21*(zt*dx-zt2*e21*(w1-ddelta*e13)+zt2*e11*(w2-ddelta*e23))+e22*(zt*dy-zt2*e22*(w1-ddelta*e13)+zt2*e12*(w2-ddelta*e23))+zt*e23*(dz+zt*e13*w2-zt*e23*w1)+zt*e33*(w1*z+zt*e33*w1+ddelta*e11*x+ddelta*e12*y+zt*ddelta*e11*e31+zt*ddelta*e12*e32)+zt*e31*(x+zt*e31)*(w1-ddelta*e13)+zt*e32*(y+zt*e32)*(w1-ddelta*e13))-(w2-ddelta*e23)*(e11*(zt*dx-zt2*e21*(w1-ddelta*e13)+zt2*e11*(w2-ddelta*e23))+e12*(zt*dy-zt2*e22*(w1-ddelta*e13)+zt2*e12*(w2-ddelta*e23))+zt*e13*(dz+zt*e13*w2-zt*e23*w1)-zt*e33*(w2*z+zt*e33*w2+ddelta*e21*x+ddelta*e22*y+zt*ddelta*e21*e31+zt*ddelta*e22*e32)-zt*e31*(x+zt*e31)*(w2-ddelta*e23)-zt*e32*(y+zt*e32)*(w2-ddelta*e23))
           ] )
- 
+
     dRexp = C.SXMatrix(3,3)
 
-    dRexp[0,0] = e21*(w3 - ddelta*e33) - e31*(w2 - ddelta*e23) 
-    dRexp[0,1] = e31*(w1 - ddelta*e13) - e11*(w3 - ddelta*e33) 
-    dRexp[0,2] = e11*(w2 - ddelta*e23) - e21*(w1 - ddelta*e13) 
+    dRexp[0,0] = e21*(w3 - ddelta*e33) - e31*(w2 - ddelta*e23)
+    dRexp[0,1] = e31*(w1 - ddelta*e13) - e11*(w3 - ddelta*e33)
+    dRexp[0,2] = e11*(w2 - ddelta*e23) - e21*(w1 - ddelta*e13)
 
-    dRexp[1,0] = e22*(w3 - ddelta*e33) - e32*(w2 - ddelta*e23) 
-    dRexp[1,1] = e32*(w1 - ddelta*e13) - e12*(w3 - ddelta*e33) 
-    dRexp[1,2] = e12*(w2 - ddelta*e23) - e22*(w1 - ddelta*e13) 
+    dRexp[1,0] = e22*(w3 - ddelta*e33) - e32*(w2 - ddelta*e23)
+    dRexp[1,1] = e32*(w1 - ddelta*e13) - e12*(w3 - ddelta*e33)
+    dRexp[1,2] = e12*(w2 - ddelta*e23) - e22*(w1 - ddelta*e13)
 
-    dRexp[2,0] = e23*w3 - e33*w2 
-    dRexp[2,1] = e33*w1 - e13*w3 
+    dRexp[2,0] = e23*w3 - e33*w2
+    dRexp[2,1] = e33*w1 - e13*w3
     dRexp[2,2] = e13*w2 - e23*w1
-    
+
     c =(x + zt*e31)**2/2 + (y + zt*e32)**2/2 + (z + zt*e33)**2/2 - r**2/2
-    
+
     cdot =dx*(x + zt*e31) + dy*(y + zt*e32) + dz*(z + zt*e33) + zt*(w2 - ddelta*e23)*(e11*x + e12*y + e13*z + zt*e11*e31 + zt*e12*e32 + zt*e13*e33) - zt*(w1 - ddelta*e13)*(e21*x + e22*y + e23*z + zt*e21*e31 + zt*e22*e32 + zt*e23*e33) - r*dr
 
 #    ddx = dae['ddx']
@@ -226,7 +226,7 @@ def setupModel(dae, conf):
     dw1 = dae.ddt('w_bn_b_x')
     dw2 = dae.ddt('w_bn_b_y')
     dddelta = dae.ddt('ddelta')
-    
+
     cddot = -(w1-ddelta*e13)*(zt*e23*(dz+zt*e13*w2-zt*e23*w1)+zt*e33*(w1*z+zt*e33*w1+ddelta*e11*x+ddelta*e12*y+zt*ddelta*e11*e31+zt*ddelta*e12*e32)+zt*e21*(dx+zt*e11*w2-zt*e21*w1-zt*ddelta*e11*e23+zt*ddelta*e13*e21)+zt*e22*(dy+zt*e12*w2-zt*e22*w1-zt*ddelta*e12*e23+zt*ddelta*e13*e22)+zt*e31*(x+zt*e31)*(w1-ddelta*e13)+zt*e32*(y+zt*e32)*(w1-ddelta*e13))+(w2-ddelta*e23)*(zt*e13*(dz+zt*e13*w2-zt*e23*w1)-zt*e33*(w2*z+zt*e33*w2+ddelta*e21*x+ddelta*e22*y+zt*ddelta*e21*e31+zt*ddelta*e22*e32)+zt*e11*(dx+zt*e11*w2-zt*e21*w1-zt*ddelta*e11*e23+zt*ddelta*e13*e21)+zt*e12*(dy+zt*e12*w2-zt*e22*w1-zt*ddelta*e12*e23+zt*ddelta*e13*e22)-zt*e31*(x+zt*e31)*(w2-ddelta*e23)-zt*e32*(y+zt*e32)*(w2-ddelta*e23))-ddr*r+(zt*w1*(e11*x+e12*y+e13*z+zt*e11*e31+zt*e12*e32+zt*e13*e33)+zt*w2*(e21*x+e22*y+e23*z+zt*e21*e31+zt*e22*e32+zt*e23*e33))*(w3-ddelta*e33)+dx*(dx+zt*e11*w2-zt*e21*w1-zt*ddelta*e11*e23+zt*ddelta*e13*e21)+dy*(dy+zt*e12*w2-zt*e22*w1-zt*ddelta*e12*e23+zt*ddelta*e13*e22)+dz*(dz+zt*e13*w2-zt*e23*w1)+ddx*(x+zt*e31)+ddy*(y+zt*e32)+ddz*(z+zt*e33)-dr*dr+zt*(dw2-dddelta*e23)*(e11*x+e12*y+e13*z+zt*e11*e31+zt*e12*e32+zt*e13*e33)-zt*(dw1-dddelta*e13)*(e21*x+e22*y+e23*z+zt*e21*e31+zt*e22*e32+zt*e23*e33)-zt*dddelta*(e11*e23*x-e13*e21*x+e12*e23*y-e13*e22*y+zt*e11*e23*e31-zt*e13*e21*e31+zt*e12*e23*e32-zt*e13*e22*e32)
 
 #    cddot = (zt*w1*(e11*x + e12*y + e13*z + zt*e11*e31 + zt*e12*e32 + zt*e13*e33) + zt*w2*(e21*x + e22*y + e23*z + zt*e21*e31 + zt*e22*e32 + zt*e23*e33))*(w3 - ddelta*e33) + dx*(dx + zt*e11*w2 - zt*e21*w1 - zt*ddelta*e11*e23 + zt*ddelta*e13*e21) + dy*(dy + zt*e12*w2 - zt*e22*w1 - zt*ddelta*e12*e23 + zt*ddelta*e13*e22) + dz*(dz + zt*e13*w2 - zt*e23*w1) + ddx*(x + zt*e31) + ddy*(y + zt*e32) + ddz*(z + zt*e33) - (w1 - ddelta*e13)*(e21*(zt*dx - zt**2*e21*(w1 - ddelta*e13) + zt**2*e11*(w2 - ddelta*e23)) + e22*(zt*dy - zt**2*e22*(w1 - ddelta*e13) + zt**2*e12*(w2 - ddelta*e23)) + zt*e33*(z*w1 + ddelta*e11*x + ddelta*e12*y + zt*e33*w1 + zt*ddelta*e11*e31 + zt*ddelta*e12*e32) + zt*e23*(dz + zt*e13*w2 - zt*e23*w1) + zt*e31*(w1 - ddelta*e13)*(x + zt*e31) + zt*e32*(w1 - ddelta*e13)*(y + zt*e32)) + (w2 - ddelta*e23)*(e11*(zt*dx - zt**2*e21*(w1 - ddelta*e13) + zt**2*e11*(w2 - ddelta*e23)) + e12*(zt*dy - zt**2*e22*(w1 - ddelta*e13) + zt**2*e12*(w2 - ddelta*e23)) - zt*e33*(z*w2 + ddelta*e21*x + ddelta*e22*y + zt*e33*w2 + zt*ddelta*e21*e31 + zt*ddelta*e22*e32) + zt*e13*(dz + zt*e13*w2 - zt*e23*w1) - zt*e31*(w2 - ddelta*e23)*(x + zt*e31) - zt*e32*(w2 - ddelta*e23)*(y + zt*e32)) + zt*(dw2 - dddelta*e23)*(e11*x + e12*y + e13*z + zt*e11*e31 + zt*e12*e32 + zt*e13*e33) - zt*(dw1 - dddelta*e13)*(e21*x + e22*y + e23*z + zt*e21*e31 + zt*e22*e32 + zt*e23*e33) - zt*dddelta*(e11*e23*x - e13*e21*x + e12*e23*y - e13*e22*y + zt*e11*e23*e31 - zt*e13*e21*e31 + zt*e12*e23*e32 - zt*e13*e22*e32)
@@ -245,14 +245,14 @@ def setupModel(dae, conf):
     dae['cdot'] = cdot
     dae['cddot'] = cddot
     return (mm, rhs, dRexp)
-        
+
 def carouselModel(conf):
     '''
     pass this a conf, and it'll return you a dae
     '''
     # empty Dae
     dae = Dae()
-        
+
     # add some differential states/algebraic vars/controls/params
     dae.addZ("nu")
     dae.addX( [ "x"
@@ -291,12 +291,12 @@ def carouselModel(conf):
         dae.addX("cos_delta")
         dae.addX("sin_delta")
         norm = dae['cos_delta']**2 + dae['sin_delta']**2
-        
+
         if 'stabilize_invariants' in conf and conf['stabilize_invariants'] == True:
             pole_delta = 0.5
         else:
             pole_delta = 0.0
-        
+
         cos_delta_dot_st = -pole_delta/2.* ( dae['cos_delta'] - dae['cos_delta'] / norm )
         sin_delta_dot_st = -pole_delta/2.* ( dae['sin_delta'] - dae['sin_delta'] / norm )
         dae_delta_residual = C.veccat([dae.ddt('cos_delta') - (-dae['sin_delta']*dae['ddelta'] + cos_delta_dot_st),
@@ -328,29 +328,29 @@ def carouselModel(conf):
     dae['elevator_deg'] = dae['elevator']*180/C.pi
     dae['daileron_deg_s'] = dae['daileron']*180/C.pi
     dae['delevator_deg_s'] = dae['delevator']*180/C.pi
-    
+
     dae['motor_power'] = dae['motor_torque']*dae['ddelta']
 
     dae['tether_tension'] = dae['r']*dae['nu']
     dae['winch_power'] = -dae['tether_tension']*dae['dr']
-    
+
     dae['dcm'] = C.vertcat([C.horzcat([dae['e11'],dae['e12'],dae['e13']]),
                             C.horzcat([dae['e21'],dae['e22'],dae['e23']]),
                             C.horzcat([dae['e31'],dae['e32'],dae['e33']])])
-    
+
     # line angle
     dae['cos_line_angle'] = \
       -(dae['e31']*dae['x'] + dae['e32']*dae['y'] + dae['e33']*dae['z']) / C.sqrt(dae['x']**2 + dae['y']**2 + dae['z']**2)
     dae['line_angle_deg'] = C.arccos(dae['cos_line_angle'])*180.0/C.pi
 
     (massMatrix, rhs, dRexp) = setupModel(dae, conf)
-    
+
     if 'stabilize_invariants' in conf and conf['stabilize_invariants'] == True:
         RotPole = 0.5
     else:
         RotPole = 0.0
     Rst = RotPole*C.mul( dae['dcm'], (C.inv(C.mul(dae['dcm'].T,dae['dcm'])) - numpy.eye(3)) )
-    
+
     ode = C.veccat([
         C.veccat([dae.ddt(name) for name in ['x','y','z']]) - C.veccat([dae['dx'],dae['dy'],dae['dz']]),
         C.veccat([dae.ddt(name) for name in ["e11","e12","e13",
@@ -373,9 +373,9 @@ def carouselModel(conf):
     else:
         cPole = 0.0
     rhs[-1] -= 2*cPole*dae['cdot'] + cPole*cPole*dae['c']
-    
+
     psuedoZVec = C.veccat([dae.ddt(name) for name in ['ddelta','dx','dy','dz','w_bn_b_x','w_bn_b_y','w_bn_b_z']]+[dae['nu']])
     alg = C.mul(massMatrix, psuedoZVec) - rhs
     dae.setResidual([ode,alg])
-    
+
     return dae
