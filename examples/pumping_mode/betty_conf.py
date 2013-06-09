@@ -35,6 +35,11 @@ def makeConf():
 
          'cY_B':-0.239789,
 
+         # control surface forces
+         'cL_elev':-0.0105*180/pi,
+         'cL_flaps':0.0184*180/pi,
+         'cY_rudder':0.0035*180/pi,
+
          # stability derivatives
          'cl_p':-0.576, 'cl_q':  0.0, 'cl_r': 0.0707,
          'cm_p':   0.0, 'cm_q':-15.5, 'cm_r':    0.0,
@@ -54,11 +59,6 @@ def makeConf():
          'cm_flaps':0.0026*180/pi,
          'cn_rudder':0.001176*180/pi,
 
-         # control surface forces
-         'cL_elev':-0.0105*180/pi,
-         'cL_flaps':0.0184*180/pi,
-         'cY_rudder':0.0035*180/pi,
-
          #[kite]
          'mass':  4.5,
 
@@ -70,7 +70,7 @@ def makeConf():
          'bref': 2.904, #sqrt(sref*AR),
          'cref': 0.2512, #sqrt(sref/AR),
 
-         'zt': 0.01,
+         'zt': 0.05,
 
          # INERTIA MATRIX: THIS IS A WILD GUESS
          'j1': 0.565,
