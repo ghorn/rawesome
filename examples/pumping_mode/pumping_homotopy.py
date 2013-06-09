@@ -66,7 +66,7 @@ def setupOcp(dae,conf,nk,nicp=1,deg=4):
                   "r","dr",
                   'aileron','elevator','rudder'
                   ]:
-        ocp.constrain(ocp.lookup(name,timestep=0),'==',ocp.lookup(name,timestep=-1))
+        ocp.constrain(ocp.lookup(name,timestep=0),'==',ocp.lookup(name,timestep=-1), tag=('periodic '+name,None))
 
     # periodic attitude
 #    rawekite.kiteutils.periodicEulers(ocp)
