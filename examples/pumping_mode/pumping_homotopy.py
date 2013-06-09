@@ -145,8 +145,7 @@ if __name__=='__main__':
                 nTurns = 1
 
                 # path following
-                # theta should be collocation points
-                theta = nTurns*2*pi*k/float(ocp.nk*ocp.nicp*(ocp.deg+1)-1)
+                theta = 2*pi*(k+ocp.lagrangePoly.tau_root[degIdx])/float(ocp.nk*ocp.nicp)
 
                 thetaDot = nTurns*2*pi/(ocp._guess.lookup('endTime'))
                 xyzCircleFrame    = numpy.array([h, r*numpy.sin(theta),          -r*numpy.cos(theta)])
@@ -199,8 +198,7 @@ if __name__=='__main__':
                 ocp.guess('e32',e3[1],timestep=nkIdx,nicpIdx=nicpIdx,degIdx=degIdx)
                 ocp.guess('e33',e3[2],timestep=nkIdx,nicpIdx=nicpIdx,degIdx=degIdx)
 
-                k += 1
-
+            k += 1
     ocp.guess('w_bn_b_z', -2.0*pi/ocp._guess.lookup('endTime'))
 
     # objective function
