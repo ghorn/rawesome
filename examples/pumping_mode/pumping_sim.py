@@ -17,12 +17,8 @@
 
 import zmq
 import numpy
-import casadi as C
-
-import time
 
 import rawe
-import rawekite
 from rawe.joy import Joy
 from rawekite.crosswind_steady_state import getSteadyState
 import pumping_dae
@@ -36,62 +32,63 @@ class Communicator(object):
 #        self.fOutputs = fOutputs
 #        self.outputNames = outputNames
 
-    def sendKite(self,x,u,p,outs,otherMessages=[]):
-        pb = autogen.pumping_pb2.Trajectory()
+    def send_kite(self, x_sim, u_sim, p_sim, outs_sim, other_messages=None):
+        '''
+        take in x/u/p/outs dictionaries and a list of string messages
+        send a packet over zmq
+        '''
+        traj_pb = autogen.pumping_pb2.Trajectory()
         def lookup(name):
-            for d in [x,u,p,outs]:
+            for some_dict in [x_sim, u_sim, p_sim, outs_sim]:
                 try:
-                    return d[name]
+                    return some_dict[name]
                 except:
                     pass
-        dae = autogen.topumpingProto.toProto(lookup)
-        pb.traj.extend([dae])
-        if len(otherMessages)>0:
-            #pb.messages.append("-------------------------")
-            for om in otherMessages:
-                pb.messages.append(om)
-        self.publisher.send_multipart(['pumping sim', dae.SerializeToString()])
-#        self.publisher.send_multipart(['pumping trajectory', pb.SerializeToString()])
-        self.publisher.send_multipart(['pumping', pb.SerializeToString()])
+        dae_pb = autogen.topumpingProto.toProto(lookup)
+        traj_pb.traj.extend([dae_pb])
+        if other_messages is not None:
+            for other_message in other_messages:
+                traj_pb.messages.append(other_message)
+        self.publisher.send_multipart(['pumping sim',
+                                       dae_pb.SerializeToString()])
+        self.publisher.send_multipart(['pumping', traj_pb.SerializeToString()])
         
     def close(self):
+        '''
+        close the zeromq publisher and context
+        '''
         self.publisher.close()
         self.context.term()
 
-if __name__=='__main__':
+def run_sim():
     # create the model
     dae = pumping_dae.makeDae()
     
     # compute the steady state
-    steadyState, ssDot = getSteadyState(dae,100,20)
-#    print "steady state:"
-#    for name in dae.xNames():
-#        print name+': '+str(steadyState[name])
-#    print "steady state ddt:"
-#    print ssDot
-#    import sys; sys.exit()
+    steady_state, _ = getSteadyState(dae, 100, 20)
     
     # create the sim
     dt = 0.01
-    sim = rawe.sim.Sim(dae,dt)
+    sim = rawe.sim.Sim(dae, dt)
     communicator = Communicator()
     joy = Joy()
 
-    # set the initial state from steadyState
-    x = {}
+    # set the initial state from steady_state
+    sim_x = {}
     for name in dae.xNames():
-        x[name] = steadyState[name]
-    u = {}
+        sim_x[name] = steady_state[name]
+    sim_u = {}
     for name in dae.uNames():
-        u[name] = steadyState[name]
-    p = {}
+        sim_u[name] = steady_state[name]
+    sim_p = {}
     for name in dae.pNames():
-        p[name] = steadyState[name]
+        sim_p[name] = steady_state[name]
 
     # set up the sim timer
     timer = rawe.sim.Timer(dt)
     timer.start()
-    # loop through and simulate, if there's an error close the communicator and throw exception
+    # loop through and simulate
+    # if there's an error close the communicator and throw exception
     sim_time = 0.0
     try:
         while True:
@@ -99,8 +96,8 @@ if __name__=='__main__':
             timer.sleep()
             print "running: "+str(sim_time)
             # send message to visualizer/plotter
-            outs = sim.getOutputs(x,u,p)
-            communicator.sendKite(x,u,p,outs)
+            communicator.send_kite(sim_x, sim_u, sim_p,
+                                   sim.getOutputs(sim_x, sim_u, sim_p))
             # try to take a simulation step of dt
             try:
                 js = joy.getAll()
@@ -110,10 +107,10 @@ if __name__=='__main__':
                 #print "rudder: ",rudder
                 #print "aileron: ",aileron
                 #print "elevator: ",elevator
-                x['rudder'] = rudder
-                x['aileron'] = aileron
-                x['elevator'] = elevator
-                x = sim.step(x,u,p)
+                sim_x['rudder'] = rudder
+                sim_x['aileron'] = aileron
+                sim_x['elevator'] = elevator
+                sim_x = sim.step(sim_x, sim_u, sim_p)
             except RuntimeError:
                 # problem simulating, close the communicator
                 communicator.close()
@@ -122,4 +119,6 @@ if __name__=='__main__':
     except KeyboardInterrupt:
         print "closing..."
         communicator.close()
-        pass
+
+if __name__ == '__main__':
+    run_sim()

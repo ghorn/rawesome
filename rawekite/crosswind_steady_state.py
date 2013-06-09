@@ -84,7 +84,7 @@ def getSteadyState(dae,r0,v0):
     guessVec = C.DMatrix([guess[n] for n in dae.xNames()+dae.zNames()+dae.uNames()+dae.pNames()]+
                          [dotGuess[n] for n in dae.xNames()])
 
-    bounds = {'x':(0.01,r0*2),'y':(0,0),'z':(-1,-1),
+    bounds = {'x':(0.01,r0*2),'y':(0,0),'z':(-2,-2),
               'dx':(0,0),'dy':(-50,0),'dz':(0,0),
               'r':(r0,r0),'dr':(0,0),'ddr':(0,0),
               'e11':(-0.5,0.5),'e12':(-1.5,-0.5),'e13':(-0.5,0.5),
