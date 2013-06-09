@@ -56,9 +56,12 @@ class Timer(object):
         self.nextTime = self._t0 + self.dt
 
     def sleep(self):
-        tToWait = self.nextTime - time.time()
+        time_now = time.time()
+        tToWait = self.nextTime - time_now
         if tToWait > 0:
             time.sleep(tToWait)
+        else:
+            self.nextTime = time_now
         self.nextTime = self.nextTime + self.dt
 
     def get(self):
