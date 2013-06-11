@@ -339,7 +339,7 @@ def crosswindModel(conf):
     def addLoydsLimit():
         w = dae['wind_at_altitude']
         cL = dae['cL']
-        cD = dae['cD']
+        cD = dae['cD'] + dae['cD_tether']
         rho = conf['rho']
         S = conf['sref']
         loyds = 2/27.0*rho*S*w**3*cL**3/cD**2
