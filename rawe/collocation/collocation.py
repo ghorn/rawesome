@@ -533,6 +533,8 @@ class Coll():
 
         # Solve the problem
         self.solver.solve()
+        ret = self.solver.getStat('return_status')
+        assert ret in ['Solve_Succeeded','Solved_To_Acceptable_Level'], 'Solver failed: '+ret
 
         # Print the optimal cost
         print "optimal cost: ", float(self.solver.output('f'))
