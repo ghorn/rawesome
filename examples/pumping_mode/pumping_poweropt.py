@@ -122,6 +122,9 @@ def setupOcp(dae,conf,nk,nicp,deg,collPoly):
     ocp.bound('elevator',(numpy.radians(-10),numpy.radians(10)))
     ocp.bound('rudder',  (numpy.radians(-10),numpy.radians(10)))
     ocp.bound('flaps',  (numpy.radians(0),numpy.radians(0)))
+    # can't bound flaps==0 AND have periodic flaps at the same time
+    # bounding flaps (-1,1) at timestep 0 doesn't really free them, but satisfies LICQ
+    ocp.bound('flaps', (-1,1),timestep=0,quiet=True)
     ocp.bound('daileron',(-2.0,2.0))
     ocp.bound('delevator',(-2.0,2.0))
     ocp.bound('drudder',(-2.0,2.0))
@@ -184,7 +187,7 @@ if __name__=='__main__':
     #from highwind_carousel_conf import conf
     from betty_conf import makeConf
 
-    nk = 60*numLoops
+    nk = 100*numLoops
 #    nk = 70
 
     print "creating model..."

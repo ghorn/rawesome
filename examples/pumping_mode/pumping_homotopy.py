@@ -70,8 +70,6 @@ def setupOcp(dae,conf,nk,nicp=1,deg=4):
         ocp.constrain(ocp.lookup(name,timestep=0),'==',ocp.lookup(name,timestep=-1), tag=('periodic '+name,None))
 
     # periodic attitude
-#    rawekite.kiteutils.periodicEulers(ocp)
-#    rawekite.kiteutils.periodicOrthonormalizedDcm(ocp)
     rawekite.kiteutils.periodicDcm(ocp)
 
     # bounds
@@ -79,6 +77,9 @@ def setupOcp(dae,conf,nk,nicp=1,deg=4):
     ocp.bound('elevator',(numpy.radians(-10),numpy.radians(10)))
     ocp.bound('rudder',  (numpy.radians(-10),numpy.radians(10)))
     ocp.bound('flaps',  (numpy.radians(0),numpy.radians(0)))
+    # can't bound flaps==0 AND have periodic flaps at the same time
+    # bounding flaps (-1,1) at timestep 0 doesn't really free them, but satisfies LICQ
+    ocp.bound('flaps', (-1,1),timestep=0,quiet=True)
     ocp.bound('daileron',(-2.0,2.0))
     ocp.bound('delevator',(-2.0,2.0))
     ocp.bound('drudder',(-2.0,2.0))
