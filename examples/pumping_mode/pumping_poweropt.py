@@ -27,8 +27,8 @@ from autogen.topumpingProto import toProto
 from autogen.pumping_pb2 import Trajectory
 
 numLoops=1
-#powerType = 'mechanical'
-powerType = 'electrical'
+powerType = 'mechanical'
+#powerType = 'electrical'
 
 def setupOcp(dae,conf,nk,nicp,deg,collPoly):
     def addCosts():
@@ -79,7 +79,7 @@ def setupOcp(dae,conf,nk,nicp,deg,collPoly):
         for k in range(0,nk):
             ocp.constrain(ocp.lookup('airspeed',timestep=k), '>=', 10, tag=('airspeed',k))
             for j in range(0,ocp.deg+1):
-                ocp.constrainBnds(ocp.lookup('alpha_deg',timestep=k,degIdx=j), (-4.5,9.5), tag=('alpha(deg)',k))
+                ocp.constrainBnds(ocp.lookup('alpha_deg',timestep=k,degIdx=j), (-4.5,8.5), tag=('alpha(deg)',k))
 
             ocp.constrainBnds(ocp.lookup('beta_deg', timestep=k), (-9,9), tag=('beta(deg)',k))
     constrainAirspeedAlphaBeta()
@@ -95,15 +95,15 @@ def setupOcp(dae,conf,nk,nicp,deg,collPoly):
         for j in range(1,ocp.deg+1):
             ocp.constrain( ocp.lookup('tether_tension',timestep=k,degIdx=j), '>=', 0, tag=('tether tension positive',k))
 
-    # real motor constraints
-    for k in range(nk):
-#        ocp.constrain( ocp.lookup('torque',timestep=k,degIdx=1),       '<=', 150, tag=('motor torque',k))
-#        ocp.constrain( ocp.lookup('torque',timestep=k,degIdx=ocp.deg), '<=', 150, tag=('motor torque',k))
-        ocp.constrain( ocp.lookup('torque',timestep=k,degIdx=1),       '<=', 78, tag=('motor torque',k))
-        ocp.constrain( ocp.lookup('torque',timestep=k,degIdx=ocp.deg), '<=', 78, tag=('motor torque',k))
-
-        ocp.constrain( ocp.lookup('rpm',timestep=k),       '<=', 1500, tag=('rpm',k))
-        ocp.constrain( -1500, '<=', ocp.lookup('rpm',timestep=k),       tag=('rpm',k))
+#    # real motor constraints
+#    for k in range(nk):
+##        ocp.constrain( ocp.lookup('torque',timestep=k,degIdx=1),       '<=', 150, tag=('motor torque',k))
+##        ocp.constrain( ocp.lookup('torque',timestep=k,degIdx=ocp.deg), '<=', 150, tag=('motor torque',k))
+#        ocp.constrain( ocp.lookup('torque',timestep=k,degIdx=1),       '<=', 78, tag=('motor torque',k))
+#        ocp.constrain( ocp.lookup('torque',timestep=k,degIdx=ocp.deg), '<=', 78, tag=('motor torque',k))
+#
+#        ocp.constrain( ocp.lookup('rpm',timestep=k),       '<=', 1500, tag=('rpm',k))
+#        ocp.constrain( -1500, '<=', ocp.lookup('rpm',timestep=k),       tag=('rpm',k))
 
     # make it periodic
     for name in [ "y","z",
@@ -203,7 +203,7 @@ if __name__=='__main__':
     # spawn telemetry thread
     callback = rawe.telemetry.startTelemetry(
         ocp, callbacks=[
-            (rawe.telemetry.trajectoryCallback(toProto, Trajectory, showAllPoints=True), 'pumping trajectory')
+            (rawe.telemetry.trajectoryCallback(toProto, Trajectory, showAllPoints=False), 'pumping trajectory')
         ])
 
     # solver
@@ -229,6 +229,7 @@ if __name__=='__main__':
                      callback=callback )
 
     ocp.interpolateInitialGuess("data/crosswind_homotopy.dat",force=True,quiet=True,numLoops=numLoops)
+#    ocp.interpolateInitialGuess("data/crosswind_opt_electrical_1_loops.dat",force=True,quiet=True,numLoops=numLoops)
 #    ocp.interpolateInitialGuess('data/crosswind_opt_'+powerType+'_1_loops.dat',
 #                                force=True,quiet=True,numLoops=numLoops)
 #    ocp.interpolateInitialGuess("data/crosswind_opt.dat",force=True,quiet=True,numLoops=numLoops)
