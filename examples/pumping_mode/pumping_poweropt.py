@@ -36,17 +36,20 @@ def setupOcp(dae,conf,nk,nicp,deg,collPoly):
         daileron = dae['daileron']
         delevator = dae['delevator']
         drudder = dae['drudder']
+        dflaps = dae['dflaps']
 
         daileronSigma = 0.001
         delevatorSigma = 0.8
-        dddrSigma = 20.0
+        dddrSigma = 10.0
         drudderSigma = 0.1
+        dflapsSigma = 0.1
 
         fudgeFactor = 1e-1
         nkf = float(nk)
         dae['daileronCost'] =  fudgeFactor*daileron*daileron / (daileronSigma*daileronSigma*nkf)
         dae['delevatorCost'] = fudgeFactor*delevator*delevator / (delevatorSigma*delevatorSigma*nkf)
         dae['drudderCost'] =   fudgeFactor*drudder*drudder / (drudderSigma*drudderSigma)
+        dae['dflapsCost'] =    fudgeFactor*dflaps*dflaps / (dflapsSigma*dflapsSigma)
         dae['dddrCost'] =      fudgeFactor*dddr*dddr / (dddrSigma*dddrSigma*nkf)
 
     addCosts()
@@ -107,7 +110,7 @@ def setupOcp(dae,conf,nk,nicp,deg,collPoly):
                   "dy","dz",
                   "w_bn_b_x","w_bn_b_y","w_bn_b_z",
                   "r","dr","ddr",
-                  'aileron','elevator','rudder'
+                  'aileron','elevator','rudder','flaps'
                   ]:
         ocp.constrain(ocp.lookup(name,timestep=0),'==',ocp.lookup(name,timestep=-1), tag=('periodic diff state \"'+name+'"',None))
 
@@ -118,9 +121,11 @@ def setupOcp(dae,conf,nk,nicp,deg,collPoly):
     ocp.bound('aileron', (numpy.radians(-10),numpy.radians(10)))
     ocp.bound('elevator',(numpy.radians(-10),numpy.radians(10)))
     ocp.bound('rudder',  (numpy.radians(-10),numpy.radians(10)))
+    ocp.bound('flaps',  (numpy.radians(0),numpy.radians(0)))
     ocp.bound('daileron',(-2.0,2.0))
     ocp.bound('delevator',(-2.0,2.0))
     ocp.bound('drudder',(-2.0,2.0))
+    ocp.bound('dflaps',(-2.0,2.0))
 
     ocp.bound('x',(-2000,2000))
     ocp.bound('y',(-2000,2000))
@@ -162,6 +167,7 @@ def setupOcp(dae,conf,nk,nicp,deg,collPoly):
         obj += ocp.lookup('daileronCost',timestep=k)
         obj += ocp.lookup('delevatorCost',timestep=k)
         obj += ocp.lookup('drudderCost',timestep=k)
+        obj += ocp.lookup('dflapsCost',timestep=k)
         obj += ocp.lookup('dddrCost',timestep=k)
 
     ocp.setQuadratureDdt('mechanical_energy', 'mechanical_winch_power')
@@ -258,22 +264,22 @@ if __name__=='__main__':
 
     # Plot the results
     def plotResults():
-        traj.subplot(['aero_fx','aero_fy','aero_fz'])
-        traj.subplot(['aero_mx','aero_my','aero_mz'])
+#        traj.subplot(['aero_fx','aero_fy','aero_fz'])
+#        traj.subplot(['aero_mx','aero_my','aero_mz'])
 #        traj.subplot(['x','y','z'])
 #        traj.subplot(['dx','dy','dz'])
-        traj.subplot(['aileron','elevator','rudder'],title='control surfaces')
-        traj.subplot([['dddr'],['daileron','delevator','drudder']],title='control surfaces')
-        traj.subplot(['wind_at_altitude','dr'],title='')
+        traj.subplot(['aileron','elevator','rudder','flaps'],title='control surfaces')
+        traj.subplot([['dddr'],['daileron','delevator','drudder','dflaps']],title='control surfaces')
+#        traj.subplot(['wind_at_altitude','dr'],title='')
 #        traj.subplot(['c','cdot','cddot'],title="invariants")
         traj.plot('airspeed',title='airspeed')
         traj.subplot([['alpha_deg'],['beta_deg']])
         traj.subplot([['cL'],['cD','cD_tether'],['L_over_D','L_over_D_with_tether']],title='')
 #        traj.subplot([['winch_power'], ['tether_tension'],['accel_g','accel_without_gravity_g']])
-        traj.subplot([['rpm'],['dr']])
+#        traj.subplot([['rpm'],['dr']])
         traj.subplot([['tether_tension'],['torque']])
-        traj.plot(['mechanical_winch_power', 'electrical_winch_power'])
-        traj.plot('r')
+#        traj.plot(['mechanical_winch_power', 'electrical_winch_power'])
+#        traj.plot('r')
 #        traj.subplot([['ddx','ddy','ddz'],['accel','accel without gravity']])
 #        traj.plot(["loyds_limit","loyds_limit_exact","neg_winch_power"])
 #        traj.plot(["loyd's limit","-(winch power)"],title='')
@@ -288,7 +294,7 @@ if __name__=='__main__':
 #        traj.plot('nu')
 
         plt.show()
-    plotResults()
+#    plotResults()
 
 
     def plotPaper():
@@ -296,23 +302,30 @@ if __name__=='__main__':
         plt.subplot(221)
         traj._plot('cL','',showLegend=False)
         plt.legend(['$C_L$'])
-        plt.ylim([0,1.7])
+        plt.xlabel('')
+        plt.ylim([0.1,1.1])
+        plt.xlim([0,traj.tgrid[-1,0,0]])
 
         plt.subplot(223)
-        traj._plot('L_over_D','',showLegend=False)
+        traj._plot('L_over_D_with_tether','',showLegend=False)
         plt.legend(['$L/D$'])
-        plt.ylim([0,5.5])
+        plt.ylim([2,15])
+        plt.xlim([0,traj.tgrid[-1,0,0]])
 
         plt.subplot(222)
         traj._plot('wind_at_altitude','',showLegend=False)
+        plt.xlabel('')
         plt.ylabel('[m/s]')
-        plt.ylim([7,9.2])
+        plt.ylim([5.5,10])
         plt.legend(['wind at altitude'])
+        plt.xlim([0,traj.tgrid[-1,0,0]])
+
         plt.subplot(224)
         traj._plot('dr','',showLegend=False)
         plt.ylabel('[m/s]')
-        plt.ylim([-10,9])
+        plt.ylim([-15,12])
         plt.legend(['$\dot{l}$'])
+        plt.xlim([0,traj.tgrid[-1,0,0]])
 
 #        traj.subplot(['cL','L/D','dr'],title='')
 #        traj.plot(["loyd's limit","loyd's limit (exact)","-(winch power)"])
@@ -322,9 +335,10 @@ if __name__=='__main__':
         traj._plot("neg_winch_power",'',showLegend=False)
         plt.legend(["Loyd's limit","winch power"])
         plt.ylabel('power [W]')
-        plt.ylim([-400,1100])
+        plt.ylim([-600,1100])
         plt.grid()
+        plt.xlim([0,traj.tgrid[-1,0,0]])
 
 
         plt.show()
-#    plotPaper()
+    #plotPaper()

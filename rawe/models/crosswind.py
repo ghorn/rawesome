@@ -255,10 +255,12 @@ def crosswindModel(conf):
               , "aileron"
               , "elevator"
               , "rudder"
+              , "flaps"
               ] )
     dae.addU( [ "daileron"
               , "delevator"
               , "drudder"
+              , "dflaps"
               , 'dddr'
               ] )
     dae.addP( ['w0'] )
@@ -315,7 +317,8 @@ def crosswindModel(conf):
         dae.ddt('ddr') - dae['dddr'],
         dae.ddt('aileron') - dae['daileron'],
         dae.ddt('elevator') - dae['delevator'],
-        dae.ddt('rudder') - dae['drudder']
+        dae.ddt('rudder') - dae['drudder'],
+        dae.ddt('flaps') - dae['dflaps']
         ])
 
     # acceleration for plotting

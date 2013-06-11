@@ -65,7 +65,7 @@ def setupOcp(dae,conf,nk,nicp=1,deg=4):
                   "dy","dz",
                   "w_bn_b_x","w_bn_b_y","w_bn_b_z",
                   "r","dr",
-                  'aileron','elevator','rudder'
+                  'aileron','elevator','rudder','flaps',
                   ]:
         ocp.constrain(ocp.lookup(name,timestep=0),'==',ocp.lookup(name,timestep=-1), tag=('periodic '+name,None))
 
@@ -78,9 +78,11 @@ def setupOcp(dae,conf,nk,nicp=1,deg=4):
     ocp.bound('aileron', (numpy.radians(-10),numpy.radians(10)))
     ocp.bound('elevator',(numpy.radians(-10),numpy.radians(10)))
     ocp.bound('rudder',  (numpy.radians(-10),numpy.radians(10)))
+    ocp.bound('flaps',  (numpy.radians(0),numpy.radians(0)))
     ocp.bound('daileron',(-2.0,2.0))
     ocp.bound('delevator',(-2.0,2.0))
     ocp.bound('drudder',(-2.0,2.0))
+    ocp.bound('dflaps',(-2.0,2.0))
 
     ocp.bound('x',(-2000,2000))
     ocp.bound('y',(-2000,2000))
@@ -226,18 +228,21 @@ if __name__=='__main__':
         daileron = ocp.lookup('daileron',timestep=k)
         delevator = ocp.lookup('delevator',timestep=k)
         drudder = ocp.lookup('drudder',timestep=k)
+        dflaps = ocp.lookup('dflaps',timestep=k)
 
         daileronSigma = 0.01
         delevatorSigma = 0.1
         drudderSigma = 0.1
+        dflapsSigma = 0.1
         ddrSigma = 1.0
 
         ailObj = daileron*daileron / (daileronSigma*daileronSigma)
         eleObj = delevator*delevator / (delevatorSigma*delevatorSigma)
         rudObj = drudder*drudder / (drudderSigma*drudderSigma)
+        flapsObj = dflaps*dflaps / (dflapsSigma*dflapsSigma)
         winchObj = ddr*ddr / (ddrSigma*ddrSigma)
 
-        obj += 1e-2*(ailObj + eleObj + rudObj + winchObj)/float(ocp.nk)
+        obj += 1e-2*(ailObj + eleObj + rudObj + flapsObj + winchObj)/float(ocp.nk)
 
     # homotopy forces/torques regularization
     homoReg = 0
@@ -258,8 +263,8 @@ if __name__=='__main__':
     ocp.guess('w0',10)
     ocp.guess('r',lineRadiusGuess)
 
-    for name in ['w_bn_b_x','w_bn_b_y','dr','ddr','dddr','aileron','rudder',
-                 'elevator','daileron','delevator','drudder']:
+    for name in ['w_bn_b_x','w_bn_b_y','dr','ddr','dddr','aileron','rudder','flaps',
+                 'elevator','daileron','delevator','drudder','dflaps']:
         ocp.guess(name,0)
 
     ocp.guess('gamma_homotopy',0)
