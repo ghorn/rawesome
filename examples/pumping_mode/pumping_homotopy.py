@@ -146,6 +146,7 @@ if __name__=='__main__':
 
                 # path following
                 theta = 2*pi*(k+ocp.lagrangePoly.tau_root[degIdx])/float(ocp.nk*ocp.nicp)
+                theta -= pi
 
                 thetaDot = nTurns*2*pi/(ocp._guess.lookup('endTime'))
                 xyzCircleFrame    = numpy.array([h, r*numpy.sin(theta),          -r*numpy.cos(theta)])
