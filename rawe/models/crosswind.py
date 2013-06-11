@@ -296,7 +296,6 @@ def crosswindModel(conf):
                                      0.0665919381751*dae['torque']*dae['torque'] + \
                                      0.1078628659825*dae['rpm']*dae['torque']
 
-    # what is the convension on this rotation matrix?
     dae['R_n2b'] = C.vertcat([C.horzcat([dae['e11'],dae['e12'],dae['e13']]),
                               C.horzcat([dae['e21'],dae['e22'],dae['e23']]),
                               C.horzcat([dae['e31'],dae['e32'],dae['e33']])])

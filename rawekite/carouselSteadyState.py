@@ -37,14 +37,14 @@ def getSteadyState(dae,conf,omega0,r0,z0):
     g = Constraints()
     g.add(dae.getResidual(),'==',0,tag=('dae residual',None))
     def constrainInvariantErrs():
-        dcm = dae['dcm']
-        makeOrthonormal(g, dcm)
+        R_c2b = dae['R_c2b']
+        makeOrthonormal(g, R_c2b)
         g.add(dae['c'], '==', 0, tag=('c(0)==0',None))
         g.add(dae['cdot'], '==', 0, tag=('cdot(0)==0',None))
     constrainInvariantErrs()
 
     # Rotational velocity time derivative
-    g.add(C.mul(dae['dcm'].T,dae['w_bn_b']) - C.veccat([0,0,omega0]) , '==', 0, tag=
+    g.add(C.mul(dae['R_c2b'].T,dae['w_bn_b']) - C.veccat([0,0,omega0]) , '==', 0, tag=
                        ("Rotational velocities",None))
     g.addBnds(dae['alpha_deg'], (-4.0, 8.0), tag=("alpha deg",None))
     g.addBnds(dae['beta_deg'], (-7.0, 7.0), tag=("beta deg",None))
