@@ -80,7 +80,7 @@ def matchDcms(ocp,R0,Rf):
 
     ocp.constrain(err[0,0], '>=', 0.5, tag=('dcm matching',"00"))
     ocp.constrain(err[1,1], '>=', 0.5, tag=('dcm matching',"11"))
-#    ocp.constrain(err[2,2], '>=', 0.5)
+    ocp.constrain(err[2,2], '>=', 0.5, tag=('dcm matching',"22"))
 
 def periodicDcm(ocp):
     R0 = getDcm(ocp,0)

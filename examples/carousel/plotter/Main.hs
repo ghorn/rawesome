@@ -31,16 +31,16 @@ import Control.Monad ( when, forever )
 import qualified Data.ByteString.Lazy as BL
 import qualified Text.ProtocolBuffers as PB
 
-import qualified Pumping.Trajectory as PT
-import qualified Pumping.Dae as PD
+import qualified Carousel.Trajectory as PT
+import qualified Carousel.Dae as PD
 
 import Plotter ( runPlotter, newChannel, makeAccessors )
 
 main :: IO ()
 main = do
   let ip = "tcp://localhost:5563"
-      zmqChan0 = "pumping trajectory"
-      zmqChan1 = "pumping sim"
+      zmqChan0 = "carousel trajectory"
+      zmqChan1 = "carousel sim"
   (c0, write0) <- newChannel zmqChan0 $(makeAccessors ''PT.Trajectory)
   (c1, write1) <- newChannel zmqChan1 $(makeAccessors ''PD.Dae)
   listenerTid0 <- CC.forkIO (sub ip write0 zmqChan0)

@@ -15,14 +15,10 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with rawesome.  If not, see <http://www.gnu.org/licenses/>.
 
-vis = viz/dist/build/multicarousel/multicarousel
+import rawe
+import betty_conf
 
-include ../Makefile.protobufStuff
-
-all :: $(vis)
-
-$(vis) : $(ag)/$(hstopname).hs viz/*.hs
-	cd viz && cabal configure -v0 && cabal build -v0
-
-clean::
-	cd viz && cabal clean -v0
+def makeDae(conf=None):
+    if conf is None:
+        conf = betty_conf.makeConf()
+    return rawe.models.carousel(conf)

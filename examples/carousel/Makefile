@@ -15,14 +15,8 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with rawesome.  If not, see <http://www.gnu.org/licenses/>.
 
-vis = viz/dist/build/multicarousel/multicarousel
+topname = carousel
+ag = autogen
+daefile = carousel_dae
 
-include ../Makefile.protobufStuff
-
-all :: $(vis)
-
-$(vis) : $(ag)/$(hstopname).hs viz/*.hs
-	cd viz && cabal configure -v0 && cabal build -v0
-
-clean::
-	cd viz && cabal clean -v0
+include ../Makefile.wtfviz

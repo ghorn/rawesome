@@ -242,8 +242,9 @@ message Mhe {
   repeated Controls u = 2;
   repeated MeasurementsX yx = 3;
   repeated MeasurementsU yu = 4;
-  repeated MeasurementsX yx_of_x = 6;
-  repeated MeasurementsU yu_of_u = 7;
+  repeated MeasurementsX yx_of_x = 5;
+  repeated MeasurementsU yu_of_u = 6;
+  repeated Outputs outs_of_xu = 7;
   required double kkt = 8;
   required double objective = 9;
   required double prepTime = 10;
@@ -254,11 +255,13 @@ message Mpc {
   repeated DifferentialStates x = 1;
   repeated Controls u = 2;
   required DifferentialStates x0 = 3;
-  //repeated Dae referenceTrajectory = 4;
-  required double kkt = 5;
-  required double objective = 6;
-  required double prepTime = 7;
-  required double fbTime = 8;
+  repeated DifferentialStates xref = 4;
+  repeated Controls uref = 5;
+  repeated Outputs outs_of_xu = 6;
+  required double kkt = 7;
+  required double objective = 8;
+  required double prepTime = 9;
+  required double fbTime = 10;
 }
 
 message Sim {

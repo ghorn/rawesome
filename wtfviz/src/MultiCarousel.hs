@@ -134,11 +134,9 @@ sub channel toState ip m = withContext $ \context -> do
       mre <- ZMQ.moreToReceive subscriber
       when mre $ do
         msg <- receive subscriber
-        let cs = case messageGet (BL.fromChunks [msg]) of
-              Left err -> error err
-              Right (cs',_) -> cs'
-        _ <- CC.swapMVar m (toState cs)
-        return ()
+        case messageGet (BL.fromChunks [msg]) of
+              Left err -> return ()
+              Right (cs,_) -> CC.swapMVar m (toState cs) >> return ()
 
 ts :: Double
 ts = 0.02

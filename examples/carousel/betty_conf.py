@@ -86,9 +86,12 @@ def makeConf():
          'jCarousel': 1e2,
          'cfric': 0,#100,
 
+         # carousel
+         'delta_parameterization':'cos_sin',
+
          # wind model
-         'wind_model':{'name':'wind_shear',
-                       'z0':100,
-                       'zt_roughness': 0.1}
-#         'wind_model':{'name':'constant'}
+#         'wind_model':{'name':'wind_shear',
+#                       'z0':100,
+#                       'zt_roughness': 0.1}
+         'wind_model':{'name':'constant'}
         }

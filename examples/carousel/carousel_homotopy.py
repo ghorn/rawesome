@@ -24,9 +24,9 @@ import pickle
 
 import rawe
 import rawekite
-import pumping_dae
-from autogen.topumpingProto import toProto
-from autogen.pumping_pb2 import Trajectory
+import carousel_dae
+from autogen.tocarouselProto import toProto
+from autogen.carousel_pb2 import Trajectory
 
 def setupOcp(dae,conf,nk,nicp=1,deg=4):
     ocp = rawe.collocation.Coll(dae, nk=nk,nicp=nicp,deg=deg)
@@ -36,8 +36,8 @@ def setupOcp(dae,conf,nk,nicp=1,deg=4):
 
     # constrain invariants
     def constrainInvariantErrs():
-        R_n2b = ocp.lookup('R_n2b',timestep=0)
-        rawekite.kiteutils.makeOrthonormal(ocp, R_n2b)
+        R_c2b = ocp.lookup('R_c2b',timestep=0)
+        rawekite.kiteutils.makeOrthonormal(ocp, R_c2b)
         ocp.constrain(ocp.lookup('c',timestep=0), '==', 0, tag=('initial c 0',None))
         ocp.constrain(ocp.lookup('cdot',timestep=0), '==', 0, tag=('initial cdot 0',None))
     constrainInvariantErrs()
@@ -50,9 +50,10 @@ def setupOcp(dae,conf,nk,nicp=1,deg=4):
     def constrainAirspeedAlphaBeta():
         for k in range(0,nk):
             for j in range(0,deg+1):
-                ocp.constrain(ocp.lookup('airspeed',timestep=k,degIdx=j), '>=', 20, tag=('airspeed',nk))
+                ocp.constrainBnds(ocp.lookup('airspeed',timestep=k,degIdx=j),
+                                  (10,30), tag=('airspeed',(k,j)))
                 ocp.constrainBnds(ocp.lookup('alpha_deg',timestep=k,degIdx=j), (-4.5,8.5), tag=('alpha',nk))
-                ocp.constrainBnds(ocp.lookup('beta_deg', timestep=k,degIdx=j), (-10,10), tag=('beta',nk))
+                ocp.constrainBnds(ocp.lookup('beta_deg', timestep=k,degIdx=j), (-6,6), tag=('beta',nk))
     constrainAirspeedAlphaBeta()
 
     # constrain tether force
@@ -60,12 +61,19 @@ def setupOcp(dae,conf,nk,nicp=1,deg=4):
         ocp.constrain( ocp.lookup('tether_tension',timestep=k,degIdx=1), '>=', 0, tag=('tether tension',(nk,0)))
         ocp.constrain( ocp.lookup('tether_tension',timestep=k,degIdx=ocp.deg), '>=', 0, tag=('tether tension',(nk,1)))
 
+    # make it only go around once
+    for k in range(nk):
+        totalDelta = ocp.lookup('ddelta',timestep=k)*ocp.lookup('endTime')
+        ocp.constrainBnds( totalDelta, (2*pi*0.9, 2*pi*1.1), tag=('total delta',k))
+
     # make it periodic
     for name in [ "y","z",
                   "dy","dz",
                   "w_bn_b_x","w_bn_b_y","w_bn_b_z",
                   "r","dr",'ddr',
+                  'ddelta',
                   'aileron','elevator','rudder','flaps',
+                  'cos_delta','sin_delta','motor_torque'
                   ]:
         ocp.constrain(ocp.lookup(name,timestep=0),'==',ocp.lookup(name,timestep=-1), tag=('periodic '+name,None))
 
@@ -80,21 +88,28 @@ def setupOcp(dae,conf,nk,nicp=1,deg=4):
     # can't bound flaps==0 AND have periodic flaps at the same time
     # bounding flaps (-1,1) at timestep 0 doesn't really free them, but satisfies LICQ
     ocp.bound('flaps', (-1,1),timestep=0,quiet=True)
-    ocp.bound('daileron',(-2.0,2.0))
-    ocp.bound('delevator',(-2.0,2.0))
-    ocp.bound('drudder',(-2.0,2.0))
-    ocp.bound('dflaps',(-2.0,2.0))
+    ocp.bound('daileron',  (numpy.radians(-20), numpy.radians(20)))
+    ocp.bound('delevator', (numpy.radians(-20), numpy.radians(20)))
+    ocp.bound('drudder',   (numpy.radians(-20), numpy.radians(20)))
+    ocp.bound('dflaps',    (numpy.radians(-20), numpy.radians(20)))
+    ocp.bound('ddelta',(0.0,4*pi))
 
     ocp.bound('x',(-2000,2000))
     ocp.bound('y',(-2000,2000))
-    if 'minAltitude' in conf:
-        ocp.bound('z',(-2000, -conf['minAltitude']))
-    else:
-        ocp.bound('z',(-2000, -0.5))
-    ocp.bound('r',(1,2000))
-    ocp.bound('dr',(-30,30))
+    ocp.bound('z',(-2,1.5))
+    ocp.bound('r',(4,10))
+    ocp.bound('dr',(-1,1))
     ocp.bound('ddr',(-15,15))
     ocp.bound('dddr',(-15,15))
+
+    ocp.bound('motor_torque',(-500,500))
+    ocp.bound('dmotor_torque',(-1,1))
+
+    ocp.bound('cos_delta',(-1.5,1.5))
+    ocp.bound('sin_delta',(-1.5,1.5))
+
+    ocp.bound('sin_delta', (0,0), timestep=0, quiet=True)
+    ocp.bound('cos_delta', (0.5,1.5), timestep=0, quiet=True)
 
     for e in ['e11','e21','e31','e12','e22','e32','e13','e23','e33']:
         ocp.bound(e,(-1.1,1.1))
@@ -107,9 +122,10 @@ def setupOcp(dae,conf,nk,nicp=1,deg=4):
               'w_bn_b_z']:
         ocp.bound(w,(-4*pi,4*pi))
 
-    ocp.bound('endTime',(4.0,4.0))
-    ocp.guess('endTime',4.0)
-    ocp.bound('w0',(10,10))
+    ocp.bound('endTime',(1.0,2.0))
+    ocp.guess('endTime',1.5)
+    ocp.bound('w0',(0,0))
+#    ocp.bound('w0',(10,10))
 
     # boundary conditions
     ocp.bound('y',(0,0),timestep=0,quiet=True)
@@ -123,17 +139,17 @@ if __name__=='__main__':
     conf['runHomotopy'] = True
     conf['minAltitude'] = 0.5
     nk = 40
-    dae = rawe.models.crosswind(conf)
+    dae = carousel_dae.makeDae(conf)
     dae.addP('endTime')
 
     print "setting up ocp..."
     ocp = setupOcp(dae,conf,nk)
 
-    lineRadiusGuess = 100.0
-    circleRadiusGuess = 20.0
+    lineRadiusGuess = 4.0
+    nTurns = 1
 
     # trajectory for homotopy
-    homotopyTraj = {'x':[],'y':[],'z':[]}
+    homotopyTraj = {'sin_delta':[],'cos_delta':[]}
     k = 0
     for nkIdx in range(ocp.nk+1):
         for nicpIdx in range(ocp.nicp):
@@ -143,83 +159,37 @@ if __name__=='__main__':
                 if nkIdx == ocp.nk and degIdx > 0:
                     break
 
-                r = circleRadiusGuess
-                h = numpy.sqrt(lineRadiusGuess**2 - r**2)
-                nTurns = 1
-
                 # path following
-                theta = 2*pi*(k+ocp.lagrangePoly.tau_root[degIdx])/float(ocp.nk*ocp.nicp)
-                theta -= pi
-
-                thetaDot = nTurns*2*pi/(ocp._guess.lookup('endTime'))
-                xyzCircleFrame    = numpy.array([h, r*numpy.sin(theta),          -r*numpy.cos(theta)])
-                xyzDotCircleFrame = numpy.array([0, r*numpy.cos(theta)*thetaDot,  r*numpy.sin(theta)*thetaDot])
-
-                phi  = numpy.arcsin(r/lineRadiusGuess) # rotate so it's above ground
-                phi += numpy.arcsin((conf['minAltitude']+0.3)/lineRadiusGuess)
-                phi += 10*pi/180
-                R_c2n = numpy.matrix([[  numpy.cos(phi), 0, numpy.sin(phi)],
-                                      [               0, 1,              0],
-                                      [ -numpy.sin(phi), 0, numpy.cos(phi)]])
-                xyz    = numpy.dot(R_c2n, xyzCircleFrame)
-                xyzDot = numpy.dot(R_c2n, xyzDotCircleFrame)
+                delta = 2*pi*(k+ocp.lagrangePoly.tau_root[degIdx])/float(ocp.nk*ocp.nicp)
 
                 if nicpIdx == 0 and degIdx == 0:
-                    homotopyTraj['x'].append(float(xyz[0,0]))
-                    homotopyTraj['y'].append(float(xyz[0,1]))
-                    homotopyTraj['z'].append(float(xyz[0,2]))
+                    homotopyTraj['sin_delta'].append(numpy.sin(delta))
+                    homotopyTraj['cos_delta'].append(numpy.cos(delta))
 
-                x = float(xyz[0,0])
-                y = float(xyz[0,1])
-                z = float(xyz[0,2])
-
-                dx = float(xyzDot[0,0])
-                dy = float(xyzDot[0,1])
-                dz = float(xyzDot[0,2])
-
-                ocp.guess('x',x,timestep=nkIdx,nicpIdx=nicpIdx,degIdx=degIdx)
-                ocp.guess('y',y,timestep=nkIdx,nicpIdx=nicpIdx,degIdx=degIdx)
-                ocp.guess('z',z,timestep=nkIdx,nicpIdx=nicpIdx,degIdx=degIdx)
-                ocp.guess('dx',dx,timestep=nkIdx,nicpIdx=nicpIdx,degIdx=degIdx)
-                ocp.guess('dy',dy,timestep=nkIdx,nicpIdx=nicpIdx,degIdx=degIdx)
-                ocp.guess('dz',dz,timestep=nkIdx,nicpIdx=nicpIdx,degIdx=degIdx)
-
-                p0 = numpy.array([x,y,z])
-                dp0 = numpy.array([dx,dy,dz])
-                e1 = dp0/numpy.linalg.norm(dp0)
-                e3 = -p0/lineRadiusGuess
-                e2 = numpy.cross(e3,e1)
-
-                ocp.guess('e11',e1[0],timestep=nkIdx,nicpIdx=nicpIdx,degIdx=degIdx)
-                ocp.guess('e12',e1[1],timestep=nkIdx,nicpIdx=nicpIdx,degIdx=degIdx)
-                ocp.guess('e13',e1[2],timestep=nkIdx,nicpIdx=nicpIdx,degIdx=degIdx)
-
-                ocp.guess('e21',e2[0],timestep=nkIdx,nicpIdx=nicpIdx,degIdx=degIdx)
-                ocp.guess('e22',e2[1],timestep=nkIdx,nicpIdx=nicpIdx,degIdx=degIdx)
-                ocp.guess('e23',e2[2],timestep=nkIdx,nicpIdx=nicpIdx,degIdx=degIdx)
-
-                ocp.guess('e31',e3[0],timestep=nkIdx,nicpIdx=nicpIdx,degIdx=degIdx)
-                ocp.guess('e32',e3[1],timestep=nkIdx,nicpIdx=nicpIdx,degIdx=degIdx)
-                ocp.guess('e33',e3[2],timestep=nkIdx,nicpIdx=nicpIdx,degIdx=degIdx)
-
+                ocp.guess('sin_delta',numpy.sin(delta),timestep=nkIdx,nicpIdx=nicpIdx,degIdx=degIdx)
+                ocp.guess('cos_delta',numpy.cos(delta),timestep=nkIdx,nicpIdx=nicpIdx,degIdx=degIdx)
             k += 1
+
     ocp.guess('w_bn_b_z', -2.0*pi/ocp._guess.lookup('endTime'))
+    ocp.guess('ddelta', nTurns*2*pi/(ocp._guess.lookup('endTime')))
+    ocp.guess('e11',0); ocp.guess('e12',1); ocp.guess('e13',0)
+    ocp.guess('e21',0); ocp.guess('e22',0); ocp.guess('e23',-1)
+    ocp.guess('e31',-1); ocp.guess('e32',0); ocp.guess('e33',0)
 
     # objective function
     obj = -1e6*ocp.lookup('gamma_homotopy')
-    mean_x = numpy.mean(homotopyTraj['x'])
-    mean_y = numpy.mean(homotopyTraj['y'])
-    mean_z = numpy.mean(homotopyTraj['z'])
-    for k in range(ocp.nk+1):
-        x = ocp.lookup('x',timestep=k)
-        y = ocp.lookup('y',timestep=k)
-        z = ocp.lookup('z',timestep=k)
-        obj += ((x-mean_x)**2 + (y-mean_y)**2 + (z-mean_z)**2 - circleRadiusGuess**2)**2
-
+#    mean_x = numpy.mean(homotopyTraj['x'])
+#    mean_y = numpy.mean(homotopyTraj['y'])
+#    mean_z = numpy.mean(homotopyTraj['z'])
 #    for k in range(ocp.nk+1):
-#        obj += (homotopyTraj['x'][k] - ocp.lookup('x',timestep=k))**2
-#        obj += (homotopyTraj['y'][k] - ocp.lookup('y',timestep=k))**2
-#        obj += (homotopyTraj['z'][k] - ocp.lookup('z',timestep=k))**2
+#        x = ocp.lookup('x',timestep=k)
+#        y = ocp.lookup('y',timestep=k)
+#        z = ocp.lookup('z',timestep=k)
+#        obj += ((x-mean_x)**2 + (y-mean_y)**2 + (z-mean_z)**2 - circleRadiusGuess**2)**2
+
+    for k in range(ocp.nk+1):
+        obj += (homotopyTraj['sin_delta'][k] - ocp.lookup('sin_delta',timestep=k))**2
+        obj += (homotopyTraj['cos_delta'][k] - ocp.lookup('cos_delta',timestep=k))**2
     ocp.setQuadratureDdt('mechanical_energy', 'mechanical_winch_power')
     ocp.setQuadratureDdt('electrical_energy', 'electrical_winch_power')
 
@@ -230,20 +200,23 @@ if __name__=='__main__':
         delevator = ocp.lookup('delevator',timestep=k)
         drudder = ocp.lookup('drudder',timestep=k)
         dflaps = ocp.lookup('dflaps',timestep=k)
+        dmotorTorque = ocp.lookup('dmotor_torque',timestep=k)
 
         daileronSigma = 0.01
         delevatorSigma = 0.1
         drudderSigma = 0.1
         dflapsSigma = 0.1
-        ddrSigma = 1.0
+        ddrSigma = 0.1
+        dmotorTorqueSigma = 0.1
 
         ailObj = daileron*daileron / (daileronSigma*daileronSigma)
         eleObj = delevator*delevator / (delevatorSigma*delevatorSigma)
         rudObj = drudder*drudder / (drudderSigma*drudderSigma)
         flapsObj = dflaps*dflaps / (dflapsSigma*dflapsSigma)
         winchObj = ddr*ddr / (ddrSigma*ddrSigma)
+        motorTorqueObj = dmotorTorque*dmotorTorque / (dmotorTorqueSigma*dmotorTorqueSigma)
 
-        obj += 1e-2*(ailObj + eleObj + rudObj + flapsObj + winchObj)/float(ocp.nk)
+        obj += 1e-2*(ailObj + eleObj + rudObj + flapsObj + winchObj + motorTorqueObj)/float(ocp.nk)
 
     # homotopy forces/torques regularization
     homoReg = 0
@@ -261,11 +234,13 @@ if __name__=='__main__':
     ocp.setObjective( obj )
 
     # initial guesses
-    ocp.guess('w0',10)
+    ocp.guess('w0',0)
     ocp.guess('r',lineRadiusGuess)
+    ocp.guess('x',lineRadiusGuess)
 
-    for name in ['w_bn_b_x','w_bn_b_y','dr','ddr','dddr','aileron','rudder','flaps',
-                 'elevator','daileron','delevator','drudder','dflaps']:
+    for name in ['w_bn_b_x','w_bn_b_y','dr','ddr','dddr','aileron','rudder','flaps','motor_torque',
+                 'elevator','daileron','delevator','drudder','dflaps','dmotor_torque',
+                 'y','z','dx','dy','dz']:
         ocp.guess(name,0)
 
     ocp.guess('gamma_homotopy',0)
@@ -273,8 +248,8 @@ if __name__=='__main__':
     # spawn telemetry thread
     callback = rawe.telemetry.startTelemetry(
         ocp, callbacks=[
-            (rawe.telemetry.trajectoryCallback(toProto, Trajectory, showAllPoints=True), 'pumping trajectory')
-            ])#], printBoundViolation=True, printConstraintViolation=True)
+            (rawe.telemetry.trajectoryCallback(toProto, Trajectory, showAllPoints=False), 'carousel trajectory')
+            ], printBoundViolation=True, printConstraintViolation=True)
 
     # solver
     solverOptions = [("linear_solver","ma27"),
@@ -314,6 +289,7 @@ if __name__=='__main__':
         traj.subplot(['x','y','z'])
         traj.subplot(['dx','dy','dz'])
         traj.subplot([['aileron','elevator'],['daileron','delevator']],title='control surfaces')
+        traj.subplot([['rudder','flaps'],['drudder','dflaps']],title='control surfaces')
         traj.subplot(['r','dr','ddr'])
         traj.subplot(['wind_at_altitude','dr','dx'])
         traj.subplot(['c','cdot','cddot'],title="invariants")
@@ -321,6 +297,7 @@ if __name__=='__main__':
         traj.subplot([['alpha_deg'],['beta_deg']])
         traj.subplot(['cL','cD','L_over_D'])
         traj.subplot(['mechanical_winch_power', 'tether_tension'])
+        traj.subplot([['motor_torque'],['dmotor_torque']])
         traj.subplot(['w_bn_b_x','w_bn_b_y','w_bn_b_z'])
         traj.subplot(['e11','e12','e13','e21','e22','e23','e31','e32','e33'])
         traj.plot(['nu'])

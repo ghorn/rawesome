@@ -149,7 +149,12 @@ ACADOworkspace acadoWorkspace;
 ACADOvariables acadoVariables;
 '''
 
-    # write all this
+    # write things in user specified directory if 'export_without_build_path' is not None
+    if cgOptions['export_without_build_path'] is not None:
+        codegen.writeDifferentFiles(cgOptions['export_without_build_path'], genfiles)
+        return
+
+    # otherwise write things in memoized directory, then compile
     exportpath = codegen.memoizeFiles(genfiles,prefix=cgOptions['hashPrefix']+'__')
 
     # compile!

@@ -71,16 +71,19 @@ class Sender(Process):
         publisher = context.socket(zmq.PUB)
         publisher.bind(self.url)
 
-        while True:
-            xOpt = self.xOptQueue.get()
-            # empty the queue
-            while not self.xOptQueue.empty():
+        try:
+            while True:
                 xOpt = self.xOptQueue.get()
-                myiter += 1
-            traj = trajectory.Trajectory(self.ocp, xOpt)
-            for callbackFun, zeromqChannel in self.callbackFunsWithChannels:
-                mcStr = callbackFun(traj,myiter,self.ocp)
-                publisher.send_multipart([zeromqChannel, mcStr])
+                # empty the queue
+                while not self.xOptQueue.empty():
+                    xOpt = self.xOptQueue.get()
+                    myiter += 1
+                traj = trajectory.Trajectory(self.ocp, xOpt)
+                for callbackFun, zeromqChannel in self.callbackFunsWithChannels:
+                    mcStr = callbackFun(traj,myiter,self.ocp)
+                    publisher.send_multipart([zeromqChannel, mcStr])
+        except EOFError:
+            pass
 
 def trajectoryCallback(toProto,protoTraj,showAllPoints=False):
     def callback(traj,myiter,ocp):

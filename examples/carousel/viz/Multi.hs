@@ -26,9 +26,9 @@ import Text.ProtocolBuffers.Basic ( uToString )
 import SpatialMath
 
 import MultiCarousel ( State(..), NiceKite(..), runMultiCarousel )
-import qualified Pumping.Trajectory as PT
-import qualified Pumping.Dae as PD
-import qualified Pumping.DifferentialStates as PX
+import qualified Carousel.Trajectory as PT
+import qualified Carousel.Dae as PD
+import qualified Carousel.DifferentialStates as PX
 
 toNice :: PD.Dae -> NiceKite
 toNice dae = NiceKite { nk_xyz = xyz
@@ -61,7 +61,7 @@ toNice dae = NiceKite { nk_xyz = xyz
     e32 = PX.e32 daeX
     e33 = PX.e33 daeX
 
-    delta = 0 -- CS.delta cs
+    delta = atan2 (-(PX.sin_delta daeX)) (PX.cos_delta daeX)
 
     q'n'a = Quat (cos(0.5*delta)) 0 0 (sin(-0.5*delta))
 
@@ -71,7 +71,7 @@ toNice dae = NiceKite { nk_xyz = xyz
                                   ]
     q'n'b = q'n'a * q'a'b
 
-    rArm = Xyz 0 0 0 -- CS.rArm
+    rArm = Xyz 1.2 0 0 -- CS.rArm
     xyzArm = rArm + Xyz x y z
     xyz = rotVecByQuatB2A q'n'a xyzArm
 
@@ -86,4 +86,4 @@ toState ptTraj = State nicekites messages
     nicekites = map toNice $ toList $ PT.traj ptTraj
 
 main :: IO ()
-main = runMultiCarousel "pumping" toState
+main = runMultiCarousel "carousel" toState
