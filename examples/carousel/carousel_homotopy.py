@@ -134,7 +134,7 @@ def setupOcp(dae,conf,nk,nicp=1,deg=4):
 
 
 if __name__=='__main__':
-    from betty_conf import makeConf
+    from rawe.models.betty_conf import makeConf
     conf = makeConf()
     conf['runHomotopy'] = True
     conf['minAltitude'] = 0.5

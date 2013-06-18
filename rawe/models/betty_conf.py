@@ -44,7 +44,6 @@ def makeConf():
          'cD_ail2':5.60583e-05, 'cD_B_ail':6.73139e-06, 'cD_ail':0,
          'cD_rudder2':2.03105e-05, 'cD_B_rudder':5.55453e-05, 'cD_rudder':0,
 
-
          # stability derivatives
          'cl_p':-0.576, 'cl_q':  0.0, 'cl_r': 0.0707,
          'cm_p':   0.0, 'cm_q':-15.5, 'cm_r':    0.0,
@@ -90,6 +89,9 @@ def makeConf():
          #Carousel Friction & inertia
          'jCarousel': 1e2,
          'cfric': 0,#100,
+
+         # carousel
+         'delta_parameterization':'cos_sin',
 
          # wind model
          'wind_model':{'name':'wind_shear',

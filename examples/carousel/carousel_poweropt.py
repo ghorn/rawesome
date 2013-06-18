@@ -186,7 +186,7 @@ if __name__=='__main__':
     print "reading config..."
 #    from carousel_conf import conf
     #from highwind_carousel_conf import conf
-    from betty_conf import makeConf
+    from rawe.models.betty_conf import makeConf
 
     nk = 100*numLoops
 #    nk = 70

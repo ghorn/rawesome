@@ -16,7 +16,7 @@
 # along with rawesome.  If not, see <http://www.gnu.org/licenses/>.
 
 import rawe
-import betty_conf
+from rawe.models import betty_conf
 
 def makeDae(conf=None):
     if conf is None:
