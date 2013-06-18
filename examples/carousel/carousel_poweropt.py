@@ -23,49 +23,13 @@ from numpy import pi
 
 import rawe
 import rawekite
-from autogen.topumpingProto import toProto
-from autogen.pumping_pb2 import Trajectory
+import carousel_dae
+from autogen.tocarouselProto import toProto
+from autogen.carousel_pb2 import Trajectory
 
 numLoops=1
 powerType = 'mechanical'
 #powerType = 'electrical'
-
-def constrainInvariants(ocp):
-    R_n2b = ocp.lookup('R_n2b',timestep=0)
-    rawekite.kiteutils.makeOrthonormal(ocp, R_n2b)
-    ocp.constrain(ocp.lookup('c',timestep=0), '==', 0, tag=('c(0)==0',None))
-    ocp.constrain(ocp.lookup('cdot',timestep=0), '==', 0, tag=('cdot(0)==0',None))
-
-    # constrain line angle
-    for k in range(0,nk):
-        for j in range(0,ocp.deg+1):
-            ocp.constrain(ocp.lookup('cos_line_angle',timestep=k,degIdx=j),'>=',C.cos(65*pi/180), tag=('line angle',k))
-
-def constrainAirspeedAlphaBeta(ocp):
-    for k in range(0,nk):
-        ocp.constrain(ocp.lookup('airspeed',timestep=k), '>=', 10, tag=('airspeed',k))
-        for j in range(0,ocp.deg+1):
-            ocp.constrainBnds(ocp.lookup('alpha_deg',timestep=k,degIdx=j), (-4.5,8.5), tag=('alpha(deg)',k))
-
-        ocp.constrainBnds(ocp.lookup('beta_deg', timestep=k), (-9,9), tag=('beta(deg)',k))
-
-def constrainTetherForce(ocp):
-    for k in range(nk):
-#        ocp.constrain( ocp.lookup('tether_tension',timestep=k,degIdx=1), '>=', 0, tag=('tether tension positive',k))
-#        ocp.constrain( ocp.lookup('tether_tension',timestep=k,degIdx=ocp.deg), '>=', 0, tag=('tether tension positive',k))
-        for j in range(1,ocp.deg+1):
-            ocp.constrain( ocp.lookup('tether_tension',timestep=k,degIdx=j), '>=', 0, tag=('tether tension positive',k))
-
-def realMotorConstraints(ocp):
-    for k in range(nk):
-#        ocp.constrain( ocp.lookup('torque',timestep=k,degIdx=1),       '<=', 150, tag=('motor torque',k))
-#        ocp.constrain( ocp.lookup('torque',timestep=k,degIdx=ocp.deg), '<=', 150, tag=('motor torque',k))
-        ocp.constrain( ocp.lookup('torque',timestep=k,degIdx=1),       '<=', 78, tag=('motor torque',k))
-        ocp.constrain( ocp.lookup('torque',timestep=k,degIdx=ocp.deg), '<=', 78, tag=('motor torque',k))
-
-        ocp.constrain( ocp.lookup('rpm',timestep=k),       '<=', 1500, tag=('rpm',k))
-        ocp.constrain( -1500, '<=', ocp.lookup('rpm',timestep=k),       tag=('rpm',k))
-
 
 def setupOcp(dae,conf,nk,nicp,deg,collPoly):
     def addCosts():
@@ -93,12 +57,54 @@ def setupOcp(dae,conf,nk,nicp,deg,collPoly):
 
     ocp = rawe.collocation.Coll(dae, nk=nk, nicp=nicp, deg=deg, collPoly=collPoly)
 
+    print "setting up collocation..."
     ocp.setupCollocation(ocp.lookup('endTime'))
 
-    constrainInvariants(ocp)
-    constrainAirspeedAlphaBeta(ocp)
-    constrainTetherForce(ocp)
-    realMotorConstraints(ocp)
+    print "moar setting up ocp..."
+
+    # constrain invariants
+    def constrainInvariantErrs():
+        R_n2b = ocp.lookup('R_n2b',timestep=0)
+        rawekite.kiteutils.makeOrthonormal(ocp, R_n2b)
+        ocp.constrain(ocp.lookup('c',timestep=0), '==', 0, tag=('c(0)==0',None))
+        ocp.constrain(ocp.lookup('cdot',timestep=0), '==', 0, tag=('cdot(0)==0',None))
+    constrainInvariantErrs()
+
+    # constrain line angle
+    for k in range(0,nk):
+        for j in range(0,ocp.deg+1):
+            ocp.constrain(ocp.lookup('cos_line_angle',timestep=k,degIdx=j),'>=',C.cos(65*pi/180), tag=('line angle',k))
+
+    # constrain airspeed
+    def constrainAirspeedAlphaBeta():
+        for k in range(0,nk):
+            ocp.constrain(ocp.lookup('airspeed',timestep=k), '>=', 10, tag=('airspeed',k))
+            for j in range(0,ocp.deg+1):
+                ocp.constrainBnds(ocp.lookup('alpha_deg',timestep=k,degIdx=j), (-4.5,8.5), tag=('alpha(deg)',k))
+
+            ocp.constrainBnds(ocp.lookup('beta_deg', timestep=k), (-9,9), tag=('beta(deg)',k))
+    constrainAirspeedAlphaBeta()
+    #def constrainCl():
+    #    for k in range(0,nk):
+    #        ocp.constrain(ocp.lookup('cL',timestep=k), '<=', 2.0, tag=('cL',k))
+    #constrainCl()
+
+    # constrain tether force
+    for k in range(nk):
+#        ocp.constrain( ocp.lookup('tether_tension',timestep=k,degIdx=1), '>=', 0, tag=('tether tension positive',k))
+#        ocp.constrain( ocp.lookup('tether_tension',timestep=k,degIdx=ocp.deg), '>=', 0, tag=('tether tension positive',k))
+        for j in range(1,ocp.deg+1):
+            ocp.constrain( ocp.lookup('tether_tension',timestep=k,degIdx=j), '>=', 0, tag=('tether tension positive',k))
+
+#    # real motor constraints
+#    for k in range(nk):
+##        ocp.constrain( ocp.lookup('torque',timestep=k,degIdx=1),       '<=', 150, tag=('motor torque',k))
+##        ocp.constrain( ocp.lookup('torque',timestep=k,degIdx=ocp.deg), '<=', 150, tag=('motor torque',k))
+#        ocp.constrain( ocp.lookup('torque',timestep=k,degIdx=1),       '<=', 78, tag=('motor torque',k))
+#        ocp.constrain( ocp.lookup('torque',timestep=k,degIdx=ocp.deg), '<=', 78, tag=('motor torque',k))
+#
+#        ocp.constrain( ocp.lookup('rpm',timestep=k),       '<=', 1500, tag=('rpm',k))
+#        ocp.constrain( -1500, '<=', ocp.lookup('rpm',timestep=k),       tag=('rpm',k))
 
     # make it periodic
     for name in [ "y","z",
@@ -187,7 +193,7 @@ if __name__=='__main__':
 
     print "creating model..."
     conf = makeConf()
-    dae = rawe.models.crosswind(conf)
+    dae = carousel_dae.makeDae(conf)
     dae.addP('endTime')
     conf['minAltitude'] = 0.5
 
@@ -201,7 +207,7 @@ if __name__=='__main__':
     # spawn telemetry thread
     callback = rawe.telemetry.startTelemetry(
         ocp, callbacks=[
-            (rawe.telemetry.trajectoryCallback(toProto, Trajectory, showAllPoints=False), 'pumping trajectory')
+            (rawe.telemetry.trajectoryCallback(toProto, Trajectory, showAllPoints=False), 'carousel trajectory')
         ])
 
     # solver

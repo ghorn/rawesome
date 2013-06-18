@@ -95,19 +95,23 @@ def setupModel(dae, conf):
                                   , dy + ddelta*(rA + x)
                                   , dz
                                   ]) - C.veccat([dae['cos_delta']*wind_x, dae['sin_delta']*wind_x, 0])
-    R_c2b = C.veccat( [dae[n] for n in ['e11', 'e12', 'e13',
-                                        'e21', 'e22', 'e23',
-                                        'e31', 'e32', 'e33']]
-                      ).reshape((3,3))
-
     # Aircraft velocity w.r.t. inertial frame, given in its own reference frame
     # (needed to compute the aero forces and torques !)
-    dpE = C.mul( R_c2b, dp_carousel_frame )
+    dpE = C.mul( dae['R_c2b'], dp_carousel_frame )
 
     (f1, f2, f3, t1, t2, t3) = aeroForcesTorques(dae, conf, dp_carousel_frame, dpE,
                                                  dae['w_bn_b'],
                                                  (dae['e21'], dae['e22'], dae['e23'])
                                                  )
+    # if we are running a homotopy, add psudeo forces and moments as algebraic states
+    if 'runHomotopy' in conf and conf['runHomotopy']:
+        gamma_homotopy = dae.addP('gamma_homotopy')
+        f1 = f1 * gamma_homotopy + dae.addZ('f1_homotopy') * (1 - gamma_homotopy)
+        f2 = f2 * gamma_homotopy + dae.addZ('f2_homotopy') * (1 - gamma_homotopy)
+        f3 = f3 * gamma_homotopy + dae.addZ('f3_homotopy') * (1 - gamma_homotopy)
+        t1 = t1 * gamma_homotopy + dae.addZ('t1_homotopy') * (1 - gamma_homotopy)
+        t2 = t2 * gamma_homotopy + dae.addZ('t2_homotopy') * (1 - gamma_homotopy)
+        t3 = t3 * gamma_homotopy + dae.addZ('t3_homotopy') * (1 - gamma_homotopy)
 
     # mass matrix
     mm = C.SXMatrix(8, 8)
@@ -281,6 +285,12 @@ def carouselModel(conf):
               , "motor_torque"
               , "ddr"
               ] )
+    if 'cn_rudder' in conf:
+        dae.addX('rudder')
+        dae.addU('drudder')
+    if 'cL_flaps' in conf:
+        dae.addX('flaps')
+        dae.addU('dflaps')
     if conf['delta_parameterization'] == 'linear':
         dae.addX('delta')
         dae['cos_delta'] = C.cos(dae['delta'])
@@ -323,20 +333,29 @@ def carouselModel(conf):
     dae['w_bn_b'] = C.veccat([dae['w_bn_b_x'], dae['w_bn_b_y'], dae['w_bn_b_z']])
 
     # some outputs in for plotting
-    dae['RPM'] = dae['ddelta']*60/(2*C.pi)
+    dae['carousel_RPM'] = dae['ddelta']*60/(2*C.pi)
     dae['aileron_deg'] = dae['aileron']*180/C.pi
     dae['elevator_deg'] = dae['elevator']*180/C.pi
     dae['daileron_deg_s'] = dae['daileron']*180/C.pi
     dae['delevator_deg_s'] = dae['delevator']*180/C.pi
 
-    dae['motor_power'] = dae['motor_torque']*dae['ddelta']
-
+    # tether tension == radius*nu where nu is alg. var associated with x^2+y^2+z^2-r^2==0
     dae['tether_tension'] = dae['r']*dae['nu']
-    dae['winch_power'] = -dae['tether_tension']*dae['dr']
 
-    dae['dcm'] = C.vertcat([C.horzcat([dae['e11'],dae['e12'],dae['e13']]),
-                            C.horzcat([dae['e21'],dae['e22'],dae['e23']]),
-                            C.horzcat([dae['e31'],dae['e32'],dae['e33']])])
+    # theoretical mechanical power
+    dae['mechanical_winch_power'] = -dae['tether_tension']*dae['dr']
+
+    # carousel2 motor model from thesis data
+    dae['rpm'] = -dae['dr']/0.1*60/(2*C.pi)
+    dae['torque'] = dae['tether_tension']*0.1
+    dae['electrical_winch_power'] =  293.5816373499238 + \
+                                     0.0003931623408*dae['rpm']*dae['rpm'] + \
+                                     0.0665919381751*dae['torque']*dae['torque'] + \
+                                     0.1078628659825*dae['rpm']*dae['torque']
+
+    dae['R_c2b'] = C.vertcat([C.horzcat([dae['e11'],dae['e12'],dae['e13']]),
+                              C.horzcat([dae['e21'],dae['e22'],dae['e23']]),
+                              C.horzcat([dae['e31'],dae['e32'],dae['e33']])])
 
     # line angle
     dae['cos_line_angle'] = \
@@ -349,7 +368,7 @@ def carouselModel(conf):
         RotPole = 0.5
     else:
         RotPole = 0.0
-    Rst = RotPole*C.mul( dae['dcm'], (C.inv(C.mul(dae['dcm'].T,dae['dcm'])) - numpy.eye(3)) )
+    Rst = RotPole*C.mul( dae['R_c2b'], (C.inv(C.mul(dae['R_c2b'].T,dae['R_c2b'])) - numpy.eye(3)) )
 
     ode = C.veccat([
         C.veccat([dae.ddt(name) for name in ['x','y','z']]) - C.veccat([dae['dx'],dae['dy'],dae['dz']]),
@@ -367,6 +386,10 @@ def carouselModel(conf):
         dae.ddt('motor_torque') - dae['dmotor_torque'],
         dae.ddt('ddr') - dae['dddr']
         ])
+    if 'rudder' in dae:
+        ode = C.veccat([ode, dae.ddt('rudder') - dae['drudder']])
+    if 'flaps' in dae:
+        ode = C.veccat([ode, dae.ddt('flaps') - dae['dflaps']])
 
     if 'stabilize_invariants' in conf and conf['stabilize_invariants'] == True:
         cPole = 0.5

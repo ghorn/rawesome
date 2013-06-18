@@ -255,10 +255,12 @@ def crosswindModel(conf):
               , "aileron"
               , "elevator"
               , "rudder"
+              , "flaps"
               ] )
     dae.addU( [ "daileron"
               , "delevator"
               , "drudder"
+              , "dflaps"
               , 'dddr'
               ] )
     dae.addP( ['w0'] )
@@ -294,7 +296,6 @@ def crosswindModel(conf):
                                      0.0665919381751*dae['torque']*dae['torque'] + \
                                      0.1078628659825*dae['rpm']*dae['torque']
 
-    # what is the convension on this rotation matrix?
     dae['R_n2b'] = C.vertcat([C.horzcat([dae['e11'],dae['e12'],dae['e13']]),
                               C.horzcat([dae['e21'],dae['e22'],dae['e23']]),
                               C.horzcat([dae['e31'],dae['e32'],dae['e33']])])
@@ -315,7 +316,8 @@ def crosswindModel(conf):
         dae.ddt('ddr') - dae['dddr'],
         dae.ddt('aileron') - dae['daileron'],
         dae.ddt('elevator') - dae['delevator'],
-        dae.ddt('rudder') - dae['drudder']
+        dae.ddt('rudder') - dae['drudder'],
+        dae.ddt('flaps') - dae['dflaps']
         ])
 
     # acceleration for plotting
@@ -336,7 +338,7 @@ def crosswindModel(conf):
     def addLoydsLimit():
         w = dae['wind_at_altitude']
         cL = dae['cL']
-        cD = dae['cD']
+        cD = dae['cD'] + dae['cD_tether']
         rho = conf['rho']
         S = conf['sref']
         loyds = 2/27.0*rho*S*w**3*cL**3/cD**2
