@@ -39,6 +39,11 @@ def makeConf():
          'cL_elev':-0.0105*180/pi,
          'cL_flaps':0.0184*180/pi,
          'cY_rudder':0.0035*180/pi,
+         'cD_flaps2':3.03874e-05,  'cD_A_flaps':0.000101404, 'cD_flaps':0.000208995,
+         'cD_elev2':4.19816e-05, 'cD_A_elev':9.79647e-05, 'cD_elev':-4.52856e-05,
+         'cD_ail2':5.60583e-05, 'cD_B_ail':6.73139e-06, 'cD_ail':0,
+         'cD_rudder2':2.03105e-05, 'cD_B_rudder':5.55453e-05, 'cD_rudder':0,
+
 
          # stability derivatives
          'cl_p':-0.576, 'cl_q':  0.0, 'cl_r': 0.0707,

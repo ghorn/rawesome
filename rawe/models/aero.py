@@ -71,11 +71,14 @@ def aeroForcesTorques(dae, conf, v_bw_n, v_bw_b, w_bn_b, (eTe1, eTe2, eTe3)):
 
     # with control surfaces
     cL += conf['cL_elev']*dae['elevator']
-    print "PUT CD_{FLAPS,RUDDER,AILERONS,ELEVATOR} IN (please)"
+    cD += conf['cD_elev2']*dae['elevator']*dae['elevator'] + conf['cD_A_elev']*alpha*dae['elevator'] + conf['cD_elev']*dae['elevator']
+    cD += conf['cD_ail2']*dae['aileron']*dae['aileron'] + conf['cD_B_ail']*beta*dae['aileron'] + conf['cD_ail']*dae['aileron']
     if 'flaps' in dae:
         cL += conf['cL_flaps']*dae['flaps']
+        cD += conf['cD_flaps2']*dae['flaps']*dae['flaps'] + conf['cD_A_flaps']*alpha*dae['flaps'] + conf['cD_flaps']*dae['flaps']
     if 'rudder' in dae:
         cY += conf['cY_rudder']*dae['rudder']
+        cD += conf['cD_rudder2']*dae['rudder']*dae['rudder'] + conf['cD_B_rudder']*beta*dae['rudder'] + conf['cD_rudder']*dae['rudder']
 
     dae['cL'] = cL
     dae['cD'] = cD
