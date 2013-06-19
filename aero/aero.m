@@ -179,6 +179,8 @@ grid on
 
 
 % fit linear Cd_delev
+adat.Elevator = -adat.Elevator;
+adat.CD_ff_d3 = -adat.CD_ff_d3;
 M = [adat.Elevator, adat.Alpha, ones(n,1)];
 res = M\adat.CD_ff_d3;
 fprintf('CD_dElevator = %g*Elevator + %g*alpha + %g\n', res)
@@ -209,6 +211,8 @@ xlabel('alpha');ylabel('delta');zlabel('CD_Elevator');
 grid on
 
 % fit linear Cd_dail
+adat.Aileron=-adat.Aileron;
+adat.CD_ff_d2=-adat.CD_ff_d2;
 M = [adat.Aileron, adat.Beta, ones(n,1)];
 res = M\adat.CD_ff_d2;
 fprintf('CD_dAileron = %g*Aileron + %g*beta + %g\n', res)
