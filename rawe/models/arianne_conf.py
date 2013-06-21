@@ -62,6 +62,7 @@ def makeConf():
 
          #[kite]
          'mass':  0.626,  #  mass of the kite   #  [ kg]
+         'tether_mass': 0.0,
 
          # use aerodynamic approximations instead of triginometry
          'alpha_beta_computation':'first_order',

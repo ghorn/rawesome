@@ -61,7 +61,7 @@ def compute_mass_matrix(dae, conf, f1, f2, f3, t1, t2, t3):
 
     r_n2bridle_n = r_n2b_n + C.mul(R_b2n, r_b2bridle_b)
 
-    mm00 = conf['mass']*C.diag([1,1,1])
+    mm00 = C.diag([1,1,1]) * (conf['mass'] + conf['tether_mass']/3.0)
     mm01 = C.SXMatrix(3,3)
     mm10 = mm01.T
     mm02 = r_n2bridle_n
@@ -79,7 +79,7 @@ def compute_mass_matrix(dae, conf, f1, f2, f3, t1, t2, t3):
                     C.horzcat([mm20,mm21,mm22])])
 
     # right hand side
-    rhs0 = C.veccat([f1,f2,f3 + conf['g']*conf['mass']])
+    rhs0 = C.veccat([f1,f2,f3 + conf['g']*(conf['mass'] + conf['tether_mass']*0.5)])
     rhs1 = C.veccat([t1,t2,t3]) - C.cross(dae['w_bn_b'], C.mul(J, dae['w_bn_b']))
 
     # last element of RHS

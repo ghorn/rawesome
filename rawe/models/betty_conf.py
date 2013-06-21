@@ -65,6 +65,7 @@ def makeConf():
 
          #[kite]
          'mass':  4.5,
+         'tether_mass': 0.0,
 
          # how alpha/beta computed
          #'alpha_beta_computation':'first_order',
