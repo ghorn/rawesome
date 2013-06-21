@@ -315,7 +315,7 @@ class Coll():
         return ffcn
 
     def interpolateInitialGuess(self,filename,force=False,quiet=False,numLoops=1):
-        print "interpolating initial guess..."
+        print "interpolating initial guess from "+filename+" ..."
         f=open(filename,'r')
         traj = pickle.load(f)
         f.close()
