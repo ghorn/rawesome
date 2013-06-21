@@ -53,127 +53,58 @@ def compute_mass_matrix(dae, conf, f1, f2, f3, t1, t2, t3):
     take the dae that has x/z/u/p added to it already and return
     the states added to it and return mass matrix and rhs of the dae residual
     '''
-    m =  conf['mass']
-    g = conf['g']
 
-    j1 =  conf['j1']
-    j31 = conf['j31']
-    j2 =  conf['j2']
-    j3 =  conf['j3']
+    R_b2n = dae['R_n2b'].T
+    r_n2b_n = C.veccat([dae['x'], dae['y'], dae['z']])
+    r_b2bridle_b = C.veccat([0,0,conf['zt']])
+    v_bn_n = C.veccat([dae['dx'],dae['dy'],dae['dz']])
 
-    zt = conf['zt']
+    r_n2bridle_n = r_n2b_n + C.mul(R_b2n, r_b2bridle_b)
 
-    e11 = dae['e11']
-    e12 = dae['e12']
-    e13 = dae['e13']
+    mm00 = conf['mass']*C.diag([1,1,1])
+    mm01 = C.SXMatrix(3,3)
+    mm10 = mm01.T
+    mm02 = r_n2bridle_n
+    mm20 = mm02.T
+    J = C.vertcat([C.horzcat([ conf['j1'],          0, conf['j31']]),
+                   C.horzcat([          0, conf['j2'],           0]),
+                   C.horzcat([conf['j31'],          0,  conf['j3']])])
+    mm11 = J
+    mm12 = C.cross(r_b2bridle_b, C.mul(dae['R_n2b'], r_n2b_n))
+    mm21 = mm12.T
+    mm22 = C.SXMatrix(1,1)
 
-    e21 = dae['e21']
-    e22 = dae['e22']
-    e23 = dae['e23']
-
-    e31 = dae['e31']
-    e32 = dae['e32']
-    e33 = dae['e33']
-
-    x =   dae['x']
-    y =   dae['y']
-    z =   dae['z']
-
-    dx  =  dae['dx']
-    dy  =  dae['dy']
-    dz  =  dae['dz']
-
-    r = dae['r']
-    dr = dae['dr']
-    ddr = dae['ddr']
-    
-    # mass matrix
-    mm = C.SXMatrix(7, 7)
-    mm[0, 0] = m
-    mm[0, 1] = 0
-    mm[0, 2] = 0
-    mm[0, 3] = 0
-    mm[0, 4] = 0
-    mm[0, 5] = 0
-    mm[0, 6] = x + zt*e31
-
-    mm[1, 0] = 0
-    mm[1, 1] = m
-    mm[1, 2] = 0
-    mm[1, 3] = 0
-    mm[1, 4] = 0
-    mm[1, 5] = 0
-    mm[1, 6] = y + zt*e32
-
-    mm[2, 0] = 0
-    mm[2, 1] = 0
-    mm[2, 2] = m
-    mm[2, 3] = 0
-    mm[2, 4] = 0
-    mm[2, 5] = 0
-    mm[2, 6] = z + zt*e33
-
-    mm[3, 0] = 0
-    mm[3, 1] = 0
-    mm[3, 2] = 0
-    mm[3, 3] = j1
-    mm[3, 4] = 0
-    mm[3, 5] = j31
-    mm[3, 6] = -zt*(e21*x + e22*y + e23*z + zt*e21*e31 + zt*e22*e32 + zt*e23*e33)
-
-    mm[4, 0] = 0
-    mm[4, 1] = 0
-    mm[4, 2] = 0
-    mm[4, 3] = 0
-    mm[4, 4] = j2
-    mm[4, 5] = 0
-    mm[4, 6] = zt*(e11*x + e12*y + e13*z + zt*e11*e31 + zt*e12*e32 + zt*e13*e33)
-
-    mm[5, 0] = 0
-    mm[5, 1] = 0
-    mm[5, 2] = 0
-    mm[5, 3] = j31
-    mm[5, 4] = 0
-    mm[5, 5] = j3
-    mm[5, 6] = 0
-
-    mm[6, 0] = x + zt*e31
-    mm[6, 1] = y + zt*e32
-    mm[6, 2] = z + zt*e33
-    mm[6, 3] = -zt*(e21*x + e22*y + e23*z + zt*e21*e31 + zt*e22*e32 + zt*e23*e33)
-    mm[6, 4] = zt*(e11*x + e12*y + e13*z + zt*e11*e31 + zt*e12*e32 + zt*e13*e33)
-    mm[6, 5] = 0
-    mm[6, 6] = 0
+    mm = C.vertcat([C.horzcat([mm00,mm01,mm02]),
+                    C.horzcat([mm10,mm11,mm12]),
+                    C.horzcat([mm20,mm21,mm22])])
 
     # right hand side
-    w1  =  dae['w_bn_b_x']
-    w2  =  dae['w_bn_b_y']
-    w3  =  dae['w_bn_b_z']
+    rhs0 = C.veccat([f1,f2,f3 + conf['g']*conf['mass']])
+    rhs1 = C.veccat([t1,t2,t3]) - C.cross(dae['w_bn_b'], C.mul(J, dae['w_bn_b']))
 
-    zt2 = zt*zt
-    rhs = C.veccat(
-          [ f1
-          , f2
-          , f3 + g*m
-          , t1 - w2*(j3*w3 + j31*w1) + j2*w2*w3
-          , t2 + w1*(j3*w3 + j31*w1) - w3*(j1*w1 + j31*w3)
-          , t3 + w2*(j1*w1 + j31*w3) - j2*w1*w2
-          , ddr*r-(zt*w1*(e11*x+e12*y+e13*z+zt*e11*e31+zt*e12*e32+zt*e13*e33)+zt*w2*(e21*x+e22*y+e23*z+zt*e21*e31+zt*e22*e32+zt*e23*e33))*(w3)-dx*(dx-zt*e21*(w1)+zt*e11*(w2))-dy*(dy-zt*e22*(w1)+zt*e12*(w2))-dz*(dz-zt*e23*(w1)+zt*e13*(w2))+dr*dr+(w1)*(e21*(zt*dx-zt2*e21*(w1)+zt2*e11*(w2))+e22*(zt*dy-zt2*e22*(w1)+zt2*e12*(w2))+zt*e23*(dz+zt*e13*w2-zt*e23*w1)+zt*e33*(w1*z+zt*e33*w1)+zt*e31*(x+zt*e31)*(w1)+zt*e32*(y+zt*e32)*(w1))-(w2)*(e11*(zt*dx-zt2*e21*(w1)+zt2*e11*(w2))+e12*(zt*dy-zt2*e22*(w1)+zt2*e12*(w2))+zt*e13*(dz+zt*e13*w2-zt*e23*w1)-zt*e33*(w2*z+zt*e33*w2)-zt*e31*(x+zt*e31)*(w2)-zt*e32*(y+zt*e32)*(w2))
-          ] )
+    # last element of RHS
+    R_n2b = dae['R_n2b']
+    w_bn_b = dae['w_bn_b']
+    grad_r_cdot = v_bn_n + C.mul(R_b2n, C.cross(dae['w_bn_b'], r_b2bridle_b))
+    tPR = - C.cross(C.mul(R_n2b, r_n2b_n), C.cross(w_bn_b, r_b2bridle_b)) - \
+          C.cross(C.mul(R_n2b, v_bn_n), r_b2bridle_b)
+    rhs2 = -C.mul(grad_r_cdot.T, v_bn_n) - C.mul(tPR.T, w_bn_b) + dae['dr']**2 + dae['r']*dae['ddr']
 
-    dae['c'] = (x + zt*e31)**2/2 + (y + zt*e32)**2/2 + (z + zt*e33)**2/2 - r**2/2
+    rhs = C.veccat([rhs0,rhs1,rhs2])
 
-    dae['cdot'] = dx*(x + zt*e31) + dy*(y + zt*e32) + dz*(z + zt*e33) + zt*(w2)*(e11*x + e12*y + e13*z + zt*e11*e31 + zt*e12*e32 + zt*e13*e33) - zt*(w1)*(e21*x + e22*y + e23*z + zt*e21*e31 + zt*e22*e32 + zt*e23*e33) - r*dr
+    c = 0.5*(C.mul(r_n2bridle_n.T, r_n2bridle_n) - dae['r']**2)
+    v_bridlen_n = v_bn_n + C.mul(R_b2n, C.cross(w_bn_b, r_b2bridle_b))
+    cdot = C.mul(r_n2bridle_n.T, v_bridlen_n) - dae['r']*dae['dr']
 
-    ddx = dae.ddt('dx')
-    ddy = dae.ddt('dy')
-    ddz = dae.ddt('dz')
-    dw1 = dae.ddt('w_bn_b_x')
-    dw2 = dae.ddt('w_bn_b_y')
-    ddelta = 0
-    dddelta = 0
+    a_bn_n = C.veccat([dae.ddt(name) for name in ['dx','dy','dz']])
+    dw_bn_b = C.veccat([dae.ddt(name) for name in ['w_bn_b_x','w_bn_b_y','w_bn_b_z']])
+    a_bridlen_n = a_bn_n + C.mul(R_b2n, C.cross(dw_bn_b, r_b2bridle_b) + C.cross(w_bn_b, C.cross(w_bn_b, r_b2bridle_b)))
+    cddot = C.mul(v_bridlen_n.T, v_bridlen_n) + C.mul(r_n2bridle_n.T, a_bridlen_n) - \
+            dae['dr']**2 - dae['r']*dae['ddr']
 
-    dae['cddot'] = -(w1-ddelta*e13)*(zt*e23*(dz+zt*e13*w2-zt*e23*w1)+zt*e33*(w1*z+zt*e33*w1+ddelta*e11*x+ddelta*e12*y+zt*ddelta*e11*e31+zt*ddelta*e12*e32)+zt*e21*(dx+zt*e11*w2-zt*e21*w1-zt*ddelta*e11*e23+zt*ddelta*e13*e21)+zt*e22*(dy+zt*e12*w2-zt*e22*w1-zt*ddelta*e12*e23+zt*ddelta*e13*e22)+zt*e31*(x+zt*e31)*(w1-ddelta*e13)+zt*e32*(y+zt*e32)*(w1-ddelta*e13))+(w2-ddelta*e23)*(zt*e13*(dz+zt*e13*w2-zt*e23*w1)-zt*e33*(w2*z+zt*e33*w2+ddelta*e21*x+ddelta*e22*y+zt*ddelta*e21*e31+zt*ddelta*e22*e32)+zt*e11*(dx+zt*e11*w2-zt*e21*w1-zt*ddelta*e11*e23+zt*ddelta*e13*e21)+zt*e12*(dy+zt*e12*w2-zt*e22*w1-zt*ddelta*e12*e23+zt*ddelta*e13*e22)-zt*e31*(x+zt*e31)*(w2-ddelta*e23)-zt*e32*(y+zt*e32)*(w2-ddelta*e23))-ddr*r+(zt*w1*(e11*x+e12*y+e13*z+zt*e11*e31+zt*e12*e32+zt*e13*e33)+zt*w2*(e21*x+e22*y+e23*z+zt*e21*e31+zt*e22*e32+zt*e23*e33))*(w3-ddelta*e33)+dx*(dx+zt*e11*w2-zt*e21*w1-zt*ddelta*e11*e23+zt*ddelta*e13*e21)+dy*(dy+zt*e12*w2-zt*e22*w1-zt*ddelta*e12*e23+zt*ddelta*e13*e22)+dz*(dz+zt*e13*w2-zt*e23*w1)+ddx*(x+zt*e31)+ddy*(y+zt*e32)+ddz*(z+zt*e33)-dr*dr+zt*(dw2-dddelta*e23)*(e11*x+e12*y+e13*z+zt*e11*e31+zt*e12*e32+zt*e13*e33)-zt*(dw1-dddelta*e13)*(e21*x+e22*y+e23*z+zt*e21*e31+zt*e22*e32+zt*e23*e33)-zt*dddelta*(e11*e23*x-e13*e21*x+e12*e23*y-e13*e22*y+zt*e11*e23*e31-zt*e13*e21*e31+zt*e12*e23*e32-zt*e13*e22*e32)
+    dae['c'] = c
+    dae['cdot'] = cdot
+    dae['cddot'] = cddot
 
     return (mm, rhs)
 
@@ -259,7 +190,7 @@ def crosswindModel(conf):
                           dae['w_bn_b'],
                           (dae['e21'], dae['e22'], dae['e23']))
 
-    # if we are running a homotopy, 
+    # if we are running a homotopy,
     # add psudeo forces and moments as algebraic states
     if 'runHomotopy' in conf and conf['runHomotopy']:
         gamma_homotopy = dae.addP('gamma_homotopy')
