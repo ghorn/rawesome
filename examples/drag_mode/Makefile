@@ -15,10 +15,8 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with rawesome.  If not, see <http://www.gnu.org/licenses/>.
 
-from carousel import carouselModel as carousel
-from crosswind import crosswind_model as crosswind
-from crosswind_drag import crosswind_model as crosswind_drag
-from crosswind_drag_mode import crosswindModel as crosswind_drag_mode
-from pendulum import pendulumModel as pendulum
-from pendulum2 import pendulumModel as pendulum2
-from free import freeModel as free
+topname = drag
+ag = autogen
+daefile = drag_dae
+
+include ../Makefile.wtfviz

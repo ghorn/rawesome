@@ -15,12 +15,13 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with rawesome.  If not, see <http://www.gnu.org/licenses/>.
 
-from carousel_conf import conf
 import rawe
+from rawe.models import betty_conf
 
-if __name__=='__main__':
-    autogenDir = 'autogen'
-    topname = 'kite'
-    dae = rawe.models.crosswind_drag_mode(conf)
-    rawe.utils.mkprotos.writeAll(dae, topname, autogenDir,haskellDirs=['plot-ho-matic'])
+def makeDae(conf=None):
+    if conf is None:
+        conf = betty_conf.makeConf()
+    return rawe.models.crosswind_drag(conf)
 
+if __name__ == '__main__':
+    makeDae()

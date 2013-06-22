@@ -88,19 +88,18 @@ def compute_mass_matrix(dae, conf, f1, f2, f3, t1, t2, t3):
     grad_r_cdot = v_bn_n + C.mul(R_b2n, C.cross(dae['w_bn_b'], r_b2bridle_b))
     tPR = - C.cross(C.mul(R_n2b, r_n2b_n), C.cross(w_bn_b, r_b2bridle_b)) - \
           C.cross(C.mul(R_n2b, v_bn_n), r_b2bridle_b)
-    rhs2 = -C.mul(grad_r_cdot.T, v_bn_n) - C.mul(tPR.T, w_bn_b) + dae['dr']**2 + dae['r']*dae['ddr']
+    rhs2 = -C.mul(grad_r_cdot.T, v_bn_n) - C.mul(tPR.T, w_bn_b)
 
     rhs = C.veccat([rhs0,rhs1,rhs2])
 
     c = 0.5*(C.mul(r_n2bridle_n.T, r_n2bridle_n) - dae['r']**2)
     v_bridlen_n = v_bn_n + C.mul(R_b2n, C.cross(w_bn_b, r_b2bridle_b))
-    cdot = C.mul(r_n2bridle_n.T, v_bridlen_n) - dae['r']*dae['dr']
+    cdot = C.mul(r_n2bridle_n.T, v_bridlen_n)
 
     a_bn_n = C.veccat([dae.ddt(name) for name in ['dx','dy','dz']])
     dw_bn_b = C.veccat([dae.ddt(name) for name in ['w_bn_b_x','w_bn_b_y','w_bn_b_z']])
     a_bridlen_n = a_bn_n + C.mul(R_b2n, C.cross(dw_bn_b, r_b2bridle_b) + C.cross(w_bn_b, C.cross(w_bn_b, r_b2bridle_b)))
-    cddot = C.mul(v_bridlen_n.T, v_bridlen_n) + C.mul(r_n2bridle_n.T, a_bridlen_n) - \
-            dae['dr']**2 - dae['r']*dae['ddr']
+    cddot = C.mul(v_bridlen_n.T, v_bridlen_n) + C.mul(r_n2bridle_n.T, a_bridlen_n)
 
     dae['c'] = c
     dae['cdot'] = cdot
@@ -123,16 +122,15 @@ def crosswind_model(conf):
                'e31', 'e32', 'e33',
                'dx', 'dy', 'dz',
                'w_bn_b_x', 'w_bn_b_y', 'w_bn_b_z',
-               'r', 'dr', 'ddr',
-               'aileron', 'elevator', 'rudder', 'flaps'
+               'aileron', 'elevator', 'rudder', 'flaps', 'prop_drag'
            ])
     dae.addU( [ 'daileron'
               , 'delevator'
               , 'drudder'
               , 'dflaps'
-              , 'dddr'
+              , 'dprop_drag'
               ] )
-    dae.addP( ['w0'] )
+    dae.addP( ['r','w0'] )
 
     # set some state derivatives as outputs
     dae['ddx'] = dae.ddt('dx')
@@ -153,17 +151,6 @@ def crosswind_model(conf):
 
     # tether tension == radius*nu where nu is alg. var associated with x^2+y^2+z^2-r^2==0
     dae['tether_tension'] = dae['r']*dae['nu']
-
-    # theoretical mechanical power
-    dae['mechanical_winch_power'] = -dae['tether_tension']*dae['dr']
-
-    # carousel2 motor model from thesis data
-    dae['rpm'] = -dae['dr']/0.1*60/(2*C.pi)
-    dae['torque'] = dae['tether_tension']*0.1
-    dae['electrical_winch_power'] =  293.5816373499238 + \
-                                     0.0003931623408*dae['rpm']*dae['rpm'] + \
-                                     0.0665919381751*dae['torque']*dae['torque'] + \
-                                     0.1078628659825*dae['rpm']*dae['torque']
 
     dae['R_n2b'] = C.vertcat([C.horzcat([dae['e11'], dae['e12'], dae['e13']]),
                               C.horzcat([dae['e21'], dae['e22'], dae['e23']]),
@@ -189,6 +176,11 @@ def crosswind_model(conf):
         aeroForcesTorques(dae, conf, v_bw_n, v_bw_b,
                           dae['w_bn_b'],
                           (dae['e21'], dae['e22'], dae['e23']))
+    dae['prop_drag_vector'] = dae['prop_drag']*v_bw_n/dae['airspeed']
+    dae['prop_power'] = C.mul(dae['prop_drag_vector'].T, v_bw_n)
+    f1 -= dae['prop_drag_vector'][0]
+    f2 -= dae['prop_drag_vector'][1]
+    f3 -= dae['prop_drag_vector'][2]
 
     # if we are running a homotopy,
     # add psudeo forces and moments as algebraic states
@@ -215,13 +207,11 @@ def crosswind_model(conf):
     ode = C.veccat([
         C.veccat([dae.ddt(name) for name in ['x','y','z']]) - C.veccat([dae['dx'],dae['dy'],dae['dz']]),
         C.veccat([ddt_R_n2b - dRexp]),
-        dae.ddt('r') - dae['dr'],
-        dae.ddt('dr') - dae['ddr'],
-        dae.ddt('ddr') - dae['dddr'],
         dae.ddt('aileron') - dae['daileron'],
         dae.ddt('elevator') - dae['delevator'],
         dae.ddt('rudder') - dae['drudder'],
-        dae.ddt('flaps') - dae['dflaps']
+        dae.ddt('flaps') - dae['dflaps'],
+        dae.ddt('prop_drag') - dae['dprop_drag']
         ])
 
     # acceleration for plotting
@@ -250,8 +240,6 @@ def crosswind_model(conf):
         loyds2 = 2/27.0*rho*S*w**3*(cL**2/cD**2 + 1)**(1.5)*cD
         dae["loyds_limit"] = loyds
         dae["loyds_limit_exact"] = loyds2
-        dae['neg_electrical_winch_power'] = -dae['electrical_winch_power']
-        dae['neg_mechanical_winch_power'] = -dae['mechanical_winch_power']
     addLoydsLimit()
 
     psuedo_zvec = C.veccat([dae.ddt(name) for name in \

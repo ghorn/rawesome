@@ -1,0 +1,25 @@
+name:                plotter
+version:             0.1.0.0
+license:             LGPL-3
+author:              Greg Horn
+maintainer:          gregmainland@gmail.com
+build-type:          Simple
+cabal-version:       >=1.8
+
+executable plotter
+  hs-source-dirs:    . ../autogen
+  main-is:           Main.hs
+  build-depends:     base >= 4.5.0 && < 4.7,
+                     Plot-ho-matic >= 0.2.0.0,
+                     protocol-buffers,
+                     bytestring
+
+  if os(OSX)
+    cpp-options:     -DOSX
+    build-depends:   zeromq3-haskell == 0.2.*
+  else
+    build-depends:   zeromq-haskell
+
+  ghc-options:      -O2 -Wall
+  ghc-prof-options: -O2 -Wall -prof -fprof-auto -fprof-cafs -rtsopts
+  other-extensions: TemplateHaskell
