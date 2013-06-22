@@ -18,7 +18,6 @@
 from carousel import carouselModel as carousel
 from crosswind import crosswind_model as crosswind
 from crosswind_drag import crosswind_model as crosswind_drag
-from crosswind_drag_mode import crosswindModel as crosswind_drag_mode
 from pendulum import pendulumModel as pendulum
 from pendulum2 import pendulumModel as pendulum2
 from free import freeModel as free
