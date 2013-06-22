@@ -61,8 +61,8 @@ def setupOcp(dae,conf,nk,nicp=1,deg=4):
         ocp.constrain( ocp.lookup('tether_tension',timestep=k,degIdx=ocp.deg), '>=', 0, tag=('tether tension',(nk,1)))
 
     # make it periodic
-    for name in [ "y","z",
-                  "dy","dz",
+    for name in [ "r_n2b_n_y","r_n2b_n_z",
+                  "v_bn_n_y","v_bn_n_z",
                   "w_bn_b_x","w_bn_b_y","w_bn_b_z",
                   'aileron','elevator','rudder','flaps','prop_drag'
                   ]:
@@ -86,18 +86,18 @@ def setupOcp(dae,conf,nk,nicp=1,deg=4):
     ocp.bound('dflaps',(-2.0,2.0))
     ocp.bound('dprop_drag',  (-1e3, 1e3))
 
-    ocp.bound('x',(-2000,2000))
-    ocp.bound('y',(-2000,2000))
+    ocp.bound('r_n2b_n_x',(-2000,2000))
+    ocp.bound('r_n2b_n_y',(-2000,2000))
     if 'minAltitude' in conf:
-        ocp.bound('z',(-2000, -conf['minAltitude']))
+        ocp.bound('r_n2b_n_z',(-2000, -conf['minAltitude']))
     else:
-        ocp.bound('z',(-2000, -0.5))
+        ocp.bound('r_n2b_n_z',(-2000, -0.5))
     ocp.bound('r',(100,100))
 
     for e in ['e11','e21','e31','e12','e22','e32','e13','e23','e33']:
         ocp.bound(e,(-1.1,1.1))
 
-    for d in ['dx','dy','dz']:
+    for d in ['v_bn_n_x','v_bn_n_y','v_bn_n_z']:
         ocp.bound(d,(-70,70))
 
     for w in ['w_bn_b_x',
@@ -110,7 +110,7 @@ def setupOcp(dae,conf,nk,nicp=1,deg=4):
     ocp.bound('w0',(10,10))
 
     # boundary conditions
-    ocp.bound('y',(0,0),timestep=0,quiet=True)
+    ocp.bound('r_n2b_n_y',(0,0),timestep=0,quiet=True)
 
     return ocp
 
@@ -131,7 +131,7 @@ if __name__=='__main__':
     circleRadiusGuess = 20.0
 
     # trajectory for homotopy
-    homotopyTraj = {'x':[],'y':[],'z':[]}
+    homotopyTraj = {'r_n2b_n_x':[],'r_n2b_n_y':[],'r_n2b_n_z':[]}
     k = 0
     for nkIdx in range(ocp.nk+1):
         for nicpIdx in range(ocp.nicp):
@@ -163,9 +163,9 @@ if __name__=='__main__':
                 xyzDot = numpy.dot(R_c2n, xyzDotCircleFrame)
 
                 if nicpIdx == 0 and degIdx == 0:
-                    homotopyTraj['x'].append(float(xyz[0,0]))
-                    homotopyTraj['y'].append(float(xyz[0,1]))
-                    homotopyTraj['z'].append(float(xyz[0,2]))
+                    homotopyTraj['r_n2b_n_x'].append(float(xyz[0,0]))
+                    homotopyTraj['r_n2b_n_y'].append(float(xyz[0,1]))
+                    homotopyTraj['r_n2b_n_z'].append(float(xyz[0,2]))
 
                 x = float(xyz[0,0])
                 y = float(xyz[0,1])
@@ -175,12 +175,12 @@ if __name__=='__main__':
                 dy = float(xyzDot[0,1])
                 dz = float(xyzDot[0,2])
 
-                ocp.guess('x',x,timestep=nkIdx,nicpIdx=nicpIdx,degIdx=degIdx)
-                ocp.guess('y',y,timestep=nkIdx,nicpIdx=nicpIdx,degIdx=degIdx)
-                ocp.guess('z',z,timestep=nkIdx,nicpIdx=nicpIdx,degIdx=degIdx)
-                ocp.guess('dx',dx,timestep=nkIdx,nicpIdx=nicpIdx,degIdx=degIdx)
-                ocp.guess('dy',dy,timestep=nkIdx,nicpIdx=nicpIdx,degIdx=degIdx)
-                ocp.guess('dz',dz,timestep=nkIdx,nicpIdx=nicpIdx,degIdx=degIdx)
+                ocp.guess('r_n2b_n_x',x,timestep=nkIdx,nicpIdx=nicpIdx,degIdx=degIdx)
+                ocp.guess('r_n2b_n_y',y,timestep=nkIdx,nicpIdx=nicpIdx,degIdx=degIdx)
+                ocp.guess('r_n2b_n_z',z,timestep=nkIdx,nicpIdx=nicpIdx,degIdx=degIdx)
+                ocp.guess('v_bn_n_x',dx,timestep=nkIdx,nicpIdx=nicpIdx,degIdx=degIdx)
+                ocp.guess('v_bn_n_y',dy,timestep=nkIdx,nicpIdx=nicpIdx,degIdx=degIdx)
+                ocp.guess('v_bn_n_z',dz,timestep=nkIdx,nicpIdx=nicpIdx,degIdx=degIdx)
 
                 p0 = numpy.array([x,y,z])
                 dp0 = numpy.array([dx,dy,dz])
@@ -205,13 +205,13 @@ if __name__=='__main__':
 
     # objective function
     obj = -1e6*ocp.lookup('gamma_homotopy')
-    mean_x = numpy.mean(homotopyTraj['x'])
-    mean_y = numpy.mean(homotopyTraj['y'])
-    mean_z = numpy.mean(homotopyTraj['z'])
+    mean_x = numpy.mean(homotopyTraj['r_n2b_n_x'])
+    mean_y = numpy.mean(homotopyTraj['r_n2b_n_y'])
+    mean_z = numpy.mean(homotopyTraj['r_n2b_n_z'])
     for k in range(ocp.nk+1):
-        x = ocp.lookup('x',timestep=k)
-        y = ocp.lookup('y',timestep=k)
-        z = ocp.lookup('z',timestep=k)
+        x = ocp.lookup('r_n2b_n_x',timestep=k)
+        y = ocp.lookup('r_n2b_n_y',timestep=k)
+        z = ocp.lookup('r_n2b_n_z',timestep=k)
         obj += ((x-mean_x)**2 + (y-mean_y)**2 + (z-mean_z)**2 - circleRadiusGuess**2)**2 / float(ocp.nk)
 
 #    for k in range(ocp.nk+1):
@@ -308,10 +308,10 @@ if __name__=='__main__':
     def plotResults():
         traj.subplot(['f1_homotopy','f2_homotopy','f3_homotopy'])
         traj.subplot(['t1_homotopy','t2_homotopy','t3_homotopy'])
-        traj.subplot(['x','y','z'])
-        traj.subplot(['dx','dy','dz'])
+        traj.subplot(['r_n2b_n_x','r_n2b_n_y','r_n2b_n_z'])
+        traj.subplot(['v_bn_n_x','v_bn_n_y','v_bn_n_z'])
         traj.subplot([['aileron','elevator'],['daileron','delevator']],title='control surfaces')
-        traj.subplot(['wind_at_altitude','dx'])
+        traj.subplot(['wind_at_altitude','v_bn_n_x'])
         traj.subplot(['c','cdot','cddot'],title="invariants")
         traj.plot('airspeed')
         traj.subplot([['alpha_deg'],['beta_deg']])

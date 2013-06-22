@@ -45,9 +45,9 @@ toNice dae = NiceKite { nk_xyz = xyz
 --    daeU = PD.controls dae
 --    daeP = PD.parameters dae
 
-    x = PX.x daeX
-    y = PX.y daeX
-    z = PX.z daeX
+    x = PX.r_n2b_n_x daeX
+    y = PX.r_n2b_n_y daeX
+    z = PX.r_n2b_n_z daeX
 
     e11 = PX.e11 daeX
     e12 = PX.e12 daeX

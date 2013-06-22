@@ -101,8 +101,8 @@ def setupOcp(dae,conf,nk,nicp,deg,collPoly):
     realMotorConstraints(ocp)
 
     # make it periodic
-    for name in [ "y","z",
-                  "dy","dz",
+    for name in [ "r_n2b_n_y","r_n2b_n_z",
+                  "v_bn_n_y","v_bn_n_z",
                   "w_bn_b_x","w_bn_b_y","w_bn_b_z",
                   "r","dr","ddr",
                   'aileron','elevator','rudder','flaps'
@@ -125,12 +125,12 @@ def setupOcp(dae,conf,nk,nicp,deg,collPoly):
     ocp.bound('drudder',(-2.0,2.0))
     ocp.bound('dflaps',(-2.0,2.0))
 
-    ocp.bound('x',(-2000,2000))
-    ocp.bound('y',(-2000,2000))
+    ocp.bound('r_n2b_n_x',(-2000,2000))
+    ocp.bound('r_n2b_n_y',(-2000,2000))
     if 'minAltitude' in conf:
-        ocp.bound('z',(-2000, -conf['minAltitude']))
+        ocp.bound('r_n2b_n_z',(-2000, -conf['minAltitude']))
     else:
-        ocp.bound('z',(-2000, -0.05))
+        ocp.bound('r_n2b_n_z',(-2000, -0.05))
     ocp.bound('r',(1,500))
     ocp.bound('dr',(-30,30))
     ocp.bound('ddr',(-500,500))
@@ -139,7 +139,7 @@ def setupOcp(dae,conf,nk,nicp,deg,collPoly):
     for e in ['e11','e21','e31','e12','e22','e32','e13','e23','e33']:
         ocp.bound(e,(-1.1,1.1))
 
-    for d in ['dx','dy','dz']:
+    for d in ['v_bn_n_x','v_bn_n_y','v_bn_n_z']:
         ocp.bound(d,(-200,200))
 
     for w in ['w_bn_b_x',
@@ -152,7 +152,7 @@ def setupOcp(dae,conf,nk,nicp,deg,collPoly):
     ocp.bound('w0',(10,10))
 
     # boundary conditions
-    ocp.bound('y',(0,0),timestep=0,quiet=True)
+    ocp.bound('r_n2b_n_y',(0,0),timestep=0,quiet=True)
 
     # guesses
     ocp.guess('endTime',5.4)
@@ -265,8 +265,8 @@ if __name__=='__main__':
     def plotResults():
 #        traj.subplot(['aero_fx','aero_fy','aero_fz'])
 #        traj.subplot(['aero_mx','aero_my','aero_mz'])
-#        traj.subplot(['x','y','z'])
-#        traj.subplot(['dx','dy','dz'])
+#        traj.subplot(['r_n2b_n_x','r_n2b_n_y','r_n2b_n_z'])
+#        traj.subplot(['v_bn_n_x','v_bn_n_y','v_bn_n_z'])
         traj.subplot(['aileron','elevator','rudder','flaps'],title='control surfaces')
         traj.subplot([['dddr'],['daileron','delevator','drudder','dflaps']],title='control surfaces')
 #        traj.subplot(['wind_at_altitude','dr'],title='')

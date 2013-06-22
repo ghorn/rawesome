@@ -28,7 +28,7 @@ def get_wind(dae, conf):
         # wind(z) = w0 * log((z+zt)/zt) / log(z0/zt)
         # where w0 is wind at z0 altitude
         # zt is surface roughness characteristic length
-        z = dae['z']
+        z = dae['r_n2b_n_z']
         z0 = conf['wind_model']['z0']
         zt_roughness = conf['wind_model']['zt_roughness']
         return dae['w0']*C.log((-z+zt_roughness)/zt_roughness) / \
@@ -55,9 +55,9 @@ def compute_mass_matrix(dae, conf, f1, f2, f3, t1, t2, t3):
     '''
 
     R_b2n = dae['R_n2b'].T
-    r_n2b_n = C.veccat([dae['x'], dae['y'], dae['z']])
+    r_n2b_n = C.veccat([dae['r_n2b_n_x'], dae['r_n2b_n_y'], dae['r_n2b_n_z']])
     r_b2bridle_b = C.veccat([0,0,conf['zt']])
-    v_bn_n = C.veccat([dae['dx'],dae['dy'],dae['dz']])
+    v_bn_n = C.veccat([dae['v_bn_n_x'],dae['v_bn_n_y'],dae['v_bn_n_z']])
 
     r_n2bridle_n = r_n2b_n + C.mul(R_b2n, r_b2bridle_b)
 
@@ -96,7 +96,7 @@ def compute_mass_matrix(dae, conf, f1, f2, f3, t1, t2, t3):
     v_bridlen_n = v_bn_n + C.mul(R_b2n, C.cross(w_bn_b, r_b2bridle_b))
     cdot = C.mul(r_n2bridle_n.T, v_bridlen_n)
 
-    a_bn_n = C.veccat([dae.ddt(name) for name in ['dx','dy','dz']])
+    a_bn_n = C.veccat([dae.ddt(name) for name in ['v_bn_n_x','v_bn_n_y','v_bn_n_z']])
     dw_bn_b = C.veccat([dae.ddt(name) for name in ['w_bn_b_x','w_bn_b_y','w_bn_b_z']])
     a_bridlen_n = a_bn_n + C.mul(R_b2n, C.cross(dw_bn_b, r_b2bridle_b) + C.cross(w_bn_b, C.cross(w_bn_b, r_b2bridle_b)))
     cddot = C.mul(v_bridlen_n.T, v_bridlen_n) + C.mul(r_n2bridle_n.T, a_bridlen_n)
@@ -116,11 +116,11 @@ def crosswind_model(conf):
 
     # add some differential states/algebraic vars/controls/params
     dae.addZ('nu')
-    dae.addX( ['x', 'y', 'z',
+    dae.addX( ['r_n2b_n_x', 'r_n2b_n_y', 'r_n2b_n_z',
                'e11', 'e12', 'e13',
                'e21', 'e22', 'e23',
                'e31', 'e32', 'e33',
-               'dx', 'dy', 'dz',
+               'v_bn_n_x', 'v_bn_n_y', 'v_bn_n_z',
                'w_bn_b_x', 'w_bn_b_y', 'w_bn_b_z',
                'aileron', 'elevator', 'rudder', 'flaps', 'prop_drag'
            ])
@@ -133,9 +133,9 @@ def crosswind_model(conf):
     dae.addP( ['r','w0'] )
 
     # set some state derivatives as outputs
-    dae['ddx'] = dae.ddt('dx')
-    dae['ddy'] = dae.ddt('dy')
-    dae['ddz'] = dae.ddt('dz')
+    dae['ddx'] = dae.ddt('v_bn_n_x')
+    dae['ddy'] = dae.ddt('v_bn_n_y')
+    dae['ddz'] = dae.ddt('v_bn_n_z')
     dae['ddt_w_bn_b_x'] = dae.ddt('w_bn_b_x')
     dae['ddt_w_bn_b_y'] = dae.ddt('w_bn_b_y')
     dae['ddt_w_bn_b_z'] = dae.ddt('w_bn_b_z')
@@ -163,7 +163,7 @@ def crosswind_model(conf):
     dae['v_wn_n'] = C.veccat([dae['wind_at_altitude'], 0, 0])
 
     # body velocity in NED
-    dae['v_bn_n'] = C.veccat( [ dae['dx'] , dae['dy'], dae['dz'] ] )
+    dae['v_bn_n'] = C.veccat( [ dae['v_bn_n_x'] , dae['v_bn_n_y'], dae['v_bn_n_z'] ] )
 
     # body velocity w.r.t. wind in NED
     v_bw_n =  dae['v_bn_n'] - dae['v_wn_n']
@@ -205,7 +205,7 @@ def crosswind_model(conf):
 
     # set up the residual
     ode = C.veccat([
-        C.veccat([dae.ddt(name) for name in ['x','y','z']]) - C.veccat([dae['dx'],dae['dy'],dae['dz']]),
+        C.veccat([dae.ddt('r_n2b_n_'+name) - dae['v_bn_n_'+name] for name in ['x','y','z']]),
         C.veccat([ddt_R_n2b - dRexp]),
         dae.ddt('aileron') - dae['daileron'],
         dae.ddt('elevator') - dae['delevator'],
@@ -225,8 +225,8 @@ def crosswind_model(conf):
 
     # line angle
     dae['cos_line_angle'] = \
-      -(dae['e31']*dae['x'] + dae['e32']*dae['y'] + dae['e33']*dae['z']) / \
-       C.sqrt(dae['x']**2 + dae['y']**2 + dae['z']**2)
+      -(dae['e31']*dae['r_n2b_n_x'] + dae['e32']*dae['r_n2b_n_y'] + dae['e33']*dae['r_n2b_n_z']) / \
+       C.sqrt(dae['r_n2b_n_x']**2 + dae['r_n2b_n_y']**2 + dae['r_n2b_n_z']**2)
     dae['line_angle_deg'] = C.arccos(dae['cos_line_angle'])*180.0/C.pi
 
     # add local loyd's limit
@@ -243,7 +243,7 @@ def crosswind_model(conf):
     addLoydsLimit()
 
     psuedo_zvec = C.veccat([dae.ddt(name) for name in \
-        ['dx','dy','dz','w_bn_b_x','w_bn_b_y','w_bn_b_z']]+[dae['nu']])
+        ['v_bn_n_x','v_bn_n_y','v_bn_n_z','w_bn_b_x','w_bn_b_y','w_bn_b_z']]+[dae['nu']])
     alg = C.mul(mass_matrix, psuedo_zvec) - rhs
     dae.setResidual( [ode, alg] )
 
