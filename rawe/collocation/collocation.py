@@ -20,6 +20,7 @@ import numpy as np
 import numbers
 import pickle
 from scipy.interpolate import PiecewisePolynomial
+import sys
 
 from rawe.ocputils import Constraints,setFXOptions
 import collmaps
@@ -373,8 +374,10 @@ class Coll():
             pps[name] = PiecewisePolynomial(ts,ys)
 
         ############# interpolate ###########
+        sys.stdout.write('reticulating splines... ')
         # interpolate differential states
         for name in self.dae.xNames():
+            sys.stdout.write(name+' '); sys.stdout.flush()
             if name not in pps:
                 missing.append(name)
                 continue
@@ -395,6 +398,7 @@ class Coll():
 
         # interpolate algebraic variables
         for name in self.dae.zNames():
+            sys.stdout.write(name+' '); sys.stdout.flush()
             if name not in pps:
                 missing.append(name)
                 continue
@@ -411,6 +415,7 @@ class Coll():
 
         # interpolate controls
         for name in self.dae.uNames():
+            sys.stdout.write(name+' '); sys.stdout.flush()
             if name not in pps:
                 missing.append(name)
                 continue
@@ -422,6 +427,7 @@ class Coll():
 
         # set parameters
         for name in self.dae.pNames():
+            sys.stdout.write(name+' '); sys.stdout.flush()
             if name not in traj.dvMap._pNames:
                 missing.append(name)
                 continue
@@ -429,6 +435,7 @@ class Coll():
                 self.guess(name,traj.dvMap.lookup(name)*numLoops,force=force,quiet=quiet)
             else:
                 self.guess(name,traj.dvMap.lookup(name),force=force,quiet=quiet)
+        sys.stdout.write('\n')
 
         msg = "finished interpolating initial guess"
         if len(missing) > 0:
