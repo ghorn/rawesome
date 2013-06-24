@@ -24,40 +24,51 @@ def makeConf():
 
         'alpha0deg': 0,
 
-         # forces
-         'cL0': 0.134472,
-         'cL_A': 4.962309,
+         # forces 
+         # these are calculated by a matlab fitting script based on vlm alpha/beta sweeps
+         'cL0': 0.145115,
+         'cL_A':  5.474703,
 
-         'cD_A': 0.032398,
-         'cD_A2': 1.431140,
-         'cD_B2': -0.095520,
-         'cD0': 0.006367,
+         'cD_A': 0.027310,
+         'cD_A2': 1.948549,
+         'cD_B2': -0.013039,
+         'cD0':  0.006600,
 
-         'cY_B':-0.129985,
+         'cY_B': -0.131871,
 
          # control surface forces
-         'cL_elev':-0.0105*180/pi,
-#         'cL_flaps':0.0184*180/pi,
-#         'cY_rudder':0.0035*180/pi,
+         #note sign change from avl to local coords
+         'cL_elev': -0.0074*180/pi,
+         
+         # these are calculated by a matlab fitting script based on vlm alpha/beta sweeps
+         'cD_elev2': 3.52135e-05, 'cD_A_elev': -0.000101006, 'cD_elev': -6.67268e-06,
+         'cD_ail2':0.000120247, 'cD_B_ail':-1.89122e-05, 'cD_ail':0,
+
+
 
          # stability derivatives
-         'cl_p':-0.576, 'cl_q':  0.0, 'cl_r': 0.0707,
-         'cm_p':   0.0, 'cm_q':-15.5, 'cm_r':    0.0,
-         'cn_p':-0.036*0.5, 'cn_q':  0.0, 'cn_r':-0.0667,
+         # these are average values across the vlm alpha/beta sweep
+         'cl_p': -0.4928, 'cl_q':  -7.0952e-06, 'cl_r': 0.0566,
+         'cm_p':  -2.9474e-06, 'cm_q':-16.7370
+, 'cm_r':  -1.3283e-07,
+         'cn_p': -0.0223, 'cn_q': -5.0627e-07, 'cn_r':-0.0636,
 
-         'cl_B':-0.060453,
-         'cl_AB':-0.385293,
-         'cm_A':-1.948136,
+         # these are calculated by a matlab fitting script based on vlm alpha/beta sweeps
+         'cl_B': -0.057367,
+         'cl_AB': -0.437572,
+
+         'cm_A':-2.285041,
          # cm0 valid for CG/bridle location 0.1 meters behind main wing leading edge
-         'cm0':-0.037696,
-         'cn_B':0.039222,
-         'cn_AB':-0.059998,
+         'cm0':-0.056816,
+
+         'cn_B': 0.038296,
+         'cn_AB':-0.052142,
 
          # control surface moments
-         'cl_ail':0.0073*180/pi*1.5, # 1.5 is aileron extension :b
-         'cm_elev':0.0352*180/pi,
-#         'cm_flaps':0.0026*180/pi,
-#         'cn_rudder':0.001176*180/pi,
+         # these are average values across the vlm alpha/beta sweep
+         #note sign change from avl to local coords
+         'cl_ail':0.0056*180/pi,  
+         'cm_elev':0.0262*180/pi,
 
 
          #[kite]
