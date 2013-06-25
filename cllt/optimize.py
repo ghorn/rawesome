@@ -3,7 +3,7 @@ import casadi.tools as CT
 import numpy
 from LLT_solver import setupImplicitFunction
 import geometry
-import pylab
+import matplotlib.pyplot as plt
 
 # geomRootChord = geomRoot[0]
 # geomRootY     = geomRoot[1]
@@ -94,19 +94,18 @@ ret = solver.getStat('return_status')
 assert ret in ['Solve_Succeeded','Solved_To_Acceptable_Level'], 'Solver failed: '+ret
 
 result = dvs(solver.output("x"))
+plt.figure()
+plt.plot(yLoc, result['chordLoc'])
+plt.xlabel('span [m]')
+plt.ylabel('chord [m]')
+plt.legend(['chord'])
+plt.axes().set_aspect('equal')
 
-pylab.figure()
-pylab.plot(yLoc, result['chordLoc'])
-pylab.xlabel('span [m]')
-pylab.ylabel('chord [m]')
-pylab.legend(['chord'])
-pylab.axes().set_aspect('equal')
-
-pylab.figure()
-pylab.plot(yLoc, result['aIncGeometricLoc']*180.0/numpy.pi)
-pylab.legend(['twist (deg)'])
-pylab.xlabel('span [m]')
-pylab.ylabel('twist [deg]')
+plt.figure()
+plt.plot(yLoc, result['aIncGeometricLoc']*180.0/numpy.pi)
+plt.legend(['twist (deg)'])
+plt.xlabel('span [m]')
+plt.ylabel('twist [deg]')
 
 outputsFcn.setInput(result.cat)
 outputsFcn.evaluate()
@@ -115,15 +114,15 @@ CL = outputsFcn.output(1)
 CDi = outputsFcn.output(2)
 sref = outputsFcn.output(3)
 
-pylab.figure()
-pylab.plot(yLoc, alphaiLoc*180.0/numpy.pi)
-pylab.legend(['alphaiLoc(deg)'])
-pylab.xlabel('span [m]')
-pylab.ylabel('induced AOA [deg]')
+plt.figure()
+plt.plot(yLoc, alphaiLoc*180.0/numpy.pi)
+plt.legend(['alphaiLoc(deg)'])
+plt.xlabel('span [m]')
+plt.ylabel('induced AOA [deg]')
 
 print "oper alpha: "+str(result['operAlpha']*180/C.pi)+" degrees"
 print "sref:",sref
 print "CL:",CL
 print "CDi:",CDi
 print "CL/CDi:",CL/CDi
-pylab.show()
+plt.show()
