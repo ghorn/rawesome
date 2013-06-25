@@ -84,8 +84,8 @@ ubg["makeMeZero"] = 0.0
 #lbg['alphaiLoc']  = numpy.radians(-10)
 #ubg['alphaiLoc']  = numpy.radians( 15)
 
-lbg['sref']  = 6.0
-#ubg['sref']  = 6.0
+lbg['sref']  = 9.0
+ubg['sref']  = 9.0
 
 lbg['CL']  = 1e-6
 #lbg['CDi']  = 1e-6
@@ -93,7 +93,8 @@ lbg['CL']  = 1e-6
 #ubg['sref']  = 6.0
 
 lbx['aIncGeometricLoc'] = numpy.radians(-4)
-ubx['aIncGeometricLoc'] = numpy.radians(0)
+ubx['aIncGeometricLoc'] = numpy.radians(4)
+x0['aIncGeometricLoc'] = numpy.radians(-2)
 
 lbx['operAlpha'] = numpy.radians(6)
 #ubx['operAlpha'] = numpy.radians(6)
@@ -101,8 +102,8 @@ lbx['operAlpha'] = numpy.radians(6)
 x0['An'] = 0.014
 x0['chordLoc'] = 1.0
 
-lbx['chordLoc'] = 0.45
-ubx['chordLoc'] = 1.0
+lbx['chordLoc'] = 0.3
+ubx['chordLoc'] = 1.5
 #lbx['chordLoc'] = 1.0
 #ubx['chordLoc'] = 1.0
 #print lbx['chordLoc']
