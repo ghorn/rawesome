@@ -4,6 +4,7 @@ import numpy
 from LLT_solver import setupImplicitFunction
 import geometry
 import matplotlib.pyplot as plt
+import os
 
 # geomRootChord = geomRoot[0]
 # geomRootY     = geomRoot[1]
@@ -47,10 +48,28 @@ g = CT.struct_SX([ CT.entry("makeMeZero",expr=makeMeZero),
 obj = -CL / (CDi + 0.01)
 
 nlp = C.SXFunction(C.nlpIn(x=dvs),C.nlpOut(f=obj,g=g))
+
+# callback
+class MyCallback:
+    def __init__(self):
+        self.iters = []
+    def __call__(self,f,*args):
+        self.iters.append(numpy.array(f.getInput("x")))
+mycallback = MyCallback()
+pyfun = C.PyFunction( mycallback, C.nlpSolverOut(x=C.sp_dense(dvs.size,1),
+                                                 f=C.sp_dense(1,1),
+                                                 lam_x=C.sp_dense(dvs.size,1),
+                                                 lam_g = C.sp_dense(g.size,1),
+                                                 lam_p = C.sp_dense(0,1),
+                                                 g = C.sp_dense(g.size,1) ),
+                      [C.sp_dense(1,1)] )
+pyfun.init()
+
 solver = C.IpoptSolver(nlp)
 solver.setOption('tol',1e-11)
 solver.setOption('linear_solver','ma27')
 #solver.setOption('linear_solver','ma57')
+solver.setOption("iteration_callback",pyfun)
 solver.init()
 
 lbg = g(solver.input("lbg"))
@@ -94,6 +113,51 @@ ret = solver.getStat('return_status')
 assert ret in ['Solve_Succeeded','Solved_To_Acceptable_Level'], 'Solver failed: '+ret
 
 result = dvs(solver.output("x"))
+
+def make_movie(draw=False):
+    if draw:
+        plt.ion()
+    files = []
+    fig = plt.figure(figsize=(10,8))
+    fig.subplots_adjust(hspace=0.05,wspace=0.05)
+    ax = fig.add_subplot(211)
+    a2 = fig.add_subplot(212)
+    ax.set_aspect('equal')
+    for i,x_iter in enumerate(mycallback.iters):
+        ax.cla()
+        a2.cla()
+        dvs_iter = dvs(x_iter)
+        chordLoc = numpy.squeeze(numpy.array(dvs_iter['chordLoc']))
+        aIncGeometricLoc = numpy.squeeze(numpy.array(dvs_iter['aIncGeometricLoc']*180.0/3.1415))
+        ax.plot(numpy.append(numpy.flipud(yLoc),yLoc),
+                numpy.append(-numpy.flipud(chordLoc)*0.5,chordLoc*0.5),
+        )
+        ax.set_ylim([-0.9,0.9])
+        ax.set_xlim([0,5.5])
+        a2.plot(numpy.flipud(yLoc),numpy.flipud(aIncGeometricLoc))
+        a2.set_ylim([-5,4])
+        a2.set_xlim([0,5.5])
+        ax.legend(['wing shape'])
+        a2.legend(['wing twist'])
+        ax.set_xlabel('span [m]')
+        a2.set_xlabel('span [m]')
+        a2.set_ylabel('twist [deg]')
+        fname = 'data/_tmp%03d.png'%i
+        print 'Saving frame', fname
+        if not draw:
+            fig.savefig(fname)
+            files.append(fname)
+        if draw:
+            plt.draw()
+        #import time; time.sleep(1000)
+    if not draw:
+        print 'Making movie animation.mpg - this make take a while'
+        os.system("mencoder 'mf://data/_tmp*.png' -mf type=png:fps=10 -ovc lavc -lavcopts vcodec=wmv2 -oac copy -o data/animation.mpg")
+        os.system('rm data/_tmp*.png')
+
+#make_movie(draw=True); import sys; sys.exit()
+#make_movie(draw=False); import sys; sys.exit()
+
 plt.figure()
 plt.plot(yLoc, result['chordLoc'])
 plt.xlabel('span [m]')
