@@ -24,6 +24,7 @@ from rtIntegratorExport import exportIntegrator
 
 from ..utils import codegen, subprocess_tee
 from ..utils.options import Options, OptStr, OptInt, OptBool
+import matplotlib.pyplot as plt
 
 class RtIntegratorOptions(Options):
     def __init__(self):
@@ -149,6 +150,20 @@ class RtIntegrator(object):
         nu = len( self._dae.uNames() )
         np = len( self._dae.pNames() )
 
+        print "creating outputs function"
+        (fAll, (f0,outputs0names)) = self._dae.outputsFun()
+        self.outputsFunAll = fAll
+        self.outputsFun0 = f0
+        self.outputs0names = outputs0names
+        
+        self.xNames = self._dae.xNames()
+        self.uNames = self._dae.uNames()
+        self.outputNames = self._dae.outputNames()
+#        self.uNames = dae.uNames()
+        listOut=[]
+        for n in self.outputNames: listOut.append([])
+        self._log = {'x':[],'u':[],'y':[],'yN':[],'outputs':dict(zip(self.outputNames,listOut))}
+        
 #        [ x z d(x,z)/dx d(x,z)/d(u,p) u p]
         self.x = numpy.zeros( nx )
         self.z = numpy.zeros( nz )
@@ -170,6 +185,57 @@ class RtIntegrator(object):
             self.dh_dx0 = numpy.zeros( (nh, nx) )
             self.dh_du = numpy.zeros( (nh, nu) )
             self.dh_dp = numpy.zeros( (nh, np) )
+
+    def log(self,new_x=None,new_u=None,new_y=None,new_yN=None,new_out=None):
+        if new_x != None:
+            self._log['x'].append(numpy.array(new_x))
+        if new_u != None:
+            self._log['u'].append(numpy.array(new_u))
+        if new_y != None:
+            self._log['y'].append(numpy.array(new_y))
+        if new_yN != None:
+            self._log['yN'].append(numpy.array(new_yN))
+        if new_out != None:
+            for name in new_out.keys():
+                self._log['outputs'][name].append(numpy.array(new_out[name]))
+    
+    def _plot(self,names,title,style,when=0,showLegend=True):
+        if isinstance(names,str):
+            names = [names]
+        assert isinstance(names,list)
+
+        legend = []
+        for name in names:
+            assert isinstance(name,str)
+            legend.append(name)
+
+            # if it's a differential state
+            if name in self.xNames:
+                index = self.xNames.index(name)
+                ys = numpy.squeeze(self._log['x'])[:,index]
+                ts = numpy.arange(len(ys))*self._ts
+                plt.plot(ts,ys,style)
+                
+            # if it's a control
+            if name in self.uNames:
+                index = self.uNames.index(name)
+                ys = numpy.squeeze(self._log['u'])[:,index]
+                ts = numpy.arange(len(ys))*self._ts
+                plt.step(ts,ys,style)
+                
+            if name in self.outputNames:
+                index = self.outputNames.index(name)
+                ys = numpy.squeeze(self._log['outputs'][name])
+                ts = numpy.arange(len(ys))*self._ts
+                plt.plot(ts,ys,style)
+
+        if title is not None:
+            assert isinstance(title,str), "title must be a string"
+            plt.title(title)
+        plt.xlabel('time [s]')
+        if showLegend is True:
+            plt.legend(legend)
+        plt.grid()
 
     def rhs(self,xdot,x,z,u,p, compareWithSX=False):
         xdot = numpy.array([xdot[n] for n in self._dae.xNames()],dtype=numpy.double)
