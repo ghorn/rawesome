@@ -1,6 +1,0 @@
-sender_example
-*.o
-sample_kite_message
-*.pb.cc
-*.pb.h
-*.swp

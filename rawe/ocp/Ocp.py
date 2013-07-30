@@ -1,3 +1,20 @@
+# Copyright 2012-2013 Greg Horn
+#
+# This file is part of rawesome.
+#
+# rawesome is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# rawesome is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with rawesome.  If not, see <http://www.gnu.org/licenses/>.
+
 import casadi as C
 
 import exportOcp
@@ -234,79 +251,78 @@ class Ocp(object):
         return exportOcp.exportOcp(self, ocpOptions, integratorOptions,
                                    codegenOptions, phase1Options)
 
-class Mhe(Ocp):
-    @property
-    def yNames(self):
-        return self._yNames
-    @property
-    def yNNames(self):
-        return self._yNNames
-    @property
-    def y(self):
-        return self._y
-    @property
-    def yN(self):
-        return self._yN
-    def __init__(self, dae, N=None, ts=None, yNames=None, yNNames=None):
-        Ocp.__init__(self, dae, N=N, ts=ts)
-        self.hashPrefix = 'mhe'
-
-        if yNames is None:
-            yNames = dae.xNames() + dae.uNames()
-        if yNNames is None:
-            yNNames = dae.xNames()
-        if not isinstance(yNames,list):
-            raise Exception("If you decide to provide measurements, "+\
-                            "you have to provide them as a list of strings")
-        if not isinstance(yNNames,list):
-            raise Exception("If you decide to provide end measurements, "+\
-                            "you have to provide them as a list of strings")
-        self._yNames = yNames
-        self._yNNames = yNNames
-
-        self._y  = C.veccat( [self[n] for n in self.yNames] )
-        Ocp.minimizeLsq(self,self.y)
-        self._yN  = C.veccat( [self[n] for n in self.yNNames] )
-        Ocp.minimizeLsqEndTerm(self,self.yN)
-
-
 
 class Mpc(Ocp):
     @property
-    def yNames(self):
-        return self._yNames
+    def yxNames(self):
+        return self._yxNames
     @property
-    def yNNames(self):
-        return self._yNNames
+    def yuNames(self):
+        return self._yuNames
     @property
-    def y(self):
-        return self._y
+    def yx(self):
+        return self._yx
     @property
-    def yN(self):
-        return self._yN
-    def __init__(self, dae, N=None, ts=None, yNames=None, yNNames=None):
+    def yu(self):
+        return self._yu
+    def __init__(self, dae, N=None, ts=None):
         Ocp.__init__(self, dae, N=N, ts=ts)
         self.hashPrefix = 'mpc'
 
-        if yNames is None:
-            yNames = dae.xNames() + dae.uNames()
-        if yNNames is None:
-            yNNames = dae.xNames()
-        if not isinstance(yNames,list):
-            raise Exception("If you decide to provide measurements, "+\
-                            "you have to provide them as a list of strings")
-        if not isinstance(yNNames,list):
-            raise Exception("If you decide to provide end measurements, "+\
-                            "you have to provide them as a list of strings")
-        self._yNames = yNames
-        self._yNNames = yNNames
+        self._yxNames = dae.xNames()
+        self._yuNames = dae.uNames()
 
-        self._y  = C.veccat( [self[n] for n in self.yNames] )
-        Ocp.minimizeLsq(self,self.y)
-        self._yN  = C.veccat( [self[n] for n in self.yNNames] )
-        Ocp.minimizeLsqEndTerm(self,self.yN)
+        self._yx  = C.veccat( [self[n] for n in self.yxNames] )
+        self._yu  = C.veccat( [self[n] for n in self.yuNames] )
+        Ocp.minimizeLsq(self, C.veccat([self.yx,self.yu]))
+        Ocp.minimizeLsqEndTerm(self, self.yx)
 
     def minimizeLsq(self, obj):
         raise Exception("hey, you don't know this is Ocp, the LSQ to be minimized is [X,U]")
     def minimizeLsqEndTerm(self, obj):
         raise Exception("hey, you don't know this is Ocp, the terminal cost is LSQ of X")
+
+
+class Mhe(Ocp):
+    @property
+    def yxNames(self):
+        return self._yxNames
+    @property
+    def yuNames(self):
+        return self._yuNames
+    @property
+    def yx(self):
+        return self._yx
+    @property
+    def yu(self):
+        return self._yu
+    def __init__(self, dae, N=None, ts=None, yxNames=None, yuNames=None):
+        Ocp.__init__(self, dae, N=N, ts=ts)
+        self.hashPrefix = 'mhe'
+
+        if yxNames is None:
+            yxNames = dae.xNames()
+        if yuNames is None:
+            yuNames = dae.uNames()
+        if not isinstance(yxNames,list):
+            raise Exception("If you decide to provide measurements, "+\
+                            "you have to provide them as a list of strings")
+        if not isinstance(yuNames,list):
+            raise Exception("If you decide to provide end measurements, "+\
+                            "you have to provide them as a list of strings")
+        self._yxNames = yxNames
+        self._yuNames = yuNames
+
+        self._yx  = C.veccat( [self[n] for n in self.yxNames] )
+        self._yu  = C.veccat( [self[n] for n in self.yuNames] )
+
+        assert not C.dependsOn(self.yx, self.dae.uVec()), "error: x measurement depends on u"
+        assert not C.dependsOn(self.yu, self.dae.xVec()), "error: u measurement depends on x"
+
+        Ocp.minimizeLsq(self,C.veccat([self.yx, self.yu]))
+        Ocp.minimizeLsqEndTerm(self,self.yx)
+
+    def minimizeLsq(self, obj):
+        raise Exception("hey, you don't know this is Ocp")
+    def minimizeLsqEndTerm(self, obj):
+        raise Exception("hey, you don't know this is Ocp")

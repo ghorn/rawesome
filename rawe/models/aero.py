@@ -1,61 +1,36 @@
+# Copyright 2012-2013 Greg Horn
+#
+# This file is part of rawesome.
+#
+# rawesome is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# rawesome is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with rawesome.  If not, see <http://www.gnu.org/licenses/>.
+
 import casadi as C
 
 def getWindAnglesFrom_v_bw_b(airspeed, v_bw_b):
-    alpha =  C.arctan2( v_bw_b[2], v_bw_b[0] )
-    beta  =  C.arcsin (-v_bw_b[1] / airspeed )
+    alpha =  C.arctan2(v_bw_b[2], v_bw_b[0] )
+    beta  =  C.arcsin (v_bw_b[1] / airspeed )
     return (alpha, beta)
 
-def aeroForcesTorques(dae, conf, v_bw_n, v_bw_b, (w1,w2,w3), (eTe1, eTe2, eTe3), (aileron,elevator)):
+def aeroForcesTorques(dae, conf, v_bw_n, v_bw_b, w_bn_b, (eTe1, eTe2, eTe3)):
     rho = conf['rho']
     alpha0 = conf['alpha0deg']*C.pi/180
-
-    #ROLL DAMPING
-    rD = conf['rD']
-    pD = conf['pD']
-    yD = conf['yD']
-
-    #WIND-TUNNEL PARAMETERS
-    #Lift (report p. 67)
-    cLA = conf['cLA']
-
-    cLe = conf['cLe']
-
-    cL0 = conf['cL0']
-
-    #Drag (report p. 70)
-    cDA = conf['cDA']
-    cDA2 = conf['cDA2']
-    cDB2 = conf['cDB2']
-
-    cD0 = conf['cD0']
-
-    #Roll (report p. 72)
-    cRB  = conf['cRB']
-    cRAB = conf['cRAB']
-    cRr  = conf['cRr']
-
-    #Pitch (report p. 74)
-    cPA = conf['cPA']
-    cPe = conf['cPe']
-
-    cP0 = conf['cP0']
-
-    #Yaw (report p. 76)
-    cYB = conf['cYB']
-    cYAB = conf['cYAB']
-
-    #TAIL LENGTH
-    lT = conf['lT']
 
     sref = conf['sref']
     bref = conf['bref']
     cref = conf['cref']
 
-    ##### more model_integ ###########
-    # EFFECTIVE WIND IN THE KITE`S SYSTEM :
-    # ###############################
-
-    #Airfoil speed in carousel frame
+    # airfoil speed in wind frame
     v_bw_n_x = v_bw_n[0]
     v_bw_n_y = v_bw_n[1]
     v_bw_n_z = v_bw_n[2]
@@ -64,107 +39,123 @@ def aeroForcesTorques(dae, conf, v_bw_n, v_bw_b, (w1,w2,w3), (eTe1, eTe2, eTe3),
     vKite = C.sqrt(vKite2) #Airfoil speed
     dae['airspeed'] = vKite
 
-    # LIFT DIRECTION VECTOR
-    # ############
+    # Lift axis, normed to airspeed
+    eLe_v = C.cross(C.veccat([eTe1, eTe2, eTe3]), v_bw_n)
+
+    # sideforce axis, normalized to airspeed^2
+    eYe_v2 = C.cross(eLe_v, -v_bw_n)
 
     # Relative wind speed in Airfoil's referential 'E'
     v_bw_b_x = v_bw_b[0]
     v_bw_b_y = v_bw_b[1]
     v_bw_b_z = v_bw_b[2]
 
-    # Airfoil's transversal axis in carousel referential 'e'
-#    eTe1 = e21
-#    eTe2 = e22
-#    eTe3 = e23
-
-    # Lift axis ** Normed to we @>@> **
-    eLe1 = - eTe2*v_bw_n_z + eTe3*v_bw_n_y
-    eLe2 = - eTe3*v_bw_n_x + eTe1*v_bw_n_z
-    eLe3 = - eTe1*v_bw_n_y + eTe2*v_bw_n_x
-
-
-    # AERODYNAMIC COEEFICIENTS
-    # #################
-    v_tailw_b = C.veccat([          v_bw_b_x,
-                           -lT*w3 + v_bw_b_y,
-                            lT*w2 + v_bw_b_z])
-    v_tailw_b_x = v_tailw_b[0]
-    v_tailw_b_y = v_tailw_b[1]
-    v_tailw_b_z = v_tailw_b[2]
-
-
-    #NOTE: beta & alphaTail are compensated for the tail motion induced by
-    #omega @>@>
     if conf['alpha_beta_computation'] == 'first_order':
-        alpha = alpha0-v_bw_b_z/v_bw_b_x
-        beta = v_bw_b_y/v_bw_b_x
-#        beta = v_bw_b_y/C.sqrt(v_bw_b_x*v_bw_b_x + v_bw_b_z*v_bw_b_z)
-        alphaTail = alpha0-v_tailw_b_z/v_tailw_b_x
-        betaTail = v_tailw_b_y/v_tailw_b_x
-#        betaTail = v_tailw_b_y/C.sqrt(v_tailw_b_x*v_tailw_b_x + v_tailw_b_z*v_tailw_b_z)
-
+        alpha = alpha0 + v_bw_b_z / v_bw_b_x
+        beta = v_bw_b_y / v_bw_b_x
+#        beta = v_bw_b_y / C.sqrt(v_bw_b_x*v_bw_b_x + v_bw_b_z*v_bw_b_z)
     elif conf['alpha_beta_computation'] == 'closed_form':
-        (alpha, beta)          = getWindAnglesFrom_v_bw_b(vKite, v_bw_b)
-        (alphaTail, betaTail)  = getWindAnglesFrom_v_bw_b(vKite, v_tailw_b)
-        alpha     += alpha0
-        alphaTail += alpha0
+        (alpha, beta) = getWindAnglesFrom_v_bw_b(vKite, v_bw_b)
+        alpha += alpha0
     else:
         raise ValueError('config "alpha_beta_compuation" value '+str(conf['alpha_beta_computation'])+' not recognized, use "first_order" or "closed_form"')
 
     dae['alpha_deg'] = alpha*180/C.pi
-    dae['alphaTail_deg'] = alphaTail*180/C.pi
     dae['beta_deg'] = beta*180/C.pi
-    dae['betaTail_deg'] = betaTail*180/C.pi
 
-    # cL = cLA*alpha + cLe*elevator   + cL0
-    # cD = cDA*alpha + cDA2*alpha*alpha + cDB2*beta*beta + cDe*elevator + cDr*aileron + cD0
-    # cR = -rD*w1 + cRB*beta + cRAB*alphaTail*beta + cRr*aileron
-    # cP = cPA*alphaTail + cPe*elevator  + cP0
-    # cY = cYB*beta + cYAB*alphaTail*beta
+    ########### force coefficients ###########
+    # with alpha/beta
+    cL = conf['cL_A']*alpha + conf['cL0']
+    cD = conf['cD_A']*alpha + conf['cD_A2']*alpha*alpha + conf['cD_B2']*beta*beta + conf['cD0']
+    cY = conf['cY_B']*beta
 
-    cL = cLA*alpha + cLe*elevator + cL0
-    cD = cDA*alpha + cDA2*alpha*alpha + cDB2*beta*beta + cD0
-    cR = -rD*w1 + cRB*betaTail + cRr*aileron + cRAB*alphaTail*betaTail
-    cP = -pD*w2 + cPA*alphaTail + cPe*elevator + cP0
-    cY = -yD*w3 + cYB*betaTail + cYAB*alphaTail*betaTail
+    # with control surfaces
+    cL += conf['cL_elev']*dae['elevator']
+    cD += conf['cD_elev2']*dae['elevator']*dae['elevator'] + conf['cD_A_elev']*alpha*dae['elevator'] + conf['cD_elev']*dae['elevator']
+    cD += conf['cD_ail2']*dae['aileron']*dae['aileron'] + conf['cD_B_ail']*beta*dae['aileron'] + conf['cD_ail']*dae['aileron']
+    if 'flaps' in dae:
+        cL += conf['cL_flaps']*dae['flaps']
+        cD += conf['cD_flaps2']*dae['flaps']*dae['flaps'] + conf['cD_A_flaps']*alpha*dae['flaps'] + conf['cD_flaps']*dae['flaps']
     if 'rudder' in dae:
-        cY += conf['cYrudder']*dae['rudder']
+        cY += conf['cY_rudder']*dae['rudder']
+        cD += conf['cD_rudder2']*dae['rudder']*dae['rudder'] + conf['cD_B_rudder']*beta*dae['rudder'] + conf['cD_rudder']*dae['rudder']
 
     dae['cL'] = cL
     dae['cD'] = cD
+    dae['cY'] = cY
     dae['cD_tether'] = 0.25*dae['r']*0.001/sref
     dae['L_over_D'] = cL/cD
     cD = dae['cD'] + dae['cD_tether']
     dae['L_over_D_with_tether'] = cL/cD
 
+
+    ######## moment coefficients #######
+    # offset
+    dae['momentCoeffs0'] = C.DMatrix([0, conf['cm0'], 0])
+
+    # with roll rates
+    # non-dimensionalized angular velocity
+    w_bn_b_hat = C.veccat([0.5*conf['bref']/dae['airspeed']*w_bn_b[0],
+                           0.5*conf['cref']/dae['airspeed']*w_bn_b[1],
+                           0.5*conf['bref']/dae['airspeed']*w_bn_b[2]])
+    momentCoeffs_pqr = C.mul(C.vertcat([C.horzcat([conf['cl_p'], conf['cl_q'], conf['cl_r']]),
+                                        C.horzcat([conf['cm_p'], conf['cm_q'], conf['cm_r']]),
+                                        C.horzcat([conf['cn_p'], conf['cn_q'], conf['cn_r']])]),
+                             w_bn_b_hat)
+    dae['momentCoeffs_pqr'] = momentCoeffs_pqr
+
+    # with alpha beta
+    momentCoeffs_AB = C.mul(C.vertcat([C.horzcat([           0, conf['cl_B'], conf['cl_AB']]),
+                                       C.horzcat([conf['cm_A'],            0,             0]),
+                                       C.horzcat([           0, conf['cn_B'], conf['cn_AB']])]),
+                            C.vertcat([alpha, beta, alpha*beta]))
+    dae['momentCoeffs_AB'] = momentCoeffs_AB
+
+    # with control surfaces
+    momentCoeffs_surf = C.SXMatrix(3, 1, 0)
+    momentCoeffs_surf[0] += conf['cl_ail']*dae['aileron']
+    momentCoeffs_surf[1] += conf['cm_elev']*dae['elevator']
+    if 'flaps' in dae:
+        momentCoeffs_surf[1] += conf['cm_flaps']*dae['flaps']
+    if 'rudder' in dae:
+        momentCoeffs_surf[2] += conf['cn_rudder']*dae['rudder']
+    dae['momentCoeffs_surf'] = momentCoeffs_surf
+
+    momentCoeffs = dae['momentCoeffs0'] + dae['momentCoeffs_pqr'] + \
+                   dae['momentCoeffs_AB'] + dae['momentCoeffs_surf']
+    dae['cl_small'] = momentCoeffs[0]
+    dae['cm_small'] = momentCoeffs[1]
+    dae['cn_small'] = momentCoeffs[2]
+
+
+
     # LIFT :
-    # ###############################
-    dae['fL'] = sref*rho*cL*vKite2/2.0
-    fL1 =  sref*rho*cL*eLe1*vKite/2.0
-    fL2 =  sref*rho*cL*eLe2*vKite/2.0
-    fL3 =  sref*rho*cL*eLe3*vKite/2.0
+    dae['fL'] = 0.5*rho*vKite2*sref*cL
+    fLx =  0.5*rho*vKite*sref*cL*eLe_v[0]
+    fLy =  0.5*rho*vKite*sref*cL*eLe_v[1]
+    fLz =  0.5*rho*vKite*sref*cL*eLe_v[2]
 
     # DRAG :
-    # #############################
-    dae['fD'] = sref*rho*vKite*cD*2.0
-    fD1 = -sref*rho*vKite*cD*v_bw_n_x/2.0
-    fD2 = -sref*rho*vKite*cD*v_bw_n_y/2.0
-    fD3 = -sref*rho*vKite*cD*v_bw_n_z/2.0
+    dae['fD'] = 0.5*rho*vKite2*sref*cD
+    fDx = -0.5*rho*sref*vKite*cD*v_bw_n_x
+    fDy = -0.5*rho*sref*vKite*cD*v_bw_n_y
+    fDz = -0.5*rho*sref*vKite*cD*v_bw_n_z
 
-    # FORCES (AERO)
-    # ###############################
-    f1 = fL1 + fD1
-    f2 = fL2 + fD2
-    f3 = fL3 + fD3
+    # sideforce
+    dae['fY'] = 0.5*rho*vKite2*sref*dae['cY']
+    fYx = 0.5*rho*sref*cY*eYe_v2[0]
+    fYy = 0.5*rho*sref*cY*eYe_v2[1]
+    fYz = 0.5*rho*sref*cY*eYe_v2[2]
 
-    #f = f-fT
+    # aero forces
+    f1 = fLx + fDx + fYx
+    f2 = fLy + fDy + fYy
+    f3 = fLz + fDz + fYz
 
-    # TORQUES (AERO)
-    # ###############################
-
-    t1 =  0.5*rho*vKite2*sref*bref*cR
-    t2 =  0.5*rho*vKite2*sref*cref*cP
-    t3 =  0.5*rho*vKite2*sref*bref*cY
+    # aero torques
+    t1 =  0.5*rho*vKite2*sref*bref*dae['cl_small']
+    t2 =  0.5*rho*vKite2*sref*cref*dae['cm_small']
+    t3 =  0.5*rho*vKite2*sref*bref*dae['cn_small']
 
     dae['aero_fx'] = f1
     dae['aero_fy'] = f2

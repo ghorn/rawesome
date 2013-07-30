@@ -1,3 +1,20 @@
+# Copyright 2012-2013 Greg Horn
+#
+# This file is part of rawesome.
+#
+# rawesome is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# rawesome is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with rawesome.  If not, see <http://www.gnu.org/licenses/>.
+
 import ctypes
 import numpy
 import copy
@@ -23,6 +40,17 @@ def dlqr(A, B, Q, R, N=None):
 
     return K, P
 
+def secretAccess(f):
+    def blah(self,*args,**kwargs):
+        if not hasattr(self, '_locked'):
+            object.__setattr__(self, '_locked', 0)
+        object.__setattr__(self, '_locked', self._locked+1)
+        try:
+            return f(self, *args, **kwargs)
+        finally:
+            object.__setattr__(self, '_locked', self._locked-1)
+    return blah
+
 class OcpRT(object):
     _canonicalNames = ['x','u','z','y','yN','x0','S','SN']
 
@@ -30,11 +58,13 @@ class OcpRT(object):
     def ocp(self):
         return self._ocp
 
+    @secretAccess
     def __init__(self, ocp,
                  ocpOptions=None,
                  integratorOptions=None,
                  codegenOptions=None,
-                 phase1Options=None):
+                 phase1Options=None,
+                 integratorMeasurements=None):
         if ocpOptions is None:
             ocpOptions=OcpExportOptions(),
         if integratorOptions is None:
@@ -43,6 +73,7 @@ class OcpRT(object):
             codegenOptions={}
         if phase1Options is None:
             phase1Options={}
+
         assert isinstance(ocp, Ocp), "OcpRT must be given an Ocp object, you gave: "+str(type(ocp))
 
         self._ocp = ocp
@@ -113,7 +144,8 @@ class OcpRT(object):
 
         # export integrator
         self._integrator = rawe.RtIntegrator(self.ocp.dae, ts=self.ocp.ts,
-                                             options=integratorOptions)
+                                             options=integratorOptions,
+                                             measurements=integratorMeasurements)
         self._integratorOptions = integratorOptions
 
     def xNames(self):
@@ -141,7 +173,10 @@ class OcpRT(object):
                     'assign it something with dimension '+str(value.shape)
             object.__setattr__(self, name, numpy.ascontiguousarray(value, dtype=numpy.double))
         else:
-            object.__setattr__(self, name, value)
+            if self._locked == 0:
+                raise Exception('you cannot set field "'+name+'"')
+            else:
+                object.__setattr__(self, name, value)
 
     def _callMat(self,call,mat):
         sh = mat.shape
@@ -177,7 +212,7 @@ class OcpRT(object):
         if hasattr(self, 'z'):
             self._callMat(self._lib.py_get_z, self.z)
 
-    def writeStateTxtFiles(self,directory=None):
+    def writeStateTxtFiles(self,prefix='',directory=None):
         '''
         Loop through the canonical names ["x", "u", "y", etc...] and
         write them to text files.
@@ -191,14 +226,16 @@ class OcpRT(object):
                 os.makedirs(directory)
         for name in self._canonicalNames:
             if hasattr(self,name):
-                numpy.savetxt(os.path.join(directory,name+'.txt'), getattr(self,name))
+                numpy.savetxt(os.path.join(directory,prefix+name+'.txt'), getattr(self,name))
 
 
+    @secretAccess
     def preparationStep(self):
         self._setAll()
         self.preparationTime = self._lib.preparationStepTimed()
         self._getAll()
 
+    @secretAccess
     def feedbackStep(self):
         self._setAll()
         ret = ctypes.c_int(0)
@@ -219,12 +256,35 @@ class OcpRT(object):
         self._lib.initializeNodesByForwardSimulation()
         self._getAll()
 
-    def simpleShiftXZU(self):
+    def shiftXZU(self,strategy='simulate', xEnd=None, uEnd=None):
+        null_ptr = ctypes.POINTER(ctypes.c_double)()
+        if strategy == 'copy':
+            stratN = 1
+        elif strategy == 'simulate':
+            stratN = 2
+        else:
+            raise Exception('strategy: "'+str(strategy)+'" must be {simulate,copy}')
+
+        if xEnd is None:
+            xptr = null_ptr
+        else:
+            xptr = ctypes.c_void_p(numpy.ascontiguousarray(xEnd, dtype=numpy.double).ctypes.data)
+        if uEnd is None:
+            uptr = null_ptr
+        else:
+            uptr = ctypes.c_void_p(numpy.ascontiguousarray(uEnd, dtype=numpy.double).ctypes.data)
+
+        self._setAll()
+        self._lib.shiftStates(stratN, xptr, uptr)
+        self._lib.shiftControls(uptr)
+        self._getAll()
+
+    def pythonShiftXZU(self):
         '''
-        There are N states and N-1 controls/alg vars in the trajectory.
+        There are N+1 states and N controls/alg vars in the trajectory.
         Integrate the Nth state forward using the (N-1)th control.
         '''
-        self._integrator.x = self.x[-2,:]
+        self._integrator.x = self.x[-1,:]
         self._integrator.z = self.z[-1,:]
         self._integrator.u = self.u[-1,:]
         self._integrator.p = {}
@@ -241,14 +301,15 @@ class OcpRT(object):
 
     def simpleShiftReference(self,y_Nm1, yN):
         '''
-        There are N-1 measurements y and an Nth measurement of different size yN
-        Given a new final y and a new yN, firs shift y_{1..N-1} to y_{0..N-2}
-        and then put the new y_{N-1} and yN in.
+        There are N measurements y and an Nth measurement of different size yN
+        Given a new final y and a new yN, first shift y_{1..N-1} to y_{0..N-2}
+        and then put the new given y_{N-1} and yN in.
         '''
         self.y[:-1,:] = self.y[1:,:]
         self.y[-1,:] = y_Nm1
         self.yN = yN
 
+    @secretAccess
     def shift(self,new_x=None,new_u=None,sim=None,new_y=None,new_yN=None,new_S=None,new_SN=None):
         # Shift weighting matrices
         if new_S != None:
@@ -488,6 +549,7 @@ class OcpRT(object):
 
 
 class MpcRT(OcpRT):
+    @secretAccess
     def __init__(self, ocp, lqrDae,
                  ocpOptions=None,
                  integratorOptions=None,
@@ -503,10 +565,10 @@ class MpcRT(OcpRT):
                        phase1Options=phase1Options)
 
         # set up measurement functions
-        self._yFun  = C.SXFunction([ocp.dae.xVec(), ocp.dae.uVec()], [C.densify(self.ocp.y)])
-        self._yNFun = C.SXFunction([ocp.dae.xVec()], [C.densify(self.ocp.yN)])
-        self._yFun.init()
-        self._yNFun.init()
+        self._yxFun = C.SXFunction([ocp.dae.xVec()], [C.densify(self.ocp.yx)])
+        self._yuFun = C.SXFunction([ocp.dae.uVec()], [C.densify(self.ocp.yu)])
+        self._yxFun.init()
+        self._yuFun.init()
 
         self._lqrDae = lqrDae
         self._integratorLQR  = rawe.RtIntegrator(self._lqrDae, ts=self.ocp.ts, options=integratorOptions)
@@ -527,6 +589,7 @@ class MpcRT(OcpRT):
 
 
 class MheRT(OcpRT):
+    @secretAccess
     def __init__(self, ocp,
                  ocpOptions=None,
                  integratorOptions=None,
@@ -539,24 +602,24 @@ class MheRT(OcpRT):
                        ocpOptions=ocpOptions,
                        integratorOptions=integratorOptions,
                        codegenOptions=codegenOptions,
-                       phase1Options=phase1Options)
+                       phase1Options=phase1Options,
+                       integratorMeasurements=C.veccat([ocp.yx,ocp.yu]))
 
         # set up measurement functions
-        self._yFun  = C.SXFunction([ocp.dae.xVec(), ocp.dae.uVec()], [C.densify(self.ocp.y)])
-        self._yNFun = C.SXFunction([ocp.dae.xVec()], [C.densify(self.ocp.yN)])
-        self._yFun.init()
-        self._yNFun.init()
+        self._yxFun = C.SXFunction([ocp.dae.xVec()], [C.densify(self.ocp.yx)])
+        self._yuFun = C.SXFunction([ocp.dae.uVec()], [C.densify(self.ocp.yu)])
+        self._yxFun.init()
+        self._yuFun.init()
 
-    def computeY(self,x,u):
-        self._yFun.setInput(x,0)
-        self._yFun.setInput(u,1)
-        self._yFun.evaluate()
-        return numpy.squeeze(numpy.array(self._yFun.output(0)))
+    def computeYX(self,x):
+        self._yxFun.setInput(x,0)
+        self._yxFun.evaluate()
+        return numpy.squeeze(numpy.array(self._yxFun.output(0)))
 
-    def computeYN(self,x):
-        self._yNFun.setInput(x,0)
-        self._yNFun.evaluate()
-        return numpy.squeeze(numpy.array(self._yNFun.output(0)))
+    def computeYU(self,u):
+        self._yuFun.setInput(u,0)
+        self._yuFun.evaluate()
+        return numpy.squeeze(numpy.array(self._yuFun.output(0)))
 
     def UpdateArrivalCost(self):
         ''' Arrival cost implementation.

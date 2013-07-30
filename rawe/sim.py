@@ -1,3 +1,20 @@
+# Copyright 2012-2013 Greg Horn
+#
+# This file is part of rawesome.
+#
+# rawesome is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# rawesome is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with rawesome.  If not, see <http://www.gnu.org/licenses/>.
+
 import time
 import casadi as C
 import numpy
@@ -35,13 +52,20 @@ class Timer(object):
         self.dt = dt
 
     def start(self):
-        self.nextTime = time.time() + self.dt
+        self._t0 = time.time()
+        self.nextTime = self._t0 + self.dt
 
     def sleep(self):
-        tToWait = self.nextTime - time.time()
+        time_now = time.time()
+        tToWait = self.nextTime - time_now
         if tToWait > 0:
             time.sleep(tToWait)
+        else:
+            self.nextTime = time_now
         self.nextTime = self.nextTime + self.dt
+
+    def get(self):
+        return self.nextTime - self.dt - self._t0
 
 class Sim(object):
     def __init__(self, dae, ts):

@@ -1,3 +1,20 @@
+# Copyright 2012-2013 Greg Horn
+#
+# This file is part of rawesome.
+#
+# rawesome is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# rawesome is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with rawesome.  If not, see <http://www.gnu.org/licenses/>.
+
 import casadi as C
 
 import phase1
@@ -81,7 +98,11 @@ def writeObjective(ocp, out0, exportName):
 
 
 def exportOcp(ocp, ocpOptions, integratorOptions, cgOptions, phase1Options):
-    defaultCgOptions = {'CXX':'g++', 'CC':'gcc','hideSymbols':False}
+    defaultCgOptions = {'CXX':'g++', 'CC':'gcc',
+                        'CXXFLAGS':'-O3 -fPIC -finline-functions',
+                        'CFLAGS':'-O3 -fPIC -finline-functions',
+                        'hideSymbols':False,
+                        'export_without_build_path':None}
     defaultPhase1Options = {'CXX':'g++'}
     validateOptions(defaultCgOptions, cgOptions, "codegen")
     validateOptions(defaultPhase1Options, phase1Options, "phase 1")

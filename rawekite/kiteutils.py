@@ -1,3 +1,20 @@
+# Copyright 2012-2013 Greg Horn
+#
+# This file is part of rawesome.
+#
+# rawesome is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# rawesome is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with rawesome.  If not, see <http://www.gnu.org/licenses/>.
+
 import casadi as C
 
 def getEuler(ocp, k):
@@ -63,7 +80,7 @@ def matchDcms(ocp,R0,Rf):
 
     ocp.constrain(err[0,0], '>=', 0.5, tag=('dcm matching',"00"))
     ocp.constrain(err[1,1], '>=', 0.5, tag=('dcm matching',"11"))
-#    ocp.constrain(err[2,2], '>=', 0.5)
+    ocp.constrain(err[2,2], '>=', 0.5, tag=('dcm matching',"22"))
 
 def periodicDcm(ocp):
     R0 = getDcm(ocp,0)

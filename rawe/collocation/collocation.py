@@ -1,8 +1,26 @@
+# Copyright 2012-2013 Greg Horn
+#
+# This file is part of rawesome.
+#
+# rawesome is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# rawesome is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with rawesome.  If not, see <http://www.gnu.org/licenses/>.
+
 import casadi as CS
 import numpy as np
 import numbers
 import pickle
 from scipy.interpolate import PiecewisePolynomial
+import sys
 
 from rawe.ocputils import Constraints,setFXOptions
 import collmaps
@@ -319,7 +337,7 @@ class Coll():
         return ffcn
 
     def interpolateInitialGuess(self,filename,force=False,quiet=False,numLoops=1):
-        print "interpolating initial guess..."
+        print "interpolating initial guess from "+filename+" ..."
         f=open(filename,'r')
         traj = pickle.load(f)
         f.close()
@@ -377,8 +395,10 @@ class Coll():
             pps[name] = PiecewisePolynomial(ts,ys)
 
         ############# interpolate ###########
+        sys.stdout.write('reticulating splines... ')
         # interpolate differential states
         for name in self.dae.xNames():
+            sys.stdout.write(name+' '); sys.stdout.flush()
             if name not in pps:
                 missing.append(name)
                 continue
@@ -399,6 +419,7 @@ class Coll():
 
         # interpolate algebraic variables
         for name in self.dae.zNames():
+            sys.stdout.write(name+' '); sys.stdout.flush()
             if name not in pps:
                 missing.append(name)
                 continue
@@ -415,6 +436,7 @@ class Coll():
 
         # interpolate controls
         for name in self.dae.uNames():
+            sys.stdout.write(name+' '); sys.stdout.flush()
             if name not in pps:
                 missing.append(name)
                 continue
@@ -426,6 +448,7 @@ class Coll():
 
         # set parameters
         for name in self.dae.pNames():
+            sys.stdout.write(name+' '); sys.stdout.flush()
             if name not in traj.dvMap._pNames:
                 missing.append(name)
                 continue
@@ -433,6 +456,7 @@ class Coll():
                 self.guess(name,traj.dvMap.lookup(name)*numLoops,force=force,quiet=quiet)
             else:
                 self.guess(name,traj.dvMap.lookup(name),force=force,quiet=quiet)
+        sys.stdout.write('\n')
 
         msg = "finished interpolating initial guess"
         if len(missing) > 0:
@@ -455,27 +479,6 @@ class Coll():
         nlp = CS.MXFunction(CS.nlpIn(x=self._dvMap.vectorize()),CS.nlpOut(f=self._objective, g=g))
         setFXOptions(nlp,constraintFunOpts)
         nlp.init()
-
-        print "COLLOCATION ONLY DOING DEBUGGING RIGHT NOW"
-        import numpy
-        nlp.setInput(100 + numpy.zeros(self._dvMap.vectorize().shape),'x')
-        nlp.evaluate()
-        print "objective:"
-        print nlp.output(0)
-
-        nlp.setAdjSeed(1.0,"f")
-        nlp.setAdjSeed(0.0,"g")
-        nlp.evaluate(0,1)
-        print "adjSens:"
-        print nlp.adjSens("x")
-
-        f = nlp.gradient("x","f")
-        f.init()
-        f.setInput(100 + numpy.zeros(self._dvMap.vectorize().shape))
-        f.evaluate()
-        print "gradient:"
-        print f.output()
-        import sys; sys.exit()
 
         # solver callback (optional)
         if callback is not None:
@@ -558,6 +561,8 @@ class Coll():
 
         # Solve the problem
         self.solver.solve()
+        ret = self.solver.getStat('return_status')
+        assert ret in ['Solve_Succeeded','Solved_To_Acceptable_Level'], 'Solver failed: '+ret
 
         # Print the optimal cost
         print "optimal cost: ", float(self.solver.output('f'))

@@ -1,3 +1,20 @@
+# Copyright 2012-2013 Greg Horn
+#
+# This file is part of rawesome.
+#
+# rawesome is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Lesser General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# rawesome is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with rawesome.  If not, see <http://www.gnu.org/licenses/>.
+
 import os
 from rawe.utils import pkgconfig, codegen, subprocess_tee
 
@@ -13,8 +30,8 @@ def mkMakefile(cgOptions, qposrc):
     makefile = """\
 CXX      = %(CXX)s
 CC       = %(CC)s
-CXXFLAGS = -O3 -fPIC -finline-functions%(cxx_visibility)s
-CFLAGS   = -O3 -fPIC -finline-functions%(c_visibility)s
+CXXFLAGS = %(CXXFLAGS)s%(cxx_visibility)s
+CFLAGS   = %(CFLAGS)s%(c_visibility)s
 
 #CFLAGS   += -Wall -Wextra
 #CXXFLAGS += -Wall -Wextra
@@ -93,6 +110,7 @@ clean :
 \t@echo rm -f ocp.a $(CXX_OBJ) $(C_OBJ) ocp.so
 \t@rm -f ocp.a ocp.so ocp.o $(CXX_OBJ) $(C_OBJ)
 """ % {'CXX':cgOptions['CXX'], 'CC':cgOptions['CC'],
+       'CXXFLAGS':cgOptions['CXXFLAGS'], 'CFLAGS':cgOptions['CFLAGS'],
        'c_visibility':c_visibility,
        'cxx_visibility':cxx_visibility,
        'qpo_src':qposrc}
@@ -131,7 +149,12 @@ ACADOworkspace acadoWorkspace;
 ACADOvariables acadoVariables;
 '''
 
-    # write all this
+    # write things in user specified directory if 'export_without_build_path' is not None
+    if cgOptions['export_without_build_path'] is not None:
+        codegen.writeDifferentFiles(cgOptions['export_without_build_path'], genfiles)
+        return
+
+    # otherwise write things in memoized directory, then compile
     exportpath = codegen.memoizeFiles(genfiles,prefix=cgOptions['hashPrefix']+'__')
 
     # compile!
