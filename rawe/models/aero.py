@@ -111,9 +111,8 @@ def aeroForcesTorques(dae, conf, v_bw_f, v_bw_b, w_bn_b, (eTe_f_1, eTe_f_2, eTe_
 
     # with roll rates
     # non-dimensionalized angular velocity
-    w_bn_b_hat = C.veccat([0.5*conf['bref']/dae['airspeed']*w_bn_b[0],
-                           0.5*conf['cref']/dae['airspeed']*w_bn_b[1],
-                           0.5*conf['bref']/dae['airspeed']*w_bn_b[2]])
+    w_bn_b_hat = C.veccat([conf['bref'],conf['cref'],conf['bref']])*0.5/dae['airspeed']*w_bn_b
+
     momentCoeffs_pqr = C.mul(C.blockcat([[conf['cl_p'], conf['cl_q'], conf['cl_r']],
                                          [conf['cm_p'], conf['cm_q'], conf['cm_r']],
                                          [conf['cn_p'], conf['cn_q'], conf['cn_r']]]),
@@ -143,43 +142,38 @@ def aeroForcesTorques(dae, conf, v_bw_f, v_bw_b, w_bn_b, (eTe_f_1, eTe_f_2, eTe_
     dae['cm_small'] = momentCoeffs[1]
     dae['cn_small'] = momentCoeffs[2]
 
-
-
+    # Common subexpressionf for aerodynamics
+    rho_sref    = 0.5*rho*sref
+    rho_sref_v2 = rho_sref*vKite2
+    rho_sref_v  = rho_sref*vKite
+    
     # LIFT :
-    dae['fL'] = 0.5*rho*vKite2*sref*cL
-    fL_f_x =  0.5*rho*vKite*sref*cL*eLe_v_f[0]
-    fL_f_y =  0.5*rho*vKite*sref*cL*eLe_v_f[1]
-    fL_f_z =  0.5*rho*vKite*sref*cL*eLe_v_f[2]
+    dae['fL'] = rho_sref_v2*cL
+    fL_f = rho_sref_v*cL*eLe_v_f
 
     # DRAG :
-    dae['fD'] = 0.5*rho*vKite2*sref*cD
-    fD_f_x = -0.5*rho*sref*vKite*cD*v_bw_f[0]
-    fD_f_y = -0.5*rho*sref*vKite*cD*v_bw_f[1]
-    fD_f_z = -0.5*rho*sref*vKite*cD*v_bw_f[2]
+    dae['fD'] = rho_sref_v2*cD
+    fD_f = -rho_sref_v*cD*v_bw_f
 
     # sideforce
-    dae['fY'] = 0.5*rho*vKite2*sref*dae['cY']
-    fY_f_x = 0.5*rho*sref*cY*eYe_v2_f[0]
-    fY_f_y = 0.5*rho*sref*cY*eYe_v2_f[1]
-    fY_f_z = 0.5*rho*sref*cY*eYe_v2_f[2]
+    dae['fY'] = rho_sref_v2*dae['cY']
+    fY_f = rho_sref*cY*eYe_v2_f
 
     # aero forces
-    f_f_1 = fL_f_x + fD_f_x + fY_f_x
-    f_f_2 = fL_f_y + fD_f_y + fY_f_y
-    f_f_3 = fL_f_z + fD_f_z + fY_f_z
+    f_f = fL_f + fD_f + fY_f
 
     # aero torques expressed in body frame
-    t_b_1 =  0.5*rho*vKite2*sref*bref*dae['cl_small']
-    t_b_2 =  0.5*rho*vKite2*sref*cref*dae['cm_small']
-    t_b_3 =  0.5*rho*vKite2*sref*bref*dae['cn_small']
+    t_b_1 =  rho_sref_v2*bref*dae['cl_small']
+    t_b_2 =  rho_sref_v2*cref*dae['cm_small']
+    t_b_3 =  rho_sref_v2*bref*dae['cn_small']
 
-    dae['aero_fx'] = f_f_1
-    dae['aero_fy'] = f_f_2
-    dae['aero_fz'] = f_f_3
+    dae['aero_fx'] = f_f[0]
+    dae['aero_fy'] = f_f[1]
+    dae['aero_fz'] = f_f[2]
     dae['aero_mx'] = t_b_1
     dae['aero_my'] = t_b_2
     dae['aero_mz'] = t_b_3
-    return (f_f_1, f_f_2, f_f_3, t_b_1, t_b_2, t_b_3)
+    return (f_f[0], f_f[1], f_f[2], t_b_1, t_b_2, t_b_3)
 
 #def tetherDragLumped( conf, r_n2b_n, v_bn_n, get_v_wn_n, tetherLength, N=10 ):
 #    Cd = 1.1 # meh
