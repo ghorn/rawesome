@@ -24,6 +24,13 @@ def setupModel(dae, conf):
     '''
     take the dae that has x/z/u/p added to it already and return
     the states added to it and return mass matrix and rhs of the dae residual
+    
+    mass matrix columns:
+     ddt(ddelta dx dy dz w_bn_b_x w_bn_b_y w_bn_b_z) nu
+    
+    rhs:
+      forces/torques acting on : ddt(ddelta dx dy dz w_bn_b_x w_bn_b_y w_bn_b_z) nu
+    
     '''
     
     # Parameters
@@ -254,6 +261,7 @@ def setupModel(dae, conf):
     dRexp[2,1] = e33*w1 - e13*w3
     dRexp[2,2] = e13*w2 - e23*w1
     
+
     # The cable constraint
     c =(x + zt*e31)**2/2 + (y + zt*e32)**2/2 + (z + zt*e33)**2/2 - r**2/2
 
