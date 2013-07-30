@@ -22,7 +22,27 @@ def getWindAnglesFrom_v_bw_b(airspeed, v_bw_b):
     beta  =  C.arcsin (v_bw_b[1] / airspeed )
     return (alpha, beta)
 
-def aeroForcesTorques(dae, conf, v_bw_n, v_bw_b, w_bn_b, (eTe1, eTe2, eTe3)):
+def aeroForcesTorques(dae, conf, v_bw_f, v_bw_b, w_bn_b, (eTe_f_1, eTe_f_2, eTe_f_3)):
+    """
+    
+    Parameters
+    ----------
+    
+    v_bw (vector): Linear velocity of aircraft w.r.t wind carrying frame
+        a.k.a. airfoil velocity
+        a.k.a. relative wind velocity
+    
+    v_bw_f (projected vector): Linear velocity of aircraft w.r.t wind carrying frame, expressed in a generic frame (f)
+    v_bw_b (projected vector): Linear velocity of aircraft w.r.t wind carrying frame, expressed in body frame
+    w_bn_b (projected vector): Rotational velocity of aircraft w.r.t 
+    
+    (eTe_f_1, eTe_f_2, eTe_f_3) : Transverse axis of the airplane (y-axis) expressed in a generic frame (f)
+        Used to define what component of aeroforces amounts to sideforce
+       
+    
+    
+    """
+    eTe_f = C.veccat([eTe_f_1, eTe_f_2, eTe_f_3])
     rho = conf['rho']
     alpha0 = conf['alpha0deg']*C.pi/180
 
@@ -30,30 +50,20 @@ def aeroForcesTorques(dae, conf, v_bw_n, v_bw_b, w_bn_b, (eTe1, eTe2, eTe3)):
     bref = conf['bref']
     cref = conf['cref']
 
-    # airfoil speed in wind frame
-    v_bw_n_x = v_bw_n[0]
-    v_bw_n_y = v_bw_n[1]
-    v_bw_n_z = v_bw_n[2]
-
-    vKite2 = C.mul(v_bw_n.trans(), v_bw_n) #Airfoil speed^2
+    vKite2 = C.mul(v_bw_f.T, v_bw_f) #Airfoil speed^2
     vKite = C.sqrt(vKite2) #Airfoil speed
     dae['airspeed'] = vKite
 
     # Lift axis, normed to airspeed
-    eLe_v = C.cross(C.veccat([eTe1, eTe2, eTe3]), v_bw_n)
+    eLe_v_f = C.cross(eTe_f, v_bw_f)
 
     # sideforce axis, normalized to airspeed^2
-    eYe_v2 = C.cross(eLe_v, -v_bw_n)
-
-    # Relative wind speed in Airfoil's referential 'E'
-    v_bw_b_x = v_bw_b[0]
-    v_bw_b_y = v_bw_b[1]
-    v_bw_b_z = v_bw_b[2]
+    eYe_v2_f = C.cross(eLe_v_f, -v_bw_f)
 
     if conf['alpha_beta_computation'] == 'first_order':
-        alpha = alpha0 + v_bw_b_z / v_bw_b_x
-        beta = v_bw_b_y / v_bw_b_x
-#        beta = v_bw_b_y / C.sqrt(v_bw_b_x*v_bw_b_x + v_bw_b_z*v_bw_b_z)
+        alpha = alpha0 + v_bw_b[2] / v_bw_b[0]
+        beta = v_bw_b[1] / v_bw_b[0]
+#        beta = v_bw_b_y / C.sqrt(v_bw_b[0]*v_bw_b[0] + v_bw_b[2]*v_bw_b[2])
     elif conf['alpha_beta_computation'] == 'closed_form':
         (alpha, beta) = getWindAnglesFrom_v_bw_b(vKite, v_bw_b)
         alpha += alpha0
@@ -131,21 +141,21 @@ def aeroForcesTorques(dae, conf, v_bw_n, v_bw_b, w_bn_b, (eTe1, eTe2, eTe3)):
 
     # LIFT :
     dae['fL'] = 0.5*rho*vKite2*sref*cL
-    fLx =  0.5*rho*vKite*sref*cL*eLe_v[0]
-    fLy =  0.5*rho*vKite*sref*cL*eLe_v[1]
-    fLz =  0.5*rho*vKite*sref*cL*eLe_v[2]
+    fLx =  0.5*rho*vKite*sref*cL*eLe_v_f[0]
+    fLy =  0.5*rho*vKite*sref*cL*eLe_v_f[1]
+    fLz =  0.5*rho*vKite*sref*cL*eLe_v_f[2]
 
     # DRAG :
     dae['fD'] = 0.5*rho*vKite2*sref*cD
-    fDx = -0.5*rho*sref*vKite*cD*v_bw_n_x
-    fDy = -0.5*rho*sref*vKite*cD*v_bw_n_y
-    fDz = -0.5*rho*sref*vKite*cD*v_bw_n_z
+    fDx = -0.5*rho*sref*vKite*cD*v_bw_f[0]
+    fDy = -0.5*rho*sref*vKite*cD*v_bw_f[1]
+    fDz = -0.5*rho*sref*vKite*cD*v_bw_f[2]
 
     # sideforce
     dae['fY'] = 0.5*rho*vKite2*sref*dae['cY']
-    fYx = 0.5*rho*sref*cY*eYe_v2[0]
-    fYy = 0.5*rho*sref*cY*eYe_v2[1]
-    fYz = 0.5*rho*sref*cY*eYe_v2[2]
+    fYx = 0.5*rho*sref*cY*eYe_v2_f[0]
+    fYy = 0.5*rho*sref*cY*eYe_v2_f[1]
+    fYz = 0.5*rho*sref*cY*eYe_v2_f[2]
 
     # aero forces
     f1 = fLx + fDx + fYx
