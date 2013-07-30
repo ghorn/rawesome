@@ -140,6 +140,9 @@ def setupModel(dae, conf):
                                                  dae['w_bn_b'],
                                                  (dae['e21'], dae['e22'], dae['e23'])  # y-axis of body frame in carousel coordinates
                                                  )
+    # f1..f3 expressed in carrousel coordinates
+    # t1..t3 expressed in body coordinates 
+                                                 
     # if we are running a homotopy, add psudeo forces and moments as algebraic states
     if 'runHomotopy' in conf and conf['runHomotopy']:
         gamma_homotopy = dae.addP('gamma_homotopy')
@@ -250,7 +253,8 @@ def setupModel(dae, conf):
     dRexp[2,0] = e23*w3 - e33*w2
     dRexp[2,1] = e33*w1 - e13*w3
     dRexp[2,2] = e13*w2 - e23*w1
-
+    
+    # The cable constraint
     c =(x + zt*e31)**2/2 + (y + zt*e32)**2/2 + (z + zt*e33)**2/2 - r**2/2
 
     cdot =dx*(x + zt*e31) + dy*(y + zt*e32) + dz*(z + zt*e33) + zt*(w2 - ddelta*e23)*(e11*x + e12*y + e13*z + zt*e11*e31 + zt*e12*e32 + zt*e13*e33) - zt*(w1 - ddelta*e13)*(e21*x + e22*y + e23*z + zt*e21*e31 + zt*e22*e32 + zt*e23*e33) - r*dr
