@@ -44,9 +44,9 @@ def skew_mat(xyz):
     x = xyz[0]
     y = xyz[1]
     z = xyz[2]
-    return C.vertcat([C.horzcat([ 0, -z,  y]),
-                      C.horzcat([ z,  0, -x]),
-                      C.horzcat([-y,  x,  0])])
+    return C.blockcat([[ 0, -z,  y],
+                       [ z,  0, -x],
+                       [-y,  x,  0]])
 
 def compute_mass_matrix(dae, conf, f1, f2, f3, t1, t2, t3):
     '''
@@ -66,17 +66,17 @@ def compute_mass_matrix(dae, conf, f1, f2, f3, t1, t2, t3):
     mm10 = mm01.T
     mm02 = r_n2bridle_n
     mm20 = mm02.T
-    J = C.vertcat([C.horzcat([ conf['j1'],          0, conf['j31']]),
-                   C.horzcat([          0, conf['j2'],           0]),
-                   C.horzcat([conf['j31'],          0,  conf['j3']])])
+    J = C.blockcat([[ conf['j1'],          0, conf['j31']],
+                    [          0, conf['j2'],           0],
+                    [conf['j31'],          0,  conf['j3']]])
     mm11 = J
     mm12 = C.cross(r_b2bridle_b, C.mul(dae['R_n2b'], r_n2b_n))
     mm21 = mm12.T
     mm22 = C.SXMatrix(1,1)
 
-    mm = C.vertcat([C.horzcat([mm00,mm01,mm02]),
-                    C.horzcat([mm10,mm11,mm12]),
-                    C.horzcat([mm20,mm21,mm22])])
+    mm = C.blockcat([[mm00,mm01,mm02],
+                     [mm10,mm11,mm12],
+                     [mm20,mm21,mm22]])
 
     # right hand side
     rhs0 = C.veccat([f1,f2,f3 + conf['g']*(conf['mass'] + conf['tether_mass']*0.5)])
@@ -165,9 +165,9 @@ def crosswind_model(conf):
                                      0.0665919381751*dae['torque']*dae['torque'] + \
                                      0.1078628659825*dae['rpm']*dae['torque']
 
-    dae['R_n2b'] = C.vertcat([C.horzcat([dae['e11'], dae['e12'], dae['e13']]),
-                              C.horzcat([dae['e21'], dae['e22'], dae['e23']]),
-                              C.horzcat([dae['e31'], dae['e32'], dae['e33']])])
+    dae['R_n2b'] = C.blockcat([[dae['e11'], dae['e12'], dae['e13']],
+                               [dae['e21'], dae['e22'], dae['e23']],
+                               [dae['e31'], dae['e32'], dae['e33']]])
 
     # local wind
     dae['wind_at_altitude'] = get_wind(dae, conf)
@@ -203,10 +203,10 @@ def crosswind_model(conf):
 
     # derivative of dcm
     dRexp = C.mul(skew_mat(dae['w_bn_b']).T, dae['R_n2b'])
-    ddt_R_n2b = C.vertcat(\
-        [C.horzcat([dae.ddt(name) for name in ['e11', 'e12', 'e13']]),
-         C.horzcat([dae.ddt(name) for name in ['e21', 'e22', 'e23']]),
-         C.horzcat([dae.ddt(name) for name in ['e31', 'e32', 'e33']])])
+    ddt_R_n2b = C.blockcat(\
+        [[dae.ddt(name) for name in ['e11', 'e12', 'e13']],
+         [dae.ddt(name) for name in ['e21', 'e22', 'e23']],
+         [dae.ddt(name) for name in ['e31', 'e32', 'e33']]])
 
     # get mass matrix, rhs
     (mass_matrix, rhs) = compute_mass_matrix(dae, conf, f1, f2, f3, t1, t2, t3)

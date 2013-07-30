@@ -98,16 +98,16 @@ def aeroForcesTorques(dae, conf, v_bw_n, v_bw_b, w_bn_b, (eTe1, eTe2, eTe3)):
     w_bn_b_hat = C.veccat([0.5*conf['bref']/dae['airspeed']*w_bn_b[0],
                            0.5*conf['cref']/dae['airspeed']*w_bn_b[1],
                            0.5*conf['bref']/dae['airspeed']*w_bn_b[2]])
-    momentCoeffs_pqr = C.mul(C.vertcat([C.horzcat([conf['cl_p'], conf['cl_q'], conf['cl_r']]),
-                                        C.horzcat([conf['cm_p'], conf['cm_q'], conf['cm_r']]),
-                                        C.horzcat([conf['cn_p'], conf['cn_q'], conf['cn_r']])]),
+    momentCoeffs_pqr = C.mul(C.blockcat([[conf['cl_p'], conf['cl_q'], conf['cl_r']],
+                                         [conf['cm_p'], conf['cm_q'], conf['cm_r']],
+                                         [conf['cn_p'], conf['cn_q'], conf['cn_r']]]),
                              w_bn_b_hat)
     dae['momentCoeffs_pqr'] = momentCoeffs_pqr
 
     # with alpha beta
-    momentCoeffs_AB = C.mul(C.vertcat([C.horzcat([           0, conf['cl_B'], conf['cl_AB']]),
-                                       C.horzcat([conf['cm_A'],            0,             0]),
-                                       C.horzcat([           0, conf['cn_B'], conf['cn_AB']])]),
+    momentCoeffs_AB = C.mul(C.blockcat([[           0, conf['cl_B'], conf['cl_AB']],
+                                        [conf['cm_A'],            0,             0],
+                                        [           0, conf['cn_B'], conf['cn_AB']]]),
                             C.vertcat([alpha, beta, alpha*beta]))
     dae['momentCoeffs_AB'] = momentCoeffs_AB
 

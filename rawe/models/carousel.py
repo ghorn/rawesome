@@ -353,9 +353,9 @@ def carouselModel(conf):
                                      0.0665919381751*dae['torque']*dae['torque'] + \
                                      0.1078628659825*dae['rpm']*dae['torque']
 
-    dae['R_c2b'] = C.vertcat([C.horzcat([dae['e11'],dae['e12'],dae['e13']]),
-                              C.horzcat([dae['e21'],dae['e22'],dae['e23']]),
-                              C.horzcat([dae['e31'],dae['e32'],dae['e33']])])
+    dae['R_c2b'] = C.blockcat([[dae['e11'],dae['e12'],dae['e13']],
+                               [dae['e21'],dae['e22'],dae['e23']],
+                               [dae['e31'],dae['e32'],dae['e33']]])
 
     # line angle
     dae['cos_line_angle'] = \
