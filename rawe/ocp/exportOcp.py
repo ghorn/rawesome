@@ -102,7 +102,8 @@ def exportOcp(ocp, ocpOptions, integratorOptions, cgOptions, phase1Options):
                         'CXXFLAGS':'-O3 -fPIC -finline-functions',
                         'CFLAGS':'-O3 -fPIC -finline-functions',
                         'hideSymbols':False,
-                        'export_without_build_path':None}
+                        'export_without_build_path':None,
+                        'force_export_path':None}
     defaultPhase1Options = {'CXX':'g++'}
     validateOptions(defaultCgOptions, cgOptions, "codegen")
     validateOptions(defaultPhase1Options, phase1Options, "phase 1")
