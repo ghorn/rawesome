@@ -50,7 +50,11 @@ def getSteadyState(dae,conf,omega0,r0):
     g.addBnds(dae['beta_deg'], (-7.0, 7.0), tag=("beta deg",None))
 
     dvs = C.veccat([dae.xVec(), dae.zVec(), dae.uVec(), dae.pVec(), dae.xDotVec()])
-    ffcn = C.SXFunction([dvs],[sum([dae[n]**2 for n in ['aileron','elevator','rudder','flaps']])])
+    obj = 0
+    for name in ['aileron','elevator','rudder','flaps']:
+        if name in dae:
+            obj += dae[name]**2
+    ffcn = C.SXFunction([dvs],[obj])
 #    ffcn = C.SXFunction([dvs],[sum([dae[n]**2 for n in ['aileron','elevator','y','z']])])
 #    ffcn = C.SXFunction([dvs],[(dae['cL']-0.5)**2])
     gfcn = C.SXFunction([dvs],[g.getG()])
