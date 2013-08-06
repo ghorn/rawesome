@@ -65,8 +65,8 @@ def getSteadyState(dae,conf,omega0,r0,z0):
              'w_bn_b_x':0,'w_bn_b_y':-omega0,'w_bn_b_z':0,
              'ddelta':omega0,
              'cos_delta':1,'sin_delta':0,
-             'aileron':0,'elevator':0,
-             'daileron':0,'delevator':0,
+             'aileron':0,'elevator':0,'rudder':0,'flaps':0,
+             'daileron':0,'delevator':0,'drudder':0,'dflaps':0,
              'nu':100,'motor_torque':10,
              'dmotor_torque':0,'ddr':0,
              'dddr':0.0,'w0':0.0}
@@ -78,7 +78,7 @@ def getSteadyState(dae,conf,omega0,r0,z0):
                 'w_bn_b_x':0,'w_bn_b_y':0,'w_bn_b_z':0,
                 'ddelta':0,
                 'cos_delta':0,'sin_delta':omega0,
-                'aileron':0,'elevator':0,
+                'aileron':0,'elevator':0,'rudder':0,'flaps':0,
                 'motor_torque':0,'ddr':0}
 
     guessVec = C.DMatrix([guess[n] for n in dae.xNames()+dae.zNames()+dae.uNames()+dae.pNames()]+
@@ -93,8 +93,8 @@ def getSteadyState(dae,conf,omega0,r0,z0):
              'w_bn_b_x':(-50,50),'w_bn_b_y':(-50,50),'w_bn_b_z':(-50,50),
              'ddelta':(omega0,omega0),
              'cos_delta':(1,1),'sin_delta':(0,0),
-             'aileron':(-0.2,0.2),'elevator':(-0.2,0.2),
-             'daileron':(0,0),'delevator':(0,0),
+             'aileron':(-0.2,0.2),'elevator':(-0.2,0.2),'rudder':(-0.2,0.2),'flaps':(-0.2,0.2),
+             'daileron':(0,0),'delevator':(0,0),'drudder':(0,0),'dflaps':(0,0),
              'nu':(0,3000),'motor_torque':(0,1000),
              'ddr':(0,0),
              'dmotor_torque':(0,0),'dddr':(0,0),'w0':(0,0)}
@@ -107,7 +107,7 @@ def getSteadyState(dae,conf,omega0,r0,z0):
                  'w_bn_b_x':(0,0),'w_bn_b_y':(0,0),'w_bn_b_z':(0,0),
                  'ddelta':(0,0),
                  'cos_delta':(-1,1),'sin_delta':(omega0-1,omega0+1),
-                 'aileron':(-1,1),'elevator':(-1,1),
+                 'aileron':(-1,1),'elevator':(-1,1),'rudder':(-1,1),'flaps':(-1,1),
                  'motor_torque':(-1000,1000),'ddr':(-100,100)}
     boundsVec = [bounds[n] for n in dae.xNames()+dae.zNames()+dae.uNames()+dae.pNames()]+ \
                 [dotBounds[n] for n in dae.xNames()]
