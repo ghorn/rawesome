@@ -150,12 +150,19 @@ ACADOvariables acadoVariables;
 '''
 
     # write things in user specified directory if 'export_without_build_path' is not None
+    # then return without building
     if cgOptions['export_without_build_path'] is not None:
         codegen.writeDifferentFiles(cgOptions['export_without_build_path'], genfiles)
         return
 
-    # otherwise write things in memoized directory, then compile
-    exportpath = codegen.memoizeFiles(genfiles,prefix=cgOptions['hashPrefix']+'__')
+    # write things in user specified directory if 'force_export_path' is not None
+    # then compile as normal
+    if cgOptions['force_export_path'] is not None:
+        codegen.writeDifferentFiles(cgOptions['force_export_path'], genfiles)
+        exportpath = cgOptions['force_export_path']
+    # otherwise write things in memoized directory, then compile as normal
+    else:
+        exportpath = codegen.memoizeFiles(genfiles,prefix=cgOptions['hashPrefix']+'__')
 
     # compile!
     (ret, msgs) = subprocess_tee.call(['make',codegen.makeJobs()], cwd=exportpath)
