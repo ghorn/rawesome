@@ -24,7 +24,16 @@ def setupModel(dae, conf):
     '''
     take the dae that has x/z/u/p added to it already and return
     the states added to it and return mass matrix and rhs of the dae residual
+    
+    mass matrix columns:
+     ddt(ddelta dx dy dz w_bn_b_x w_bn_b_y w_bn_b_z) nu
+    
+    rhs:
+      forces/torques acting on : ddt(ddelta dx dy dz w_bn_b_x w_bn_b_y w_bn_b_z) nu
+    
     '''
+    
+    # Parameters
     m =  conf['mass']
     g = conf['g']
 
@@ -38,8 +47,42 @@ def setupModel(dae, conf):
 
     zt = conf['zt']
     rA = conf['rArm']
+    
+    # Frames
+    # ==========================================
+    #   World frame  (n)  NED North-East-Down
+    #
+    #   Wind carrying frame (w)
+    #      - Translates along the world frame's x axis with the wind speed
+    #
+    #   Carousel frame (c)
+    #      - Origin coincides with the world origin
+    #      - Makes and angle delta
+    #     
+    #   Carousel tip frame (a)
+    #      - Origin sits at tip of arm
+    #      - e_x extends radially outwards
+    #      - e_z points downwards
+    #
+    #   Body frame  (b)
+    #      - attached to body of aircraft
+    #      - e_x extends to the nose
+    #      - e_z points downwards
+    #
+    # Vector naming convention
+    # =========================
+    #   v_ab_c
+    #      Velocity of point a, differentiated in frame b, expressed in frame c (Greg terminlogy)
+    #      Velocity of point a w.r.t. frame b, expressed in frame c (Joris terminology)
 
-    e11 = dae['e11']
+    # States
+    
+    # Components that make up the rotation matrix from carousel frame to body frame   R_c2b  [-]
+    # e11 e12 e13
+    # e21 e22 e23
+    # e31 e32 e33
+                               
+    e11 = dae['e11']  
     e12 = dae['e12']
     e13 = dae['e13']
 
@@ -51,19 +94,19 @@ def setupModel(dae, conf):
     e32 = dae['e32']
     e33 = dae['e33']
 
-    x =   dae['x']
+    x =   dae['x'] # Aircraft position in carousel tip frame coordinates [m]
     y =   dae['y']
     z =   dae['z']
 
-    dx  =  dae['dx']
+    dx  =  dae['dx'] # Time derivatives of x [m/s]
     dy  =  dae['dy']
     dz  =  dae['dz']
 
-    w1 =  dae['w_bn_b_x']
+    w1 =  dae['w_bn_b_x'] # Body angular rate w.r.t world frame, expressed in body coordinates [rad/s^2]
     w2 =  dae['w_bn_b_y']
     w3 =  dae['w_bn_b_z']
 
-    ddelta = dae['ddelta']
+    ddelta = dae['ddelta'] # Carousel turning speed  [rad/s]
 
     r = dae['r']
     dr = dae['dr']
@@ -91,18 +134,22 @@ def setupModel(dae, conf):
     wind_x = getWind()
     dae['wind_at_altitude'] = wind_x
 
-    dp_carousel_frame = C.veccat( [ dx - ddelta*y
-                                  , dy + ddelta*(rA + x)
-                                  , dz
-                                  ]) - C.veccat([dae['cos_delta']*wind_x, dae['sin_delta']*wind_x, 0])
-    # Aircraft velocity w.r.t. inertial frame, given in its own reference frame
+    # Velocity of aircraft w.r.t wind carrying frame, expressed in carrousel frame
+    v_bw_c = C.veccat( [ dx - ddelta*y
+                       , dy + ddelta*(rA + x)
+                       , dz
+                       ]) - C.veccat([dae['cos_delta']*wind_x, dae['sin_delta']*wind_x, 0])
+    # Velocity of aircraft w.r.t wind carrying frame, expressed in body frame
     # (needed to compute the aero forces and torques !)
-    dpE = C.mul( dae['R_c2b'], dp_carousel_frame )
-
-    (f1, f2, f3, t1, t2, t3) = aeroForcesTorques(dae, conf, dp_carousel_frame, dpE,
+    v_bw_b = C.mul( dae['R_c2b'], v_bw_c )
+    
+    (f1, f2, f3, t1, t2, t3) = aeroForcesTorques(dae, conf, v_bw_c, v_bw_b,
                                                  dae['w_bn_b'],
-                                                 (dae['e21'], dae['e22'], dae['e23'])
+                                                 (dae['e21'], dae['e22'], dae['e23'])  # y-axis of body frame in carousel coordinates
                                                  )
+    # f1..f3 expressed in carrousel coordinates
+    # t1..t3 expressed in body coordinates 
+                                                 
     # if we are running a homotopy, add psudeo forces and moments as algebraic states
     if 'runHomotopy' in conf and conf['runHomotopy']:
         gamma_homotopy = dae.addP('gamma_homotopy')
@@ -213,7 +260,9 @@ def setupModel(dae, conf):
     dRexp[2,0] = e23*w3 - e33*w2
     dRexp[2,1] = e33*w1 - e13*w3
     dRexp[2,2] = e13*w2 - e23*w1
+    
 
+    # The cable constraint
     c =(x + zt*e31)**2/2 + (y + zt*e32)**2/2 + (z + zt*e33)**2/2 - r**2/2
 
     cdot =dx*(x + zt*e31) + dy*(y + zt*e32) + dz*(z + zt*e33) + zt*(w2 - ddelta*e23)*(e11*x + e12*y + e13*z + zt*e11*e31 + zt*e12*e32 + zt*e13*e33) - zt*(w1 - ddelta*e13)*(e21*x + e22*y + e23*z + zt*e21*e31 + zt*e22*e32 + zt*e23*e33) - r*dr
@@ -353,9 +402,9 @@ def carouselModel(conf):
                                      0.0665919381751*dae['torque']*dae['torque'] + \
                                      0.1078628659825*dae['rpm']*dae['torque']
 
-    dae['R_c2b'] = C.vertcat([C.horzcat([dae['e11'],dae['e12'],dae['e13']]),
-                              C.horzcat([dae['e21'],dae['e22'],dae['e23']]),
-                              C.horzcat([dae['e31'],dae['e32'],dae['e33']])])
+    dae['R_c2b'] = C.blockcat([[dae['e11'],dae['e12'],dae['e13']],
+                               [dae['e21'],dae['e22'],dae['e23']],
+                               [dae['e31'],dae['e32'],dae['e33']]])
 
     # line angle
     dae['cos_line_angle'] = \
@@ -374,7 +423,7 @@ def carouselModel(conf):
         C.veccat([dae.ddt(name) for name in ['x','y','z']]) - C.veccat([dae['dx'],dae['dy'],dae['dz']]),
         C.veccat([dae.ddt(name) for name in ["e11","e12","e13",
                                              "e21","e22","e23",
-                                             "e31","e32","e33"]]) - ( dRexp.trans().reshape([9,1]) + Rst.reshape([9,1]) ),
+                                             "e31","e32","e33"]]) - ( dRexp.T.reshape([9,1]) + Rst.reshape([9,1]) ),
         dae_delta_residual,
 #        C.veccat([dae.ddt(name) for name in ['dx','dy','dz']]) - C.veccat([dae['ddx'],dae['ddy'],dae['ddz']]),
 #        C.veccat([dae.ddt(name) for name in ['w1','w2','w3']]) - C.veccat([dae['dw1'],dae['dw2'],dae['dw3']]),

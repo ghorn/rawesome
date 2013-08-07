@@ -48,10 +48,9 @@ def makeConf():
 
          # stability derivatives
          # these are average values across the vlm alpha/beta sweep
-         'cl_p': -0.4928, 'cl_q':  -7.0952e-06, 'cl_r': 0.0566,
-         'cm_p':  -2.9474e-06, 'cm_q':-16.7370
-, 'cm_r':  -1.3283e-07,
-         'cn_p': -0.0223, 'cn_q': -5.0627e-07, 'cn_r':-0.0636,
+         'cl_p': -0.4928, 'cl_q':    0.0, 'cl_r': 0.0566,
+         'cm_p':     0.0, 'cm_q':-16.737, 'cm_r':    0.0,
+         'cn_p': -0.0223, 'cn_q':    0.0, 'cn_r':-0.0636,
 
          # these are calculated by a matlab fitting script based on vlm alpha/beta sweeps
          'cl_B': -0.057367,

@@ -32,7 +32,7 @@ def makeOrthonormal(g,R):
          g.add(rhon[1],'==',0,  tag=('R1[0]: ( e1^T X e2 - e3 )[2] == 0',None))
 
 
-def getSteadyState(dae,conf,omega0,r0,z0):
+def getSteadyState(dae,conf,omega0,r0):
     # make steady state model
     g = Constraints()
     g.add(dae.getResidual(),'==',0,tag=('dae residual',None))
@@ -50,8 +50,13 @@ def getSteadyState(dae,conf,omega0,r0,z0):
     g.addBnds(dae['beta_deg'], (-7.0, 7.0), tag=("beta deg",None))
 
     dvs = C.veccat([dae.xVec(), dae.zVec(), dae.uVec(), dae.pVec(), dae.xDotVec()])
+    obj = 0
+    for name in ['aileron','elevator','rudder','flaps']:
+        if name in dae:
+            obj += dae[name]**2
+    ffcn = C.SXFunction([dvs],[obj])
 #    ffcn = C.SXFunction([dvs],[sum([dae[n]**2 for n in ['aileron','elevator','y','z']])])
-    ffcn = C.SXFunction([dvs],[(dae['cL']-0.5)**2])
+#    ffcn = C.SXFunction([dvs],[(dae['cL']-0.5)**2])
     gfcn = C.SXFunction([dvs],[g.getG()])
     ffcn.init()
     gfcn.init()
@@ -65,8 +70,8 @@ def getSteadyState(dae,conf,omega0,r0,z0):
              'w_bn_b_x':0,'w_bn_b_y':-omega0,'w_bn_b_z':0,
              'ddelta':omega0,
              'cos_delta':1,'sin_delta':0,
-             'aileron':0,'elevator':0,
-             'daileron':0,'delevator':0,
+             'aileron':0,'elevator':0,'rudder':0,'flaps':0,
+             'daileron':0,'delevator':0,'drudder':0,'dflaps':0,
              'nu':100,'motor_torque':10,
              'dmotor_torque':0,'ddr':0,
              'dddr':0.0,'w0':0.0}
@@ -78,36 +83,36 @@ def getSteadyState(dae,conf,omega0,r0,z0):
                 'w_bn_b_x':0,'w_bn_b_y':0,'w_bn_b_z':0,
                 'ddelta':0,
                 'cos_delta':0,'sin_delta':omega0,
-                'aileron':0,'elevator':0,
+                'aileron':0,'elevator':0,'rudder':0,'flaps':0,
                 'motor_torque':0,'ddr':0}
 
     guessVec = C.DMatrix([guess[n] for n in dae.xNames()+dae.zNames()+dae.uNames()+dae.pNames()]+
                          [dotGuess[n] for n in dae.xNames()])
 
-    bounds = {'x':(0.01,r0*2),'y':(-r0,r0),'z':(z0,z0),
-             'dx':(-50,50),'dy':(0,0),'dz':(0,0),
-             'r':(r0,r0),'dr':(0,0),
+    bounds = {'x':(-0.1*r0,r0*2),'y':(-1.1*r0,1.1*r0),'z':(-1.1*r0,1.1*r0),
+             'dx':(0,0),'dy':(0,0),'dz':(0,0),
+             'r':(r0,r0),'dr':(-100,100),
              'e11':(-2,2),'e12':(-2,2),'e13':(-2,2),
              'e21':(-2,2),'e22':(-2,2),'e23':(-2,2),
-              'e31':(-2,0),'e32':(-2,2),'e33':(-2,2),
+             'e31':(-2,2),'e32':(-2,2),'e33':(-2,2),
              'w_bn_b_x':(-50,50),'w_bn_b_y':(-50,50),'w_bn_b_z':(-50,50),
              'ddelta':(omega0,omega0),
              'cos_delta':(1,1),'sin_delta':(0,0),
-             'aileron':(-0.2,0.2),'elevator':(-0.2,0.2),
-             'daileron':(0,0),'delevator':(0,0),
+             'aileron':(-0.2,0.2),'elevator':(-0.2,0.2),'rudder':(-0.2,0.2),'flaps':(-0.2,0.2),
+             'daileron':(0,0),'delevator':(0,0),'drudder':(0,0),'dflaps':(0,0),
              'nu':(0,3000),'motor_torque':(0,1000),
              'ddr':(0,0),
              'dmotor_torque':(0,0),'dddr':(0,0),'w0':(0,0)}
-    dotBounds = {'x':(-50,50),'y':(-50,50),'z':(-50,50)
-                 ,'dx':(0,0),'dy':(-50,50),'dz':(0,0),
-                 'r':(-1,1),'dr':(-1,1),
+    dotBounds = {'x':(-1,1),'y':(-1,1),'z':(-1,1),
+                 'dx':(0,0),'dy':(0,0),'dz':(0,0),
+                 'r':(-100,100),'dr':(-1,1),
                  'e11':(-50,50),'e12':(-50,50),'e13':(-50,50),
                  'e21':(-50,50),'e22':(-50,50),'e23':(-50,50),
                  'e31':(-50,50),'e32':(-50,50),'e33':(-50,50),
                  'w_bn_b_x':(0,0),'w_bn_b_y':(0,0),'w_bn_b_z':(0,0),
                  'ddelta':(0,0),
                  'cos_delta':(-1,1),'sin_delta':(omega0-1,omega0+1),
-                 'aileron':(-1,1),'elevator':(-1,1),
+                 'aileron':(-1,1),'elevator':(-1,1),'rudder':(-1,1),'flaps':(-1,1),
                  'motor_torque':(-1000,1000),'ddr':(-100,100)}
     boundsVec = [bounds[n] for n in dae.xNames()+dae.zNames()+dae.uNames()+dae.pNames()]+ \
                 [dotBounds[n] for n in dae.xNames()]
