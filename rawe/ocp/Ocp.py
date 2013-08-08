@@ -19,7 +19,7 @@ import casadi as C
 
 import exportOcp
 from ..rtIntegrator import RtIntegratorOptions
-from ..utils.options import Options, OptStr, OptInt, OptBool
+from ..utils.options import Options, OptStr, OptInt, OptBool, OptDouble
 
 class OcpExportOptions(Options):
     def __init__(self):
@@ -35,6 +35,7 @@ class OcpExportOptions(Options):
         self.add(OptBool('GENERATE_MATLAB_INTERFACE',default=False))
         self.add(OptBool('HOTSTART_QP',default=False))
         self.add(OptBool('FIX_INITIAL_STATE',default=True))
+        self.add(OptDouble('LEVENBERG_MARQUARDT',default=0))
 #        self.add(OptBool('CG_USE_C99',default=True))
 
 class Ocp(object):
