@@ -32,7 +32,7 @@ def makeOrthonormal(g,R):
          g.add(rhon[1],'==',0,  tag=('R1[0]: ( e1^T X e2 - e3 )[2] == 0',None))
 
 
-def getSteadyState(dae,conf,omega0,r0):
+def getSteadyState(dae,conf,omega0,r0,ref_dict):
     # make steady state model
     g = Constraints()
     g.add(dae.getResidual(),'==',0,tag=('dae residual',None))
@@ -104,6 +104,7 @@ def getSteadyState(dae,conf,omega0,r0):
              'nu':(0,3000),'motor_torque':(-1000,1000),
              'ddr':(0,0),
              'dmotor_torque':(0,0),'dddr':(0,0),'w0':(0,0)}
+    for name in ref_dict: bounds[name] = ref_dict[name]
     dotBounds = {'x':(-1,1),'y':(-1,1),'z':(-1,1),
                  'dx':(0,0),'dy':(0,0),'dz':(0,0),
                  'r':(-100,100),'dr':(-1,1),
