@@ -48,6 +48,7 @@ def getSteadyState(dae,conf,omega0,r0):
                        ("Rotational velocities",None))
     g.addBnds(dae['alpha_deg'], (-4.0, 8.0), tag=("alpha deg",None))
     g.addBnds(dae['beta_deg'], (-7.0, 7.0), tag=("beta deg",None))
+    #g.addBnds(dae['cL'], (0, 3), tag=("CL positive",None))
 
     dvs = C.veccat([dae.xVec(), dae.zVec(), dae.uVec(), dae.pVec(), dae.xDotVec()])
     obj = 0
@@ -63,16 +64,16 @@ def getSteadyState(dae,conf,omega0,r0):
 
     guess = {'x':r0,'y':0,'z':0,
              'r':r0,'dr':0,
-             'e11':0, 'e12':1, 'e13':0,
-             'e21':0, 'e22':0, 'e23':-1,
+             'e11':0, 'e12':-1, 'e13':0,
+             'e21':0, 'e22':0, 'e23':1,
              'e31':-1, 'e32':0, 'e33':0,
              'dx':0,'dy':0,'dz':0,
-             'w_bn_b_x':0,'w_bn_b_y':-omega0,'w_bn_b_z':0,
+             'w_bn_b_x':0,'w_bn_b_y':omega0,'w_bn_b_z':0,
              'ddelta':omega0,
              'cos_delta':1,'sin_delta':0,
              'aileron':0,'elevator':0,'rudder':0,'flaps':0,
              'daileron':0,'delevator':0,'drudder':0,'dflaps':0,
-             'nu':100,'motor_torque':10,
+             'nu':100,'motor_torque':0,
              'dmotor_torque':0,'ddr':0,
              'dddr':0.0,'w0':0.0}
     dotGuess = {'x':0,'y':0,'z':0,'dx':0,'dy':0,'dz':0,
@@ -100,7 +101,7 @@ def getSteadyState(dae,conf,omega0,r0):
              'cos_delta':(1,1),'sin_delta':(0,0),
              'aileron':(-0.2,0.2),'elevator':(-0.2,0.2),'rudder':(-0.2,0.2),'flaps':(-0.2,0.2),
              'daileron':(0,0),'delevator':(0,0),'drudder':(0,0),'dflaps':(0,0),
-             'nu':(0,3000),'motor_torque':(0,1000),
+             'nu':(0,3000),'motor_torque':(-1000,1000),
              'ddr':(0,0),
              'dmotor_torque':(0,0),'dddr':(0,0),'w0':(0,0)}
     dotBounds = {'x':(-1,1),'y':(-1,1),'z':(-1,1),
