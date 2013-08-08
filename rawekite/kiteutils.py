@@ -42,18 +42,18 @@ def periodicEulers(ocp):
     ocp.constrain(roll0,'==',rollF)
 
 
-def getDcm(ocp,k):
-    m11 = ocp.lookup('e11',timestep=k)
-    m12 = ocp.lookup('e12',timestep=k)
-    m13 = ocp.lookup('e13',timestep=k)
+def getDcm(ocp,k,prefix='e'):
+    m11 = ocp.lookup(prefix+'11',timestep=k)
+    m12 = ocp.lookup(prefix+'12',timestep=k)
+    m13 = ocp.lookup(prefix+'13',timestep=k)
 
-    m21 = ocp.lookup('e21',timestep=k)
-    m22 = ocp.lookup('e22',timestep=k)
-    m23 = ocp.lookup('e23',timestep=k)
+    m21 = ocp.lookup(prefix+'21',timestep=k)
+    m22 = ocp.lookup(prefix+'22',timestep=k)
+    m23 = ocp.lookup(prefix+'23',timestep=k)
 
-    m31 = ocp.lookup('e31',timestep=k)
-    m32 = ocp.lookup('e32',timestep=k)
-    m33 = ocp.lookup('e33',timestep=k)
+    m31 = ocp.lookup(prefix+'31',timestep=k)
+    m32 = ocp.lookup(prefix+'32',timestep=k)
+    m33 = ocp.lookup(prefix+'33',timestep=k)
 
     return C.vertcat([C.horzcat([m11,m12,m13]),
                       C.horzcat([m21,m22,m23]),
