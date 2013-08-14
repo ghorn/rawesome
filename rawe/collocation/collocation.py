@@ -396,6 +396,32 @@ class Coll():
 
         ############# interpolate ###########
         sys.stdout.write('reticulating splines... ')
+
+        t0 = 0.0
+        x_interp_times = []
+        for timestepIdx in range(self.nk):
+            for nicpIdx in range(self.nicp):
+                for degIdx in range(self.deg+1):
+                    time = t0 + h*self.lagrangePoly.tau_root[degIdx]
+                    if time > traj.tgrid[-1,0,0]:
+                        time -= traj.tgrid[-1,0,0]
+                    x_interp_times.append(time)
+                t0 += h
+                if t0 > traj.tgrid[-1,0,0]:
+                    t0 -= traj.tgrid[-1,0,0]
+        x_interp_times.append(t0)
+
+        t0 = 0.0
+        z_interp_times = []
+        for timestepIdx in range(self.nk):
+            for nicpIdx in range(self.nicp):
+                for degIdx in range(1,self.deg+1):
+                    time = t0 + h*self.lagrangePoly.tau_root[degIdx]
+                    if time > traj.tgrid[-1,0,0]:
+                        time -= traj.tgrid[-1,0,0]
+                    z_interp_times.append(time)
+                t0 += h
+
         # interpolate differential states
         for name in self.dae.xNames():
             sys.stdout.write(name+' '); sys.stdout.flush()
@@ -403,19 +429,16 @@ class Coll():
                 missing.append(name)
                 continue
             # evaluate piecewise poly to set initial guess
-            t0 = 0.0
+            x_interp_values =  pps[name](x_interp_times)
+            k = 0
             for timestepIdx in range(self.nk):
                 for nicpIdx in range(self.nicp):
                     for degIdx in range(self.deg+1):
-                        time = t0 + h*self.lagrangePoly.tau_root[degIdx]
-                        if time > traj.tgrid[-1,0,0]:
-                            time -= traj.tgrid[-1,0,0]
-                        self.guess(name,pps[name](time),timestep=timestepIdx,nicpIdx=nicpIdx,degIdx=degIdx,force=force,quiet=quiet)
-                    t0 += h
-                    if t0 > traj.tgrid[-1,0,0]:
-                        t0 -= traj.tgrid[-1,0,0]
-            self.guess(name,pps[name](t0),timestep=-1,nicpIdx=0,degIdx=0,force=force,quiet=quiet)
-
+                        self.guess(name,x_interp_values[k],
+                                   timestep=timestepIdx,nicpIdx=nicpIdx,
+                                   degIdx=degIdx,force=force,quiet=quiet)
+                        k += 1
+            self.guess(name,x_interp_values[k],timestep=-1,nicpIdx=0,degIdx=0,force=force,quiet=quiet)
 
         # interpolate algebraic variables
         for name in self.dae.zNames():
@@ -424,15 +447,15 @@ class Coll():
                 missing.append(name)
                 continue
             # evaluate piecewise poly to set initial guess
-            t0 = 0.0
+            z_interp_values =  pps[name](z_interp_times)
+            k = 0
             for timestepIdx in range(self.nk):
                 for nicpIdx in range(self.nicp):
                     for degIdx in range(1,self.deg+1):
-                        time = t0 + h*self.lagrangePoly.tau_root[degIdx]
-                        if time > traj.tgrid[-1,0,0]:
-                            time -= traj.tgrid[-1,0,0]
-                        self.guess(name,pps[name](time),timestep=timestepIdx,nicpIdx=nicpIdx,degIdx=degIdx,force=force,quiet=quiet)
-                    t0 += h
+                        self.guess(name,z_interp_values[k],
+                                   timestep=timestepIdx,nicpIdx=nicpIdx,
+                                   degIdx=degIdx,force=force,quiet=quiet)
+                        k += 1
 
         # interpolate controls
         for name in self.dae.uNames():
@@ -441,10 +464,10 @@ class Coll():
                 missing.append(name)
                 continue
             # evaluate piecewise poly to set initial guess
-            t0 = 0.0
+            u_interp_values = pps[name]([h*k for k in range(self.nk)])
             for timestepIdx in range(self.nk):
-                self.guess(name,pps[name](t0),timestep=timestepIdx,force=force,quiet=quiet)
-                t0 += h
+                self.guess(name,u_interp_values[timestepIdx],
+                           timestep=timestepIdx,force=force,quiet=quiet)
 
         # set parameters
         for name in self.dae.pNames():
