@@ -1,5 +1,6 @@
 
-import rawe.collocation.trajectory
+from rawe.collocation import trajectory
+import numpy
 
 def interpolate(traj,pps,times,names):
     ############# interpolate ###########
@@ -24,14 +25,18 @@ def interpolate(traj,pps,times,names):
     x_interp_times.append(t0)
 
 if __name__=='__main__':
-    traj = load_traj('data/transition.dat')
+    traj = trajectory.load_traj('data/transition_backup.dat')
     print 'making piecewise polys ...'
-    pps = make_pps(traj)
+    pps = trajectory.make_pps(traj)
     t0 = traj.tgrid[0,0,0]
     tF = traj.tgrid[-1,0,0]
-
-    times = numpy.linspace(t0,tF,10)
+    times = numpy.linspace(t0,tF,tF*24)
     for name in ['x','y','z','aileron']:
         vals = pps[name](times)
         print '# '+name
         print ' '.join([('[%d]%.15f' % (k,val)) for k,val in enumerate(vals)])
+    sin_delta = pps['sin_delta'](times)
+    cos_delta = pps['cos_delta'](times)
+    vals = [numpy.degrees(numpy.arctan2(s,c)) for (s,c) in zip(sin_delta,cos_delta)]
+    print '# delta'
+    print ' '.join([('[%d]%.15f' % (k,val)) for k,val in enumerate(vals)])
