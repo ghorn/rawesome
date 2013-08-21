@@ -117,6 +117,20 @@ int py_get_SN(real_t * val, const int nr, const int nc){
   return memcpyMat(val, acadoVariables.SN, nr, nc, ACADO_NYN, ACADO_NYN); }
 #endif /* ACADO_WEIGHTING_MATRICES_TYPE */
 
+#if ACADO_USE_ARRIVAL_COST == 1
+int py_set_SAC(real_t * val, const int nr, const int nc){
+  return memcpyMat(acadoVariables.SAC, val, nr, nc, ACADO_NX, ACADO_NX); }
+int py_get_SAC(real_t * val, const int nr, const int nc){
+  return memcpyMat(val, acadoVariables.SAC, nr, nc, ACADO_NX, ACADO_NX); }
+int py_set_xAC(real_t * val, const int nr, const int nc){
+  return memcpyMat(acadoVariables.xAC, val, nr, nc, ACADO_NX, 1); }
+int py_get_xAC(real_t * val, const int nr, const int nc){
+  return memcpyMat(val, acadoVariables.xAC, nr, nc, ACADO_NX, 1); }
+int py_set_WL(real_t * val, const int nr, const int nc){
+  return memcpyMat(acadoVariables.WL, val, nr, nc, ACADO_NX, ACADO_NX); }
+int py_get_WL(real_t * val, const int nr, const int nc){
+  return memcpyMat(val, acadoVariables.WL, nr, nc, ACADO_NX, ACADO_NX); }
+#endif /* ACADO_USE_ARRIVAL_COST */
 
 /** Number of control/estimation intervals. */
 int py_get_ACADO_N(void){ return ACADO_N; }
@@ -149,4 +163,6 @@ int py_get_ACADO_INITIAL_STATE_FIXED(void){ return ACADO_INITIAL_STATE_FIXED; }
 int py_get_ACADO_WEIGHTING_MATRICES_TYPE(void){ return ACADO_WEIGHTING_MATRICES_TYPE; }
 /** Flag indicating whether constraint values are hard-coded or not. */
 int py_get_ACADO_HARDCODED_CONSTRAINT_VALUES(void){ return ACADO_HARDCODED_CONSTRAINT_VALUES; }
+/** Flag indicating whether arrival cost is being used. */
+int py_get_ACADO_USE_ARRIVAL_COST(void){ return ACADO_USE_ARRIVAL_COST; }
 '''

@@ -36,6 +36,7 @@ class OcpExportOptions(Options):
         self.add(OptBool('HOTSTART_QP',default=False))
         self.add(OptBool('FIX_INITIAL_STATE',default=True))
         self.add(OptDouble('LEVENBERG_MARQUARDT',default=0.0))
+        self.add(OptBool('CG_USE_ARRIVAL_COST',default=False))
         self.add(OptBool('CG_USE_VARIABLE_WEIGHTING_MATRIX',default=False))
 #        self.add(OptBool('CG_USE_C99',default=True))
 
