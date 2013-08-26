@@ -21,6 +21,7 @@ import matplotlib.pyplot as plt
 import numpy
 from numpy import pi
 import pickle
+from fourier_fit import TrajFit,FourierFit
 
 import rawe
 import rawekite
@@ -65,16 +66,6 @@ def setupOcp(dae,conf,nk,nicp=1,deg=4):
     print "setting up collocation..."
     ocp.setupCollocation(ocp('endTime'))
 
-    # constrain invariants
-    def constrainInvariantErrs():
-        R_c2b = ocp.lookup('R_c2b',timestep=0)
-        rawekite.kiteutils.makeOrthonormal(ocp, R_c2b)
-        ocp.constrain(ocp.lookup('c',timestep=0), '==', 0, tag=('initial c 0',None))
-        ocp.constrain(ocp.lookup('cdot',timestep=0), '==', 0, tag=('initial cdot 0',None))
-        ocp.constrain(ocp('sin_delta',timestep=0)**2 + ocp('cos_delta',timestep=0)**2,
-                      '==', 1, tag=('sin**2 + cos**2 == 1',None))
-    constrainInvariantErrs()
-
     # constrain line angle
     for k in range(0,nk):
         ocp.constrain(ocp.lookup('cos_line_angle',timestep=k),'>=',C.cos(55*pi/180), tag=('line angle',k))
@@ -96,8 +87,8 @@ def setupOcp(dae,conf,nk,nicp=1,deg=4):
 
     ocp.bound('x',(-2000,2000))
     ocp.bound('y',(-2000,2000))
-    ocp.bound('z',(-50,1.5))
-    ocp.bound('r',(4,300))
+    ocp.bound('z',(-2000,1.5))
+    ocp.bound('r',(2,300))
     ocp.bound('dr',(-10,10))
     ocp.bound('ddr',(-15,15))
     ocp.bound('dddr',(-50,50))
@@ -127,40 +118,45 @@ def setupOcp(dae,conf,nk,nicp=1,deg=4):
 #    ocp.bound('w0',(10,10))
 
     # boundary conditions
-    ocp.bound('cos_delta', (0.5,1.5), timestep=0, quiet=True)
+    rawekite.kiteutils.makeOrthonormal(ocp, ocp.lookup('R_c2b',timestep=0))
+    def getFourierFit(filename,phase):
+        # load the fourier fit
+        f=open(filename,'r')
+        trajFits = pickle.load(f)
+        f.close()
+        trajFits.setPhase(phase)
+        return trajFits
 
-    # boundary conditions
-    ocp.bound('sin_delta', (0,0), timestep=-1, quiet=True)
-    ocp.bound('cos_delta', (0.5,1.5), timestep=-1, quiet=True)
-    ocp.bound('ddelta', (0,0), timestep=-1, quiet=True)
+    startup = getFourierFit("data/carousel_homotopy_fourier.dat",ocp.lookup('phase0'))
 
-    f = open('data/carousel_homotopy.dat','r')
-    traj = pickle.load(f)
-    f.close()
-    for name in [ "y","z",
-                  "dy","dz",
-                  "w_bn_b_x","w_bn_b_y","w_bn_b_z",
-                  "r","dr",'ddr',
+    for name in [ 'x','y','z',
+                  'dx','dy','dz',
+                  'w_bn_b_x','w_bn_b_y','w_bn_b_z',
+                  'r','dr','ddr',
                   'ddelta',
                   'aileron','elevator','rudder','flaps',
-                  'sin_delta','motor_torque'
+                  'cos_delta','sin_delta','motor_torque'
                   ]:
-        val = traj.lookup(name,timestep=0)
-        ocp.bound(name,(val,val),timestep=0,quiet=True)
+        ocp.constrain(ocp(name,timestep=0),'==',startup[name],tag=('startup '+name,None))
 
-    dcm0 = rawekite.kiteutils.getDcm(traj, 0, prefix='e')
+    def get_fourier_dcm(fourier_traj):
+        return C.vertcat([C.horzcat([fourier_traj['e11'], fourier_traj['e12'], fourier_traj['e13']]),
+                          C.horzcat([fourier_traj['e21'], fourier_traj['e22'], fourier_traj['e23']]),
+                          C.horzcat([fourier_traj['e31'], fourier_traj['e32'], fourier_traj['e33']])])
+    dcm0 = get_fourier_dcm(startup)
     dcm1 = rawekite.kiteutils.getDcm(ocp, 0, prefix='e')
     rawekite.kiteutils.matchDcms(ocp, dcm0, dcm1)
 
     f = open('../pumping_mode/data/crosswind_opt_mechanical_1_loops.dat','r')
     traj = pickle.load(f)
     f.close()
-    correspondingNames = {'y':"r_n2b_n_y",
-                          'z':"r_n2b_n_z",
-                          'dy':"v_bn_n_y",
-                          'dz':"v_bn_n_z"}
+    correspondingNames = {'x':'r_n2b_n_x',
+                          'y':'r_n2b_n_y',
+                          'z':'r_n2b_n_z',
+                          'dx':'v_bn_n_x',
+                          'dy':'v_bn_n_y',
+                          'dz':'v_bn_n_z'}
     # exact matching conditions
-    print "exact matching conditions:"
     for name in [
 #                  'ddelta',
 #                  'aileron','elevator','rudder','flaps',
@@ -174,13 +170,13 @@ def setupOcp(dae,conf,nk,nicp=1,deg=4):
         ocp.bound(name,(val,val),timestep=-1,quiet=True)
 
     obj = 0
-    for name in [ "r","dr",'ddr',
-                  'y',"z",
-                  'dy',"dz",
-                  "w_bn_b_x","w_bn_b_y","w_bn_b_z",
+    for name in [ 'r','dr','ddr',
+                  'x','y','z',
+                  'dy','dz',
+                  'w_bn_b_x','w_bn_b_y','w_bn_b_z',
 #                  'ddelta',
                   'aileron','elevator','rudder','flaps',
-#                  'sin_delta'#,'motor_torque'
+#                  'sin_delta','cos_delta',#'motor_torque',
                   'e11','e12','e13','e21','e22','e23','e31','e32','e33'
                   ]:
         if name in correspondingNames:
@@ -190,6 +186,9 @@ def setupOcp(dae,conf,nk,nicp=1,deg=4):
         #ocp.bound(name,(val,val),timestep=-1,quiet=True)
         obj += 1e1*(ocp(name,timestep=-1)-val)**2
 
+    ocp.bound('ddelta',(0,0),timestep=-1,force=True,quiet=True)
+    ocp.bound('sin_delta',(0,0),timestep=-1,force=True,quiet=True)
+    ocp.bound('cos_delta',(0.5,1.5),timestep=-1,force=True,quiet=True)
     #dcm0 = rawekite.kiteutils.getDcm(traj, -1, prefix='e')
     #dcm1 = rawekite.kiteutils.getDcm(ocp, -1, prefix='e')
     #rawekite.kiteutils.matchDcms(ocp, dcm0, dcm1)
@@ -203,9 +202,12 @@ if __name__=='__main__':
     nk = 125
     dae = carousel_dae.makeDae(conf)
     dae.addP('endTime')
+    dae.addP('phase0')
 
     print "setting up ocp..."
     (ocp,obj) = setupOcp(dae,conf,nk)
+    ocp.guess('phase0',0)
+    ocp.bound('phase0',(-8*pi, 8*pi))
 
     lineRadiusGuess = 4.0
 
@@ -251,8 +253,9 @@ if __name__=='__main__':
 #            ], printBoundViolation=True, printConstraintViolation=True)
 
     # solver
-    solverOptions = [("linear_solver","ma86"),
-                     ("max_iter",2000),
+    solverOptions = [("max_iter",2000),
+#                     ("linear_solver","ma86"),
+                     ("linear_solver","ma97"),
                      ("expand",True),
 #                     ('verbose',True),
                      ("tol",1e-10)]
@@ -262,7 +265,11 @@ if __name__=='__main__':
 #                     constraintFunOpts=[('verbose',True)],
                      callback=callback)
 
+    import time
+    t0 = time.time()
     traj = ocp.solve()
+    tTotal = time.time() - t0
+    print "total time according to python: " + repr(tTotal)
     traj.save("data/transition.dat")
 
     def printBoundsFeedback():
