@@ -423,12 +423,14 @@ class OcpRT(object):
 #        blabla
 
     def updateArrivalCost(self,reset=False):
+        assert reset in [True,False], "reset must be True or False"
         if reset:
             reset = 1
         else:
             reset = 0
         self._setAll()
         return self._lib.updateArrivalCost(reset)
+        self._getAll()
 
     def getKKT(self):
         self._setAll()
