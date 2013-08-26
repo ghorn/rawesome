@@ -155,7 +155,6 @@ if __name__=='__main__':
         return steadyState
     ss = get_steady_state_guess()
 
-
     homotopyTraj = {'sin_delta':[],'cos_delta':[]}
     k = 0
     for nkIdx in range(ocp.nk+1):
@@ -206,7 +205,7 @@ if __name__=='__main__':
         drudderSigma = 0.1
         dflapsSigma = 0.1
         ddrSigma = 0.1
-        dmotorTorqueSigma = 0.1
+        dmotorTorqueSigma = 1.0
 
         ailObj = daileron*daileron / (daileronSigma*daileronSigma)
         eleObj = delevator*delevator / (delevatorSigma*delevatorSigma)
@@ -243,7 +242,7 @@ if __name__=='__main__':
             ], printBoundViolation=True, printConstraintViolation=True)
 
     # solver
-    solverOptions = [("linear_solver","ma27"),
+    solverOptions = [("linear_solver","ma86"),
                      ("max_iter",1000),
                      ("expand",True),
                      ("tol",1e-10)]
