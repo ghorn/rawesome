@@ -388,7 +388,7 @@ class OcpRT(object):
     def log(self):
         for field in self._autologNames:
             assert hasattr(self, field), \
-                "the \"impossible\" happend: ocprt doesn't have field \""+field+"\""
+                "the \"impossible\" happened: ocprt doesn't have field \""+field+"\""
             self._log[field].append(copy.deepcopy(getattr(self, field)))
         self._log['_kkt'].append(self.getKKT())
         self._log['_objective'].append(self.getObjective())
@@ -417,25 +417,29 @@ class OcpRT(object):
         # if it's a differential state
         if name in self.xNames():
             index = self.xNames().index(name)
+            ys = []
             for k in range(numpy.array(self._log['x']).shape[0]):
-                ys = numpy.array(self._log['x'])[k,:,index]
-                ts = (numpy.arange(len(ys)) + k)*self.ocp.ts
-                return (ts,ys)
+                ys.append(numpy.array(self._log['x'])[k,:,index])
+            return ys
 
         # if it's a control
-        if name in self.uNames():
+        elif name in self.uNames():
             index = self.uNames().index(name)
+            ys = []
             for k in range(numpy.array(self._log['u']).shape[0]):
-                ys = numpy.array(self._log['u'])[k,:,index]
-                ts = (offset + numpy.arange(len(ys)) + k)*self.ocp.ts
-                return (ts,ys)
+                ys.append(numpy.array(self._log['u'])[k,:,index])
+            return ys
 
         # if it's an output
-        if name in self.outputNames():
+        elif name in self.outputNames():
+            ys = []
             for k in range(numpy.array(self._log['outputs'][name]).shape[0]):
-                ys = numpy.array(self._log['outputs'][name])[k,:]
-                ts = (numpy.arange(len(ys)) + k)*self.ocp.ts
-                return (ts,ys)
+                ys.append(numpy.array(self._log['outputs'][name])[k,:])
+            return ys
+
+        else:
+            msg = 'ocpRT.getLog got unrecognized name: "'+name+'"'
+            raise Exception(msg)
 
 
 #     def shiftStates( int strategy, real_t* const xEnd, real_t* const uEnd ):
