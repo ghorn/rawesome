@@ -28,11 +28,42 @@ import carousel_dae
 from autogen.tocarouselProto import toProto
 from autogen.carousel_pb2 import Trajectory
 
+def constrainTetherForce(ocp):
+    for k in range(ocp.nk):
+        for j in range(1,ocp.deg+1): #[1]:
+            ocp.constrain( ocp.lookup('tether_tension',timestep=k,degIdx=j), '>=', 0, tag=('tether tension positive',k))
+
+def realMotorConstraints(ocp):
+    for k in range(nk):
+#        ocp.constrain( ocp.lookup('torque',timestep=k,degIdx=1),       '<=', 150, tag=('motor torque',k))
+#        ocp.constrain( ocp.lookup('torque',timestep=k,degIdx=ocp.deg), '<=', 150, tag=('motor torque',k))
+        ocp.constrainBnds( ocp.lookup('torque',timestep=k,degIdx=1),
+                           (-78,78), tag=('motor torque',k))
+        ocp.constrainBnds( ocp.lookup('torque',timestep=k,degIdx=ocp.deg),
+                           (-78,78), tag=('motor torque',k))
+
+        ocp.constrain( ocp.lookup('rpm',timestep=k),       '<=', 1500, tag=('rpm',k))
+        ocp.constrain( -1500, '<=', ocp.lookup('rpm',timestep=k),       tag=('rpm',k))
+
+
+def constrainAirspeedAlphaBeta(ocp):
+    for k in range(0,ocp.nk):
+        for j in range(0,ocp.deg+1):
+            ocp.constrainBnds(ocp.lookup('airspeed',timestep=k,degIdx=j),
+                              (10,45), tag=('airspeed',(k,j)))
+            ocp.constrainBnds(ocp.lookup('alpha_deg',timestep=k,degIdx=j), (-4.5,8.5), tag=('alpha',(k,j)))
+            ocp.constrain(ocp.lookup('cL',timestep=k,degIdx=j), '>=', -0.1, tag=('CL > -0.1',(k,j)))
+            ocp.constrainBnds(ocp.lookup('beta_deg', timestep=k,degIdx=j), (-6,6), tag=('beta',(k,j)))
+            x = ocp('x', timestep=k,degIdx=j)
+            y = ocp('y', timestep=k,degIdx=j)
+            z = ocp('z', timestep=k,degIdx=j)
+            ocp.constrain(C.sqrt(x**2 + y**2), '>=', -z, tag=('azimuth not too high',(k,j)))
+
 def setupOcp(dae,conf,nk,nicp=1,deg=4):
     ocp = rawe.collocation.Coll(dae, nk=nk,nicp=nicp,deg=deg)
 
     print "setting up collocation..."
-    ocp.setupCollocation(ocp.lookup('endTime'))
+    ocp.setupCollocation(ocp('endTime'))
 
     # constrain invariants
     def constrainInvariantErrs():
@@ -40,31 +71,17 @@ def setupOcp(dae,conf,nk,nicp=1,deg=4):
         rawekite.kiteutils.makeOrthonormal(ocp, R_c2b)
         ocp.constrain(ocp.lookup('c',timestep=0), '==', 0, tag=('initial c 0',None))
         ocp.constrain(ocp.lookup('cdot',timestep=0), '==', 0, tag=('initial cdot 0',None))
+        ocp.constrain(ocp('sin_delta',timestep=0)**2 + ocp('cos_delta',timestep=0)**2,
+                      '==', 1, tag=('sin**2 + cos**2 == 1',None))
     constrainInvariantErrs()
 
     # constrain line angle
     for k in range(0,nk):
         ocp.constrain(ocp.lookup('cos_line_angle',timestep=k),'>=',C.cos(55*pi/180), tag=('line angle',k))
 
-    # constrain airspeed
-    def constrainAirspeedAlphaBeta():
-        for k in range(0,nk):
-            for j in range(0,deg+1):
-                ocp.constrainBnds(ocp.lookup('airspeed',timestep=k,degIdx=j),
-                                  (10,45), tag=('airspeed',(k,j)))
-                ocp.constrainBnds(ocp.lookup('alpha_deg',timestep=k,degIdx=j), (-4.5,8.5), tag=('alpha',(k,j)))
-                ocp.constrain(ocp.lookup('cL',timestep=k,degIdx=j), '>=', -0.1, tag=('CL > -0.1',(k,j)))
-                ocp.constrainBnds(ocp.lookup('beta_deg', timestep=k,degIdx=j), (-6,6), tag=('beta',(k,j)))
-                x = ocp('x', timestep=k,degIdx=j)
-                y = ocp('y', timestep=k,degIdx=j)
-                z = ocp('z', timestep=k,degIdx=j)
-                ocp.constrain(C.sqrt(x**2 + y**2), '>=', -z, tag=('azimuth not too high',(k,j)))
-    constrainAirspeedAlphaBeta()
-
-    # constrain tether force
-    for k in range(nk):
-        ocp.constrain( ocp.lookup('tether_tension',timestep=k,degIdx=1), '>=', 0, tag=('tether tension',(nk,0)))
-        ocp.constrain( ocp.lookup('tether_tension',timestep=k,degIdx=ocp.deg), '>=', 0, tag=('tether tension',(nk,1)))
+    constrainAirspeedAlphaBeta(ocp)
+    constrainTetherForce(ocp)
+    #realMotorConstraints(ocp)
 
     # bounds
     ocp.bound('aileron', (numpy.radians(-10),numpy.radians(10)))
@@ -84,6 +101,9 @@ def setupOcp(dae,conf,nk,nicp=1,deg=4):
     ocp.bound('dr',(-10,10))
     ocp.bound('ddr',(-15,15))
     ocp.bound('dddr',(-50,50))
+#    ocp.bound('dr',(-1000,1000))
+#    ocp.bound('ddr',(-1500,1500))
+#    ocp.bound('dddr',(-500,500))
 
     ocp.bound('motor_torque',(-500,500))
     ocp.bound('dmotor_torque',(-100,100))
@@ -102,8 +122,7 @@ def setupOcp(dae,conf,nk,nicp=1,deg=4):
               'w_bn_b_z']:
         ocp.bound(w,(-4*pi,4*pi))
 
-    ocp.bound('endTime',(1,50))
-#    ocp.guess('endTime',3.5)
+    ocp.bound('endTime',(1,25))
     ocp.bound('w0',(4,4))
 #    ocp.bound('w0',(10,10))
 
@@ -115,7 +134,7 @@ def setupOcp(dae,conf,nk,nicp=1,deg=4):
     ocp.bound('cos_delta', (0.5,1.5), timestep=-1, quiet=True)
     ocp.bound('ddelta', (0,0), timestep=-1, quiet=True)
 
-    f = open('data/crosswind_homotopy.dat','r')
+    f = open('data/carousel_homotopy.dat','r')
     traj = pickle.load(f)
     f.close()
     for name in [ "y","z",
@@ -140,11 +159,25 @@ def setupOcp(dae,conf,nk,nicp=1,deg=4):
                           'z':"r_n2b_n_z",
                           'dy':"v_bn_n_y",
                           'dz':"v_bn_n_z"}
+    # exact matching conditions
+    print "exact matching conditions:"
+    for name in [
+#                  'ddelta',
+#                  'aileron','elevator','rudder','flaps',
+                  #,'motor_torque'
+                  ]:
+        if name in correspondingNames:
+            val = traj.lookup(correspondingNames[name],timestep=-1)
+        else:
+            val = traj.lookup(name,timestep=-1)
+        print name+": " +str(val)
+        ocp.bound(name,(val,val),timestep=-1,quiet=True)
+
     obj = 0
-    for name in [ 'y',"z",
+    for name in [ "r","dr",'ddr',
+                  'y',"z",
                   'dy',"dz",
                   "w_bn_b_x","w_bn_b_y","w_bn_b_z",
-                  "r","dr",'ddr',
 #                  'ddelta',
                   'aileron','elevator','rudder','flaps',
 #                  'sin_delta'#,'motor_torque'
@@ -155,7 +188,7 @@ def setupOcp(dae,conf,nk,nicp=1,deg=4):
         else:
             val = traj.lookup(name,timestep=-1)
         #ocp.bound(name,(val,val),timestep=-1,quiet=True)
-        obj += 1e0*(ocp(name,timestep=-1)-val)**2
+        obj += 1e1*(ocp(name,timestep=-1)-val)**2
 
     #dcm0 = rawekite.kiteutils.getDcm(traj, -1, prefix='e')
     #dcm1 = rawekite.kiteutils.getDcm(ocp, -1, prefix='e')
@@ -167,7 +200,7 @@ def setupOcp(dae,conf,nk,nicp=1,deg=4):
 if __name__=='__main__':
     from rawe.models.betty_conf import makeConf
     conf = makeConf()
-    nk = 120
+    nk = 125
     dae = carousel_dae.makeDae(conf)
     dae.addP('endTime')
 
@@ -202,14 +235,13 @@ if __name__=='__main__':
         winchObj = dddr*dddr / (dddrSigma*dddrSigma)
         motorTorqueObj = dmotorTorque*dmotorTorque / (dmotorTorqueSigma*dmotorTorqueSigma)
 
-        obj += 1e0*(ailObj + eleObj + rudObj + flapsObj + winchObj + motorTorqueObj)/float(ocp.nk)
+        obj += 1e-2*(ailObj + eleObj + rudObj + flapsObj + winchObj + motorTorqueObj)/float(ocp.nk)
 
     ocp.setObjective( obj )
 
     # initial guesses
-    ocp.guess('w0',0)
-    ocp.interpolateInitialGuess("data/crosswind_homotopy.dat",force=True,quiet=True,numLoops=5)
-    #ocp.interpolateInitialGuess("data/transition.dat",force=True,quiet=True)
+    ocp.interpolateInitialGuess("data/carousel_homotopy.dat",force=True,quiet=True,numLoops=4)
+    #ocp.interpolateInitialGuess("data/transition_backup.dat",force=True,quiet=True)
 
     # spawn telemetry thread
     callback = rawe.telemetry.startTelemetry(
@@ -219,14 +251,16 @@ if __name__=='__main__':
 #            ], printBoundViolation=True, printConstraintViolation=True)
 
     # solver
-    solverOptions = [("linear_solver","ma27"),
+    solverOptions = [("linear_solver","ma86"),
                      ("max_iter",2000),
                      ("expand",True),
+#                     ('verbose',True),
                      ("tol",1e-10)]
 
     print "setting up solver..."
     ocp.setupSolver( solverOpts=solverOptions,
-                     callback=callback )
+#                     constraintFunOpts=[('verbose',True)],
+                     callback=callback)
 
     traj = ocp.solve()
     traj.save("data/transition.dat")

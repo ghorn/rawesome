@@ -50,7 +50,7 @@ def constrainAirspeedAlphaBeta(ocp):
         ocp.constrainBnds(ocp.lookup('beta_deg', timestep=k), (-9,9), tag=('beta(deg)',k))
 
 def constrainTetherForce(ocp):
-    for k in range(nk):
+    for k in range(ocp.nk):
 #        ocp.constrain( ocp.lookup('tether_tension',timestep=k,degIdx=1), '>=', 0, tag=('tether tension positive',k))
 #        ocp.constrain( ocp.lookup('tether_tension',timestep=k,degIdx=ocp.deg), '>=', 0, tag=('tether tension positive',k))
         for j in range(1,ocp.deg+1):

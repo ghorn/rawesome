@@ -49,6 +49,7 @@ def getSteadyState(dae,conf,omega0,r0,ref_dict):
     g.addBnds(dae['alpha_deg'], (-4.0, 8.0), tag=("alpha deg",None))
     g.addBnds(dae['beta_deg'], (-7.0, 7.0), tag=("beta deg",None))
     #g.addBnds(dae['cL'], (0, 3), tag=("CL positive",None))
+    g.add( dae['tether_tension'], '>=', 0, tag=('tether tension',None))
 
     dvs = C.veccat([dae.xVec(), dae.zVec(), dae.uVec(), dae.pVec(), dae.xDotVec()])
     obj = 0
@@ -102,7 +103,7 @@ def getSteadyState(dae,conf,omega0,r0,ref_dict):
              'aileron':(-0.2,0.2),'elevator':(-0.2,0.2),'rudder':(-0.2,0.2),'flaps':(-0.2,0.2),
              'daileron':(0,0),'delevator':(0,0),'drudder':(0,0),'dflaps':(0,0),
              'nu':(0,3000),'motor_torque':(-1000,1000),
-             'ddr':(0,0),
+              'ddr':(-1,1),
              'dmotor_torque':(0,0),'dddr':(0,0),'w0':(0,0)}
     for name in ref_dict: bounds[name] = ref_dict[name]
     dotBounds = {'x':(-1,1),'y':(-1,1),'z':(-1,1),
