@@ -413,6 +413,31 @@ class OcpRT(object):
         for outName in self.outputNames():
             self._log['outputs'][outName].append(numpy.squeeze(ret[outName]))
 
+    def getLog(self,name):
+        # if it's a differential state
+        if name in self.xNames():
+            index = self.xNames().index(name)
+            for k in range(numpy.array(self._log['x']).shape[0]):
+                ys = numpy.array(self._log['x'])[k,:,index]
+                ts = (numpy.arange(len(ys)) + k)*self.ocp.ts
+                return (ts,ys)
+
+        # if it's a control
+        if name in self.uNames():
+            index = self.uNames().index(name)
+            for k in range(numpy.array(self._log['u']).shape[0]):
+                ys = numpy.array(self._log['u'])[k,:,index]
+                ts = (offset + numpy.arange(len(ys)) + k)*self.ocp.ts
+                return (ts,ys)
+
+        # if it's an output
+        if name in self.outputNames():
+            for k in range(numpy.array(self._log['outputs'][name]).shape[0]):
+                ys = numpy.array(self._log['outputs'][name])[k,:]
+                ts = (numpy.arange(len(ys)) + k)*self.ocp.ts
+                return (ts,ys)
+
+
 #     def shiftStates( int strategy, real_t* const xEnd, real_t* const uEnd ):
 #         void shiftStates( int strategy, real_t* const xEnd, real_t* const uEnd );
 
