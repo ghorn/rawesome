@@ -1,2 +1,6 @@
 *.pyc
 *\~
+
+.settings
+.project
+.pydevproject
