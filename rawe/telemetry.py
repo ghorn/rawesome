@@ -99,6 +99,7 @@ def trajectoryCallback(toProto,protoTraj,showAllPoints=False):
                     protos.append( toProto(lookup) )
         mc = protoTraj()
         mc.traj.extend(list(protos))
+        mc.messages.extend(['%s: %.4g' % (name, traj.lookup(name)) for name in traj.dvMap._pNames])
 
         return mc.SerializeToString()
     return callback
