@@ -133,7 +133,10 @@ class Constraints():
         for name in viols:
             vstrs = str(sorted(viols[name], key=lambda x: -x[2]))
 #            vstrs = ["("+str(degidx)+","+str(k)+","+colored(str(val))+")" for (degidx,k,val) in sorted(viols[name], key=lambda x: -x[2])]
-            ret.append("constraint violation! \""+name+": "+vstrs[:250])
+            blah = "constraint violation! \""+name+": "+vstrs
+            if len(blah) > 150:
+                blah = blah[:150] + "..."
+            ret.append(blah)
         return '\n'.join(ret)
 
     def printViolations(self,*args,**kwargs):
