@@ -189,7 +189,7 @@ if __name__=='__main__':
     conf = makeConf()
     dae = rawe.models.crosswind(conf)
     dae.addP('endTime')
-    conf['minAltitude'] = 0.5
+    conf['minAltitude'] = 0
 
     print "setting up ocp..."
     nicp = 1
@@ -205,7 +205,7 @@ if __name__=='__main__':
         ])
 
     # solver
-    ipoptOptions = [("linear_solver","ma27"),
+    ipoptOptions = [("linear_solver","ma86"),
                     ("expand",True),
                     ("max_iter",2000),
                     ("tol",1e-10)]
@@ -278,6 +278,8 @@ if __name__=='__main__':
 
         plt.show()
 #    plotResults()
+    traj.subplot(['r','dr','ddr','dddr'])
+    plt.show()
 
 
     def plotPaper():
