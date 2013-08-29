@@ -96,6 +96,7 @@ def makeConf():
 
          # wind model
          'wind_model':{'name':'wind_shear',
+                       'altitude0':-2,
                        'z0':100,
                        'zt_roughness': 0.1}
 #         'wind_model':{'name':'constant'}
