@@ -52,7 +52,7 @@ def secretAccess(f):
     return blah
 
 class OcpRT(object):
-    _canonicalNames = ['x','u','z','y','yN','x0','S','SN']
+    _canonicalNames = ['x','u','z','y','yN','x0','S','SN','SAC','xAC','WL']
 
     @property
     def ocp(self):
@@ -116,6 +116,12 @@ class OcpRT(object):
                                    self._lib.py_get_ACADO_NYN()))
         else:
             raise Exception('unrecognized ACADO_WEIGHING_MATRICES_TYPE '+str(wmt))
+        if self._lib.py_get_ACADO_USE_ARRIVAL_COST() == 1:
+            self.xAC = numpy.zeros(self._lib.py_get_ACADO_NX())
+            self.SAC = numpy.zeros((self._lib.py_get_ACADO_NX(),
+                                    self._lib.py_get_ACADO_NX()))
+            self.WL = numpy.zeros((self._lib.py_get_ACADO_NX(),
+                                   self._lib.py_get_ACADO_NX()))
 
         if self._lib.py_get_ACADO_INITIAL_STATE_FIXED():
             self.x0 = numpy.zeros(self._lib.py_get_ACADO_NX())
@@ -197,6 +203,10 @@ class OcpRT(object):
         self._callMat(self._lib.py_set_SN, self.SN)
         if self._lib.py_get_ACADO_INITIAL_STATE_FIXED():
             self._callMat(self._lib.py_set_x0, self.x0)
+        if self._lib.py_get_ACADO_USE_ARRIVAL_COST():
+            self._callMat(self._lib.py_set_xAC, self.xAC)
+            self._callMat(self._lib.py_set_SAC, self.SAC)
+            self._callMat(self._lib.py_set_WL, self.WL)
         if hasattr(self, 'z'):
             self._callMat(self._lib.py_set_z, self.z)
 
@@ -209,6 +219,10 @@ class OcpRT(object):
         self._callMat(self._lib.py_get_SN, self.SN)
         if self._lib.py_get_ACADO_INITIAL_STATE_FIXED():
             self._callMat(self._lib.py_get_x0, self.x0)
+        if self._lib.py_get_ACADO_USE_ARRIVAL_COST():
+            self._callMat(self._lib.py_get_xAC, self.xAC)
+            self._callMat(self._lib.py_get_SAC, self.SAC)
+            self._callMat(self._lib.py_get_WL, self.WL)
         if hasattr(self, 'z'):
             self._callMat(self._lib.py_get_z, self.z)
 
@@ -374,7 +388,7 @@ class OcpRT(object):
     def log(self):
         for field in self._autologNames:
             assert hasattr(self, field), \
-                "the \"impossible\" happend: ocprt doesn't have field \""+field+"\""
+                "the \"impossible\" happened: ocprt doesn't have field \""+field+"\""
             self._log[field].append(copy.deepcopy(getattr(self, field)))
         self._log['_kkt'].append(self.getKKT())
         self._log['_objective'].append(self.getObjective())
@@ -399,6 +413,35 @@ class OcpRT(object):
         for outName in self.outputNames():
             self._log['outputs'][outName].append(numpy.squeeze(ret[outName]))
 
+    def getLog(self,name):
+        # if it's a differential state
+        if name in self.xNames():
+            index = self.xNames().index(name)
+            ys = []
+            for k in range(numpy.array(self._log['x']).shape[0]):
+                ys.append(numpy.array(self._log['x'])[k,:,index])
+            return ys
+
+        # if it's a control
+        elif name in self.uNames():
+            index = self.uNames().index(name)
+            ys = []
+            for k in range(numpy.array(self._log['u']).shape[0]):
+                ys.append(numpy.array(self._log['u'])[k,:,index])
+            return ys
+
+        # if it's an output
+        elif name in self.outputNames():
+            ys = []
+            for k in range(numpy.array(self._log['outputs'][name]).shape[0]):
+                ys.append(numpy.array(self._log['outputs'][name])[k,:])
+            return ys
+
+        else:
+            msg = 'ocpRT.getLog got unrecognized name: "'+name+'"'
+            raise Exception(msg)
+
+
 #     def shiftStates( int strategy, real_t* const xEnd, real_t* const uEnd ):
 #         void shiftStates( int strategy, real_t* const xEnd, real_t* const uEnd );
 
@@ -407,6 +450,16 @@ class OcpRT(object):
 
 #    def getTiming(self):
 #        blabla
+
+    def updateArrivalCost(self,reset=False):
+        assert reset in [True,False], "reset must be True or False"
+        if reset:
+            reset = 1
+        else:
+            reset = 0
+        self._setAll()
+        return self._lib.updateArrivalCost(reset)
+        self._getAll()
 
     def getKKT(self):
         self._setAll()
@@ -621,90 +674,90 @@ class MheRT(OcpRT):
         self._yuFun.evaluate()
         return numpy.squeeze(numpy.array(self._yuFun.output(0)))
 
-    def UpdateArrivalCost(self):
-        ''' Arrival cost implementation.
-            Approximate the solution of:
-            min_{xL_,uL_,xL1_} ||  pL ( xL_-xL )         ||^2
-                               ||  vL ( yL-h(xL_,uL_) )  ||
-                               ||  wL wx                 ||_2
-                         s.t.  wx = xL1_ - f(xL_,uL_)
-            where:
-                    PL = pL^T pL is the last kalman prediction covariance matrix
-                    VL = vL^T vL is the measurement noise covariance matrix
-                    WL = wL^T wL is the state noise covariance matrix
-
-            Linearization (at the last MHE estimate x,u which is different from xL,uL):
-            f(xL_,uL_) ~= f(x,u) + df(x,u)/dx (xL_-x) + df(x,u)/du (uL_-u)
-                       ~= f(x,u) +         Xx (xL_-x) +         Xu (uL_-u)
-                       ~= f(x,u) - Xx x - Xu u + Xx xL_ + Xu uL_
-                       ~= x_tilde              + Xx xL_ + Xu uL_
-            h(xL_,uL_) ~= h(x,u) + dh(x,u)/dx (xL_-x) + dh(x,u)/du (uL_-u)
-                       ~= f(x,u) +         Hx (xL_-x) +         Hu (uL_-u)
-                       ~= h(x,u) - Hx x - Hu u + Hx xL_ + Hu uL_
-                       ~= h_tilde              + Hx xL_ + Hu uL_
-
-            Linearized problem:
-            min_{xL_,uL_,xL1_} ||  pL ( xL_ - xL )                          ||^2
-                               ||  vL ( yL - h_tilde - Hx xL_ - Hu uL_ )    ||
-                               ||  wL ( xL1_ - x_tilde - Xx xL_ - Xu uL_ )  ||_2
-
-            Rewrite as:
-            min_{xL_,uL_,xL1_} ||  M ( xL_, uL_, xL1_ ) + res  ||^2_2
-
-            After QR factorization of M:
-            min_{xL_,uL_,xL1_} ||  R ( xL_, uL_, xL1_ ) + rho  ||^2_2
-
-            '''
-        pL = self.pL
-        vL = self.vL
-        wL = self.wL
-
-        xL = self.xL        # Last kalman update state prediction for the initial state
-        yL = self.y[0,:]    # Initial measurement
-
-        x = self.x[0,:]     # Last MHE state prediction
-        u = self.u[0,:]     # Last MHE control prediction
-
-        nx = x.shape[0]
-        nu = u.shape[0]
-        nV = vL.shape[0]
-
-        self._integrator_y.x = x
-        self._integrator_y.u = u
-        h = self._integrator_y.y
-        x1 = self._integrator_y.step()
-        Xx = self._integrator_y.dx1_dx0
-        Xu = self._integrator_y.dx1_du
-
-        Hx = self._integrator_y.dh_dx0
-        Hu = self._integrator_y.dh_du
-
-        x_tilde = x1 - numpy.dot(Xx,x) - numpy.dot(Xu,u)
-        h_tilde =  h - numpy.dot(Hx,x) - numpy.dot(Hu,u)
-
-        res = numpy.bmat([ -numpy.dot(pL, xL),
-                            numpy.dot(vL, yL - h_tilde),
-                           -numpy.dot(wL, x_tilde) ])
-        res = numpy.squeeze(numpy.array(res))
-
-        M = numpy.bmat([[                pL,  numpy.zeros((nx,nu)), numpy.zeros((nx,nx)) ],
-                        [ -numpy.dot(vL,Hx),     -numpy.dot(vL,Hu), numpy.zeros((nV,nx)) ],
-                        [ -numpy.dot(wL,Xx),     -numpy.dot(wL,Xu),                   wL ]])
-
-        Q, R = numpy.linalg.qr(M)
-
-    #    R1  = R[:nx+nu,:nx+nu]
-    #    R12 = R[:nx+nu,nx+nu:]
-        R2  = R[nx+nu:,nx+nu:]
-
-    #    rho = numpy.linalg.solve(Q,res)
-        rho = numpy.squeeze(numpy.array(numpy.dot(Q.T,res)))
-        rho2 = rho[nx+nu:]
-
-        pL1 = R2
-        xL1 = -numpy.linalg.solve(R2,rho2)
-
-        self.pL = numpy.array( pL1 )
-        self.AC = numpy.dot( pL1.T, pL1 )
-
-        self.xL = numpy.array( xL1 )
+#    def UpdateArrivalCost(self):
+#        ''' Arrival cost implementation.
+#            Approximate the solution of:
+#            min_{xL_,uL_,xL1_} ||  pL ( xL_-xL )         ||^2
+#                               ||  vL ( yL-h(xL_,uL_) )  ||
+#                               ||  wL wx                 ||_2
+#                         s.t.  wx = xL1_ - f(xL_,uL_)
+#            where:
+#                    PL = pL^T pL is the last kalman prediction covariance matrix
+#                    VL = vL^T vL is the measurement noise covariance matrix
+#                    WL = wL^T wL is the state noise covariance matrix
+#
+#            Linearization (at the last MHE estimate x,u which is different from xL,uL):
+#            f(xL_,uL_) ~= f(x,u) + df(x,u)/dx (xL_-x) + df(x,u)/du (uL_-u)
+#                       ~= f(x,u) +         Xx (xL_-x) +         Xu (uL_-u)
+#                       ~= f(x,u) - Xx x - Xu u + Xx xL_ + Xu uL_
+#                       ~= x_tilde              + Xx xL_ + Xu uL_
+#            h(xL_,uL_) ~= h(x,u) + dh(x,u)/dx (xL_-x) + dh(x,u)/du (uL_-u)
+#                       ~= f(x,u) +         Hx (xL_-x) +         Hu (uL_-u)
+#                       ~= h(x,u) - Hx x - Hu u + Hx xL_ + Hu uL_
+#                       ~= h_tilde              + Hx xL_ + Hu uL_
+#
+#            Linearized problem:
+#            min_{xL_,uL_,xL1_} ||  pL ( xL_ - xL )                          ||^2
+#                               ||  vL ( yL - h_tilde - Hx xL_ - Hu uL_ )    ||
+#                               ||  wL ( xL1_ - x_tilde - Xx xL_ - Xu uL_ )  ||_2
+#
+#            Rewrite as:
+#            min_{xL_,uL_,xL1_} ||  M ( xL_, uL_, xL1_ ) + res  ||^2_2
+#
+#            After QR factorization of M:
+#            min_{xL_,uL_,xL1_} ||  R ( xL_, uL_, xL1_ ) + rho  ||^2_2
+#
+#            '''
+#        pL = self.pL
+#        vL = self.vL
+#        wL = self.wL
+#
+#        xL = self.xL        # Last kalman update state prediction for the initial state
+#        yL = self.y[0,:]    # Initial measurement
+#
+#        x = self.x[0,:]     # Last MHE state prediction
+#        u = self.u[0,:]     # Last MHE control prediction
+#
+#        nx = x.shape[0]
+#        nu = u.shape[0]
+#        nV = vL.shape[0]
+#
+#        self._integrator_y.x = x
+#        self._integrator_y.u = u
+#        h = self._integrator_y.y
+#        x1 = self._integrator_y.step()
+#        Xx = self._integrator_y.dx1_dx0
+#        Xu = self._integrator_y.dx1_du
+#
+#        Hx = self._integrator_y.dh_dx0
+#        Hu = self._integrator_y.dh_du
+#
+#        x_tilde = x1 - numpy.dot(Xx,x) - numpy.dot(Xu,u)
+#        h_tilde =  h - numpy.dot(Hx,x) - numpy.dot(Hu,u)
+#
+#        res = numpy.bmat([ -numpy.dot(pL, xL),
+#                            numpy.dot(vL, yL - h_tilde),
+#                           -numpy.dot(wL, x_tilde) ])
+#        res = numpy.squeeze(numpy.array(res))
+#
+#        M = numpy.bmat([[                pL,  numpy.zeros((nx,nu)), numpy.zeros((nx,nx)) ],
+#                        [ -numpy.dot(vL,Hx),     -numpy.dot(vL,Hu), numpy.zeros((nV,nx)) ],
+#                        [ -numpy.dot(wL,Xx),     -numpy.dot(wL,Xu),                   wL ]])
+#
+#        Q, R = numpy.linalg.qr(M)
+#
+#    #    R1  = R[:nx+nu,:nx+nu]
+#    #    R12 = R[:nx+nu,nx+nu:]
+#        R2  = R[nx+nu:,nx+nu:]
+#
+#    #    rho = numpy.linalg.solve(Q,res)
+#        rho = numpy.squeeze(numpy.array(numpy.dot(Q.T,res)))
+#        rho2 = rho[nx+nu:]
+#
+#        pL1 = R2
+#        xL1 = -numpy.linalg.solve(R2,rho2)
+#
+#        self.pL = numpy.array( pL1 )
+#        self.AC = numpy.dot( pL1.T, pL1 )
+#
+#        self.xL = numpy.array( xL1 )

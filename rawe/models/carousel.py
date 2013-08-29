@@ -128,7 +128,7 @@ def setupModel(dae, conf):
             zt_roughness = conf['wind_model']['zt_roughness']
             zsat = 0.5*(-z+C.sqrt(z*z))
             return dae['w0']*C.log((zsat+zt_roughness+2)/zt_roughness)/C.log(z0/zt_roughness)
-        elif conf['wind_model']['name'] == 'constant':
+        elif conf['wind_model']['name'] in ['constant','hardcoded']:
             # constant wind
             return dae['w0']
     wind_x = getWind()
@@ -370,7 +370,10 @@ def carouselModel(conf):
               ] )
     # add wind parameter if wind shear is in configuration
     if 'wind_model' in conf:
-        dae.addP( ['w0'] )
+        if conf['wind_model']['name'] == 'hardcoded':
+            dae['w0'] = conf['wind_model']['hardcoded_value']
+        else:
+            dae.addP( ['w0'] )
 
     # set some state derivatives as outputs
     dae['ddx'] = dae.ddt('dx')

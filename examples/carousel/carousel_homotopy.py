@@ -40,6 +40,8 @@ def setupOcp(dae,conf,nk,nicp=1,deg=4):
         rawekite.kiteutils.makeOrthonormal(ocp, R_c2b)
         ocp.constrain(ocp.lookup('c',timestep=0), '==', 0, tag=('initial c 0',None))
         ocp.constrain(ocp.lookup('cdot',timestep=0), '==', 0, tag=('initial cdot 0',None))
+        ocp.constrain(ocp('sin_delta',timestep=0)**2 + ocp('cos_delta',timestep=0)**2,
+                      '==', 1, tag=('sin**2 + cos**2 == 1',None))
     constrainInvariantErrs()
 
     # constrain line angle
@@ -153,7 +155,6 @@ if __name__=='__main__':
         return steadyState
     ss = get_steady_state_guess()
 
-
     homotopyTraj = {'sin_delta':[],'cos_delta':[]}
     k = 0
     for nkIdx in range(ocp.nk+1):
@@ -204,7 +205,7 @@ if __name__=='__main__':
         drudderSigma = 0.1
         dflapsSigma = 0.1
         ddrSigma = 0.1
-        dmotorTorqueSigma = 0.1
+        dmotorTorqueSigma = 1.0
 
         ailObj = daileron*daileron / (daileronSigma*daileronSigma)
         eleObj = delevator*delevator / (delevatorSigma*delevatorSigma)
@@ -241,7 +242,7 @@ if __name__=='__main__':
             ], printBoundViolation=True, printConstraintViolation=True)
 
     # solver
-    solverOptions = [("linear_solver","ma27"),
+    solverOptions = [("linear_solver","ma86"),
                      ("max_iter",1000),
                      ("expand",True),
                      ("tol",1e-10)]
@@ -261,7 +262,7 @@ if __name__=='__main__':
 #    ocp.bound('endTime',(3.5,6.0),force=True)
     traj = ocp.solve(xInit=traj.getDvs())
 
-    traj.save("data/crosswind_homotopy.dat")
+    traj.save("data/carousel_homotopy.dat")
 
     def printBoundsFeedback():
         # bounds feedback

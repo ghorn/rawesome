@@ -18,8 +18,6 @@
 import casadi as CS
 import numpy as np
 import numbers
-import pickle
-from scipy.interpolate import PiecewisePolynomial
 import sys
 
 from rawe.ocputils import Constraints,setFXOptions
@@ -337,65 +335,41 @@ class Coll():
         return ffcn
 
     def interpolateInitialGuess(self,filename,force=False,quiet=False,numLoops=1):
-        print "interpolating initial guess from "+filename+" ..."
-        f=open(filename,'r')
-        traj = pickle.load(f)
-        f.close()
-
-        assert isinstance(traj,trajectory.Trajectory), "the file \""+filename+"\" doean't have a pickled Trajectory"
+        traj = trajectory.load_traj(filename)
+        pps = trajectory.make_pps(traj)
 
         h = (traj.tgrid[-1,0,0] - traj.tgrid[0,0,0])/float(traj.dvMap._nk*traj.dvMap._nicp)
         h *= traj.dvMap._nk*traj.dvMap._nicp/float(self.nk*self.nicp)
         h *= numLoops
 
-        pps = {}
-        missing = []
-        ############# make piecewise polynomials ###########
-        # differential states
-        for name in traj.dvMap._xNames:
-            # make piecewise poly
-            pps[name] = None
-            for timestepIdx in range(traj.dvMap._nk):
-                for nicpIdx in range(traj.dvMap._nicp):
-                    ts = []
-                    ys = []
-                    for degIdx in range(traj.dvMap._deg+1):
-                        ts.append(traj.tgrid[timestepIdx,nicpIdx,degIdx])
-                        ys.append([traj.dvMap.lookup(name,timestep=timestepIdx,nicpIdx=nicpIdx,degIdx=degIdx)])
-                    if pps[name] is None:
-                        pps[name] = PiecewisePolynomial(ts,ys)
-                    else:
-                        pps[name].extend(ts,ys)
-            pps[name].extend([traj.tgrid[-1,0,0]],[[traj.dvMap.lookup(name,timestep=-1,nicpIdx=0,degIdx=0)]])
-
-        # algebraic variables
-        for name in traj.dvMap._zNames:
-            # make piecewise poly
-            pps[name] = None
-            for timestepIdx in range(traj.dvMap._nk):
-                for nicpIdx in range(traj.dvMap._nicp):
-                    ts = []
-                    ys = []
-                    for degIdx in range(1,traj.dvMap._deg+1):
-                        ts.append(traj.tgrid[timestepIdx,nicpIdx,degIdx])
-                        ys.append([traj.dvMap.lookup(name,timestep=timestepIdx,nicpIdx=nicpIdx,degIdx=degIdx)])
-                    if pps[name] is None:
-                        pps[name] = PiecewisePolynomial(ts,ys)
-                    else:
-                        pps[name].extend(ts,ys)
-
-        # controls
-        for name in traj.dvMap._uNames:
-            # make piecewise poly
-            ts = []
-            ys = []
-            for timestepIdx in range(traj.dvMap._nk):
-                ts.append(traj.tgrid[timestepIdx,0,0])
-                ys.append([traj.dvMap.lookup(name,timestep=timestepIdx)])
-            pps[name] = PiecewisePolynomial(ts,ys)
-
-        ############# interpolate ###########
         sys.stdout.write('reticulating splines... ')
+        missing = []
+
+        t0 = 0.0
+        x_interp_times = []
+        for timestepIdx in range(self.nk):
+            for nicpIdx in range(self.nicp):
+                for degIdx in range(self.deg+1):
+                    time = t0 + h*self.lagrangePoly.tau_root[degIdx]
+                    if time > traj.tgrid[-1,0,0]:
+                        time -= traj.tgrid[-1,0,0]
+                    x_interp_times.append(time)
+                t0 += h
+                if t0 > traj.tgrid[-1,0,0]:
+                    t0 -= traj.tgrid[-1,0,0]
+        x_interp_times.append(t0)
+
+        t0 = 0.0
+        z_interp_times = []
+        for timestepIdx in range(self.nk):
+            for nicpIdx in range(self.nicp):
+                for degIdx in range(1,self.deg+1):
+                    time = t0 + h*self.lagrangePoly.tau_root[degIdx]
+                    if time > traj.tgrid[-1,0,0]:
+                        time -= traj.tgrid[-1,0,0]
+                    z_interp_times.append(time)
+                t0 += h
+
         # interpolate differential states
         for name in self.dae.xNames():
             sys.stdout.write(name+' '); sys.stdout.flush()
@@ -403,19 +377,16 @@ class Coll():
                 missing.append(name)
                 continue
             # evaluate piecewise poly to set initial guess
-            t0 = 0.0
+            x_interp_values =  pps[name](x_interp_times)
+            k = 0
             for timestepIdx in range(self.nk):
                 for nicpIdx in range(self.nicp):
                     for degIdx in range(self.deg+1):
-                        time = t0 + h*self.lagrangePoly.tau_root[degIdx]
-                        if time > traj.tgrid[-1,0,0]:
-                            time -= traj.tgrid[-1,0,0]
-                        self.guess(name,pps[name](time),timestep=timestepIdx,nicpIdx=nicpIdx,degIdx=degIdx,force=force,quiet=quiet)
-                    t0 += h
-                    if t0 > traj.tgrid[-1,0,0]:
-                        t0 -= traj.tgrid[-1,0,0]
-            self.guess(name,pps[name](t0),timestep=-1,nicpIdx=0,degIdx=0,force=force,quiet=quiet)
-
+                        self.guess(name,x_interp_values[k],
+                                   timestep=timestepIdx,nicpIdx=nicpIdx,
+                                   degIdx=degIdx,force=force,quiet=quiet)
+                        k += 1
+            self.guess(name,x_interp_values[k],timestep=-1,nicpIdx=0,degIdx=0,force=force,quiet=quiet)
 
         # interpolate algebraic variables
         for name in self.dae.zNames():
@@ -424,15 +395,15 @@ class Coll():
                 missing.append(name)
                 continue
             # evaluate piecewise poly to set initial guess
-            t0 = 0.0
+            z_interp_values =  pps[name](z_interp_times)
+            k = 0
             for timestepIdx in range(self.nk):
                 for nicpIdx in range(self.nicp):
                     for degIdx in range(1,self.deg+1):
-                        time = t0 + h*self.lagrangePoly.tau_root[degIdx]
-                        if time > traj.tgrid[-1,0,0]:
-                            time -= traj.tgrid[-1,0,0]
-                        self.guess(name,pps[name](time),timestep=timestepIdx,nicpIdx=nicpIdx,degIdx=degIdx,force=force,quiet=quiet)
-                    t0 += h
+                        self.guess(name,z_interp_values[k],
+                                   timestep=timestepIdx,nicpIdx=nicpIdx,
+                                   degIdx=degIdx,force=force,quiet=quiet)
+                        k += 1
 
         # interpolate controls
         for name in self.dae.uNames():
@@ -441,10 +412,10 @@ class Coll():
                 missing.append(name)
                 continue
             # evaluate piecewise poly to set initial guess
-            t0 = 0.0
+            u_interp_values = pps[name]([h*k for k in range(self.nk)])
             for timestepIdx in range(self.nk):
-                self.guess(name,pps[name](t0),timestep=timestepIdx,force=force,quiet=quiet)
-                t0 += h
+                self.guess(name,u_interp_values[timestepIdx],
+                           timestep=timestepIdx,force=force,quiet=quiet)
 
         # set parameters
         for name in self.dae.pNames():

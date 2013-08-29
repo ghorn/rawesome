@@ -19,9 +19,76 @@ import matplotlib.pyplot as plt
 import pickle
 import numpy
 import scipy.io
+from scipy.interpolate import PiecewisePolynomial
 
 import casadi as C
 import collmaps
+
+
+def load_traj(filename):
+    '''
+    take in a filename
+    return an unpicked trajectory object
+    '''
+    print "loading trajectory from "+filename+" ..."
+    f=open(filename,'r')
+    traj = pickle.load(f)
+    f.close()
+    assert isinstance(traj,Trajectory), "the file \""+filename+"\" doesn't have a pickled Trajectory"
+    return traj
+
+def make_pps(traj):
+    '''
+    take a trajectory object as input
+    return a dictionary of piecewise polynomials, one for each name
+    '''
+    pps = {}
+
+    # differential states
+    for name in traj.dvMap._xNames:
+        # make piecewise poly
+        pps[name] = None
+        for timestepIdx in range(traj.dvMap._nk):
+            for nicpIdx in range(traj.dvMap._nicp):
+                ts = []
+                ys = []
+                for degIdx in range(traj.dvMap._deg+1):
+                    ts.append(traj.tgrid[timestepIdx,nicpIdx,degIdx])
+                    ys.append([traj.dvMap.lookup(name,timestep=timestepIdx,nicpIdx=nicpIdx,degIdx=degIdx)])
+                if pps[name] is None:
+                    pps[name] = PiecewisePolynomial(ts,ys)
+                else:
+                    pps[name].extend(ts,ys)
+        pps[name].extend([traj.tgrid[-1,0,0]],[[traj.dvMap.lookup(name,timestep=-1,nicpIdx=0,degIdx=0)]])
+
+    # algebraic variables
+    for name in traj.dvMap._zNames:
+        # make piecewise poly
+        pps[name] = None
+        for timestepIdx in range(traj.dvMap._nk):
+            for nicpIdx in range(traj.dvMap._nicp):
+                ts = []
+                ys = []
+                for degIdx in range(1,traj.dvMap._deg+1):
+                    ts.append(traj.tgrid[timestepIdx,nicpIdx,degIdx])
+                    ys.append([traj.dvMap.lookup(name,timestep=timestepIdx,nicpIdx=nicpIdx,degIdx=degIdx)])
+                if pps[name] is None:
+                    pps[name] = PiecewisePolynomial(ts,ys)
+                else:
+                    pps[name].extend(ts,ys)
+
+    # controls
+    for name in traj.dvMap._uNames:
+        # make piecewise poly
+        ts = []
+        ys = []
+        for timestepIdx in range(traj.dvMap._nk):
+            ts.append(traj.tgrid[timestepIdx,0,0])
+            ys.append([traj.dvMap.lookup(name,timestep=timestepIdx)])
+        pps[name] = PiecewisePolynomial(ts,ys)
+
+    return pps
+
 
 class Trajectory(object):
     """

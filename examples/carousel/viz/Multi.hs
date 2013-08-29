@@ -61,9 +61,9 @@ toNice dae = NiceKite { nk_xyz = xyz
     e32 = PX.e32 daeX
     e33 = PX.e33 daeX
 
-    delta = atan2 (-(PX.sin_delta daeX)) (PX.cos_delta daeX)
+    delta = atan2 (PX.sin_delta daeX) (PX.cos_delta daeX)
 
-    q'n'a = Quat (cos(0.5*delta)) 0 0 (sin(-0.5*delta))
+    q'n'a = Quat (cos(0.5*delta)) 0 0 (sin(0.5*delta))
 
     q'a'b = quatOfDcm $ fromLists [ [e11, e12, e13]
                                   , [e21, e22, e23]

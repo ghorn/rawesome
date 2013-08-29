@@ -46,8 +46,8 @@ def getSteadyState(dae,conf,omega0,r0,ref_dict=None):
     # Rotational velocity time derivative
     g.add(C.mul(dae['R_c2b'].T,dae['w_bn_b']) - C.veccat([0,0,omega0]) , '==', 0, tag=
                        ("Rotational velocities",None))
-    g.addBnds(dae['alpha_deg'], (-4.0, 8.0), tag=("alpha deg",None))
-    g.addBnds(dae['beta_deg'], (-7.0, 7.0), tag=("beta deg",None))
+#    g.addBnds(dae['alpha_deg'], (-4.0, 8.0), tag=("alpha deg",None))
+#    g.addBnds(dae['beta_deg'], (-7.0, 7.0), tag=("beta deg",None))
     #g.addBnds(dae['cL'], (0, 3), tag=("CL positive",None))
 
     dvs = C.veccat([dae.xVec(), dae.zVec(), dae.uVec(), dae.pVec(), dae.xDotVec()])
