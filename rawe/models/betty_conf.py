@@ -64,7 +64,7 @@ def makeConf():
          'cn_rudder':0.001176*180/pi,
 
          #[kite]
-         'mass':  4.5,
+         'mass':  7.5,
          'tether_mass': 0.0,
 
          # how alpha/beta computed
