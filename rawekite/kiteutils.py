@@ -72,15 +72,19 @@ def makeOrthonormal(ocp_,R):
          ocp_.constrain(rhon[2],'==',0,  tag=('R1[0]: ( e1^T X e2 - e3 )[1] == 0',None))
          ocp_.constrain(rhon[1],'==',0,  tag=('R1[0]: ( e1^T X e2 - e3 )[2] == 0',None))
 
-def matchDcms(ocp,R0,Rf):
+def matchDcms(ocp,R0,Rf,tag=None):
     err = C.mul(R0.T, Rf)
-    ocp.constrain(err[0,1], '==', 0, tag=('dcm matching',"01"))
-    ocp.constrain(err[0,2], '==', 0, tag=('dcm matching',"02"))
-    ocp.constrain(err[1,2], '==', 0, tag=('dcm matching',"12"))
+    if tag is None:
+        tag = ''
+    else:
+        tag = ' '+tag
+    ocp.constrain(err[0,1], '==', 0, tag=('dcm matching 01'+tag,None))
+    ocp.constrain(err[0,2], '==', 0, tag=('dcm matching 02'+tag,None))
+    ocp.constrain(err[1,2], '==', 0, tag=('dcm matching 12'+tag,None))
 
-    ocp.constrain(err[0,0], '>=', 0.5, tag=('dcm matching',"00"))
-    ocp.constrain(err[1,1], '>=', 0.5, tag=('dcm matching',"11"))
-    ocp.constrain(err[2,2], '>=', 0.5, tag=('dcm matching',"22"))
+    ocp.constrain(err[0,0], '>=', 0.5, tag=('dcm matching 00'+tag,None))
+    ocp.constrain(err[1,1], '>=', 0.5, tag=('dcm matching 11'+tag,None))
+    ocp.constrain(err[2,2], '>=', 0.5, tag=('dcm matching 22'+tag,None))
 
 def periodicDcm(ocp):
     R0 = getDcm(ocp,0)
