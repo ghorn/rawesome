@@ -532,6 +532,27 @@ class Coll():
 
         # Solve the problem
         self.solver.solve()
+        traj = trajectory.TrajectoryPlotter(self,np.array(self.solver.output('x')))
+
+        # print active bounds/constraints
+        def printBoundViolation():
+            # bounds feedback
+            xOpt = traj.dvMap.vectorize()
+            lbx = self.solver.input('lbx')
+            ubx = self.solver.input('ubx')
+            self._bounds.printBoundsFeedback(xOpt,lbx,ubx,reportThreshold=0)
+
+        def printConstraintViolation():
+            xOpt = traj.dvMap.vectorize()
+            lbg = np.array(self.solver.input('lbg'))
+            ubg = np.array(self.solver.input('ubg'))
+            self._gfcn.setInput(xOpt,0)
+            self._gfcn.evaluate()
+            g = self._gfcn.output()
+            self._constraints.printViolations(g,lbg,ubg,reportThreshold=0)
+        printBoundViolation()
+        printConstraintViolation()
+
         ret = self.solver.getStat('return_status')
         assert ret in ['Solve_Succeeded','Solved_To_Acceptable_Level'], 'Solver failed: '+ret
 
@@ -539,7 +560,7 @@ class Coll():
         print "optimal cost: ", float(self.solver.output('f'))
 
         # Retrieve the solution
-        return trajectory.TrajectoryPlotter(self,np.array(self.solver.output('x')))
+        return traj
 
     def bound(self,name,val,timestep=None,quiet=False,force=False):
         assert isinstance(name,str)

@@ -64,7 +64,7 @@ def makeConf():
          'cn_rudder':0.001176*180/pi,
 
          #[kite]
-         'mass':  4.5,
+         'mass':  7.5,
          'tether_mass': 0.0,
 
          # how alpha/beta computed
@@ -96,6 +96,7 @@ def makeConf():
 
          # wind model
          'wind_model':{'name':'wind_shear',
+                       'altitude0':-2,
                        'z0':100,
                        'zt_roughness': 0.1}
 #         'wind_model':{'name':'constant'}

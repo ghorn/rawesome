@@ -189,7 +189,7 @@ if __name__=='__main__':
     conf = makeConf()
     dae = rawe.models.crosswind(conf)
     dae.addP('endTime')
-    conf['minAltitude'] = 0.5
+    conf['minAltitude'] = 0
 
     print "setting up ocp..."
     nicp = 1
@@ -205,7 +205,7 @@ if __name__=='__main__':
         ])
 
     # solver
-    ipoptOptions = [("linear_solver","ma27"),
+    ipoptOptions = [("linear_solver","ma86"),
                     ("expand",True),
                     ("max_iter",2000),
                     ("tol",1e-10)]
@@ -245,22 +245,6 @@ if __name__=='__main__':
                  dataname='crosswind_opt_'+powerType+'_'+str(numLoops)+'_loops')
     traj.save('data/crosswind_opt_'+powerType+'_'+str(numLoops)+'_loops.dat')
 
-    def printBoundsFeedback():
-        xOpt = traj.dvMap.vectorize()
-        lbx = ocp.solver.input('lbx')
-        ubx = ocp.solver.input('ubx')
-        ocp._bounds.printBoundsFeedback(xOpt,lbx,ubx,reportThreshold=0)
-    printBoundsFeedback()
-
-    def printConstraintsViolations():
-        lbg = ocp.solver.input('lbg')
-        ubg = ocp.solver.input('ubg')
-        ocp._gfcn.setInput(traj.getDvs(),0)
-        ocp._gfcn.evaluate()
-        g = ocp._gfcn.output()
-        ocp._constraints.printViolations(g,lbg,ubg,reportThreshold=0)#1e-9)
-    printConstraintsViolations()
-
     # Plot the results
     def plotResults():
 #        traj.subplot(['aero_fx','aero_fy','aero_fz'])
@@ -294,6 +278,8 @@ if __name__=='__main__':
 
         plt.show()
 #    plotResults()
+    traj.subplot(['r','dr','ddr','dddr'])
+    plt.show()
 
 
     def plotPaper():

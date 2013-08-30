@@ -296,14 +296,6 @@ if __name__=='__main__':
 
     traj.save("data/crosswind_homotopy.dat")
 
-    def printBoundsFeedback():
-        # bounds feedback
-        xOpt = traj.dvMap.vectorize()
-        lbx = ocp.solver.input('lbx')
-        ubx = ocp.solver.input('ubx')
-        ocp._bounds.printBoundsFeedback(xOpt,lbx,ubx,reportThreshold=0)
-    printBoundsFeedback()
-
     # Plot the results
     def plotResults():
         traj.subplot(['f1_homotopy','f2_homotopy','f3_homotopy'])

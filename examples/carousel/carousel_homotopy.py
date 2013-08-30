@@ -28,11 +28,33 @@ import carousel_dae
 from autogen.tocarouselProto import toProto
 from autogen.carousel_pb2 import Trajectory
 
+def constrainTetherForce(ocp):
+    for k in range(ocp.nk):
+        for j in range(1,ocp.deg+1): #[1]:
+            ocp.constrain( ocp.lookup('tether_tension',timestep=k,degIdx=j), '>=', 0, tag=('tether tension positive',k))
+
+def realMotorConstraints(ocp):
+    for k in range(nk):
+#        ocp.constrain( ocp.lookup('torque',timestep=k,degIdx=1),       '<=', 150, tag=('motor torque',k))
+#        ocp.constrain( ocp.lookup('torque',timestep=k,degIdx=ocp.deg), '<=', 150, tag=('motor torque',k))
+        ocp.constrainBnds( ocp.lookup('torque',timestep=k,degIdx=1),
+                           (-78*0.8,78*0.8), tag=('motor torque',k))
+        ocp.constrainBnds( ocp.lookup('torque',timestep=k,degIdx=ocp.deg),
+                           (-78*0.8,78*0.8), tag=('motor torque',k))
+
+        ocp.constrain( ocp.lookup('rpm',timestep=k),       '<=', 1500*0.8, tag=('rpm',k))
+        ocp.constrain( -1500*0.8, '<=', ocp.lookup('rpm',timestep=k),       tag=('rpm',k))
+
 def setupOcp(dae,conf,nk,nicp=1,deg=4):
     ocp = rawe.collocation.Coll(dae, nk=nk,nicp=nicp,deg=deg)
 
     print "setting up collocation..."
     ocp.setupCollocation(ocp.lookup('endTime'))
+
+    for k in range(ocp.nk):
+        for j in range(1,ocp.deg+1): #[1]:
+            ocp.constrain( ocp('x',timestep=k,degIdx=j), '>=', ocp('y',timestep=k,degIdx=j), tag=('x>y',k))
+            ocp.constrain( ocp('x',timestep=k,degIdx=j), '>=', -ocp('y',timestep=k,degIdx=j), tag=('x>-y',k))
 
     # constrain invariants
     def constrainInvariantErrs():
@@ -53,16 +75,15 @@ def setupOcp(dae,conf,nk,nicp=1,deg=4):
         for k in range(0,nk):
             for j in range(0,deg+1):
                 ocp.constrainBnds(ocp.lookup('airspeed',timestep=k,degIdx=j),
-                                  (10,35), tag=('airspeed',(k,j)))
-                ocp.constrainBnds(ocp.lookup('alpha_deg',timestep=k,degIdx=j), (-4.5,8.5), tag=('alpha',nk))
-                ocp.constrainBnds(ocp.lookup('beta_deg', timestep=k,degIdx=j), (-6,6), tag=('beta',nk))
+                                  (8,35), tag=('airspeed',(k,j)))
+                ocp.constrainBnds(ocp.lookup('alpha_deg',timestep=k,degIdx=j), (-4.5,6.5), tag=('alpha(deg)',nk))
+                ocp.constrainBnds(ocp.lookup('beta_deg', timestep=k,degIdx=j), (-4,4), tag=('beta(deg)',nk))
                 ocp.constrain(ocp.lookup('cL',timestep=k,degIdx=j), '>=', 0, tag=('CL positive',nk))
     constrainAirspeedAlphaBeta()
 
     # constrain tether force
-    for k in range(nk):
-        ocp.constrain( ocp.lookup('tether_tension',timestep=k,degIdx=1), '>=', 0, tag=('tether tension',(nk,0)))
-        ocp.constrain( ocp.lookup('tether_tension',timestep=k,degIdx=ocp.deg), '>=', 0, tag=('tether tension',(nk,1)))
+    constrainTetherForce(ocp)
+    realMotorConstraints(ocp)
 
     # make it periodic
     for name in [ "y","z",
@@ -79,9 +100,9 @@ def setupOcp(dae,conf,nk,nicp=1,deg=4):
     rawekite.kiteutils.periodicDcm(ocp)
 
     # bounds
-    ocp.bound('aileron', (numpy.radians(-10),numpy.radians(10)))
-    ocp.bound('elevator',(numpy.radians(-10),numpy.radians(10)))
-    ocp.bound('rudder',  (numpy.radians(-10),numpy.radians(10)))
+    ocp.bound('aileron', (numpy.radians(-9),numpy.radians(9)))
+    ocp.bound('elevator',(numpy.radians(-9),numpy.radians(9)))
+    ocp.bound('rudder',  (numpy.radians(-9),numpy.radians(9)))
     ocp.bound('flaps',  (numpy.radians(0),numpy.radians(0)))
     # can't bound flaps==0 AND have periodic flaps at the same time
     # bounding flaps (-1,1) at timestep 0 doesn't really free them, but satisfies LICQ
@@ -117,11 +138,11 @@ def setupOcp(dae,conf,nk,nicp=1,deg=4):
     for w in ['w_bn_b_x',
               'w_bn_b_y',
               'w_bn_b_z']:
-        ocp.bound(w,(-4*pi,4*pi))
+        ocp.bound(w,(-3.9*pi,3.9*pi))
 
-    ocp.bound('endTime',(1,2))
+    ocp.bound('endTime',(0.5,2))
     ocp.guess('endTime',1)
-    ocp.bound('w0',(4,4))
+    ocp.bound('w0',(10,10))
 
     # boundary conditions
     ocp.bound('sin_delta', (0,0), timestep=0, quiet=True)
@@ -252,25 +273,18 @@ if __name__=='__main__':
                      callback=callback )
 
     xInit = None
-    ocp.bound('gamma_homotopy',(1e-4,1e-4),force=True)
+#    ocp.bound('gamma_homotopy',(1e-4,1e-4),force=True)
+    ocp.bound('gamma_homotopy',(0,1),force=True)
     traj = ocp.solve(xInit=xInit)
 
-    ocp.bound('gamma_homotopy',(0,1),force=True)
-    traj = ocp.solve(xInit=traj.getDvs())
+#    ocp.bound('gamma_homotopy',(0,1),force=True)
+#    traj = ocp.solve(xInit=traj.getDvs())
 
     ocp.bound('gamma_homotopy',(1,1),force=True)
 #    ocp.bound('endTime',(3.5,6.0),force=True)
     traj = ocp.solve(xInit=traj.getDvs())
 
     traj.save("data/carousel_homotopy.dat")
-
-    def printBoundsFeedback():
-        # bounds feedback
-        xOpt = traj.dvMap.vectorize()
-        lbx = ocp.solver.input('lbx')
-        ubx = ocp.solver.input('ubx')
-        ocp._bounds.printBoundsFeedback(xOpt,lbx,ubx,reportThreshold=0)
-    printBoundsFeedback()
 
     # Plot the results
     def plotResults():

@@ -121,13 +121,14 @@ def setupModel(dae, conf):
             return 0
         if conf['wind_model']['name'] == 'wind_shear':
             # use a logarithmic wind shear model
-            # wind(z) = w0 * log((z+zt)/zt) / log(z0/zt)
+            # wind(z) = w0 * log((altitude+zt)/zt) / log(z0/zt)
             # where w0 is wind at z0 altitude
             # zt is surface roughness characteristic length
+            # altitude is -z - altitude0, where altitude0 is a user parameter
             z0 = conf['wind_model']['z0']
             zt_roughness = conf['wind_model']['zt_roughness']
-            zsat = 0.5*(-z+C.sqrt(z*z))
-            return dae['w0']*C.log((zsat+zt_roughness+2)/zt_roughness)/C.log(z0/zt_roughness)
+            altitude = -z - conf['wind_model']['altitude0']
+            return dae['w0']*C.log((altitude+zt_roughness)/zt_roughness)/C.log(z0/zt_roughness)
         elif conf['wind_model']['name'] in ['constant','hardcoded']:
             # constant wind
             return dae['w0']

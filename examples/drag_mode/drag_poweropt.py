@@ -223,22 +223,6 @@ if __name__=='__main__':
                  dataname='crosswind_opt_'+str(numLoops)+'_loops')
     traj.save('data/crosswind_opt_'+str(numLoops)+'_loops.dat')
 
-    def printBoundsFeedback():
-        xOpt = traj.dvMap.vectorize()
-        lbx = ocp.solver.input('lbx')
-        ubx = ocp.solver.input('ubx')
-        ocp._bounds.printBoundsFeedback(xOpt,lbx,ubx,reportThreshold=0)
-    printBoundsFeedback()
-
-    def printConstraintsViolations():
-        lbg = ocp.solver.input('lbg')
-        ubg = ocp.solver.input('ubg')
-        ocp._gfcn.setInput(traj.getDvs(),0)
-        ocp._gfcn.evaluate()
-        g = ocp._gfcn.output()
-        ocp._constraints.printViolations(g,lbg,ubg,reportThreshold=0)#1e-9)
-    printConstraintsViolations()
-
     # Plot the results
     def plotResults():
 #        traj.subplot(['aero_fx','aero_fy','aero_fz'])

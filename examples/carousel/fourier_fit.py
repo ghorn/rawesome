@@ -153,7 +153,7 @@ class FourierFit():
         
 if __name__=='__main__':
     filename = "data/carousel_homotopy"
-    #filename = "data/carousel_opt"
+    #filename = "../pumping_mode/data/crosswind_opt_mechanical_1_loops"
     
     # load saved trajectory
     loadfile = filename+".dat"
@@ -193,10 +193,16 @@ if __name__=='__main__':
     orderMap = {'x':xyzOrders,
                 'y':xyzOrders,
                 'z':xyzOrders,
+                'r_n2b_n_x':xyzOrders,
+                'r_n2b_n_y':xyzOrders,
+                'r_n2b_n_z':xyzOrders,
                 'r':xyzOrders,
                 'dx':xyzDotOrders,
                 'dy':xyzDotOrders,
                 'dz':xyzDotOrders,
+                'v_bn_n_x':xyzDotOrders,
+                'v_bn_n_y':xyzDotOrders,
+                'v_bn_n_z':xyzDotOrders,
                 'dr':xyzDotOrders,
                 'ddr':ddrOrders,
                 'w_bn_b_x':omegaOrders,
@@ -229,9 +235,11 @@ if __name__=='__main__':
     f.close()
     
     def mkPlots():
-        trajFit.plot(['x','y','z'])
+        #trajFit.plot(['x','y','z'])
+        trajFit.plot(['r_n2b_n_x','r_n2b_n_y','r_n2b_n_z'])
         trajFit.plot(['r'])
-        trajFit.plot(['dx','dy','dz'])
+        #trajFit.plot(['dx','dy','dz'])
+        trajFit.plot(['v_bn_n_x','v_bn_n_y','v_bn_n_z'])
         trajFit.plot(['dr'])
         trajFit.plot(['e11','e12','e13','e21','e22','e23','e31','e32','e33'])
         trajFit.plot(['w_bn_b_x','w_bn_b_y','w_bn_b_z'])
