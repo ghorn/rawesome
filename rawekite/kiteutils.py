@@ -63,14 +63,20 @@ def getOrthonormalizedDcm(ocp,k):
     m = getDcm(ocp,k)
     return orthonormalizeDcm(m)
 
+def get_orthonormal_constraints(R):
+    ret = []
+    ret.append( (C.mul(R[0,:],R[0,:].T) - 1,  'R1[0]: e1^T * e1 - 1 == 0') )
+    ret.append( (C.mul(R[1,:],R[0,:].T),      'R1[0]: e2^T * e1     == 0') )
+    ret.append( (C.mul(R[1,:],R[1,:].T) - 1,  'R1[0]: e2^T * e2 - 1 == 0') )
+    rhon = C.cross(R[0,:],R[1,:]) - R[2,:]
+    ret.append( (rhon[0], 'R1[0]: ( e1^T X e2 - e3 )[0] == 0') )
+    ret.append( (rhon[2], 'R1[0]: ( e1^T X e2 - e3 )[1] == 0') )
+    ret.append( (rhon[1], 'R1[0]: ( e1^T X e2 - e3 )[2] == 0') )
+    return ret
+
 def makeOrthonormal(ocp_,R):
-         ocp_.constrain(C.mul(R[0,:],R[0,:].T),'==',1,  tag=('R1[0]: e1^T * e1 == 1',None))
-         ocp_.constrain(C.mul(R[1,:],R[0,:].T),'==',0,  tag=('R1[0]: e2^T * e1 == 0',None))
-         ocp_.constrain(C.mul(R[1,:],R[1,:].T),'==',1,  tag=('R1[0]: e2^T * e2 == 1',None))
-         rhon = C.cross(R[0,:],R[1,:]) - R[2,:]
-         ocp_.constrain(rhon[0],'==',0,  tag=('R1[0]: ( e1^T X e2 - e3 )[0] == 0',None))
-         ocp_.constrain(rhon[2],'==',0,  tag=('R1[0]: ( e1^T X e2 - e3 )[1] == 0',None))
-         ocp_.constrain(rhon[1],'==',0,  tag=('R1[0]: ( e1^T X e2 - e3 )[2] == 0',None))
+    for val,description in get_orthonormal_constraints(R):
+        ocp_.constrain(val, '==', 0, tag=(description, None))
 
 def matchDcms(ocp,R0,Rf,tag=None):
     err = C.mul(R0.T, Rf)
