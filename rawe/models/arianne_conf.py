@@ -99,7 +99,7 @@ def makeConf():
 
          #Carousel Friction & inertia
          'jCarousel': 1e2,
-         'cfric': 0,#100
+         'cfric': 1e2,
 
 #         'wind_model':{'name':'wind_shear',
 #                       'z0':100,
