@@ -66,11 +66,12 @@ C_SRC = \\
 
 QPO_INC = \\
 \t-I. \\
-\t-Iqpoases \\
-\t-Iqpoases/INCLUDE \\
-\t-Iqpoases/SRC
+\t-I./qpoases \\
+\t-I./qpoases/INCLUDE \\
+\t-I./qpoases/SRC
 
 CXXFLAGS += $(QPO_INC)
+CFLAGS   += $(QPO_INC)
 
 CXX_OBJ = $(CXX_SRC:%%.cpp=%%.o)
 C_OBJ = $(C_SRC:%%.c=%%.o)
