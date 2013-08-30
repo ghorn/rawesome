@@ -44,13 +44,13 @@ def setupOcp(dae,conf,nk,nicp=1,deg=4):
 
     # constrain line angle
     for k in range(0,nk):
-        ocp.constrain(ocp.lookup('cos_line_angle',timestep=k),'>=',C.cos(55*pi/180), tag=('line angle',k))
+        ocp.constrain(ocp.lookup('cos_line_angle',timestep=k),'>=',C.cos(60*pi/180), tag=('line angle',k))
 
     # constrain airspeed
     def constrainAirspeedAlphaBeta():
         for k in range(0,nk):
             for j in range(0,deg+1):
-                ocp.constrain(ocp.lookup('airspeed',timestep=k,degIdx=j), '>=', 20, tag=('airspeed',nk))
+                ocp.constrain(ocp.lookup('airspeed',timestep=k,degIdx=j), '>=', 15, tag=('airspeed',nk))
                 ocp.constrainBnds(ocp.lookup('alpha_deg',timestep=k,degIdx=j), (-4.5,8.5), tag=('alpha',nk))
                 ocp.constrainBnds(ocp.lookup('beta_deg', timestep=k,degIdx=j), (-10,10), tag=('beta',nk))
     constrainAirspeedAlphaBeta()
@@ -61,10 +61,11 @@ def setupOcp(dae,conf,nk,nicp=1,deg=4):
         ocp.constrain( ocp.lookup('tether_tension',timestep=k,degIdx=ocp.deg), '>=', 0, tag=('tether tension',(nk,1)))
 
     # make it periodic
-    for name in [ "r_n2b_n_y","r_n2b_n_z",
-                  "v_bn_n_y","v_bn_n_z",
+    for name in [ "r_n2b_n_x","r_n2b_n_y","r_n2b_n_z",
+                  "v_bn_n_x","v_bn_n_y","v_bn_n_z",
                   "w_bn_b_x","w_bn_b_y","w_bn_b_z",
-                  "r","dr",'ddr',
+                  #"r","dr",'ddr',
+                  'ddr',
                   'aileron','elevator','rudder','flaps',
                   ]:
         ocp.constrain(ocp.lookup(name,timestep=0),'==',ocp.lookup(name,timestep=-1), tag=('periodic '+name,None))
@@ -107,8 +108,9 @@ def setupOcp(dae,conf,nk,nicp=1,deg=4):
               'w_bn_b_z']:
         ocp.bound(w,(-4*pi,4*pi))
 
-    ocp.bound('endTime',(4.0,4.0))
-    ocp.guess('endTime',4.0)
+#    ocp.bound('endTime',(3.5,6.0))
+    ocp.bound('endTime',(4.8,4.8))
+    ocp.guess('endTime',4.8)
     ocp.bound('w0',(10,10))
 
     # boundary conditions
@@ -129,11 +131,14 @@ if __name__=='__main__':
     print "setting up ocp..."
     ocp = setupOcp(dae,conf,nk)
 
-    lineRadiusGuess = 100.0
+    lineRadiusGuess = 80.0
     circleRadiusGuess = 20.0
 
     # trajectory for homotopy
     homotopyTraj = {'r_n2b_n_x':[],'r_n2b_n_y':[],'r_n2b_n_z':[]}
+    # direction =  1: positive about aircraft z
+    # direction = -1: negative about aircraft z
+    direction = -1
     k = 0
     for nkIdx in range(ocp.nk+1):
         for nicpIdx in range(ocp.nicp):
@@ -150,8 +155,10 @@ if __name__=='__main__':
                 # path following
                 theta = 2*pi*(k+ocp.lagrangePoly.tau_root[degIdx])/float(ocp.nk*ocp.nicp)
                 theta -= pi
+                theta *= -direction
 
                 thetaDot = nTurns*2*pi/(ocp._guess.lookup('endTime'))
+                thetaDot *= -direction
                 xyzCircleFrame    = numpy.array([h, r*numpy.sin(theta),          -r*numpy.cos(theta)])
                 xyzDotCircleFrame = numpy.array([0, r*numpy.cos(theta)*thetaDot,  r*numpy.sin(theta)*thetaDot])
 
@@ -203,7 +210,7 @@ if __name__=='__main__':
                 ocp.guess('e33',e3[2],timestep=nkIdx,nicpIdx=nicpIdx,degIdx=degIdx)
 
             k += 1
-    ocp.guess('w_bn_b_z', -2.0*pi/ocp._guess.lookup('endTime'))
+    ocp.guess('w_bn_b_z', direction*2.0*pi/ocp._guess.lookup('endTime'))
 
     # objective function
     obj = -1e6*ocp.lookup('gamma_homotopy')
@@ -274,13 +281,14 @@ if __name__=='__main__':
     callback = rawe.telemetry.startTelemetry(
         ocp, callbacks=[
             (rawe.telemetry.trajectoryCallback(toProto, Trajectory, showAllPoints=True), 'pumping trajectory')
-            ])#], printBoundViolation=True, printConstraintViolation=True)
+            #], printBoundViolation=True, printConstraintViolation=True)
+        ])
 
     # solver
-    solverOptions = [("linear_solver","ma27"),
+    solverOptions = [("linear_solver","ma97"),
                      ("max_iter",1000),
                      ("expand",True),
-                     ("tol",1e-10)]
+                     ("tol",1e-8)]
 
     print "setting up solver..."
     ocp.setupSolver( solverOpts=solverOptions,

@@ -205,10 +205,10 @@ if __name__=='__main__':
         ])
 
     # solver
-    ipoptOptions = [("linear_solver","ma86"),
+    ipoptOptions = [("linear_solver","ma97"),
                     ("expand",True),
                     ("max_iter",2000),
-                    ("tol",1e-10)]
+                    ("tol",1e-8)]
     worhpOptions = [("Max_Iter",5000),
                     ("expand",True),
                     #("MaxIter",5000),
