@@ -54,7 +54,7 @@ def constrainAirspeedAlphaBeta(ocp):
                               (10,65), tag=('airspeed',(k,j)))
             ocp.constrainBnds(ocp.lookup('alpha_deg',timestep=k,degIdx=j), (-4.5,8.5), tag=('alpha(deg)',(k,j)))
             ocp.constrain(ocp.lookup('cL',timestep=k,degIdx=j), '>=', -0.15, tag=('CL > -0.15',(k,j)))
-            ocp.constrainBnds(ocp.lookup('beta_deg', timestep=k,degIdx=j), (-6,6), tag=('beta(deg)',(k,j)))
+            ocp.constrainBnds(ocp.lookup('beta_deg', timestep=k,degIdx=j), (-10,10), tag=('beta(deg)',(k,j)))
             x = ocp('x', timestep=k,degIdx=j)
             y = ocp('y', timestep=k,degIdx=j)
             z = ocp('z', timestep=k,degIdx=j)
@@ -68,7 +68,7 @@ def setupOcp(dae,conf,nk,nicp=1,deg=4):
 
     # constrain line angle
     for k in range(0,nk):
-        ocp.constrain(ocp.lookup('cos_line_angle',timestep=k),'>=',C.cos(55*pi/180), tag=('line angle',k))
+        ocp.constrain(ocp.lookup('cos_line_angle',timestep=k),'>=',C.cos(65*pi/180), tag=('line angle',k))
 
     constrainAirspeedAlphaBeta(ocp)
     constrainTetherForce(ocp)
@@ -90,9 +90,9 @@ def setupOcp(dae,conf,nk,nicp=1,deg=4):
     ocp.bound('y',(-2000,2000))
     ocp.bound('z',(-2000,1.5))
     ocp.bound('r',(2,300))
-    ocp.bound('dr',(-10,10))
-    ocp.bound('ddr',(-15,15))
-    ocp.bound('dddr',(-50,50))
+    ocp.bound('dr',(-100,100))
+    ocp.bound('ddr',(-150,150))
+    ocp.bound('dddr',(-200,200))
 #    ocp.bound('dr',(-1000,1000))
 #    ocp.bound('ddr',(-1500,1500))
 #    ocp.bound('dddr',(-500,500))
@@ -160,12 +160,12 @@ def setupOcp(dae,conf,nk,nicp=1,deg=4):
     obj = 0
     for name in [ 'r','dr','ddr',
                   'x','y','z',
-                  'dy','dz',
+                  'dx','dy','dz',
                   'w_bn_b_x','w_bn_b_y','w_bn_b_z',
 #                  'ddelta',
                   'aileron','elevator','rudder','flaps',
 #                  'sin_delta','cos_delta',#'motor_torque',
-                  'e11','e12','e13','e21','e22','e23','e31','e32','e33'
+#                  'e11','e12','e13','e21','e22','e23','e31','e32','e33'
                   ]:
         if name in correspondingNames:
             name_ = correspondingNames[name]
@@ -187,7 +187,7 @@ def setupOcp(dae,conf,nk,nicp=1,deg=4):
 if __name__=='__main__':
     from rawe.models.betty_conf import makeConf
     conf = makeConf()
-    nk = 200
+    nk = 60
     dae = carousel_dae.makeDae(conf)
     dae.addP('endTime')
     dae.addP('phase0')
@@ -215,10 +215,10 @@ if __name__=='__main__':
         dflaps = ocp.lookup('dflaps',timestep=k)
         dmotorTorque = ocp.lookup('dmotor_torque',timestep=k)
 
-        daileronSigma = 0.3
-        delevatorSigma = 0.3
-        drudderSigma = 0.3
-        dflapsSigma = 0.3
+        daileronSigma = 0.1
+        delevatorSigma = 0.1
+        drudderSigma = 0.1
+        dflapsSigma = 0.1
         dddrSigma = 5.0
         dmotorTorqueSigma = 10.0
 
@@ -231,10 +231,30 @@ if __name__=='__main__':
 
         obj += 1e-2*(ailObj + eleObj + rudObj + flapsObj + winchObj + motorTorqueObj)/float(ocp.nk)
 
+    # state regularization
+    for k in range(ocp.nk):
+        for j in range(ocp.deg+1):
+            regs = {'w_bn_b_x':1.0,
+                    'w_bn_b_y':1.0,
+                    'w_bn_b_z':1.0,
+                    'dr':15.0,
+                    'ddr':10.0,
+                    'motor_torque':5.0,
+                    'aileron':numpy.degrees(10.0),
+                    'elevator':numpy.degrees(10.0),
+                    'rudder':numpy.degrees(10.0),
+                    'flaps':numpy.degrees(10.0),
+                    'beta_deg':4.0,
+                    'alpha_deg':25.0}
+            for name in regs:
+                val = ocp.lookup(name,timestep=k,degIdx=j)
+                obj += 4e-2*val**2/float(regs[name]**2)/float(ocp.nk*(ocp.deg+1))
+
+
     ocp.setObjective( obj )
 
     # initial guesses
-    ocp.interpolateInitialGuess("data/carousel_homotopy.dat",force=True,quiet=True,numLoops=4)
+    ocp.interpolateInitialGuess("data/carousel_homotopy.dat",force=True,quiet=True,numLoops=3)
     #ocp.interpolateInitialGuess("data/transition_backup.dat",force=True,quiet=True)
 
     # spawn telemetry thread
