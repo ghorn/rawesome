@@ -33,6 +33,8 @@ def makeOrthonormal(g,R):
 
 
 def getSteadyState(dae,conf,omega0,r0,ref_dict=None):
+    if ref_dict is None:
+        ref_dict = {}
     # make steady state model
     g = Constraints()
     g.add(dae.getResidual(),'==',0,tag=('dae residual',None))
@@ -46,9 +48,10 @@ def getSteadyState(dae,conf,omega0,r0,ref_dict=None):
     # Rotational velocity time derivative
     g.add(C.mul(dae['R_c2b'].T,dae['w_bn_b']) - C.veccat([0,0,omega0]) , '==', 0, tag=
                        ("Rotational velocities",None))
-#    g.addBnds(dae['alpha_deg'], (-4.0, 8.0), tag=("alpha deg",None))
-#    g.addBnds(dae['beta_deg'], (-7.0, 7.0), tag=("beta deg",None))
-    #g.addBnds(dae['cL'], (0, 3), tag=("CL positive",None))
+
+    for name in ['alpha_deg','beta_deg','cL']:
+        if name in ref_dict:
+            g.addBnds(dae[name], ref_dict[name], tag=(name,None))
 
     dvs = C.veccat([dae.xVec(), dae.zVec(), dae.uVec(), dae.pVec(), dae.xDotVec()])
     obj = 0
@@ -56,8 +59,6 @@ def getSteadyState(dae,conf,omega0,r0,ref_dict=None):
         if name in dae:
             obj += dae[name]**2
     ffcn = C.SXFunction([dvs],[obj])
-#    ffcn = C.SXFunction([dvs],[sum([dae[n]**2 for n in ['aileron','elevator','y','z']])])
-#    ffcn = C.SXFunction([dvs],[(dae['cL']-0.5)**2])
     gfcn = C.SXFunction([dvs],[g.getG()])
     ffcn.init()
     gfcn.init()
