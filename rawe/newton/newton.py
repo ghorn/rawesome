@@ -52,7 +52,7 @@ class Newton(object):
         p =  C.ssym('p',self.dae.pVec().size())
         constraints = []
         ############################################################
-        
+
         ndiff = self.dae.xVec().size()
 
         x0_ = x0
@@ -71,13 +71,13 @@ class Newton(object):
                                   Z_[:,j-1],
                                   u,
                                   p])
-                
+
                 # impose system dynamics (for the differential states (eq 10.19b))
                 constraints.append(fk[:ndiff])
-                
+
                 # impose system dynamics (for the algebraic states (eq 10.19b))
                 constraints.append(fk[ndiff:])
-                
+
             # Get an expression for the state at the end of the finite element
             xf = self.lagrangePoly.lAtOne[0]*x0_
             for j in range(1,self.deg+1):
@@ -93,17 +93,17 @@ class Newton(object):
 
         xSize = self.dae.xVec().size()
         zSize = self.dae.zVec().size()
-        
+
         if (residual.size() != zSize+xSize):
             print "WARNING: residual.size() != zSize+xSize)"
-    
+
         # residual function
         u = self.dae.uVec()
         xd = self.dae.xVec()
         xa = self.dae.zVec()
         xddot = C.veccat([self.dae.ddt(name) for name in self.dae.xNames()])
         p  = self.dae.pVec()
-        
+
         ffcn = C.SXFunction([xddot,xd,xa,u,p],[residual])
         ffcn.init()
 

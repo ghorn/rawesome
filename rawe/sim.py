@@ -86,7 +86,7 @@ class Sim(object):
         self.outputsFunAll = fAll
         self.outputsFun0 = f0
         self.outputs0names = outputs0names
-        
+
         self.xNames = dae.xNames()
         self.uNames = dae.uNames()
         self.outputNames = dae.outputNames()
@@ -94,7 +94,7 @@ class Sim(object):
         listOut=[]
         for n in self.outputNames: listOut.append([])
         self._log = {'x':[],'u':[],'y':[],'yN':[],'outputs':dict(zip(self.outputNames,listOut))}
-        
+
     def step(self, x, u, p):
         (xVec,uVec,pVec) = vectorizeXUP(x,u,p,self.dae)
         self.integrator.setInput(xVec,C.INTEGRATOR_X0)
@@ -121,7 +121,7 @@ class Sim(object):
         for k,name in enumerate(self.outputs0names):
             ret[name] = maybeToScalar(C.DMatrix(self.outputsFun0.output(k)))
         return ret
-    
+
     def log(self,new_x=None,new_u=None,new_y=None,new_yN=None,new_out=None):
         if new_x != None:
             self._log['x'].append(numpy.array(new_x))
@@ -134,7 +134,7 @@ class Sim(object):
         if new_out != None:
             for name in new_out.keys():
                 self._log['outputs'][name].append(numpy.array(new_out[name]))
-    
+
     def _plot(self,names,title,style,when=0,showLegend=True):
         if isinstance(names,str):
             names = [names]
@@ -151,14 +151,14 @@ class Sim(object):
                 ys = numpy.squeeze(self._log['x'])[:,index]
                 ts = numpy.arange(len(ys))*self._ts
                 plt.plot(ts,ys,style)
-                
+
             # if it's a control
             if name in self.uNames:
                 index = self.uNames.index(name)
                 ys = numpy.squeeze(self._log['u'])[:,index]
                 ts = numpy.arange(len(ys))*self._ts
                 plt.step(ts,ys,style)
-                
+
             if name in self.outputNames:
                 index = self.outputNames.index(name)
                 ys = numpy.squeeze(self._log['outputs'][name])

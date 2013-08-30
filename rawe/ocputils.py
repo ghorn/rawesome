@@ -39,7 +39,7 @@ class Constraints():
         self._g = []
         self._glb = []
         self._gub = []
-        
+
     def add(self,lhs,comparison,rhs,tag=('unnamed_constraint',None)):
         #print "\n\nadding constraint\nlhs: "+str(lhs)+"\ncomparison: "+comparison+"\nrhs: "+str(rhs)
         if comparison=="==":
@@ -146,7 +146,7 @@ class Constraints():
 
 class Bounds(DesignVarMap):
     descriptor = "bound"
-        
+
     def setBound(self,name,val,**kwargs):
         assert isinstance(name,str)
         assert isinstance(val,tuple)

@@ -27,7 +27,7 @@ class MultipleShootingStage():
 
         # make sure dae has everything
         assert hasattr(dae,'_residual')
-        
+
         self.dae = dae
         self.dae._freeze('MultipleShootingStage(dae)')
 
@@ -36,13 +36,13 @@ class MultipleShootingStage():
         self.states = C.msym("x" ,self.nStates(),self.nSteps)
         self.actions = C.msym("u",self.nActions(),self.nSteps)
         self.params = C.msym("p",self.nParams())
-        
+
 #        self._dvs = C.msym("dv",self.nStates()*self.nSteps+self.nActions()*self.nSteps+self.nParams())
 #
 #        numXVars = self.nStates()*self.nSteps
 #        numUVars = self.nActions()*self.nSteps
 #        numPVars = self.nParams()
-#        
+#
 #        self.states  = C.reshape(self._dvs[:numXVars], [self.nStates(), self.nSteps])
 #        self.actions = C.reshape(self._dvs[numXVars:numXVars+numUVars], [self.nActions(), self.nSteps])
 #        self.params = self._dvs[numXVars+numUVars:]
@@ -123,7 +123,7 @@ class MultipleShootingStage():
         if hasattr(self, '_objective'):
             raise ValueError("You've already set an objective and you can't change it")
         self._objective = objective
-        
+
     def setSolver(self, solver, solverOptions=[], objFunOptions=[], constraintFunOptions=[]):
         if hasattr(self, '_solver'):
             raise ValueError("You've already set a solver and you can't change it")
@@ -144,13 +144,13 @@ class MultipleShootingStage():
             gs = [C.MXFunction([self.getDesignVars()],[gg]) for gg in self._constraints._g]
             for gg in gs:
                 gg.init()
-            
+
             pg = C.Parallelizer(gs)
 #            pg.setOption("parallelization","openmp")
             pg.setOption("parallelization","serial")
 #            pg.setOption("parallelization","expand")
             pg.init()
-    
+
             dvsDummy = C.msym('dvs',(self.nStates()+self.nActions())*self.nSteps+self.nParams())
             g_ = C.MXFunction([dvsDummy],[C.veccat(pg.call([dvsDummy]*len(gs)))])
             g_.init()
@@ -160,10 +160,10 @@ class MultipleShootingStage():
 #        guess = self._initialGuess.vectorize()
 #        parallelG.setInput([x*1.1 for x in guess])
 #        g.setInput([x*1.1 for x in guess])
-#    
+#
 #        g.evaluate()
 #        parallelG.evaluate()
-    
+
 #        print parallelG.output()-g.output()
 #        exit(0)
 

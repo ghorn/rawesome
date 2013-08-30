@@ -116,7 +116,7 @@ drawOneKite minLineLength niceKite
     z = (\(Xyz _ _ z') -> z') $ nk_xyz niceKite
     lineAlpha = nk_lineAlpha niceKite
     kiteAlpha = nk_kiteAlpha niceKite
-    
+
     (arm,line) =
       if lineAlpha == 0
       then (VisObjects [], VisObjects [])
@@ -135,7 +135,7 @@ drawOneKite minLineLength niceKite
             rMid = r'n0'a0 + fmap (* (1 - minLineLength/normDr)) dr
             dr = r'n0't0 - r'n0'a0
             normDr = Xyz.norm dr
-        
+
     ac =
       if kiteAlpha == 0
       then VisObjects []
@@ -170,7 +170,7 @@ drawFun' deltaRot mmh = cameraRot $ VisObjects $ [axes,txt] ++ maybeplane ++ [mh
     mheKites = drawSomeKites $ map toNice' (toList (MMH.mheHorizon mmh))
     mpcKites = drawSomeKites $ map toNice' (toList (MMH.mpcHorizon mmh))
     referenceTrajKites = drawSomeKites $ map toNice' (toList (MMH.referenceTrajectory mmh))
-    
+
     axes = Axes (0.5, 15)
     maybeplane = if isNothing deltaRot then [plane] else []
     plane = Trans (Xyz 0 0 planeZ') $ Plane (Xyz 0 0 1) (makeColor 1 1 1 1) (makeColor 0.2 0.3 0.32 1)
@@ -188,7 +188,7 @@ drawSomeKites niceKites = VisObjects kitelist
     minLineLength = minimum $ map lineLength niceKites
       where
         lineLength nk = Xyz.norm (nk_r'n0't0 nk - nk_r'n0'a0 nk)
-    
+
 
 updateState :: MMH.MheMpcHorizons -> State -> IO State
 updateState ko _ = return $ Just ko
@@ -233,7 +233,7 @@ main = do
 
   m <- newMVar Nothing
   _ <- forkIO (sub ip m)
-  
+
 --  threadDelay 5000000
   let simFun _ _ = return ()
       df _ = fmap (drawFun followkite) (readMVar m)

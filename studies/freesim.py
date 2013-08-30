@@ -76,7 +76,7 @@ if __name__=='__main__':
 #    f.setOption("linear_solver","user_defined")
 #    f.setOption("monitor",["res"])
     f.init()
-    
+
     def advanceState():
         js = sim.handleInput()
 
@@ -103,7 +103,7 @@ if __name__=='__main__':
         if 3 in js['buttonsDown']:
             sim.playReplay(communicator)
             sim.loadDefault()
-        
+
         aileron = -js['axes'][0]*0.05
         elevator =  js['axes'][1]*0.2
         rudder = -js['axes'][2]*0.15
@@ -138,7 +138,7 @@ if __name__=='__main__':
                 x,u,p = sim.getCurrentState()._log[-1]
                 pass
             communicator.sendKite(sim,(x,u,p))
-            
+
             deltaTime = (t0 + sim.tsSimStep*sim.sloMoFactor) - time.time()
             if deltaTime > 0:
                 time.sleep(deltaTime)

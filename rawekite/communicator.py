@@ -38,7 +38,7 @@ class Communicator(object):
             for om in otherMessages:
                 pb.messages.append(om)
         self.publisher.send_multipart(["carousel", pb.SerializeToString()])
-        
+
     def close(self):
         self.publisher.close()
         self.context.term()

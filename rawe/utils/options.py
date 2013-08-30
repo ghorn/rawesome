@@ -89,14 +89,14 @@ class OptBool(Option):
             return 'YES'
         else:
             return 'NO'
- 
+
 class OptDouble(Option):
     def __init__(self, name, default=None):
         Option.__init__(self,name,float,default)
 
     def toAcadoStr(self):
         return repr(self.getOutputVal())
-       
+
 
 class Options(object):
     '''

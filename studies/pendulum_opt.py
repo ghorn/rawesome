@@ -36,7 +36,7 @@ def main():
 
     print "setting up OCP"
     ocp = MultipleShootingStage(dae, nSteps)
-    
+
     # make the integrator
     print "setting up dynamics constraints"
     integratorOptions = [ ("reltol",1e-7)
@@ -58,7 +58,7 @@ def main():
         f.setOption('name','invariant errors')
         f.init()
         return f
-    
+
     [c0] = invariantErrs().call([ocp.states[:,0],ocp.actions[:,0],ocp.params])
     ocp.addConstraint(c0,'==',0)
 
@@ -84,7 +84,7 @@ def main():
 
     # make the solver
     ocp.setObjective(ocp.lookup('endTime'))
-    
+
     context   = zmq.Context(1)
     publisher = context.socket(zmq.PUB)
     publisher.bind("tcp://*:5563")
@@ -92,26 +92,26 @@ def main():
     # callback function
     class MyCallback:
       def __init__(self):
-        self.iter = 0 
+        self.iter = 0
       def __call__(self,f,*args):
           xOpt = f.input(C.NLP_X_OPT)
           self.iter = self.iter + 1
           xup = ocp.devectorize(xOpt)
-          
+
           po = rawe.kite_pb2.PendulumOpt()
           po.x.extend(list(xup['x']))
           po.z.extend(list(xup['z']))
           po.endTime = xup['endTime']
           po.iters = self.iter
           publisher.send_multipart(["pendulum-opt", po.SerializeToString()])
-        
+
     def makeCallback():
         nd = ocp.getDesignVars().size()
         nc = ocp._constraints.getG().size()
         c = C.PyFunction( MyCallback(), C.nlpsolverOut(x_opt=C.sp_dense(nd,1), cost=C.sp_dense(1,1), lambda_x=C.sp_dense(nd,1), lambda_g = C.sp_dense(nc,1), g = C.sp_dense(nc,1) ), [C.sp_dense(1,1)] )
         c.init()
         return c
-        
+
     # solver
     solverOptions = [ ("iteration_callback",makeCallback())
 #                    , ("derivative_test","first-order")
@@ -125,12 +125,12 @@ def main():
     ocp.setGuess('torque',0)
     ocp.setGuess('m',0.4)
     ocp.setGuess('endTime',0.5)
-    
+
     #ocp.setBounds()
 
     # solve!
     opt = ocp.devectorize(ocp.solve())
-    
+
     # Plot the results
     plt.figure(1)
     plt.clf()
@@ -148,7 +148,7 @@ def main():
     plt.legend(['x','z','vx','vz','torque'])
     plt.grid()
     plt.show()
-    
+
 
 if __name__=='__main__':
     main()

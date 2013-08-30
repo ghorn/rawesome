@@ -39,9 +39,9 @@ class DesignVarMap():
         self.xNames = xNames
         self.uNames = uNames
         self.pNames = pNames
-        
+
         self.dvmap = {}
-        
+
         for name in self.xuNames():
             self.dvmap[name] = [None for k in range(0,self.nSteps)]
         for name in self.pNames:
@@ -60,7 +60,7 @@ class DesignVarMap():
         assert len(names)==length
         for k,name in enumerate(names):
             self.dvmapSet(name,val[k],**kwargs)
-        
+
     def setXVec(self,val,**kwargs):
         self._dvmapSetVec(val,self.xNames,**kwargs)
 
@@ -99,7 +99,7 @@ class DesignVarMap():
     def vectorize(self):
         # make sure all bounds are set
         self._assertAllValuesSet()
-        
+
         # concatenate then unzip bounds
         return self._concatValues()
 
@@ -113,7 +113,7 @@ class DesignVarMap():
 
         xus = dvs[:self.nSteps*nxu].reshape([nxu,self.nSteps])
         p = dvs[self.nSteps*nxu:]
-        
+
         x = []
         u = []
         for ts in range(0,self.nSteps):
@@ -133,11 +133,11 @@ class DesignVarMap():
 
     def _concatValues(self):
         xuVals = [self.dvmap[name] for name in self.xuNames()]
-         
+
         import itertools
         chain = itertools.chain(*xuVals)
         return list(chain)+[self.dvmap[name] for name in self.pNames]
-    
+
     def _assertAllValuesSet(self): # make sure all bounds are set
         # populate dictionary of missing values
         missing = {}
@@ -148,7 +148,7 @@ class DesignVarMap():
                         missing[name].append(ts)
                     else:
                         missing[name]=[ts]
-                        
+
         for name in self.pNames:
             if self.dvmap[name] is None:
                 missing[name] = True

@@ -46,7 +46,7 @@ class Nmhe(object):
         self._outputMap = nmheMaps.NmheOutputMap(self._outputMapGenerator, self._dvMap.vectorize(), self._U)
 
         self._constraints = Constraints()
-        
+
     def __call__(self,*args,**kwargs):
         return self.lookup(*args,**kwargs)
 
@@ -60,7 +60,7 @@ class Nmhe(object):
         except NameError:
             pass
         raise NameError("unrecognized name \""+name+"\"")
-        
+
     def bound(self,name,(lb,ub),timestep=None):
         self._boundMap.setVal(name,(lb,ub),timestep=timestep)
 
@@ -69,7 +69,7 @@ class Nmhe(object):
 
     def constrain(self,lhs,comparison,rhs,tag=('unnamed_constraint',None)):
         self._constraints.add(lhs,comparison,rhs,tag)
-        
+
     def setObj(self,obj):
         if hasattr(self,'_obj'):
             raise ValueError("don't change the objective function")
@@ -88,7 +88,7 @@ class Nmhe(object):
         for k in range(self.nk):
             newton = Newton(LagrangePoly,self.dae,1,nicp,deg,'RADAU')
             newton.setupStuff(endTime)
-            
+
             X0_i = self._dvMap.xVec(k)
             U_i  = self._U[k,:].T
 
@@ -105,7 +105,7 @@ class Nmhe(object):
             X0_i_plus = self._dvMap.xVec(k+1)
             g.append(Xf_i-X0_i_plus)
         return g
-            
+
     def makeSolver(self,endTime,traj=None):
         # make sure all bounds are set
         (xMissing,pMissing) = self._boundMap.getMissing()
@@ -124,7 +124,7 @@ class Nmhe(object):
 
         gDyn = self._setupDynamicsConstraints(endTime,traj)
         gDynLb = gDynUb = [C.DMatrix.zeros(gg.shape) for gg in gDyn]
-        
+
         g = C.veccat([g]+gDyn)
         glb = C.veccat([glb]+gDynLb)
         gub = C.veccat([gub]+gDynUb)
@@ -141,15 +141,15 @@ class Nmhe(object):
         else:
             arbitraryObj = 0
         gradF = C.gradient(arbitraryObj,V)
-        
+
         # hessian of lagrangian:
         Js = [C.jacobian(gnf,V) for gnf in self._gaussNewtonObjF]
         gradFgns = [C.mul(J.T,F) for (F,J) in zip(self._gaussNewtonObjF, Js)]
         gaussNewtonHess = sum([C.mul(J.T,J) for J in Js])
         hessL = gaussNewtonHess + C.jacobian(gradF,V)
-        
+
         gradF += sum(gradFgns)
-        
+
         # equality/inequality constraint jacobian
         gfcn = C.MXFunction([V,self._U],[g])
         gfcn.init()
@@ -160,7 +160,7 @@ class Nmhe(object):
         f = sum([f_*f_ for f_ in self._gaussNewtonObjF])
         if hasattr(self,'_obj'):
             f += self._obj
-        
+
         self.masterFun = C.MXFunction([V,self._U],[hessL, gradF, g, jacobG.call([V,self._U])[0], f])
         self.masterFun.init()
 
@@ -191,7 +191,7 @@ class Nmhe(object):
 #            import nmheMaps
 #            xOpt = np.array(xk).squeeze()
 #            traj = nmheMaps.VectorizedReadOnlyNmheMap(self.dae,self.nk,xOpt)
-#            
+#
 #            xsT =  np.array([trajTrue.lookup('x',timestep=kk) for kk in range(self.nk+1)] )
 #            ysT =  np.array([trajTrue.lookup('y',timestep=kk) for kk in range(self.nk+1)] )
 #            zsT =  np.array([trajTrue.lookup('z',timestep=kk) for kk in range(self.nk+1)] )
@@ -199,7 +199,7 @@ class Nmhe(object):
 #            xs =  np.array([traj.lookup('x',timestep=kk) for kk in range(self.nk+1)] )
 #            ys =  np.array([traj.lookup('y',timestep=kk) for kk in range(self.nk+1)] )
 #            zs =  np.array([traj.lookup('z',timestep=kk) for kk in range(self.nk+1)] )
-#            
+#
 #            outputMap = nmheMaps.NmheOutputMap(self._outputMapGenerator, xOpt, U)
 #            c = np.array([outputMap.lookup('c',timestep=kk) for kk in range(self.nk)])
 #            cdot = np.array([outputMap.lookup('cdot',timestep=kk) for kk in range(self.nk)])
@@ -210,17 +210,17 @@ class Nmhe(object):
 #            plot(xs)
 #            plot(xsT)
 #            ylabel('x '+str(k))
-#            
+#
 #            subplot(3,2,3)
 #            plot(ys)
 #            plot(ysT)
 #            ylabel('y '+str(k))
-#            
+#
 #            subplot(3,2,5)
 #            plot(zs)
 #            plot(zsT)
 #            ylabel('z '+str(k))
-#            
+#
 ##            subplot(2,2,2)
 ##            plot(dxs,-dzs)
 ##            ylabel('vel')
@@ -263,7 +263,7 @@ class Nmhe(object):
             assert all((ubx-xk) >= 0), "upper bounds violation"
             self.qp.setInput(lbx-xk,C.QP_LBX)
             self.qp.setInput(ubx-xk,C.QP_UBX)
-            
+
             self.qp.setInput(self.glb-g, C.QP_LBA)
             self.qp.setInput(self.gub-g, C.QP_UBA)
 

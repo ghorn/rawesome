@@ -42,7 +42,7 @@ class Dae(object):
 
         # map of derivatives
         self._dummyDdtMap = {}
-        
+
     def _freezeXzup(self,msg):
         '''
         call this when it's illegal for user to add any more states/controls/params
@@ -88,7 +88,7 @@ class Dae(object):
             return [self._addVar(n,namelist) for n in name]
 
         assert(isinstance(name,str))
-        
+
         self.assertUniqueName(name)
         namelist.append(name)
 
@@ -142,7 +142,7 @@ class Dae(object):
         Add a parameter
         """
         return self._addVar(name,self._pNames)
-    
+
     def xVec(self):
         '''
         get differential state vector
@@ -223,7 +223,7 @@ class Dae(object):
             return self._syms[name]
         except KeyError:
             raise KeyError(name+' is not a symbol in Dae')
-        
+
     def __setitem__(self,name,val):
         """
         Add an output
@@ -260,7 +260,7 @@ class Dae(object):
             if len(f.getFree()) == 0:
                 # only add if there are no algebraic or ddt(x) variables
                 outputs0.append(name)
-            
+
         # function with outputs defined at tau_i0
         if len(outputs0)>0:
             f0 = C.SXFunction([self.xVec(), self.uVec(), self.pVec()],
@@ -328,7 +328,7 @@ class Dae(object):
 #           0 = g(x',z') = g(x,[z,xdot]) = fg(xdot,x,z)
         self._freezeXzup('casadiDae()')
         f = self.getResidual()
-            
+
         xdot = C.veccat([self.ddt(name) for name in self.xNames()])
         return C.SXFunction( C.daeIn( x=self.xVec(),
                                       z=C.veccat([self.zVec(),xdot]),
@@ -339,7 +339,7 @@ class Dae(object):
     def solveForXDotAndZ(self):
         '''
         returns (xDotDict,zDict) where these dictionaries contain symbolic
-        xdot and z which are only a function of x,u,p        
+        xdot and z which are only a function of x,u,p
         '''
         # get the residual fg(xdot,x,z)
         fg = self.getResidual()

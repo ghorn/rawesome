@@ -24,29 +24,29 @@ def getWindAnglesFrom_v_bw_b(airspeed, v_bw_b):
 
 def aeroForcesTorques(dae, conf, v_bw_f, v_bw_b, w_bn_b, (eTe_f_1, eTe_f_2, eTe_f_3)):
     """
-    
+
     Parameters
     ----------
-    
+
     v_bw (vector): Linear velocity of aircraft w.r.t wind carrying frame
         a.k.a. airfoil velocity
         a.k.a. relative wind velocity
-    
+
     v_bw_f (projected vector): Linear velocity of aircraft w.r.t wind carrying frame, expressed in a generic frame (f)
     v_bw_b (projected vector): Linear velocity of aircraft w.r.t wind carrying frame, expressed in body frame
-    w_bn_b (projected vector): Rotational velocity of aircraft w.r.t 
-    
+    w_bn_b (projected vector): Rotational velocity of aircraft w.r.t
+
     (eTe_f_1, eTe_f_2, eTe_f_3) : Transverse axis of the airplane (y-axis) expressed in a generic frame (f)
         Used to define what component of aeroforces amounts to sideforce
-        
-        
+
+
     Returns
     --------
       (f_f_1, f_f_2, f_f_3, t_b_1, t_b_2, t_b_3)
-      
+
       First three entries denote forces, expressed in frame (f)
       Last three entries denote moments, expressed in body frame (b)
-       
+
     """
     eTe_f = C.veccat([eTe_f_1, eTe_f_2, eTe_f_3])
     rho = conf['rho']
@@ -146,7 +146,7 @@ def aeroForcesTorques(dae, conf, v_bw_f, v_bw_b, w_bn_b, (eTe_f_1, eTe_f_2, eTe_
     rho_sref    = 0.5*rho*sref
     rho_sref_v2 = rho_sref*vKite2
     rho_sref_v  = rho_sref*vKite
-    
+
     # LIFT :
     dae['fL'] = rho_sref_v2*cL
     fL_f = rho_sref_v*cL*eLe_v_f

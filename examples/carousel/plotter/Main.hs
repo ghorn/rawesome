@@ -45,7 +45,7 @@ main = do
   (c1, write1) <- newChannel zmqChan1 $(makeAccessors ''PD.Dae)
   listenerTid0 <- CC.forkIO (sub ip write0 zmqChan0)
   listenerTid1 <- CC.forkIO (sub ip write1 zmqChan1)
-  
+
   runPlotter [c0,c1] [listenerTid0,listenerTid1]
 
 withContext :: (ZMQ.Context -> IO a) -> IO a

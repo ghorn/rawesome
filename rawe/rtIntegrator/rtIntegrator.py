@@ -142,7 +142,7 @@ class RtIntegrator(object):
         self._integratorLib = integratorLib
         self._modelLib = modelLib
         self._rtModelGen = rtModelGen
-        
+
         self._initIntegrator = 1
 
         nx = len( self._dae.xNames() )
@@ -155,7 +155,7 @@ class RtIntegrator(object):
         self.outputsFunAll = fAll
         self.outputsFun0 = f0
         self.outputs0names = outputs0names
-        
+
         self.xNames = self._dae.xNames()
         self.uNames = self._dae.uNames()
         self.outputNames = self._dae.outputNames()
@@ -163,7 +163,7 @@ class RtIntegrator(object):
         listOut=[]
         for n in self.outputNames: listOut.append([])
         self._log = {'x':[],'u':[],'y':[],'yN':[],'outputs':dict(zip(self.outputNames,listOut))}
-        
+
 #        [ x z d(x,z)/dx d(x,z)/d(u,p) u p]
         self.x = numpy.zeros( nx )
         self.z = numpy.zeros( nz )
@@ -198,7 +198,7 @@ class RtIntegrator(object):
         if new_out != None:
             for name in new_out.keys():
                 self._log['outputs'][name].append(numpy.array(new_out[name]))
-    
+
     def _plot(self,names,title,style,when=0,showLegend=True):
         if isinstance(names,str):
             names = [names]
@@ -215,14 +215,14 @@ class RtIntegrator(object):
                 ys = numpy.squeeze(self._log['x'])[:,index]
                 ts = numpy.arange(len(ys))*self._ts
                 plt.plot(ts,ys,style)
-                
+
             # if it's a control
             if name in self.uNames:
                 index = self.uNames.index(name)
                 ys = numpy.squeeze(self._log['u'])[:,index]
                 ts = numpy.arange(len(ys))*self._ts
                 plt.step(ts,ys,style)
-                
+
             if name in self.outputNames:
                 index = self.outputNames.index(name)
                 ys = numpy.squeeze(self._log['outputs'][name])
@@ -245,7 +245,7 @@ class RtIntegrator(object):
         p    = numpy.array([p[n]    for n in self._dae.pNames()],dtype=numpy.double)
         dataIn = numpy.concatenate((x,z,u,p,xdot))
         dataOut = numpy.zeros(x.size + z.size, dtype=numpy.double)
-        
+
         self._modelLib.rhs(ctypes.c_void_p(dataIn.ctypes.data),
                            ctypes.c_void_p(dataOut.ctypes.data),
                            )
@@ -266,7 +266,7 @@ class RtIntegrator(object):
         p    = numpy.array([p[n]    for n in self._dae.pNames()],dtype=numpy.double)
         dataIn = numpy.concatenate((x,z,u,p,xdot))
         dataOut = numpy.zeros((x.size + z.size)*(2*x.size+z.size+u.size+p.size), dtype=numpy.double)
-        
+
         self._modelLib.rhs_jac(ctypes.c_void_p(dataIn.ctypes.data),
                                ctypes.c_void_p(dataOut.ctypes.data),
                                )

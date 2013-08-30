@@ -77,7 +77,7 @@ updateState po _ =
       where
         len = length xs
         dy = 0.3 / realToFrac len
-    
+
 withContext :: (ZMQ.Context -> IO a) -> IO a
 #if OSX
 withContext = ZMQ.withContext
@@ -115,7 +115,7 @@ main = do
 --  _ <- forkServer "localhost" 8000
   m <- newMVar Nothing
   _ <- forkIO (sub m)
-  
+
   let simFun _ _ = return ()
       df _ = fmap drawFun (readMVar m)
   simulateIO (Just ((1260,940),(1930,40))) "pendulum optimization" ts () df simFun

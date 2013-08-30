@@ -57,7 +57,7 @@ toNice cs = (xyz, q'n'b, r'n0'a0, r'n0't0, fromMaybe 1 $ CS.visSpan cs)
     x = KiteXyz.x $ CS.kiteXyz cs
     y = KiteXyz.y $ CS.kiteXyz cs
     z = KiteXyz.z $ CS.kiteXyz cs
-    
+
     r11 = Dcm.r11 $ CS.kiteDcm cs
     r12 = Dcm.r12 $ CS.kiteDcm cs
     r13 = Dcm.r13 $ CS.kiteDcm cs
@@ -103,7 +103,7 @@ drawFun state@(State {sCS=Just cs}) =
     points = Points (sParticles state) (Just 2) $ makeColor 1 1 1 0.5
     zLine = Line [Xyz x y (planeZ-0.01), pos]            $ makeColor 0.1 0.2 1 0.5
     xyLine = Line [Xyz x y (planeZ-0.01), Xyz 0 0 (planeZ-0.01)] $ makeColor 0.2 0.7 1 0.5
-    
+
     axes = Axes (0.5, 15)
     arm  = Line [Xyz 0 0 0, r'n0'a0] $ makeColor 1 1 0 lineAlpha
     line = Line [r'n0'a0, r'n0't0]   $ makeColor 0 1 1 lineAlpha
@@ -162,7 +162,7 @@ windShear w0 z
     z' = z + planeZ + zt + 2
     z0 = 100
     zt = 0.1
-    
+
 updateState :: CS.CarouselState -> State -> IO State
 updateState cs x0 =
   return $ State { sCS = Just cs
@@ -174,7 +174,7 @@ updateState cs x0 =
     trails0 = sTrails x0
     (pos,q,_,_,_) = toNice cs
     (_,trails) = drawAc 1 pos q
-    
+
 withContext :: (ZMQ.Context -> IO a) -> IO a
 #if OSX
 withContext = ZMQ.withContext
@@ -212,7 +212,7 @@ main = do
 --  _ <- forkServer "localhost" 8000
   m <- newMVar state0
   _ <- forkIO (sub m)
-  
+
 --  threadDelay 5000000
   let simFun _ _ = return ()
       df _ = fmap drawFun (readMVar m)

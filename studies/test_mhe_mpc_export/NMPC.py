@@ -26,10 +26,10 @@ intOpts['IMPLICIT_INTEGRATOR_NUM_ITS_INIT'] = 0
 intOpts['LINEAR_ALGEBRA_SOLVER'] = 'HOUSEHOLDER_QR'
 intOpts['UNROLL_LINEAR_SOLVER'] = False
 intOpts['IMPLICIT_INTEGRATOR_MODE'] = 'IFTR'
-    
+
 def makeNmpc(dae,N,dt):
     mpc = rawe.Ocp(dae, N=N, ts=dt)
-    
+
     ocpOpts = rawe.OcpExportOptions()
     ocpOpts['HESSIAN_APPROXIMATION'] = 'GAUSS_NEWTON'
     ocpOpts['DISCRETIZATION_TYPE'] = 'MULTIPLE_SHOOTING'
@@ -39,7 +39,7 @@ def makeNmpc(dae,N,dt):
 #   ocpOpts['SPARSE_QP_SOLUTION'] = 'FULL_CONDENSING_U2'
 #   ocpOpts['AX_NUM_QP_ITERATIONS'] = '30'
     ocpOpts['FIX_INITIAL_STATE'] = True
-               
+
     mpc.minimizeLsq(C.veccat([mpc['x'],mpc['v'],mpc['u']]))
     mpc.minimizeLsqEndTerm(C.veccat([mpc['x'],mpc['v']]))
 

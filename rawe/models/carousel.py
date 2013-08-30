@@ -24,15 +24,15 @@ def setupModel(dae, conf):
     '''
     take the dae that has x/z/u/p added to it already and return
     the states added to it and return mass matrix and rhs of the dae residual
-    
+
     mass matrix columns:
      ddt(ddelta dx dy dz w_bn_b_x w_bn_b_y w_bn_b_z) nu
-    
+
     rhs:
       forces/torques acting on : ddt(ddelta dx dy dz w_bn_b_x w_bn_b_y w_bn_b_z) nu
-    
+
     '''
-    
+
     # Parameters
     m =  conf['mass']
     g = conf['g']
@@ -47,7 +47,7 @@ def setupModel(dae, conf):
 
     zt = conf['zt']
     rA = conf['rArm']
-    
+
     # Frames
     # ==========================================
     #   World frame  (n)  NED North-East-Down
@@ -58,7 +58,7 @@ def setupModel(dae, conf):
     #   Carousel frame (c)
     #      - Origin coincides with the world origin
     #      - Makes and angle delta
-    #     
+    #
     #   Carousel tip frame (a)
     #      - Origin sits at tip of arm
     #      - e_x extends radially outwards
@@ -76,13 +76,13 @@ def setupModel(dae, conf):
     #      Velocity of point a w.r.t. frame b, expressed in frame c (Joris terminology)
 
     # States
-    
+
     # Components that make up the rotation matrix from carousel frame to body frame   R_c2b  [-]
     # e11 e12 e13
     # e21 e22 e23
     # e31 e32 e33
-                               
-    e11 = dae['e11']  
+
+    e11 = dae['e11']
     e12 = dae['e12']
     e13 = dae['e13']
 
@@ -143,14 +143,14 @@ def setupModel(dae, conf):
     # Velocity of aircraft w.r.t wind carrying frame, expressed in body frame
     # (needed to compute the aero forces and torques !)
     v_bw_b = C.mul( dae['R_c2b'], v_bw_c )
-    
+
     (f1, f2, f3, t1, t2, t3) = aeroForcesTorques(dae, conf, v_bw_c, v_bw_b,
                                                  dae['w_bn_b'],
                                                  (dae['e21'], dae['e22'], dae['e23'])  # y-axis of body frame in carousel coordinates
                                                  )
     # f1..f3 expressed in carrousel coordinates
-    # t1..t3 expressed in body coordinates 
-                                                 
+    # t1..t3 expressed in body coordinates
+
     # if we are running a homotopy, add psudeo forces and moments as algebraic states
     if 'runHomotopy' in conf and conf['runHomotopy']:
         gamma_homotopy = dae.addP('gamma_homotopy')
@@ -261,7 +261,7 @@ def setupModel(dae, conf):
     dRexp[2,0] = e23*w3 - e33*w2
     dRexp[2,1] = e33*w1 - e13*w3
     dRexp[2,2] = e13*w2 - e23*w1
-    
+
 
     # The cable constraint
     c =(x + zt*e31)**2/2 + (y + zt*e32)**2/2 + (z + zt*e33)**2/2 - r**2/2

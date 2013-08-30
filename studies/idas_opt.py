@@ -94,7 +94,7 @@ def main():
         f.setOption('name','invariant errors')
         f.init()
         return f
-    
+
     [c0,cdot0,dcmError0] = invariantErrs().call([ocp.states[:,0],ocp.actions[:,0],ocp.params])
     ocp.addConstraint(c0,'==',0)
     ocp.addConstraint(cdot0,'==',0)
@@ -152,7 +152,7 @@ def main():
     # callback function
     class MyCallback:
       def __init__(self):
-        self.iter = 0 
+        self.iter = 0
       def __call__(self,f,*args):
           self.iter = self.iter + 1
           xOpt = f.input(C.NLP_X_OPT)
@@ -167,9 +167,9 @@ def main():
           mc.messages.append("endTime: "+str(xup['endTime']))
           mc.messages.append("w0: "+str(xup['w0']))
           mc.messages.append("iter: "+str(self.iter))
-          
+
           publisher.send_multipart(["multi-carousel", mc.SerializeToString()])
-    
+
     def makeCallback():
         nd = ocp.getDesignVars().size()
         nc = ocp._constraints.getG().size()
@@ -183,7 +183,7 @@ def main():
                     , ("linear_solver","ma57")
 #                    , ("max_iter",5)
                     ]
-    
+
     ocp.setSolver( C.IpoptSolver, solverOptions=solverOptions )
     #ocp.setBounds()
 

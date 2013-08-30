@@ -47,7 +47,7 @@ def getSteadyState(dae,r0,v0):
     g.add(dae['airspeed'], '>=', v0, tag=('airspeed fixed',None))
     g.addBnds(dae['alpha_deg'], (4,10), tag=('alpha',None))
     g.addBnds(dae['beta_deg'], (-10,10), tag=('beta',None))
-    
+
     dvs = C.veccat([dae.xVec(), dae.zVec(), dae.uVec(), dae.pVec(), dae.xDotVec()])
 #    ffcn = C.SXFunction([dvs],[sum([dae[n]**2 for n in ['aileron','elevator','y','z']])])
     obj = 0
@@ -104,7 +104,7 @@ def getSteadyState(dae,r0,v0):
             dotBounds[name] = (-C.inf, C.inf)
     boundsVec = [bounds[n] for n in dae.xNames()+dae.zNames()+dae.uNames()+dae.pNames()]+ \
                 [dotBounds[n] for n in dae.xNames()]
-    
+
 #    gfcn.setInput(guessVec)
 #    gfcn.evaluate()
 #    ret = gfcn.output()
@@ -137,7 +137,7 @@ def getSteadyState(dae,r0,v0):
 #            self.iter += 1
 #            publisher.send_multipart(["multi-carousel", mc.SerializeToString()])
 
-    
+
     solver = C.IpoptSolver(ffcn,gfcn)
     def addCallback():
         nd = len(boundsVec)

@@ -36,7 +36,7 @@ def main():
     ocp = rawe.collocation.Coll(dae, nk=nk,nicp=1,deg=4, collPoly='RADAU')
     print "setting up collocation"
     ocp.setupCollocation( ocp.lookup('endTime') )
-    
+
     # constrain invariants
     ocp.constrain(ocp.lookup('c',timestep=0),'==',0)
     ocp.constrain(ocp.lookup('cdot',timestep=0),'==',0)
@@ -69,7 +69,7 @@ def main():
 
     ocp.setObjective(ocp.lookup('endTime') + 1e-6*obj/float(nk))
 #    ocp.setObjective(1e-6*obj/float(nk))
-    
+
     context   = zmq.Context(1)
     publisher = context.socket(zmq.PUB)
     publisher.bind("tcp://*:5563")
@@ -77,13 +77,13 @@ def main():
     # callback function
     class MyCallback:
         def __init__(self):
-            self.iter = 0 
+            self.iter = 0
         def __call__(self,f,*args):
             xOpt = numpy.array(f.input(C.NLP_X_OPT))
-        
+
             self.iter = self.iter + 1
             traj = rawe.collocation.trajectory.Trajectory(ocp,xOpt)
-            
+
             po = rawe.kite_pb2.PendulumOpt()
             po.x.extend(list([traj.lookup('x',timestep=k) for k in range(ocp.nk+1)]))
             po.z.extend(list([traj.lookup('z',timestep=k) for k in range(ocp.nk+1)]))
@@ -91,7 +91,7 @@ def main():
             po.messages.append('mass: %.3f'% traj.lookup('m'))
             po.messages.append('iters: %d'  % self.iter)
             publisher.send_multipart(["pendulum-opt", po.SerializeToString()])
-        
+
     # solver
     solverOptions = [ ("linear_solver","ma57")
 #                    , ("derivative_test","first-order")
@@ -108,7 +108,7 @@ def main():
 #                      ("ScaledKKT",True),
 #                      ("ScaledObj",True),
 #                      ("ScaledQP",True)]
-    
+
     constraintFunOptions = [('numeric_jacobian',False)]
 
     # initial conditions
@@ -120,7 +120,7 @@ def main():
         theta = float(k)/nk*C.pi/8.0
         x =  r*C.cos(theta)
         z = -r*C.sin(theta)
-        
+
         ocp.guess('x',x,timestep=k)
         ocp.guess('z',z,timestep=k)
         ocp.guess('dx',(x-xOld)/dt0,timestep=k)
@@ -147,7 +147,7 @@ def main():
     ocp.setupSolver( solverOpts=solverOptions,
                      constraintFunOpts=constraintFunOptions,
                      callback=MyCallback() )
-    
+
     print "solving"
     traj = ocp.solve()
     print "endTime: "+str(traj.lookup('endTime'))

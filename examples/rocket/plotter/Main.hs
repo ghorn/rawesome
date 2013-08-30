@@ -41,7 +41,7 @@ main = do
       zmqChan0 = "rocket trajectory"
   (c0, write0) <- newChannel zmqChan0 $(makeAccessors ''RT.Trajectory)
   listenerTid0 <- CC.forkIO (sub ip write0 zmqChan0)
-  
+
   runPlotter [c0] [listenerTid0]
 
 withContext :: (ZMQ.Context -> IO a) -> IO a

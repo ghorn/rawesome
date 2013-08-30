@@ -15,9 +15,9 @@ n = length(adat.Alpha);
 % %          {'CY_tot','Cy'};
 % %          {'CZ_tot','Cz'};
 %         ];
-% 
+%
 % [rows,~] = size(names);
-% 
+%
 % for k=1:rows
 % %    subplot(3,2,k);
 %     figure()

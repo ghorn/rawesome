@@ -40,7 +40,7 @@ class VectorizedReadOnlyNmheMap(object):
             assert (mapSize == self._vec.size), "vector size is wrong"
         else:
             raise ValueError("unrecognized type: "+str(type(self._vec)))
-        
+
         # set up xVec,pVec
         vecIdx = 0
         self._p = self._vec[vecIdx:vecIdx+pSize]
@@ -65,14 +65,14 @@ class VectorizedReadOnlyNmheMap(object):
 
     def vectorize(self):
         return self._vec
-    
+
     def xVec(self,timestep):
         assert (timestep != None), "please set timestep"
         assert (timestep <= self._nk), "timestep too large"
         return self._X[timestep]
     def pVec(self):
         return self._p
-    
+
     def lookup(self,name,timestep=None):
         if name in self._xIdx:
             return self.xVec(timestep)[self._xIdx[name]]
@@ -81,7 +81,7 @@ class VectorizedReadOnlyNmheMap(object):
             return self.pVec()[self._pIdx[name]]
         else:
             raise NameError('unrecognized name "'+name+'"')
-    
+
 
 class WriteableNmheMap(object):
     """
@@ -97,7 +97,7 @@ class WriteableNmheMap(object):
 
         self._X = np.resize(np.array([None]),(self._nk+1,dae.xVec().size()))
         self._p = np.resize(np.array([None]),dae.pVec().size())
-        
+
         self._xIdx = {}
         self._pIdx = {}
         for k,name in enumerate(self._xNames):
@@ -107,14 +107,14 @@ class WriteableNmheMap(object):
 
     def vectorize(self):
         return np.concatenate([self.pVec()]+[self.xVec(k) for k in range(self._nk+1)])
-    
+
     def xVec(self,timestep):
         assert (timestep != None), "please set timestep"
         assert (timestep <= self._nk), "timestep too large"
         return self._X[timestep,:]
     def pVec(self):
         return self._p
-    
+
     def lookup(self,name,timestep=None):
         if name in self._xIdx:
             assert (timestep != None), "please set timestep"

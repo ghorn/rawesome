@@ -51,11 +51,11 @@ if __name__ == "__main__":
     ocp.guess("vel",0)
     ocp.guess("mass",1)
     ocp.guess("thrust",0)
-    
+
     # lookup states/actions/outputs/params
     thrust4 = ocp.lookup('thrust',timestep=4)
     thrust4 = ocp('thrust',timestep=4)
-    
+
     # can specify index of collocation point
     posvel4_2 = ocp('posvel',timestep=4, degIdx=2)
 
@@ -82,7 +82,7 @@ if __name__ == "__main__":
 
 
     print "final position: "+str(traj.lookup('pos',-1))
-    
+
     # save trajectory
     traj.save("data/rocket_opt.dat")
 

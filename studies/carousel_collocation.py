@@ -63,7 +63,7 @@ def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
     # constraint line angle
     for k in range(0,nk):
         ocp.constrain(ocp.lookup('cos_line_angle',timestep=k),'>=',C.cos(55*pi/180), tag=('line angle',k))
-        
+
     # constrain airspeed
     def constrainAirspeedAlphaBeta():
         for k in range(0,nk):
@@ -122,7 +122,7 @@ def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
     # boundary conditions
     ocp.bound('delta',(0,0),timestep=0)
     ocp.bound('delta',(2*pi,2*pi),timestep=-1)
-    
+
     # objective function
     obj = 0
     for k in range(nk):
@@ -131,19 +131,19 @@ def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
         tc = ocp.lookup('motor_torque',timestep=k)
         daileron = ocp.lookup('daileron',timestep=k)
         delevator = ocp.lookup('delevator',timestep=k)
-        
+
         daileronSigma = 0.1
         delevatorSigma = 0.1
         ddrSigma = 5.0
         torqueSigma = 1.0
-        
+
 #        tc = tc - 390
 
         ailObj = daileron*daileron / (daileronSigma*daileronSigma)
         eleObj = delevator*delevator / (delevatorSigma*delevatorSigma)
         winchObj = ddr*ddr / (ddrSigma*ddrSigma)
         torqueObj = tc*tc / (torqueSigma*torqueSigma)
-        
+
         obj += ailObj + eleObj + winchObj + torqueObj
     ocp.setObjective( obj/nk )
 
@@ -167,7 +167,7 @@ def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
 #                    , ("ScaledObj",True)
 #                    , ("ScaledQP",True)
                     ]
-    
+
     # initial guess
     ocp.guessX(x0)
     for k in range(0,nk+1):
@@ -191,7 +191,7 @@ def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
 if __name__=='__main__':
     print "reading config..."
     from highwind_carousel_conf import conf
-    
+
     print "creating model..."
     dae = rawe.models.carousel(conf)
     dae.addP('endTime')

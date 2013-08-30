@@ -84,7 +84,7 @@ mpcRT.x0 = np.array([1,0])
 outs = sim.getOutputs(mpcRT.x[0,:],mpcRT.u[0,:],{})
 new_y  = np.squeeze(outs['measurements'])
 simLog.log(mpcRT.x0,new_y,[])
-    
+
 err1 = []
 err2 = []
 
@@ -97,12 +97,12 @@ time = 0
 while time < Tf:
     mheRT.preparationStep()
     mheRT.feedbackStep()
-    
+
     mpcRT.x0 = np.squeeze(mheRT.x[-1,:])
-    
+
     mpcRT.preparationStep()
     mpcRT.feedbackStep()
-    
+
     yL = mheRT.y[0,:]
     x = mheRT.x[0,:]
     u = mheRT.u[0,:]
@@ -110,12 +110,12 @@ while time < Tf:
     print xL1
     PL = PL1
     xL = xL1
-    
+
     SimulateAndShift(mpcRT,mheRT,sim,simLog)
-    
+
     time += Ts
     print time
-    
+
 
 
 plt.ion()
