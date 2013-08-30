@@ -31,27 +31,27 @@ class TrajFit():
         self.ts = np.array(ts)
 
         self.fits = {}
-        
+
         def getAllX(name):
             xs = [traj.lookup(name,timestep=k,nicpIdx=j,degIdx=i) \
                   for k in range(traj.nk) for j in range(traj.nicp) for i in range(traj.deg+1)]
             xs.append(traj.lookup(name,timestep=traj.nk,nicpIdx=0,degIdx=0))
             xs = np.array(xs)
             return xs
-        
+
         sys.stdout.write("fitting: ")
         sys.stdout.flush()
         for name in traj.dvMap._xNames:
             sys.stdout.write(name+" ")
             sys.stdout.flush()
-            
+
             xs = getAllX(name)
 
             polyOrder = orderMap[name]['poly']
             sinOrder = orderMap[name]['sin']
             cosOrder = orderMap[name]['cos']
             self.fits[name] = FourierFit(name, polyOrder, cosOrder, sinOrder, self.ts, xs)
-            
+
         sys.stdout.write('\n')
         sys.stdout.flush()
 
@@ -61,19 +61,19 @@ class TrajFit():
         legend = []
         for name in plotnames:
             legend.append(name+" fit")
-    
+
             t0 = self.ts[0]
             tf = self.ts[-1]
             dt = tf-t0
-    
+
             t0 -= 0.2*dt
             tf += 0.2*dt
             ts_ = np.linspace(t0,tf,500)
             plt.plot(ts_,[self.fits[name].evaluate(t) for t in ts_])
-    
+
             legend.append(name)
             plt.plot(self.ts,self.fits[name].xs,'--')
-            
+
         plt.title("fourier fits")
         plt.xlabel('time')
         plt.legend(legend)
@@ -92,7 +92,7 @@ class TrajFit():
         self.fitsWithPhase = {}
         for name in self.fits:
             fit = self.fits[name]
-            
+
             polys = [coeff*polyBases[order] for coeff,order in zip(fit.polyCoeffs, fit.polyOrder)]
             coses = [coeff*cosBases[order]  for coeff,order in zip(fit.cosCoeffs,  fit.cosOrder)]
             sins  = [coeff*sinBases[order]  for coeff,order in zip(fit.sinCoeffs,  fit.sinOrder)]
@@ -113,7 +113,7 @@ class FourierFit():
         self.polyOrder = polyOrder_
         self.cosOrder  = cosOrder_
         self.sinOrder  = sinOrder_
-        
+
         self.ts = copy.deepcopy(ts_)
         self.timeScaling = float(2*np.pi/self.ts[-1])
         self.scaledTs = self.ts*self.timeScaling
@@ -139,7 +139,7 @@ class FourierFit():
         self.polyCoeffs = self.fitcoeffs[0:len(self.polyOrder)]
         self.cosCoeffs  = self.fitcoeffs[len(self.polyOrder):len(self.polyOrder+self.cosOrder)]
         self.sinCoeffs  = self.fitcoeffs[len(self.polyOrder+self.cosOrder):len(self.polyOrder+self.cosOrder+self.sinOrder)]
-            
+
     def evaluate(self,t_):
         t = t_*self.timeScaling
         val = 0
@@ -150,18 +150,8 @@ class FourierFit():
         for k,so in enumerate(self.sinOrder):
             val += self.sinCoeffs[k]*np.sin(so*t)
         return val
-        
+
 if __name__=='__main__':
-    filename = "data/carousel_homotopy"
-    #filename = "../pumping_mode/data/crosswind_opt_mechanical_1_loops"
-    
-    # load saved trajectory
-    loadfile = filename+".dat"
-    print "loading saved trajectory: "+loadfile
-    f=open(loadfile,'r')
-    traj = pickle.load(f)
-    f.close()
-    
     # fit everything
     xyzOrders = {'poly':[0],
                  'sin':range(1,6),
@@ -226,14 +216,25 @@ if __name__=='__main__':
                 'ddelta':ddeltaOrders,
                 'motor_torque':motorTorqueOrders
                 }
-    trajFit = TrajFit(orderMap,traj)
-    
-    savefile = filename+"_fourier.dat"
-    print "saving fourier coeffs: "+savefile
-    f=open(savefile,'w')
-    pickle.dump(trajFit,f)
-    f.close()
-    
+
+    for filename in ["data/carousel_homotopy",
+                     "../pumping_mode/data/crosswind_opt_mechanical_1_loops"]:
+
+        # load saved trajectory
+        loadfile = filename+".dat"
+        print "loading saved trajectory: "+loadfile
+        f=open(loadfile,'r')
+        traj = pickle.load(f)
+        f.close()
+
+        trajFit = TrajFit(orderMap,traj)
+
+        savefile = filename+"_fourier.dat"
+        print "saving fourier coeffs: "+savefile
+        f=open(savefile,'w')
+        pickle.dump(trajFit,f)
+        f.close()
+
     def mkPlots():
         #trajFit.plot(['x','y','z'])
         trajFit.plot(['r_n2b_n_x','r_n2b_n_y','r_n2b_n_z'])
@@ -248,4 +249,4 @@ if __name__=='__main__':
         if 'ddelta' in traj.dvMap._xNames:
             trajFit.plot(['ddelta'])
         plt.show()
-    mkPlots()
+    #mkPlots()
