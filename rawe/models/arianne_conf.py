@@ -94,8 +94,8 @@ def makeConf():
          'j3': 0.0229,
 
          #[carousel]
-         #'rArm': 1.085, #(dixit Kurt)
-         'rArm': 2,
+         'rArm': 1.085, #(dixit Kurt)
+#          'rArm': 2,
 
          #Carousel Friction & inertia
          'jCarousel': 1e2,
