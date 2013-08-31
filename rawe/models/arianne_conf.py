@@ -86,6 +86,7 @@ def makeConf():
          'cref': 0.128, #sqrt(sref/AR)
 
          'zt': 0.01,
+         'xt': 0.018, # quick fix
 
          #INERTIA MATRIX (Kurt's direct measurements)
          'j1': 0.0163,
