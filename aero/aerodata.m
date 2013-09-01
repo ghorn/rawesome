@@ -27,7 +27,7 @@ ret = struct();
 % %ret.rb/2V             = data(:,07);
 % %ret.r'b/2V            = data(:,08);
 % ret.CX_tot             = data(:,09);
-% 
+%
 % ret.Cl_tot             = data(:,10);
 % %ret.Cl'_tot           = data(:,11);
 % ret.CY_tot             = data(:,12);
@@ -38,7 +38,7 @@ ret = struct();
 % ret.CL_tot             = data(:,17);
 % ret.CD_tot             = data(:,18);
 % ret.CD_vis             = data(:,19);
-% 
+%
 % ret.CD_ind             = data(:,20);
 % ret.CL_ff              = data(:,21);
 % ret.CD_ff              = data(:,22);
@@ -48,11 +48,11 @@ ret = struct();
 % ret.Aileron            = data(:,26);
 % ret.Elevator           = data(:,27);
 % ret.Rudder             = data(:,28);
-% 
+%
 % ret.CL_a               = data(:,29);
 % ret.CL_b               = data(:,30);
 % ret.CY_a               = data(:,31);
-% 
+%
 % ret.CY_b               = data(:,32);
 % ret.Cl_a               = data(:,33);
 % ret.Cl_b               = data(:,34);
@@ -63,7 +63,7 @@ ret = struct();
 % ret.CL_p               = data(:,39);
 % ret.CL_q               = data(:,40);
 % ret.CL_r               = data(:,41);
-% 
+%
 % ret.CY_p               = data(:,42);
 % ret.CY_q               = data(:,43);
 % ret.CY_r               = data(:,44);
@@ -76,42 +76,42 @@ ret = struct();
 % ret.Cn_p               = data(:,51);
 % ret.Cn_q               = data(:,52);
 % ret.Cn_r               = data(:,53);
-% 
+%
 % ret.CL_d1              = data(:,54);
 % ret.CL_d2              = data(:,55);
 % ret.CL_d3              = data(:,56);
 % ret.CL_d4              = data(:,57);
-% 
+%
 % ret.CY_d1              = data(:,58);
 % ret.CY_d2              = data(:,59);
 % ret.CY_d3              = data(:,60);
 % ret.CY_d4              = data(:,61);
-% 
+%
 % ret.Cl_d1              = data(:,62);
 % ret.Cl_d2              = data(:,63);
 % ret.Cl_d3              = data(:,64);
 % ret.Cl_d4              = data(:,65);
-% 
+%
 % ret.Cm_d1              = data(:,66);
 % ret.Cm_d2              = data(:,67);
 % ret.Cm_d3              = data(:,68);
 % ret.Cm_d4              = data(:,69);
-% 
+%
 % ret.Cn_d1              = data(:,70);
 % ret.Cn_d2              = data(:,71);
 % ret.Cn_d3              = data(:,72);
 % ret.Cn_d4              = data(:,73);
-% 
+%
 % ret.CD_ff_d1           = data(:,74);
 % ret.CD_ff_d2           = data(:,75);
 % ret.CD_ff_d3           = data(:,76);
 % ret.CD_ff_d4           = data(:,77);
-% 
+%
 % ret.e_d1               = data(:,78);
 % ret.e_d2               = data(:,79);
 % ret.e_d3               = data(:,80);
 % ret.e_d4               = data(:,81);
-% 
+%
 % ret.Xnp                = data(:,82);
 %ret.Clb_Cnr / Clr_Cnb  = data(:,75);
 

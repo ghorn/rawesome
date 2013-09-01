@@ -28,13 +28,13 @@ if __name__=='__main__':
     from rawe.models.arianne_conf import makeConf
     conf = makeConf()
     dae = rawe.models.carousel(makeConf())
-    
+
     # compute the steady state
     steadyState, ssDot = getSteadyState(dae,conf,2*C.pi,1.2,0.1)
     print steadyState
     print ssDot
-    
-    
+
+
     # create the sim
     dt = 0.01
     sim = rawe.sim.Sim(dae,dt)

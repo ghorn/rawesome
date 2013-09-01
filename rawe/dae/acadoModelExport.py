@@ -52,7 +52,7 @@ def writeAcadoAlgorithm(dae, f):
         write( '%(init)s%(work)s_%(i1)d = %(op)s( %(work)s_%(i2)d, %(work)s_%(i3)d );' %  replace)
     # Loop over the algorithm
     for i in range(f.getAlgorithmSize()):
-      
+
         # Get the atomic operation
         op = f.getAtomicOperation(i)
         i1 = f.getAtomicOutput(i)
@@ -86,7 +86,7 @@ def writeAcadoAlgorithm(dae, f):
                     replace['i1'] = i1-1
                     replace['outputname'] = dae.outputNames()[i1-1]
                     write( '%(real)s %(output)s_%(i1)d_%(i3)d = %(work)s_%(i2)d; /* Output "%(outputname)s" */' % replace )
-            
+
             ########## BINARY ########
             elif op==C.OP_ADD:
                 makeInfixBinary('+',replace)

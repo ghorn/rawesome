@@ -32,14 +32,14 @@ def detectLinearSubsystems(dae):
 
     # take jacobian and find which entries are constant, zero, or nonzer
     jac = C.jacobian(f,inputs)
-    
+
     def qualifyM(m):
       M = C.IMatrix.zeros(m.size1(),m.size2())
       for i in range(m.size1()):
         for j in range(m.size2()):
           M[i,j] = qualify(m[i,j].toScalar())
       return M
-      
+
     def qualify(e):
       if e.isZero():
         return 0
@@ -49,7 +49,7 @@ def detectLinearSubsystems(dae):
         return 2
       else:
         return 1
-        
+
     MA = qualifyM(jac[:,:nx])
     MZ = qualifyM(jac[:,nx:nx+nz])
     MU = qualifyM(jac[:,nx+nz:nx+nz+nup])
@@ -98,7 +98,7 @@ def detectLinearSubsystems(dae):
             for j in x23_candidates:
                 if MA[i,j] > 0 or MC[i,j] > 0:
                     badRows.add(i)
-            
+
             # oh shit, a tainted row, blow away everything here
             if i in badRows:
                 removeUs = set()

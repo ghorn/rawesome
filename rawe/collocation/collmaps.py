@@ -39,7 +39,7 @@ class ReadOnlyCollMap(object):
 
         assert isinstance(name,str)
         self._name = name
-        
+
         self._xMap = {}
         self._zMap = {}
         self._uMap = {}
@@ -58,23 +58,23 @@ class ReadOnlyCollMap(object):
         Return all the variables in one vector
         """
         V = [self.lookup(name) for name in self._pNames]
-        
+
         for k in range(self._nk):
             # Collocated states
             for i in range(self._nicp):
                 for j in range(self._deg+1):
                     V.extend([self.lookup(name,timestep=k,nicpIdx=i,degIdx=j) for name in self._xNames])
-                    
+
                     if j !=0:
                         V.extend([self.lookup(name,timestep=k,nicpIdx=i,degIdx=j) for name in self._zNames])
-            
+
             # Parametrized controls
             V.extend([self.lookup(name,timestep=k) for name in self._uNames])
-        
+
         # State at end time
         V.extend([self.lookup(name,timestep=self._nk,nicpIdx=0,degIdx=0) for name in self._xNames])
         return V
-            
+
     def xVec(self,timestep,nicpIdx=None,degIdx=None):
         return C.veccat([self.lookup(name,timestep=timestep,nicpIdx=nicpIdx,degIdx=degIdx) \
                          for name in self._xNames])
@@ -94,10 +94,10 @@ class ReadOnlyCollMap(object):
             return float(ret)
         else:
             return ret
-        
+
     def _lookupOrSet(self,name,timestep,nicpIdx,degIdx,setVal=None,quiet=False,force=False):
         assert isinstance(name,str), "lookup key must be a string in "+self._name+" map"
-        
+
         if name in self._xMap:
             assert timestep is not None, "must give timestep for differential state lookup ("+self._name+")"
             if nicpIdx is None:
@@ -177,7 +177,7 @@ class WriteableCollMap(ReadOnlyCollMap):
     """
     def setVal(self,name,val,timestep=None,nicpIdx=None,degIdx=None,quiet=False,force=False):
         self._lookupOrSet(name,timestep,nicpIdx,degIdx,setVal=val,quiet=quiet,force=force)
-        
+
     def fillInMissing(self,mapName,interpFun):
         assert(isinstance(mapName, str))
         tau_root = mkCollocationPoints(self._collPoly,self._deg)
@@ -187,7 +187,7 @@ class WriteableCollMap(ReadOnlyCollMap):
             val = self.lookup(name)
             if val is None:
                 raise ValueError(mapName+" for parameter \""+name+"\" is not set")
-        
+
         # all controls should be set
         for name in self._uNames:
             for k in range(self._nk):
@@ -230,15 +230,15 @@ class VectorizedReadOnlyCollMap(ReadOnlyCollMap):
     Everything is stored in one vector so you can call
     {x,z,u,p}Vec and get efficient slices, and "vectorize"
     returns the original vector instead of concatenating all the individual elements.
-    This is 
+    This is
     """
     def __init__(self,ocp,name,vec):
         ReadOnlyCollMap.__init__(self,ocp,name)
         self._devectorize(vec)
-        
+
     def vectorize(self):
         return self._vec
-            
+
     def xVec(self,timestep,nicpIdx=None,degIdx=None):
         if nicpIdx is None:
             nicpIdx = 0
@@ -267,19 +267,19 @@ class VectorizedReadOnlyCollMap(ReadOnlyCollMap):
         nu = len(self._uNames)
         NP = len(self._pNames)
         nx = ndiff + nalg
-        
+
         # Total number of variables
         NXD = self._nicp*self._nk*(self._deg+1)*ndiff # Collocated differential states
         NXA = self._nicp*self._nk*self._deg*nalg      # Collocated algebraic states
         NU = self._nk*nu                  # Parametrized controls
         NXF = ndiff                 # Final state (only the differential states)
         NV = NXD+NXA+NU+NXF+NP
-        
+
         def setVal(name,val,timestep=None,nicpIdx=None,degIdx=None):
             self._lookupOrSet(name,timestep,nicpIdx,degIdx,setVal=val)
 
         offset = 0
-        
+
         # Get the parameters
         P = V[offset:offset+NP]
         for k,name in enumerate(self._pNames):
@@ -287,12 +287,12 @@ class VectorizedReadOnlyCollMap(ReadOnlyCollMap):
 #            self._dvMap.setVal(name,V[offset+k])
             setVal(name,V[offset+k])
         offset += NP
-        
+
         # Get collocated states and parametrized control
         XD = np.resize(np.array([],dtype=type(V)),(self._nk+1,self._nicp,self._deg+1)) # NB: same name as above
         XA = np.resize(np.array([],dtype=type(V)),(self._nk,self._nicp,self._deg+1)) # NB: same name as above
         U = np.resize(np.array([],dtype=type(V)),self._nk)
-        
+
         for k in range(self._nk):
             # Collocated states
             for i in range(self._nicp):
@@ -303,7 +303,7 @@ class VectorizedReadOnlyCollMap(ReadOnlyCollMap):
 #                        self._indexMap.setVal(name,offset+m,timestep=k,nicpIdx=i,degIdx=j)
 #                        self._dvMap.setVal(name,V[offset+m],timestep=k,nicpIdx=i,degIdx=j)
                         setVal(name,V[offset+m],timestep=k,nicpIdx=i,degIdx=j)
-                        
+
                     if j !=0:
                         XA[k][i][j] = V[offset+ndiff:offset+ndiff+nalg]
                         for m,name in enumerate(self._zNames):
@@ -319,7 +319,7 @@ class VectorizedReadOnlyCollMap(ReadOnlyCollMap):
                             offset += nx
                         else:
                             offset += ndiff
-            
+
             # Parametrized controls
             U[k] = V[offset:offset+nu]
             for m,name in enumerate(self._uNames):
@@ -327,14 +327,14 @@ class VectorizedReadOnlyCollMap(ReadOnlyCollMap):
 #                self._dvMap.setVal(name,V[offset+m],timestep=k)
                 setVal(name,V[offset+m],timestep=k)
             offset += nu
-        
+
         # State at end time
         XD[self._nk][0][0] = V[offset:offset+ndiff]
         for m,name in enumerate(self._xNames):
 #            self._indexMap.setVal(name,offset+m,timestep=self.nk,degIdx=0,nicpIdx=0)
 #            self._dvMap.setVal(name,V[offset+m],timestep=self.nk,degIdx=0,nicpIdx=0)
             setVal(name,V[offset+m],timestep=self._nk,degIdx=0,nicpIdx=0)
-        
+
         offset += ndiff
         assert offset==NV
 
@@ -440,7 +440,7 @@ class OutputMap(object):
                 k += self._numOutputs0
                 for name,val in zip(self._outputNames0,outs):
                     self._outputs0[name][timestepIdx,nicpIdx] = val
-                
+
                 # all outputs
                 for degIdx in range(1,self._deg+1):
                     outs = allOutputs[k:k+self._numOutputs]
@@ -452,13 +452,13 @@ class OutputMap(object):
     def lookup(self,name,timestep=None,nicpIdx=None,degIdx=None):
         if not (name in self._outputs0 or name in self._outputs):
             raise NameError("couldn't find \""+name+"\"")
-            
+
         #assert (timestep is not None), "please specify timestep at which you want to look up output \""+name+"\""
         if nicpIdx is None:
             nicpIdx = 0
         if degIdx is None:
             degIdx = 0
-        
+
         # if degIdx == 0, return value with no algebraic inputs
         if degIdx == 0:
             assert (name in self._outputs0), "output \""+name+"\" is not an explicit function of x/u/p and is not defined at the beginning of the collocation interval, specify degIdx > 0"
@@ -466,7 +466,7 @@ class OutputMap(object):
                 return [self._outputs0[name][k][nicpIdx] for k in range(self.nk)]
             else:
                 return self._outputs0[name][timestep][nicpIdx]
-                
+
         # if degIdx != 0, return value which may or may not have algebraic inputs
         if timestep is None:
             return [self._outputs[name][k][nicpIdx][degIdx] for k in range(self.nk)]
@@ -513,7 +513,7 @@ class QuadratureManager(object):
                     Qs = C.mul( ldInv, dQs)
                     for j in range(1,self._deg+1):
                         qStates[k,i,j] = qStates[k,i,0] + Qs[j-1]
-                    
+
                     m = C.mul( Qs.T, l1[1:])
                     if i < self._nicp - 1:
                         qStates[k,i+1,0] = qStates[k,i,0] + m
@@ -527,14 +527,14 @@ class QuadratureManager(object):
                     Qs = C.mul( ldInv, dQs - ld0*qStates[k,i,0] )
                     for j in range(1,self._deg+1):
                         qStates[k,i,j] = Qs[j-1]
-                    
+
                     m = C.veccat( [qStates[k,i,0], Qs] )
                     m = C.mul( m.T, l1)
                     if i < self._nicp - 1:
                         qStates[k,i+1,0] = m
                     else:
                         qStates[k+1,0,0] = m
-                
+
         self._quadratures[quadratureStateName] = qStates
         self._setupQuadratureFunctions(symbolicDvs)
 
@@ -554,7 +554,7 @@ class QuadratureManager(object):
             quadouts.extend(list(self._quadratures[name].flatten()[:-self._deg]))
         self.quadratureFun = C.MXFunction([symbolicDvs],quadouts)
         self.quadratureFun.init()
-        
+
 class QuadratureMap(object):
     def __init__(self,quadratureManager,numericDvs):
         self._nk = quadratureManager._nk

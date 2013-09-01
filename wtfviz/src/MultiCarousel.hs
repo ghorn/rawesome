@@ -61,19 +61,19 @@ drawOneKite minLineLength niceKite
     quat = nk_q'n'b niceKite
     r'n0'a0 = nk_r'n0'a0 niceKite
     r'n0't0 = nk_r'n0't0 niceKite
-    
+
     arm  = Line [Xyz 0 0 0, r'n0'a0] $ makeColor 1 1 0 (nk_lineAlpha niceKite)
     line = VisObjects [ line1 $ makeColor 1 0.2 0 (nk_lineAlpha niceKite)
                       , line2 $ makeColor 0 1 1 (nk_lineAlpha niceKite)
                       ]
       where
-        line1 = Line [r'n0'a0, rMid] 
-        line2 = Line [rMid, r'n0't0] 
+        line1 = Line [r'n0'a0, rMid]
+        line2 = Line [rMid, r'n0't0]
 
         rMid = r'n0'a0 + fmap (* (1 - minLineLength/normDr)) dr
         dr = r'n0't0 - r'n0'a0
         normDr = Xyz.norm dr
-        
+
 
     s = nk_visSpan niceKite
     ac = Trans pos $ Scale (s,s,s) ac'
@@ -90,7 +90,7 @@ drawFun (State niceKites messages) = VisObjects $ [axes,txt] ++ [plane] ++ kites
     (kites,zs) = unzip $ map (drawOneKite minLineLength) niceKites
     z = maximum zs
 --    points = Points (sParticles state) (Just 2) $ makeColor 1 1 1 0.5
-    
+
     axes = Axes (0.5, 15)
 --    arm  = Line [Xyz 0 0 0, r'n0'a0] $ makeColor 1 1 0 1
 --    line = Line [r'n0'a0, r'n0't0]   $ makeColor 0 1 1 1
@@ -149,7 +149,7 @@ runMultiCarousel channel toState = do
 
   m <- CC.newMVar (State [] [])
   _ <- CC.forkIO (sub channel toState ip m)
-  
+
 --  threadDelay 5000000
   let simFun _ _ = return ()
       df _ = fmap drawFun (CC.readMVar m)

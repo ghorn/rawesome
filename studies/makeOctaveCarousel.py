@@ -22,7 +22,7 @@ from carouselSteadyState import getSteadyState
 
 if __name__=='__main__':
     from conf import conf
-    
+
     print "creating model..."
     dae = rawe.models.carousel(conf)
     dae.convertToOde()

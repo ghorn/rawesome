@@ -42,7 +42,7 @@ class VectorizedReadOnlyNmpcMap(object):
             assert (mapSize == self._vec.size), "vector size is wrong"
         else:
             raise ValueError("unrecognized type: "+str(type(self._vec)))
-        
+
         # set up xVec,uVec,pVec
         vecIdx = 0
         self._p = self._vec[vecIdx:vecIdx+pSize]
@@ -72,7 +72,7 @@ class VectorizedReadOnlyNmpcMap(object):
 
     def vectorize(self):
         return self._vec
-    
+
     def xVec(self,timestep):
         assert (timestep != None), "please set timestep"
         assert (timestep <= self._nk), "timestep too large"
@@ -83,7 +83,7 @@ class VectorizedReadOnlyNmpcMap(object):
         return self._U[timestep]
     def pVec(self):
         return self._p
-    
+
     def lookup(self,name,timestep=None):
         if name in self._xIdx:
             return self.xVec(timestep)[self._xIdx[name]]
@@ -94,7 +94,7 @@ class VectorizedReadOnlyNmpcMap(object):
             return self.pVec()[self._pIdx[name]]
         else:
             raise NameError('unrecognized name "'+name+'"')
-    
+
 
 class WriteableNmpcMap(object):
     """
@@ -112,7 +112,7 @@ class WriteableNmpcMap(object):
         self._X = np.resize(np.array([None]),(self._nk+1,dae.xVec().size()))
         self._U = np.resize(np.array([None]),(self._nk,dae.uVec().size()))
         self._p = np.resize(np.array([None]),dae.pVec().size())
-        
+
         self._xIdx = {}
         self._uIdx = {}
         self._pIdx = {}
@@ -130,7 +130,7 @@ class WriteableNmpcMap(object):
             outs.append(self.uVec(k))
         outs.append(self.xVec(self._nk))
         return np.concatenate(outs)
-    
+
     def xVec(self,timestep):
         assert (timestep != None), "please set timestep"
         assert (timestep <= self._nk), "timestep too large"
@@ -141,7 +141,7 @@ class WriteableNmpcMap(object):
         return self._U[timestep,:]
     def pVec(self):
         return self._p
-    
+
     def lookup(self,name,timestep=None):
         if name in self._xIdx:
             assert (timestep != None), "please set timestep"

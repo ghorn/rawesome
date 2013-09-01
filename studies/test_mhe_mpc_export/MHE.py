@@ -30,7 +30,7 @@ intOpts['IMPLICIT_INTEGRATOR_MODE'] = 'IFTR'
 def makeMhe(dae,N,dt):
     from rawe.ocp import Ocp
     mhe = Ocp(dae, N=N, ts=dt)
-    
+
     ocpOpts = rawe.OcpExportOptions()
     ocpOpts['HESSIAN_APPROXIMATION'] = 'GAUSS_NEWTON'
     ocpOpts['DISCRETIZATION_TYPE'] = 'MULTIPLE_SHOOTING'
@@ -40,7 +40,7 @@ def makeMhe(dae,N,dt):
 #   ocpOpts['SPARSE_QP_SOLUTION'] = 'FULL_CONDENSING_U2'
 #   ocpOpts['AX_NUM_QP_ITERATIONS'] = '30'
     ocpOpts['FIX_INITIAL_STATE'] = False
-               
+
 #    mhe.minimizeLsq(C.veccat([mhe['x'],mhe['u']]))
 #    mhe.minimizeLsqEndTerm(C.veccat([mhe['x']]))
     mhe.minimizeLsq(mhe['measurements'])

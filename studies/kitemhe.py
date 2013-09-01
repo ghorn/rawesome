@@ -33,10 +33,10 @@ if __name__=='__main__':
     print "reading config..."
 #    conf = readConfig('stingray.ini','configspec.ini')
     conf = readConfig('config.ini','configspec.ini')
-    
+
     print "creating model..."
     dae = models.crosswind(conf)#,extraParams=['endTime'])
-    
+
     nk = 30
 
     # setup MHE
@@ -89,7 +89,7 @@ if __name__=='__main__':
     f=open('data/crosswind_opt.dat','r')
     traj = pickle.load(f)
     f.close()
-    
+
     for name in dae.xNames():
         for k in range(nk+1):
             mhe.guess(name,traj.lookup(name,timestep=k),timestep=k)
@@ -114,7 +114,7 @@ if __name__=='__main__':
 #        obj += (nmhe('z',timestep=k) - xTraj[k][1])**2
 #        obj += (nmhe('dx',timestep=k) - xTraj[k][2])**2
 #        obj += (nmhe('dz',timestep=k) - xTraj[k][3])**2
-        
+
 #        obj += 1e-8*nmhe('x',timestep=k)**2
 #        obj += 1e-8*nmhe('z',timestep=k)**2
 #        obj += 1e-8*nmhe('dx',timestep=k)**2
@@ -134,13 +134,13 @@ if __name__=='__main__':
 #    # callback function
 #    class MyCallback:
 #        def __init__(self):
-#            self.iter = 0 
+#            self.iter = 0
 #        def __call__(self,f,*args):
 #            self.iter = self.iter + 1
 #            xOpt = numpy.array(f.input(C.NLP_X_OPT))
 #
 #            traj = trajectory.Trajectory(ocp,xOpt)
-#            
+#
 #            kiteProtos = []
 #            for k in range(0,mhe.nk):
 #                for nicpIdx in range(0,mhe.nicp):
@@ -168,7 +168,7 @@ if __name__=='__main__':
 ##            for name in violations:
 ##                violmsg = "violation!: "+name+": "+str(violations[name])
 ##                mc.messages.append(violmsg)
-#            
+#
 #            publisher.send_multipart(["multi-carousel", mc.SerializeToString()])
 
 
@@ -192,6 +192,6 @@ if __name__=='__main__':
 #        traj.subplot(['e11','e12','e13','e21','e22','e23','e31','e32','e33'])
 #        traj.subplot(['energy','quadrature energy'])
 #        traj.plot(['energy','quadrature energy'])
-#        
+#
 #        plt.show()
 #    plotResults()

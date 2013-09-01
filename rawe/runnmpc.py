@@ -34,7 +34,7 @@ if __name__ == '__main__':
     deg = 4
 
     nmpc = Nmpc(dae,nk)
-    
+
     # constrain invariants
     nmpc.constrain(nmpc.lookup('c',timestep=0),'==',0)
     nmpc.constrain(nmpc.lookup('cdot',timestep=0),'==',0)

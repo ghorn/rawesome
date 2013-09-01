@@ -27,12 +27,12 @@ import rawe
 
 def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
     ocp = rawe.collocation.Coll(dae, nk=nk,nicp=nicp,deg=deg)
-    
+
     print "setting up collocation..."
     ocp.setupCollocation(ocp.lookup('endTime'))
-    
+
     ocp.setQuadratureDdt('quadrature energy', 'winch power')
-    
+
     # constrain invariants
     def constrainInvariantErrs():
         dcm = ocp.lookup('dcm',timestep=0)
@@ -108,11 +108,11 @@ def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
                           C.horzcat([vars['e21'], vars['e22'], vars['e23']]),
                           C.horzcat([vars['e31'], vars['e32'], vars['e33']])])
 
-    
+
 #    for name in ['y','z','dy','dz','r','dr','w1','w2','w3','delta','ddelta']:
     for name in ['y','z','dy','dz','r','dr','delta','ddelta']:
         ocp.constrain(ocp.lookup(name,timestep=0), '==', startup[name])
-    
+
 #    for name in ['y','z','dy','dz','r','dr','w1','w2','w3']:
     for name in ['y','z','dy','dz','r','dr']:
         ocp.constrain(ocp.lookup(name,timestep=-1), '==', crosswind[name])
@@ -124,7 +124,7 @@ def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
     # initial guess
     phase0Guess = -4.0*pi
     phaseFGuess = -0.4*2*pi
-    
+
     namesF = ['x','y','z','dx','dy','dz','r','dr','w1','w2','w3','e11','e12','e13','e21','e22','e23','e31','e32','e33']
     names0 = namesF+['delta','ddelta']
 
@@ -153,14 +153,14 @@ def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
 #        for k in range(nk+1):
 #            alpha = float(k)/nk
 #            ocp.guess(name,(1-alpha)*initvals[name] + alpha*finalvals[name], timestep=k)
-#    
+#
 #    for j,name in enumerate(namesF):
 #        for k in range(nk+1):
 #            alpha = float(k)/nk
 #            finalfun.setInput([phaseFGuess])
 #            finalval = float(finalfun.output(k)[0,0])) for k,name in enumerate(namesF)])
 #            ocp.guess(name,(1-alpha)*initvals[name] + alpha*finalvals[name], timestep=k)
-    
+
     ocp.guess('aileron',0)
     ocp.guess('elevator',0)
     ocp.guess('ddr',0)
@@ -169,7 +169,7 @@ def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
     ocp.guess('phaseF',phaseFGuess)
     ocp.guess('endTime',8)
     ocp.guess('w0',10)
-    
+
     # objective function
     obj = 0
     for k in range(nk):
@@ -179,19 +179,19 @@ def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
         torqueSigma = 1000.0
         aileron = ocp.lookup('aileron',timestep=k)
         elevator = ocp.lookup('elevator',timestep=k)
-        
+
         aileronSigma = 0.1
         elevatorSigma = 0.1
         torqueSigma = 1000.0
         ddrSigma = 5.0
-        
+
         ailObj = aileron*aileron / (aileronSigma*aileronSigma)
         eleObj = elevator*elevator / (elevatorSigma*elevatorSigma)
         winchObj = ddr*ddr / (ddrSigma*ddrSigma)
         torqueObj = tc*tc / (torqueSigma*torqueSigma)
-        
+
         obj += ailObj + eleObj + winchObj + torqueObj
-        
+
     ocp.setObjective( 1e1*obj/nk + ocp.lookup('endTime') )
 
     oldKiteProtos = []
@@ -223,7 +223,7 @@ def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
         kiteProtos += oldKiteProtos
         mc = kite_pb2.MultiCarousel()
         mc.horizon.extend(list(kiteProtos))
-        
+
         mc.messages.append("w0: "+str(traj.lookup('w0')))
         mc.messages.append("iter: "+str(myiter))
         mc.messages.append("endTime: "+str(traj.lookup('endTime')))
@@ -241,7 +241,7 @@ def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
 #        ubg = ocp.solver.input(C.NLP_UBG)
 #        g = numpy.array(f.input(C.NLP_G))
 #        ocp._constraints.printViolations(g,lbg,ubg,reportThreshold=0)
-        
+
         return mc.SerializeToString()
     callback = rawe.telemetry.startTelemetry(ocp, conf, callbacks=[(myCallback,'multi-carousel')])
 
@@ -273,7 +273,7 @@ def setupOcp(dae,conf,nk=50,nicp=1,deg=4):
 if __name__=='__main__':
     print "reading config..."
     from conf import conf
-    
+
     print "creating model..."
     dae = rawe.models.carousel(conf)
     dae.addP('endTime')
@@ -287,13 +287,13 @@ if __name__=='__main__':
     ocp.interpolateInitialGuess("data/crosswind_opt.dat",force=True,quiet=True)
     ocp.guess('delta',0)
     ocp.guess('phase0',0,force=True)
-    
+
     traj = ocp.solve()
 #    print "optimal power: "+str(traj.lookup('quadrature energy',timestep=-1)/traj.lookup('endTime'))
-    
+
     print "saving optimal trajectory"
     traj.save("data/transition_opt.dat")
-    
+
     # Plot the results
     def plotResults():
 ##        traj.plot(['x','y','z'])

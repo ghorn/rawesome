@@ -43,7 +43,7 @@ if __name__ == '__main__':
     xTraj = [np.array(x0)]
     uTraj = []
     p = np.array([0.3])
-    
+
     # make a trajectory
     for k in range(nk):
         uTraj.append(np.array([5*C.sin(k/float(nk))]))
@@ -100,7 +100,7 @@ if __name__ == '__main__':
 #        obj += (nmhe('z',timestep=k) - xTraj[k][1])**2
 #        obj += (nmhe('dx',timestep=k) - xTraj[k][2])**2
 #        obj += (nmhe('dz',timestep=k) - xTraj[k][3])**2
-        
+
 #        obj += 1e-8*nmhe('x',timestep=k)**2
 #        obj += 1e-8*nmhe('z',timestep=k)**2
 #        obj += 1e-8*nmhe('dx',timestep=k)**2

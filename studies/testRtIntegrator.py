@@ -36,7 +36,7 @@ if __name__=='__main__':
     intOpts['LINEAR_ALGEBRA_SOLVER'] = 'GAUSS_LU'
     integrator = RtIntegrator(dae,ts=endTime, options=intOpts,
                               measurements=C.veccat([dae.ddt('pos'), vel, force]))
-    
+
     x = {'pos':5.3, 'vel':0.6}
     u = {'force':-4.2}
     p = {'endTime':0.2}

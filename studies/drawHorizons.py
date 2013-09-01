@@ -77,7 +77,7 @@ for (mhe,mpc) in zip(mhes[N0:NF],mpcs[N0:NF]):
 
     n = len(mhe)
 #    n -= 5
-    
+
     mheProtos = []
     mpcProtos = []
     alphas = list(numpy.linspace(0.1,0.4,n))
@@ -92,7 +92,7 @@ for (mhe,mpc) in zip(mhes[N0:NF],mpcs[N0:NF]):
         mpcProtos.append( toKiteProto(x,alpha=alpha) )
 #        print "mpc delta: "+str(x[12])
 #        print alpha
-    
+
     mc = kite_pb2.MultiCarousel()
     mc.horizon.extend(list(mheProtos)+list(mpcProtos))
 

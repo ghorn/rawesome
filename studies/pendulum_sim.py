@@ -71,7 +71,7 @@ if __name__=='__main__':
 #    dae_ext = C.ExternalFunction("./dae.so")
 #    dae_ext.init()
 #    dae = dae_ext
-    
+
     print "creating integrator"
     f = C.IdasIntegrator(dae)
     f.setOption("reltol",1e-6)
@@ -79,7 +79,7 @@ if __name__=='__main__':
     f.setOption("t0",0)
     f.setOption("tf",ts)
     f.init()
-    
+
     js = rawe.joy.Joy()
 
     context   = zmq.Context(1)
@@ -90,7 +90,7 @@ if __name__=='__main__':
         axes = js.getAxes()
         torque = axes[0]
         u = C.DMatrix([torque,0.4])
-        
+
         f.setInput(x,C.INTEGRATOR_X0)
         f.setInput(u,C.INTEGRATOR_P)
         f.evaluate()
@@ -104,7 +104,7 @@ if __name__=='__main__':
             (x,u) = advanceState(x)
             p = toProto(x,u)
             publisher.send_multipart(["carousel", p.SerializeToString()])
-            
+
             deltaTime = (t0 + ts) - time.time()
             if deltaTime > 0:
                 time.sleep(deltaTime)

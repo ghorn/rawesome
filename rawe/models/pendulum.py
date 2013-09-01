@@ -35,7 +35,7 @@ def pendulumModel(nSteps=None):
               ] )
 
     r = 0.3
-    
+
     ode = [ dae['dx'] - dae.ddt('x')
           , dae['dz'] - dae.ddt('z')
           , dae['ddx'] - dae.ddt('dx')
@@ -44,7 +44,7 @@ def pendulumModel(nSteps=None):
 
     fx =  dae['torque']*dae['z']
     fz = -dae['torque']*dae['x'] + dae['m']*9.8
-    
+
     alg = [ dae['m']*dae['ddx'] + dae['x']*dae['tau'] - fx
           , dae['m']*dae['ddz'] + dae['z']*dae['tau'] - fz
           , dae['x']*dae['ddx'] + dae['z']*dae['ddz'] + (dae['dx']*dae['dx'] + dae['dz']*dae['dz']) ]

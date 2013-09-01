@@ -52,7 +52,7 @@ class Communicator(object):
         self.publisher.send_multipart(['pumping sim',
                                        dae_pb.SerializeToString()])
         self.publisher.send_multipart(['pumping', traj_pb.SerializeToString()])
-        
+
     def close(self):
         '''
         close the zeromq publisher and context
@@ -63,10 +63,10 @@ class Communicator(object):
 def run_sim():
     # create the model
     dae = pumping_dae.makeDae()
-    
+
     # compute the steady state
     steady_state, _ = getSteadyState(dae, 100, 20)
-    
+
     # create the sim
     dt = 0.01
     sim = rawe.sim.Sim(dae, dt)

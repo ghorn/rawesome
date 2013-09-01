@@ -105,7 +105,7 @@ def getSteadyState(dae,conf,omega0,r0,ref_dict=None):
              'nu':(0,3000),'motor_torque':(-1000,1000),
              'ddr':(0,0),
              'dmotor_torque':(0,0),'dddr':(0,0),'w0':(0,0)}
-    
+
     if ref_dict is not None:
         for name in ref_dict: bounds[name] = ref_dict[name]
     dotBounds = {'x':(-1,1),'y':(-1,1),'z':(-1,1),

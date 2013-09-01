@@ -27,7 +27,7 @@ def call(args, cwd='.'):
     while True:
         reads = [p.stdout.fileno(), p.stderr.fileno()]
         ret = select.select(reads, [], [])
-    
+
         for fd in ret[0]:
             if fd == p.stdout.fileno():
                 read = p.stdout.readline()
@@ -37,7 +37,7 @@ def call(args, cwd='.'):
                 read = p.stderr.readline()
                 sys.stderr.write(read)
                 msgs.append(read)
-    
+
         ret = p.poll()
         if ret != None:
             return (ret, (''.join(msgs)).strip())

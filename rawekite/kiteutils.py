@@ -27,7 +27,7 @@ def getEuler(ocp, k):
 #       | otherwise = mr13'
     r23 = ocp.lookup('e23',timestep=k)
     r33 = ocp.lookup('e33',timestep=k)
-  
+
     yaw   = C.arctan2(r12,r11)
     pitch = C.arcsin(mr13)
     roll  = C.arctan2(r23,r33)
@@ -105,19 +105,19 @@ def periodicOrthonormalizedDcm(ocp):
 
 def orthonormalizeDcm(m):
     ## OGRE (www.ogre3d.org) is made available under the MIT License.
-    ## 
+    ##
     ## Copyright (c) 2000-2009 Torus Knot Software Ltd
-    ## 
+    ##
     ## Permission is hereby granted, free of charge, to any person obtaining a copy
     ## of this software and associated documentation files (the "Software"), to deal
     ## in the Software without restriction, including without limitation the rights
     ## to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
     ## copies of the Software, and to permit persons to whom the Software is
     ## furnished to do so, subject to the following conditions:
-    ## 
+    ##
     ## The above copyright notice and this permission notice shall be included in
     ## all copies or substantial portions of the Software.
-    ## 
+    ##
     ## THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
     ## IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
     ## FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -147,7 +147,7 @@ def orthonormalizeDcm(m):
     m20 = m[2,0]
     m21 = m[2,1]
     m22 = m[2,2]
-    
+
     # compute q0
     fInvLength = 1.0/C.sqrt(m00*m00 + m10*m10 + m20*m20)
 

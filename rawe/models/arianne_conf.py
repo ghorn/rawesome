@@ -24,7 +24,7 @@ def makeConf():
 
         'alpha0deg': 0,
 
-         # forces 
+         # forces
          # these are calculated by a matlab fitting script based on vlm alpha/beta sweeps
          'cL0': 0.145115,
          'cL_A':  5.474703,
@@ -39,7 +39,7 @@ def makeConf():
          # control surface forces
          #note sign change from avl to local coords
          'cL_elev': -0.0074*180/pi,
-         
+
          # these are calculated by a matlab fitting script based on vlm alpha/beta sweeps
          'cD_elev2': 3.52135e-05, 'cD_A_elev': -0.000101006, 'cD_elev': -6.67268e-06,
          'cD_ail2':0.000120247, 'cD_B_ail':-1.89122e-05, 'cD_ail':0,
@@ -66,7 +66,7 @@ def makeConf():
          # control surface moments
          # these are average values across the vlm alpha/beta sweep
          #note sign change from avl to local coords
-         'cl_ail':0.0056*180/pi,  
+         'cl_ail':0.0056*180/pi,
          'cm_elev':0.0262*180/pi,
 
 
@@ -80,7 +80,7 @@ def makeConf():
 
          # use cos(delta), sin(delta) as states
          'delta_parameterization':'cos_sin',
- 	      	
+
          'sref': 0.1051,
          'bref': 0.96, #sqrt(sref*AR)
          'cref': 0.128, #sqrt(sref/AR)

@@ -19,10 +19,10 @@ import rawe
 
 if __name__=='__main__':
     from highwind_carousel_conf import conf
-    
+
     print "creating model..."
     dae = rawe.models.carousel(conf)
-   
+
     blah = dae.octaveSimGen('carouselOde')
     f = open('carouselOde_modelAndJacob.m','w')
     f.write(blah)

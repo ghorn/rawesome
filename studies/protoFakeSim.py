@@ -32,7 +32,7 @@ def loadPps(filename):
 #    h = (traj.tgrid[-1,0,0] - traj.tgrid[0,0,0])/float(traj.dvMap._nk*traj.dvMap._nicp)
 #    h *= traj.dvMap._nk*traj.dvMap._nicp/float(self.nk*self.nicp)
 #    h *= numLoops
-        
+
     pps = {}
 #    missing = []
     ############# make piecewise polynomials ###########

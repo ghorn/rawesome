@@ -31,13 +31,13 @@ class Joy():
         self.devnull = os.open('/dev/null', os.O_WRONLY)
 
     def _getAxes(self):
-        return [self.js.get_axis(k) for k in range(0,self.js.get_numaxes())] 
+        return [self.js.get_axis(k) for k in range(0,self.js.get_numaxes())]
 
     def _getButtons(self):
-        return [self.js.get_button(k) for k in range(0,self.js.get_numbuttons())] 
-    
+        return [self.js.get_button(k) for k in range(0,self.js.get_numbuttons())]
+
     def _getHats(self):
-        return [self.js.get_hat(k) for k in range(0,self.js.get_numhats())] 
+        return [self.js.get_hat(k) for k in range(0,self.js.get_numhats())]
 
     def _getAll(self):
         js = {}
@@ -56,7 +56,7 @@ class Joy():
 
     def redirectStdout(self,action):
         sys.stdout.flush() # <--- important when redirecting to files
-        
+
         os.dup2(self.devnull, 1)
 #        os.close(devnull)
         ret = action()

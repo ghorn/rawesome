@@ -32,27 +32,27 @@ class TrajFit():
         self.ts = np.array(ts)
 
         self.fits = {}
-        
+
         def getAllX(name):
             xs = [traj.lookup(name,timestep=k,nicpIdx=j,degIdx=i) \
                   for k in range(traj.nk) for j in range(traj.nicp) for i in range(traj.deg+1)]
             xs.append(traj.lookup(name,timestep=traj.nk,nicpIdx=0,degIdx=0))
             xs = np.array(xs)
             return xs
-        
+
         sys.stdout.write("fitting: ")
         sys.stdout.flush()
         for name in traj.dvMap._xNames:
             sys.stdout.write(name+" ")
             sys.stdout.flush()
-            
+
             xs = getAllX(name)
 
             polyOrder = orderMap[name]['poly']
             sinOrder = orderMap[name]['sin']
             cosOrder = orderMap[name]['cos']
             self.fits[name] = FourierFit(name, polyOrder, cosOrder, sinOrder, self.ts, xs)
-            
+
         sys.stdout.write('\n')
         sys.stdout.flush()
 
@@ -64,11 +64,11 @@ class TrajFit():
         kiteProtos = []
         for t in ts_:
             cs = rawe.kite_pb2.CarouselState()
-            
+
             cs.kiteXyz.x = self.fits['x'].evaluate(t)
             cs.kiteXyz.y = self.fits['y'].evaluate(t)
             cs.kiteXyz.z = self.fits['z'].evaluate(t)
-        
+
             cs.kiteDcm.r11 = self.fits['e11'].evaluate(t)
             cs.kiteDcm.r12 = self.fits['e12'].evaluate(t)
             cs.kiteDcm.r13 = self.fits['e13'].evaluate(t)
@@ -80,15 +80,15 @@ class TrajFit():
             cs.kiteDcm.r31 = self.fits['e31'].evaluate(t)
             cs.kiteDcm.r32 = self.fits['e32'].evaluate(t)
             cs.kiteDcm.r33 = self.fits['e33'].evaluate(t)
-        
+
             if 'delta' in self.fits:
                 cs.delta = self.fits['delta'].evaluate(t)
             else:
                 cs.delta = 0
-        
+
             cs.rArm = 0
             cs.zt = 0
-        
+
             cs.kiteTransparency = 0.2
             cs.lineTransparency = 0.2
 
@@ -97,27 +97,27 @@ class TrajFit():
         mc.horizon.extend(list(kiteProtos))
         self.multiCarousel = mc.SerializeToString()
         #publisher.send_multipart(["multi-carousel", mc.SerializeToString()])
-             
-        
+
+
     def plot(self,plotnames):
         plt.figure()
         plt.clf()
         legend = []
         for name in plotnames:
             legend.append(name+" fit")
-    
+
             t0 = self.ts[0]
             tf = self.ts[-1]
             dt = tf-t0
-    
+
             t0 -= 0.2*dt
             tf += 0.2*dt
             ts_ = np.linspace(t0,tf,500)
             plt.plot(ts_,[self.fits[name].evaluate(t) for t in ts_])
-    
+
             legend.append(name)
             plt.plot(self.ts,self.fits[name].xs,'--')
-            
+
         plt.title("fourier fits")
         plt.xlabel('time')
         plt.legend(legend)
@@ -136,7 +136,7 @@ class TrajFit():
         self.fitsWithPhase = {}
         for name in self.fits:
             fit = self.fits[name]
-            
+
             polys = [coeff*polyBases[order] for coeff,order in zip(fit.polyCoeffs, fit.polyOrder)]
             coses = [coeff*cosBases[order]  for coeff,order in zip(fit.cosCoeffs,  fit.cosOrder)]
             sins  = [coeff*sinBases[order]  for coeff,order in zip(fit.sinCoeffs,  fit.sinOrder)]
@@ -157,7 +157,7 @@ class FourierFit():
         self.polyOrder = polyOrder_
         self.cosOrder  = cosOrder_
         self.sinOrder  = sinOrder_
-        
+
         self.ts = copy.deepcopy(ts_)
         self.timeScaling = float(2*np.pi/self.ts[-1])
         self.scaledTs = self.ts*self.timeScaling
@@ -183,7 +183,7 @@ class FourierFit():
         self.polyCoeffs = self.fitcoeffs[0:len(self.polyOrder)]
         self.cosCoeffs  = self.fitcoeffs[len(self.polyOrder):len(self.polyOrder+self.cosOrder)]
         self.sinCoeffs  = self.fitcoeffs[len(self.polyOrder+self.cosOrder):len(self.polyOrder+self.cosOrder+self.sinOrder)]
-            
+
     def evaluate(self,t_):
         t = t_*self.timeScaling
         val = 0
@@ -194,22 +194,22 @@ class FourierFit():
         for k,so in enumerate(self.sinOrder):
             val += self.sinCoeffs[k]*np.sin(so*t)
         return val
-        
+
 if __name__=='__main__':
     filename = "data/crosswind_opt"
     filename = "data/carousel_opt"
-    
+
     context   = zmq.Context(1)
     publisher = context.socket(zmq.PUB)
     publisher.bind("tcp://*:5563")
-    
+
     # load saved trajectory
     loadfile = filename+".dat"
     print "loading saved trajectory: "+loadfile
     f=open(loadfile,'r')
     traj = pickle.load(f)
     f.close()
-    
+
     # fit everything
     xyzOrders = {'poly':[0],
                  'sin':range(1,6),
@@ -258,9 +258,9 @@ if __name__=='__main__':
                 'ddelta':ddeltaOrders
                 }
 #    for name in traj.dvMap._xNames:
-#        orderMap[name] = 
+#        orderMap[name] =
     trajFit = TrajFit(orderMap,traj)
-    
+
     # send kite protos
 #    kiteProtos = []
 #    for k in range(0,ts.size):
@@ -275,7 +275,7 @@ if __name__=='__main__':
     f=open(savefile,'w')
     pickle.dump(trajFit,f)
     f.close()
-    
+
     def mkPlots():
         trajFit.plot(['x','y','z'])
         trajFit.plot(['r'])

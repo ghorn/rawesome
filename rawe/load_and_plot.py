@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 
 if __name__=='__main__':
     filename = "data/crosswind_opt.dat"
-    
+
     f=open(filename,'r')
     traj = pickle.load(f)
     f.close()
@@ -41,5 +41,5 @@ if __name__=='__main__':
     traj.subplot(['winch power', 'tether tension'])
     traj.plot(["loyd's limit","loyd's limit (exact)","-(winch power)"])
     traj.subplot([['daileronCost','delevatorCost','ddrCost'],['winch power']])
-    
+
     plt.show()

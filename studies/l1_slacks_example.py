@@ -27,7 +27,7 @@ if __name__ == "__main__":
     [pos,vel] = dae.addX( ["pos","vel"] )
     dae.addX('abspos')
     force = dae.addU( "force" )
-    
+
     # some extra outputs for the dae model
     dae['force_over_pos'] = force/pos
 
@@ -61,13 +61,13 @@ if __name__ == "__main__":
     ocp.guess("pos",0)
     ocp.guess("vel",0)
     ocp.guess("force",0)
-    
+
     # add slacks
     for k in range(N):
         for j in range(ocp.deg+1):
             pos =    ocp('pos',   timestep=k, degIdx=j)
             abspos = ocp('abspos',timestep=k, degIdx=j)
-            
+
             ocp.constrain(    pos, '<=', abspos)
             ocp.constrain(-abspos, '<=',    pos)
     pos =    ocp('pos',   timestep=N, degIdx=0)

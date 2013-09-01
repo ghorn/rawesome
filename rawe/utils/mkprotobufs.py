@@ -295,13 +295,13 @@ message MheMpcHorizons {
     f = open(os.path.join(autogenDir, topname+'_structs.h'),'w')
     f.write(structs)
     f.close()
-    
+
     # to python proto
     toProtobufs = writePythonGenerator(topname,dae)
     f = open(os.path.join(autogenDir, 'to'+topname+'Proto.py'),'w')
     f.write(toProtobufs)
     f.close()
-    
+
     # __init__.py
     module = '''\
 import to%(topname)sProto

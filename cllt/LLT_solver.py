@@ -42,11 +42,11 @@ def LLT_solver(operAlphaDegLst, geom):
     alpha = C.ssym('alpha')
     An = C.ssym('A',geom.n)
     (makeMeZero, alphaiLoc, _, _) = setupImplicitFunction(alpha, An, geom)
-    
+
     # make the solver
     f = C.SXFunction([An,alpha], [makeMeZero])
     f.init()
-    
+
     solver = C.NLPImplicitSolver(f)
     solver.setOption('nlp_solver', C.IpoptSolver)
     #solver.setOption('nlp_solver_options',{'suppress_all_output':'yes','print_time':False})

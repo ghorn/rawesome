@@ -43,7 +43,7 @@ class Nmpc(object):
         self._outputMap = nmpcMaps.NmpcOutputMap(self._outputMapGenerator, self._dvMap.vectorize())
 
         self._constraints = Constraints()
-        
+
     def __call__(self,*args,**kwargs):
         return self.lookup(*args,**kwargs)
 
@@ -57,7 +57,7 @@ class Nmpc(object):
         except NameError:
             pass
         raise NameError("unrecognized name \""+name+"\"")
-        
+
     def bound(self,name,(lb,ub),timestep=None):
         self._boundMap.setVal(name,(lb,ub),timestep=timestep)
 
@@ -66,7 +66,7 @@ class Nmpc(object):
 
     def constrain(self,lhs,comparison,rhs,tag=('unnamed_constraint',None)):
         self._constraints.add(lhs,comparison,rhs,tag)
-        
+
     def setObj(self,obj):
         if hasattr(self,'_obj'):
             raise ValueError("don't change the objective function")
@@ -77,7 +77,7 @@ class Nmpc(object):
 
     def _setupDynamicsConstraints(self):
         # Todo: add parallelization
-        # Todo: add initialization 
+        # Todo: add initialization
         g = []
         nicp = 10
         deg = 4
@@ -86,14 +86,14 @@ class Nmpc(object):
             newton = Newton(LagrangePoly,self.dae,1,nicp,deg,'RADAU')
             endTime = 0.05
             newton.setupStuff(endTime)
-            
+
             X0_i = self._dvMap.xVec(k)
             U_i  = self._dvMap.uVec(k)
             _, Xf_i = newton.isolver.call([X0_i,U_i,p])
             X0_i_plus = self._dvMap.xVec(k+1)
             g.append(Xf_i-X0_i_plus)
         return g
-    
+
 
     def makeSolver(self):
         # make sure all bounds are set
@@ -140,13 +140,13 @@ class Nmpc(object):
         else:
             arbitraryObj = 0
         gradF = C.gradient(arbitraryObj,V)
-        
+
         # hessian of lagrangian:
         J = 0
         for gnf in self._gaussNewtonObjF:
             J += C.jacobian(gnf,V)
         hessL = C.mul(J.T,J) + C.jacobian(gradF,V)
-        
+
         # equality constraint jacobian
         jacobG = C.jacobian(g,V)
 
@@ -162,7 +162,7 @@ class Nmpc(object):
         ##########  need to setup/solve the following qp:  #########
         #     min   1/2*x.T*hessL*x + gradF.T*x
         #      x
-        #     
+        #
         #     S.T           g + jacobG*x == 0
         #           hlbs <= h + jacobH*x <= hubs
         ############################################################

@@ -22,7 +22,7 @@ def makeDae():
 
     [pos,vel,mass] = dae.addX( ["pos","vel","mass"] )
     thrust = dae.addU( "thrust" )
-    
+
     # some extra outputs, why not
     dae['posvel'] = pos*vel
     dae['velvel'] = vel*vel

@@ -200,17 +200,17 @@ class Coll():
            entry("u",repeat=N,struct=struct(dae.uNames())),
            entry("p",struct=struct(dae.pNames()))
         ])
-        
+
         V.cat
-       
+
         solution = V(solver.output())
-       
+
         solution["x",:]
-       
+
         lbx = V(0)
         ubx = V(0)
-       
-        lbx["x",0] = ubx["x",0] = 123 
+
+        lbx["x",0] = ubx["x",0] = 123
         """
 
     def setupCollocation(self,tf):
