@@ -115,7 +115,10 @@ def setupModel(dae, conf):
 
     tc = dae['motor_torque'] #Carousel motor torque
     
-    t_xt = dae['tether_tension'] * conf['xt']
+    if 'xt' in conf:
+        t_xt = dae['tether_tension'] * conf['xt']
+    else:
+        t_xt = 0.0
 
     # wind model
     def getWind():
