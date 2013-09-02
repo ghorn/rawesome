@@ -131,7 +131,7 @@ class TrajFit():
         # all bases
         polyBases = [phase**po for po in range(maxPoly+1)]
         cosBases = [C.cos(co*phase) for co in range(maxCos+1)]
-        sinBases = [C.sin(co*phase) for si in range(maxSin+1)]
+        sinBases = [C.sin(si*phase) for si in range(maxSin+1)]
 
         self.fitsWithPhase = {}
         for name in self.fits:
