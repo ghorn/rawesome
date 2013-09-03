@@ -50,18 +50,12 @@ endif
 
 
 CXX_SRC = \\
-\trhs.cpp \\
-\trhsJacob.cpp \\
-\tacado_external_functions.cpp \\
+\teverything.cpp \\
 %(qpo_src)s \\
 \tqpoases/solver.cpp
 
 C_SRC = \\
-\tworkspace.c \\
 \tpython_interface.c \\
-\tmodel.c \\
-\tacado_integrator.c \\
-\tacado_solver.c \\
 \tacado_auxiliary_functions.c
 
 QPO_INC = \\

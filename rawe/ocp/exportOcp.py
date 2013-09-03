@@ -116,14 +116,9 @@ def exportOcp(ocp, ocpOptions, integratorOptions, cgOptions, phase1Options):
     # add model for rt integrator
     files['model.c'] = '''\
 #include "qpoases/solver.hpp"
-#include "rhs.h"
-#include "rhsJacob.h"
+#include "acado_external_functions.h"
 '''
     rtModelGen = rtModelExport.generateCModel(ocp.dae, ocp.ts, None)
-    files['rhs.cpp'] = '#include "rhs.h"\n'+rtModelGen['rhsFile'][0]
-    files['rhsJacob.cpp'] = '#include "rhsJacob.h"\n'+rtModelGen['rhsJacobFile'][0]
-    files['rhs.h'] = rtModelGen['rhsFile'][1]
-    files['rhsJacob.h'] = rtModelGen['rhsJacobFile'][1]
 
     # add objective and jacobian
     externObj    = writeObjective(ocp, ocp._minLsq, 'lsqExtern')
@@ -134,15 +129,36 @@ def exportOcp(ocp, ocpOptions, integratorOptions, cgOptions, phase1Options):
 #include <stdio.h>
 '''
     externFile += externObj[0] + '\n'
-    externFile += externObjEnd[0]
+    externFile += externObjEnd[0] + '\n'
+    externFile += rtModelGen['rhsFile'][0] + '\n'
+    externFile += rtModelGen['rhsJacobFile'][0]
     files['acado_external_functions.cpp'] = externFile
     externHeader  = externObj[1] + '\n'
     externHeader += externObjEnd[1]
+    externHeader += rtModelGen['rhsFile'][1] + '\n'
+    externHeader += rtModelGen['rhsJacobFile'][1]
     files['acado_external_functions.h'] = externHeader
 
     # #include objective/jacobian in acado_solver.c
     files['acado_solver.c'] = '#include "acado_external_functions.h"\n'+\
                               files['acado_solver.c']
+
+    # make c++ file with everything included
+    files['everything.cpp'] = '''\
+
+#include "acado_external_functions.cpp"
+
+#undef d
+
+#include "acado_common.h"
+
+#include "acado_integrator.c"
+#include "acado_solver.c"
+
+ACADOworkspace acadoWorkspace;
+ACADOvariables acadoVariables;
+
+'''
 
     # add python_interface.c
     files['python_interface.c'] = ocg_interface.ocg_interface
