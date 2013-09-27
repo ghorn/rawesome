@@ -34,16 +34,17 @@ def constrainTetherForce(ocp):
             ocp.constrain( ocp.lookup('tether_tension',timestep=k,degIdx=j), '>=', 0, tag=('tether tension positive',k))
 
 def realMotorConstraints(ocp):
+    safety_factor = 0.5
     for k in range(nk):
 #        ocp.constrain( ocp.lookup('torque',timestep=k,degIdx=1),       '<=', 150, tag=('motor torque',k))
 #        ocp.constrain( ocp.lookup('torque',timestep=k,degIdx=ocp.deg), '<=', 150, tag=('motor torque',k))
         ocp.constrainBnds( ocp.lookup('torque',timestep=k,degIdx=1),
-                           (-78*0.8,78*0.8), tag=('motor torque',k))
+                           (-78*safety_factor,78*safety_factor), tag=('motor torque',k))
         ocp.constrainBnds( ocp.lookup('torque',timestep=k,degIdx=ocp.deg),
-                           (-78*0.8,78*0.8), tag=('motor torque',k))
+                           (-78*safety_factor,78*safety_factor), tag=('motor torque',k))
 
-        ocp.constrain( ocp.lookup('rpm',timestep=k),       '<=', 1500*0.8, tag=('rpm',k))
-        ocp.constrain( -1500*0.8, '<=', ocp.lookup('rpm',timestep=k),       tag=('rpm',k))
+        ocp.constrain( ocp.lookup('rpm',timestep=k),       '<=', 1500*safety_factor, tag=('rpm',k))
+        ocp.constrain( -1500*safety_factor, '<=', ocp.lookup('rpm',timestep=k),       tag=('rpm',k))
 
 def setupOcp(dae,conf,nk,nicp=1,deg=4):
     ocp = rawe.collocation.Coll(dae, nk=nk,nicp=nicp,deg=deg)
@@ -68,7 +69,7 @@ def setupOcp(dae,conf,nk,nicp=1,deg=4):
 
     # constrain line angle
     for k in range(0,nk):
-        ocp.constrain(ocp.lookup('cos_line_angle',timestep=k),'>=',C.cos(55*pi/180), tag=('line angle',k))
+        ocp.constrain(ocp.lookup('cos_line_angle',timestep=k),'>=',C.cos(45*pi/180), tag=('line angle',k))
 
     # constrain airspeed
     def constrainAirspeedAlphaBeta():
@@ -76,8 +77,8 @@ def setupOcp(dae,conf,nk,nicp=1,deg=4):
             for j in range(0,deg+1):
                 ocp.constrainBnds(ocp.lookup('airspeed',timestep=k,degIdx=j),
                                   (8,35), tag=('airspeed',(k,j)))
-                ocp.constrainBnds(ocp.lookup('alpha_deg',timestep=k,degIdx=j), (-4.5,6.5), tag=('alpha(deg)',nk))
-                ocp.constrainBnds(ocp.lookup('beta_deg', timestep=k,degIdx=j), (-4,4), tag=('beta(deg)',nk))
+                ocp.constrainBnds(ocp.lookup('alpha_deg',timestep=k,degIdx=j), (-4.5,7.5), tag=('alpha(deg)',nk))
+                ocp.constrainBnds(ocp.lookup('beta_deg', timestep=k,degIdx=j), (-6,6), tag=('beta(deg)',nk))
                 ocp.constrain(ocp.lookup('cL',timestep=k,degIdx=j), '>=', 0, tag=('CL positive',nk))
     constrainAirspeedAlphaBeta()
 
@@ -100,9 +101,9 @@ def setupOcp(dae,conf,nk,nicp=1,deg=4):
     rawekite.kiteutils.periodicDcm(ocp)
 
     # bounds
-    ocp.bound('aileron', (numpy.radians(-9),numpy.radians(9)))
-    ocp.bound('elevator',(numpy.radians(-9),numpy.radians(9)))
-    ocp.bound('rudder',  (numpy.radians(-9),numpy.radians(9)))
+    ocp.bound('aileron', (numpy.radians(-8),numpy.radians(8)))
+    ocp.bound('elevator',(numpy.radians(-8),numpy.radians(8)))
+    ocp.bound('rudder',  (numpy.radians(-8),numpy.radians(8)))
     ocp.bound('flaps',  (numpy.radians(0),numpy.radians(0)))
     # can't bound flaps==0 AND have periodic flaps at the same time
     # bounding flaps (-1,1) at timestep 0 doesn't really free them, but satisfies LICQ
@@ -111,19 +112,19 @@ def setupOcp(dae,conf,nk,nicp=1,deg=4):
     ocp.bound('delevator', (numpy.radians(-20), numpy.radians(20)))
     ocp.bound('drudder',   (numpy.radians(-20), numpy.radians(20)))
     ocp.bound('dflaps',    (numpy.radians(-20), numpy.radians(20)))
-    ocp.bound('ddelta',(-4*pi,0))
+    ocp.bound('ddelta',(-0.98*2*pi, 0.98*2*pi))
 
     ocp.bound('x',(-2000,2000))
     ocp.bound('y',(-2000,2000))
-    ocp.bound('z',(-10,0.5))
-    ocp.bound('r',(4,4))
+    ocp.bound('z',(-3, -0.3))
+    ocp.bound('r',(5,8))
     # can't bound r AND have periodic r at the same time
     ocp.bound('r',(0,100),timestep=-1)
     ocp.bound('dr',(-1,1))
     ocp.bound('ddr',(-15,15))
     ocp.bound('dddr',(-15,15))
 
-    ocp.bound('motor_torque',(-500,500))
+    ocp.bound('motor_torque',(-50,50))
     ocp.bound('dmotor_torque',(-1,1))
 
     ocp.bound('cos_delta',(-1.5,1.5))
@@ -138,9 +139,9 @@ def setupOcp(dae,conf,nk,nicp=1,deg=4):
     for w in ['w_bn_b_x',
               'w_bn_b_y',
               'w_bn_b_z']:
-        ocp.bound(w,(-3.9*pi,3.9*pi))
+        ocp.bound(w,(-3*pi,3*pi))
 
-    ocp.bound('endTime',(0.5,2))
+    ocp.bound('endTime',(0.5,4.0))
     ocp.guess('endTime',1)
     ocp.bound('w0',(10,10))
 
@@ -157,7 +158,7 @@ if __name__=='__main__':
     conf = makeConf()
     conf['runHomotopy'] = True
     conf['minAltitude'] = 0.5
-    nk = 20
+    nk = 75
     dae = carousel_dae.makeDae(conf)
     dae.addP('endTime')
 
@@ -169,7 +170,7 @@ if __name__=='__main__':
 
     # trajectory for homotopy
     def get_steady_state_guess():
-        ddelta = -nTurns*2*pi/(ocp._guess.lookup('endTime'))
+        ddelta = nTurns*2*pi/(ocp._guess.lookup('endTime'))
         from rawekite.carouselSteadyState import getSteadyState
         conf_ss = makeConf()
         steadyState,_ = getSteadyState(carousel_dae.makeDae(conf_ss), None, ddelta, lineRadiusGuess, {})
@@ -288,8 +289,8 @@ if __name__=='__main__':
 
     # Plot the results
     def plotResults():
-        traj.subplot(['f1_homotopy','f2_homotopy','f3_homotopy'])
-        traj.subplot(['t1_homotopy','t2_homotopy','t3_homotopy'])
+        #traj.subplot(['f1_homotopy','f2_homotopy','f3_homotopy'])
+        #traj.subplot(['t1_homotopy','t2_homotopy','t3_homotopy'])
         traj.subplot(['x','y','z'])
         traj.subplot(['dx','dy','dz'])
         traj.subplot([['aileron','elevator'],['daileron','delevator']],title='control surfaces')
@@ -300,10 +301,10 @@ if __name__=='__main__':
         traj.plot('airspeed')
         traj.subplot([['alpha_deg'],['beta_deg']])
         traj.subplot(['cL','cD','L_over_D'])
-        traj.subplot(['mechanical_winch_power', 'tether_tension'])
+        #traj.subplot(['mechanical_winch_power', 'tether_tension'])
         traj.subplot([['motor_torque'],['dmotor_torque']])
         traj.subplot(['w_bn_b_x','w_bn_b_y','w_bn_b_z'])
         traj.subplot(['e11','e12','e13','e21','e22','e23','e31','e32','e33'])
-        traj.plot(['nu'])
+        #traj.plot(['nu'])
         plt.show()
-    plotResults()
+    #plotResults()
