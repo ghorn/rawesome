@@ -114,6 +114,11 @@ def setupModel(dae, conf):
     ddr = dae['ddr']
 
     tc = dae['motor_torque'] #Carousel motor torque
+    
+    if 'xt' in conf:
+        t_xt = dae['tether_tension'] * conf['xt']
+    else:
+        t_xt = 0.0
 
     # wind model
     def getWind():
@@ -243,7 +248,7 @@ def setupModel(dae, conf):
           , f2 - ddelta*m*(dx - ddelta*y) - ddelta*dx*m
           , f3 + g*m
           , t1 - w2*(j3*w3 + j31*w1) + j2*w2*w3
-          , t2 + w1*(j3*w3 + j31*w1) - w3*(j1*w1 + j31*w3)
+          , t2 + w1*(j3*w3 + j31*w1) - w3*(j1*w1 + j31*w3) + t_xt
           , t3 + w2*(j1*w1 + j31*w3) - j2*w1*w2
           , ddr*r-(zt*w1*(e11*x+e12*y+e13*z+zt*e11*e31+zt*e12*e32+zt*e13*e33)+zt*w2*(e21*x+e22*y+e23*z+zt*e21*e31+zt*e22*e32+zt*e23*e33))*(w3-ddelta*e33)-dx*(dx-zt*e21*(w1-ddelta*e13)+zt*e11*(w2-ddelta*e23))-dy*(dy-zt*e22*(w1-ddelta*e13)+zt*e12*(w2-ddelta*e23))-dz*(dz-zt*e23*(w1-ddelta*e13)+zt*e13*(w2-ddelta*e23))+dr*dr+(w1-ddelta*e13)*(e21*(zt*dx-zt2*e21*(w1-ddelta*e13)+zt2*e11*(w2-ddelta*e23))+e22*(zt*dy-zt2*e22*(w1-ddelta*e13)+zt2*e12*(w2-ddelta*e23))+zt*e23*(dz+zt*e13*w2-zt*e23*w1)+zt*e33*(w1*z+zt*e33*w1+ddelta*e11*x+ddelta*e12*y+zt*ddelta*e11*e31+zt*ddelta*e12*e32)+zt*e31*(x+zt*e31)*(w1-ddelta*e13)+zt*e32*(y+zt*e32)*(w1-ddelta*e13))-(w2-ddelta*e23)*(e11*(zt*dx-zt2*e21*(w1-ddelta*e13)+zt2*e11*(w2-ddelta*e23))+e12*(zt*dy-zt2*e22*(w1-ddelta*e13)+zt2*e12*(w2-ddelta*e23))+zt*e13*(dz+zt*e13*w2-zt*e23*w1)-zt*e33*(w2*z+zt*e33*w2+ddelta*e21*x+ddelta*e22*y+zt*ddelta*e21*e31+zt*ddelta*e22*e32)-zt*e31*(x+zt*e31)*(w2-ddelta*e23)-zt*e32*(y+zt*e32)*(w2-ddelta*e23))
           ] )

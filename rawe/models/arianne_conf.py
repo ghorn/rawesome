@@ -86,6 +86,7 @@ def makeConf():
          'cref': 0.128, #sqrt(sref/AR)
 
          'zt': 0.01,
+         'xt': 0.018, # quick fix
 
          #INERTIA MATRIX (Kurt's direct measurements)
          'j1': 0.0163,
@@ -99,7 +100,7 @@ def makeConf():
 
          #Carousel Friction & inertia
          'jCarousel': 1e2,
-         'cfric': 0,#100
+         'cfric': 1e2,
 
 #         'wind_model':{'name':'wind_shear',
 #                       'z0':100,
