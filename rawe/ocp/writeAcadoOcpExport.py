@@ -41,8 +41,30 @@ def writeAcadoAlgorithm(ocp, dae):
         outputs.append(rhs-lhs)
         constraintData.append((k,comparison,'AT_START'))
     assert len(outputs) == len(constraintData), 'the "impossible" happened'
-    if len(outputs) == 0:
-        return ([],[])
+
+    # add dae residual and objectives
+    residual = list(dae.getResidual())
+
+    assert len(residual) == len(dae.xNames()) + len(dae.zNames()), \
+        'ocp export error: residual.size() != self.xSize() + self.zSize() ==> (%d != %d + %d)' % (len(residual),len(dae.xNames()), len(dae.zNames()))
+
+    idx_residual = len(outputs)
+    len_residual = len(residual)
+    outputs += residual
+
+
+    minLsq = list(ocp._minLsq)
+    minLsqEndTerm = list(ocp._minLsqEndTerm)
+    assert len(minLsq) == ocp._minLsq.size()
+    assert len(minLsqEndTerm) == ocp._minLsqEndTerm.size()
+
+    idx_minLsq = len(outputs)
+    len_minLsq = len(minLsq)
+    outputs += minLsq
+
+    idx_minLsqEndTerm = len(outputs)
+    len_minLsqEndTerm = len(minLsqEndTerm)
+    outputs += minLsqEndTerm
 
     f = C.SXFunction( inputs, outputs )
     f.init()
@@ -98,6 +120,19 @@ def writeAcadoAlgorithm(ocp, dae):
                 rowidx = f.output(i1).sparsity().getRow()[i3]
                 colidx = f.output(i1).sparsity().col()[i3]
                 assert colidx==0 and rowidx==0 and i3==0, 'non-scalars not supported in ocp constraints, colIdx: '+str(colidx)+', rowidx: '+str(rowidx)+', i3: '+str(i3)
+
+                # different names and indexes for {constraints, dae residual, lsq, lsqEnd}
+                if i1 >= idx_residual:
+                    if i1 < idx_minLsq:
+                        replace['output'] += '_dae_residual'
+                        replace['i1'] -= idx_residual
+                    else:
+                        if i1 < idx_minLsqEndTerm:
+                            replace['output'] += '_lsq'
+                            replace['i1'] -= idx_minLsq
+                        else:
+                            replace['output'] += '_lsqEndTerm'
+                            replace['i1'] -= idx_minLsqEndTerm
 
                 write( '%(real)s %(output)s_%(i1)d = %(work)s_%(i2)d;' % replace )
 
@@ -197,18 +232,35 @@ def generateAcadoOcp(ocp, integratorOptions, ocpOptions):
         lines.append('Parameter '+name+';')
     lines.append('')
 
-    # constraints and objective algorithm
-    lines.append('/* setup constraint function */')
     (alg, constraintData) = writeAcadoAlgorithm(ocp, dae)
     lines.extend( alg )
+    # differential equation
     lines.append('')
-    lines.append('''\
+    lines.append('DifferentialEquation _differentialEquation;')
+    for k in range(len(dae.xNames() + dae.zNames())):
+        lines.append('_differentialEquation << 0 == _output_dae_residual_%d ;' % k)
+
+    # minLsq
+    lines.append('')
+    lines.append('Function _lsqAcadoSymbolics;')
+    for k in range(len(list(ocp._minLsq))):
+        lines.append('_lsqAcadoSymbolics << _output_lsq_%d;' % k)
+
+    # minLsqEndTerm
+    lines.append('')
+    lines.append('Function _lsqEndTermAcadoSymbolics;')
+    for k in range(len(list(ocp._minLsqEndTerm))):
+        lines.append('_lsqEndTermAcadoSymbolics << _output_lsqEndTerm_%d;' % k)
+
+    # ocp
+    lines.append('''
 /* setup OCP */
 const int N = %(N)d;
 const double Ts = 1.0;
 OCP _ocp(0, N * Ts, N);
 _ocp.setModel( "model", "rhs", "rhsJacob" );
-_ocp.setDimensions( %(nx)d, %(nx)d, %(nz)d, %(nup)d );\
+_ocp.setDimensions( %(nx)d, %(nx)d, %(nz)d, %(nup)d );
+//_ocp.subjectTo( _differentialEquation );
 ''' % {'nx':len(dae.xNames()), 'nz':len(dae.zNames()), 'nup':len(dae.uNames())+len(dae.pNames()),'N':ocp.N})
 
     lines.append('/* complex constraints */')
@@ -277,14 +329,15 @@ _ocp.setDimensions( %(nx)d, %(nx)d, %(nz)d, %(nup)d );\
 
     # objective
     lines.append('/* set objective */')
-    lines.append('String _lsqExtern( "lsqExtern" );')
-    lines.append('String _lsqEndTermExtern( "lsqEndTermExtern" );')
-
     lines.append('ExportVariable  _S( "S", %(size)d, %(size)d);' % {'size': ocp._minLsq.size()})
     lines.append('ExportVariable _SN("SN", %(size)d, %(size)d);' % {'size': ocp._minLsqEndTerm.size()})
 
+    lines.append('String _lsqExtern( "lsqExtern" );')
+    lines.append('String _lsqEndTermExtern( "lsqEndTermExtern" );')
     lines.append('_ocp.minimizeLSQ(        _S,        _lsqExtern);')
     lines.append('_ocp.minimizeLSQEndTerm(_SN, _lsqEndTermExtern);')
+    lines.append('//_ocp.minimizeLSQ(        _S,        _lsqAcadoSymbolics);')
+    lines.append('//_ocp.minimizeLSQEndTerm(_SN, _lsqEndTermAcadoSymbolics);')
 
     lines.append('''
 /* setup OCPexport */
