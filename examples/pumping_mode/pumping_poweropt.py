@@ -26,7 +26,7 @@ import rawekite
 from autogen.topumpingProto import toProto
 from autogen.pumping_pb2 import Trajectory
 
-numLoops=1
+numLoops=6
 powerType = 'mechanical'
 #powerType = 'electrical'
 
@@ -66,6 +66,11 @@ def realMotorConstraints(ocp):
         ocp.constrain( ocp.lookup('rpm',timestep=k),       '<=', 1500, tag=('rpm',k))
         ocp.constrain( -1500, '<=', ocp.lookup('rpm',timestep=k),       tag=('rpm',k))
 
+def fakeMotorConstraints(ocp):
+    for k in range(nk):
+        ocp.constrain( ocp.lookup('torque',timestep=k,degIdx=1),       '<=', 150, tag=('motor torque',k))
+        ocp.constrain( ocp.lookup('torque',timestep=k,degIdx=ocp.deg), '<=', 150, tag=('motor torque',k))
+
 
 def setupOcp(dae,conf,nk,nicp,deg,collPoly):
     def addCosts():
@@ -98,7 +103,8 @@ def setupOcp(dae,conf,nk,nicp,deg,collPoly):
     constrainInvariants(ocp)
     constrainAirspeedAlphaBeta(ocp)
     constrainTetherForce(ocp)
-    realMotorConstraints(ocp)
+    #realMotorConstraints(ocp)
+    fakeMotorConstraints(ocp)
 
     # make it periodic
     for name in [ "r_n2b_n_y","r_n2b_n_z",
@@ -132,7 +138,7 @@ def setupOcp(dae,conf,nk,nicp,deg,collPoly):
     else:
         ocp.bound('r_n2b_n_z',(-2000, -0.05))
     ocp.bound('r',(1,500))
-    ocp.bound('dr',(-30,30))
+    ocp.bound('dr',(-100,100))
     ocp.bound('ddr',(-500,500))
     ocp.bound('dddr',(-50000,50000))
 
@@ -182,7 +188,8 @@ if __name__=='__main__':
     #from highwind_carousel_conf import conf
     from rawe.models.betty_conf import makeConf
 
-    nk = 100*numLoops
+#    nk = 30*numLoops
+    nk = 512
 #    nk = 70
 
     print "creating model..."
@@ -226,7 +233,8 @@ if __name__=='__main__':
     ocp.setupSolver( solverOpts=solverOptions,
                      callback=callback )
 
-    ocp.interpolateInitialGuess("data/crosswind_homotopy.dat",force=True,quiet=True,numLoops=numLoops)
+#    ocp.interpolateInitialGuess("data/crosswind_homotopy.dat",force=True,quiet=True,numLoops=numLoops)
+    ocp.interpolateInitialGuess("data/crosswind_opt_mechanical_6_loops-backup.dat",force=True,quiet=True)
 #    ocp.interpolateInitialGuess("data/crosswind_opt_electrical_1_loops.dat",force=True,quiet=True,numLoops=numLoops)
 #    ocp.interpolateInitialGuess('data/crosswind_opt_'+powerType+'_1_loops.dat',
 #                                force=True,quiet=True,numLoops=numLoops)
@@ -278,7 +286,9 @@ if __name__=='__main__':
 
         plt.show()
 #    plotResults()
-    traj.subplot(['r','dr','ddr','dddr'])
+    traj.subplot(['r','dr'])
+    traj.subplot(['rpm','torque'])
+    traj.subplot(['airspeed'])
     plt.show()
 
 

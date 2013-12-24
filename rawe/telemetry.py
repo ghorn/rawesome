@@ -31,18 +31,23 @@ def startTelemetry(ocp, callbacks=[],
         def __call__(self,f,*args):
             xOpt = numpy.array(f.input('x'))
 
-            if printBoundViolation:
-                lbx = numpy.array(ocp.solver.input('lbx'))
-                ubx = numpy.array(ocp.solver.input('ubx'))
-                ocp._bounds.printBoundsFeedback(xOpt,lbx,ubx,reportThreshold=0)
+            if not hasattr(self, 'print_counter'):
+                self.print_counter = 0
 
-            if printConstraintViolation:
-                lbg = numpy.array(ocp.solver.input('lbg'))
-                ubg = numpy.array(ocp.solver.input('ubg'))
-                ocp._gfcn.setInput(xOpt,0)
-                ocp._gfcn.evaluate()
-                g = ocp._gfcn.output()
-                ocp._constraints.printViolations(g,lbg,ubg,reportThreshold=0)
+            if self.print_counter % 10 == 0:
+                if printBoundViolation:
+                    lbx = numpy.array(ocp.solver.input('lbx'))
+                    ubx = numpy.array(ocp.solver.input('ubx'))
+                    ocp._bounds.printBoundsFeedback(xOpt,lbx,ubx,reportThreshold=-1e-6)
+
+                if printConstraintViolation:
+                    lbg = numpy.array(ocp.solver.input('lbg'))
+                    ubg = numpy.array(ocp.solver.input('ubg'))
+                    ocp._gfcn.setInput(xOpt,0)
+                    ocp._gfcn.evaluate()
+                    g = ocp._gfcn.output()
+                    ocp._constraints.printViolations(g,lbg,ubg,reportThreshold=-1e-6)
+            self.print_counter += 1
 
             xOptQueue.put(xOpt)
 

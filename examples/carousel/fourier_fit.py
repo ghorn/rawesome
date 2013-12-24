@@ -25,17 +25,20 @@ import casadi as C
 import rawe
 
 class TrajFit():
-    def __init__(self,orderMap,traj):
-        ts = [traj.tgrid[k,j,i] for k in range(traj.nk) for j in range(traj.nicp) for i in range(traj.deg+1)]
-        ts.append(traj.tgrid[traj.nk,0,0])
+    def __init__(self,orderMap,traj, k_range=None):
+        if k_range is None:
+            k_range = range(traj.nk)
+        ts = [traj.tgrid[k,j,i] for k in k_range for j in range(traj.nicp) for i in range(traj.deg+1)]
+        ts = [t - ts[0] for t in ts]
+        #ts.append(traj.tgrid[traj.nk,0,0])
         self.ts = np.array(ts)
 
         self.fits = {}
 
         def getAllX(name):
             xs = [traj.lookup(name,timestep=k,nicpIdx=j,degIdx=i) \
-                  for k in range(traj.nk) for j in range(traj.nicp) for i in range(traj.deg+1)]
-            xs.append(traj.lookup(name,timestep=traj.nk,nicpIdx=0,degIdx=0))
+                  for k in k_range for j in range(traj.nicp) for i in range(traj.deg+1)]
+            #xs.append(traj.lookup(name,timestep=traj.nk,nicpIdx=0,degIdx=0))
             xs = np.array(xs)
             return xs
 
@@ -66,8 +69,8 @@ class TrajFit():
             tf = self.ts[-1]
             dt = tf-t0
 
-            t0 -= 0.2*dt
-            tf += 0.2*dt
+#            t0 -= 0.2*dt
+#            tf += 0.2*dt
             ts_ = np.linspace(t0,tf,500)
             plt.plot(ts_,[self.fits[name].evaluate(t) for t in ts_])
 
@@ -87,7 +90,7 @@ class TrajFit():
         # all bases
         polyBases = [phase**po for po in range(maxPoly+1)]
         cosBases = [C.cos(co*phase) for co in range(maxCos+1)]
-        sinBases = [C.sin(co*phase) for si in range(maxSin+1)]
+        sinBases = [C.sin(si*phase) for si in range(maxSin+1)]
 
         self.fitsWithPhase = {}
         for name in self.fits:
@@ -153,31 +156,33 @@ class FourierFit():
 
 if __name__=='__main__':
     # fit everything
-    xyzOrders = {'poly':[0],
+    polyOrders = [0]
+    
+    xyzOrders = {'poly':polyOrders,
                  'sin':range(1,6),
                  'cos':range(1,6)}
-    xyzDotOrders = {'poly':[0],
+    xyzDotOrders = {'poly':polyOrders,
                     'sin':range(1,8),
                     'cos':range(1,8)}
-    ddrOrders = {'poly':[0],
+    ddrOrders = {'poly':polyOrders,
                  'sin':range(1,8),
                  'cos':range(1,8)}
-    dcmOrders = {'poly':[0],
+    dcmOrders = {'poly':polyOrders,
                  'sin':range(1,10),
                  'cos':range(1,10)}
-    omegaOrders = {'poly':[0],
+    omegaOrders = {'poly':polyOrders,
                    'sin':range(1,7),
                    'cos':range(1,7)}
-    controlSurfaceOrders = {'poly':[0],
+    controlSurfaceOrders = {'poly':polyOrders,
                             'sin':range(1,5),
                             'cos':range(1,5)}
-    deltaOrders = {'poly':[0],
+    deltaOrders = {'poly':polyOrders,
                    'sin':range(1,5),
                    'cos':range(1,5)}
-    ddeltaOrders = {'poly':[0],
+    ddeltaOrders = {'poly':polyOrders,
                     'sin':range(1,5),
                     'cos':range(1,5)}
-    motorTorqueOrders = {'poly':[0],
+    motorTorqueOrders = {'poly':polyOrders,
                          'sin':range(1,5),
                          'cos':range(1,5)}
     orderMap = {'x':xyzOrders,
@@ -217,8 +222,9 @@ if __name__=='__main__':
                 'motor_torque':motorTorqueOrders
                 }
 
-    for filename in ["data/carousel_homotopy",
-                     "../pumping_mode/data/crosswind_opt_mechanical_1_loops"]:
+    for filename,k_range in [("data/carousel_homotopy",None)]:
+#                     ("../pumping_mode/data/crosswind_opt_mechanical_1_loops",None)]:
+#    for filename,k_range in [("../pumping_mode/data/crosswind_opt_mechanical_6_loops",range(325,420))]:
 
         # load saved trajectory
         loadfile = filename+".dat"
@@ -227,26 +233,28 @@ if __name__=='__main__':
         traj = pickle.load(f)
         f.close()
 
-        trajFit = TrajFit(orderMap,traj)
+        trajFit = TrajFit(orderMap,traj,k_range=k_range)
 
         savefile = filename+"_fourier.dat"
         print "saving fourier coeffs: "+savefile
         f=open(savefile,'w')
         pickle.dump(trajFit,f)
         f.close()
+    print "finished!"
 
     def mkPlots():
-        #trajFit.plot(['x','y','z'])
-        trajFit.plot(['r_n2b_n_x','r_n2b_n_y','r_n2b_n_z'])
-        trajFit.plot(['r'])
-        #trajFit.plot(['dx','dy','dz'])
-        trajFit.plot(['v_bn_n_x','v_bn_n_y','v_bn_n_z'])
-        trajFit.plot(['dr'])
+        if 'x' in traj.dvMap._xNames:
+            trajFit.plot(['x','y','z'])
+            trajFit.plot(['dx','dy','dz'])
+            trajFit.plot(['sin_delta','cos_delta'])
+        else:
+            trajFit.plot(['r_n2b_n_x','r_n2b_n_y','r_n2b_n_z'])
+            trajFit.plot(['v_bn_n_x','v_bn_n_y','v_bn_n_z'])
+        #trajFit.plot(['dr'])
         trajFit.plot(['e11','e12','e13','e21','e22','e23','e31','e32','e33'])
+        #trajFit.plot(['r'])
         trajFit.plot(['w_bn_b_x','w_bn_b_y','w_bn_b_z'])
-        if 'delta' in traj.dvMap._xNames:
-            trajFit.plot(['delta'])
         if 'ddelta' in traj.dvMap._xNames:
             trajFit.plot(['ddelta'])
         plt.show()
-    #mkPlots()
+    mkPlots()
