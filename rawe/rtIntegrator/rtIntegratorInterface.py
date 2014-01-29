@@ -24,8 +24,7 @@ def phase1src(dae,options,measurements):
 #include <string>
 #include <iostream>
 
-#include <acado_code_generation.hpp>
-#include <acado/utils/acado_types.hpp>
+#include <acado_toolkit.hpp>
 
 extern "C"{
   int export_integrator( const char * genPath);
@@ -58,13 +57,12 @@ int export_integrator( const char * genPath)
     if measurements is not None:
         ret += '''
   // set MEASUREMENT_GRID
-  sim.set( MEASUREMENT_GRID, EQUIDISTANT_GRID );
+  // sim.set( MEASUREMENT_GRID, EQUIDISTANT_GRID );
 
   // set output/measurements
-  sim.addOutput( "measurements", "measurementsJacob", %(outputDimension)d );
-  Vector Meas(1);
-  Meas(0) = 1;
-  sim.setMeasurements( Meas );
+  DVector Meas( 1 );
+  Meas( 0 ) = 1;
+  sim.addOutput("measurements", "measurementsJacob", %(outputDimension)d, Meas);
 ''' % {'outputDimension':C.densify(measurements).size()}
     ret +='''
   sim.set( GENERATE_MAKE_FILE, false );

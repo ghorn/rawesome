@@ -58,14 +58,16 @@ clean :
 
 def writeRtIntegrator(dae, options, measurements):
     # write the exporter file
-    files = {'export_integrator.cpp':rtIntegratorInterface.phase1src(dae, options, measurements),
-             'Makefile':rtIntegratorInterface.phase1makefile()}
-    interfaceDir = codegen.memoizeFiles(files,prefix='rt_integrator_phase1__')
+    files = {'export_integrator.cpp': rtIntegratorInterface.phase1src(dae, options, measurements),
+             'Makefile': rtIntegratorInterface.phase1makefile()}
+    interfaceDir = codegen.memoizeFiles(files, prefix='rt_integrator_phase1__')
 
     # call make to make sure shared lib is build
     (ret, msgs) = subprocess_tee.call(['make',codegen.makeJobs()], cwd=interfaceDir)
     if ret != 0:
         raise Exception("integrator compilation failed:\n"+msgs)
+    
+    print ret
 
     # call makeRtIntegrator
     def call(path):
@@ -92,11 +94,12 @@ def writeRtIntegrator(dae, options, measurements):
 def exportIntegrator(dae, timestep, options, measurements):
     # get the exported integrator files
     exportedFiles = writeRtIntegrator(dae, options, measurements)
+    print "Exported files: ", exportedFiles.keys()
 
     # model file
     rtModelGen = rtModelExport.generateCModel(dae,timestep, measurements)
     modelFile = '''\
-#include "acado.h"
+#include "acado_common.h"
 #include "rhs.h"
 #include "rhsJacob.h"
 '''
@@ -110,17 +113,19 @@ def exportIntegrator(dae, timestep, options, measurements):
     symbolicsFiles = ['rhs.cpp','rhsJacob.cpp']
     if measurements is not None:
         symbolicsFiles += ['measurements.cpp', 'measurementsJacob.cpp']
-    makefile = makeMakefile(['workspace.c', 'model.c', 'integrator.c'],
+    makefile = makeMakefile(['workspace.c', 'model.c', 'acado_integrator.c', 'acado_auxiliary_sim_functions.c'],
                             symbolicsFiles)
 
     # write the static workspace file (temporary)
     workspace = """\
-#include <acado.h>
+#include <acado_common.h>
 ACADOworkspace acadoWorkspace;
 ACADOvariables acadoVariables;
 """
-    genfiles = {'integrator.c': exportedFiles['integrator.c'],
-                'acado.h': exportedFiles['acado.h'],
+    genfiles = {'acado_integrator.c': exportedFiles['acado_integrator.c'],
+                'acado_common.h': exportedFiles['acado_common.h'],  
+                'acado_auxiliary_sim_functions.h': exportedFiles['acado_auxiliary_sim_functions.h'],
+                'acado_auxiliary_sim_functions.c': exportedFiles['acado_auxiliary_sim_functions.c'],
                 'model.c': modelFile,
                 'rhs.cpp': '#include "rhs.h"\n'+rtModelGen['rhsFile'][0],
                 'rhs.h': rtModelGen['rhsFile'][1],
