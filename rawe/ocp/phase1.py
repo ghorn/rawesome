@@ -24,12 +24,11 @@ import writeAcadoOcpExport
 
 def makeExportMakefile(phase1Options):
     rpathAcado = pkgconfig.getRpath('acado')
-    rpathOcg2 = pkgconfig.getRpath('ocg2')
 
     makefile = """\
 CXX       = %(CXX)s
-CXXFLAGS  = -O2 -fPIC -finline-functions -I. `pkg-config --cflags acado` `pkg-config --cflags ocg2`
-LDFLAGS = -lm `pkg-config --libs acado` `pkg-config --libs ocg2`
+CXXFLAGS  = -O2 -fPIC -finline-functions -I. `pkg-config --cflags acado`
+LDFLAGS = -lm `pkg-config --libs acado`
 
 CXX_SRC = export_ocp.cpp
 OBJ = $(CXX_SRC:%%.cpp=%%.o)
@@ -42,7 +41,6 @@ all : $(OBJ) export_ocp.so run_export
 \t@$(CXX) $(CXXFLAGS) -c $< -o $@
 
 export_ocp.so::LDFLAGS+=-Wl,-rpath,%(rpathAcado)s
-export_ocp.so::LDFLAGS+=-Wl,-rpath,%(rpathOcg2)s
 
 export_ocp.so : $(OBJ)
 \t@echo LD $@ : $(CXX) -shared -o $@ $(OBJ) $(LDFLAGS)
@@ -54,15 +52,15 @@ run_export : export_ocp.so
 
 clean :
 \trm -f *.o *.so
-""" % {'CXX':phase1Options['CXX'],'rpathAcado':rpathAcado,'rpathOcg2':rpathOcg2}
+""" % {'CXX': phase1Options['CXX'], 'rpathAcado': rpathAcado}
     return makefile
 
 # This writes and runs the ocp exporter, returning an exported OCP as a
 # dictionary of files.
 def runPhase1(ocp, phase1Options, integratorOptions, ocpOptions):
     # write the ocp exporter cpp file
-    genfiles = {'export_ocp.cpp':writeAcadoOcpExport.generateAcadoOcp(ocp, integratorOptions, ocpOptions),
-                'Makefile':makeExportMakefile(phase1Options)}
+    genfiles = {'export_ocp.cpp': writeAcadoOcpExport.generateAcadoOcp(ocp, integratorOptions, ocpOptions),
+                'Makefile': makeExportMakefile(phase1Options)}
     # add a file which just runs the export in the current directory
     genfiles['run_export.cpp'] = '''\
 extern "C" int exportOcp(const char * exportDir);
@@ -97,7 +95,7 @@ int main(void){
             q.put(None)
 
     q = Queue()
-    p = Process(target=callExporterInProcess,args=(q,))
+    p = Process(target = callExporterInProcess, args=(q, ))
     p.start()
     ret = q.get()
     p.join()
