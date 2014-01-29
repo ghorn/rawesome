@@ -52,7 +52,7 @@ endif
 CXX_SRC = \\
 \teverything.cpp \\
 %(qpo_src)s \\
-\tqpoases/solver.cpp
+\tacado_qpoases_interface.cpp
 
 C_SRC = \\
 \tpython_interface.c \\
@@ -71,9 +71,9 @@ CXX_OBJ = $(CXX_SRC:%%.cpp=%%.o)
 C_OBJ = $(C_SRC:%%.c=%%.o)
 
 HEADERS = \\
-\tqpoases/solver.hpp \\
-\tacado_auxiliary_functions.h \\
-\tacado_common.h
+\tacado_common.h \\
+\tacado_qpoases_interface.hpp \\
+\tacado_auxiliary_functions.h
 
 .PHONY: clean all ocp.a ocp.so
 all : $(CXX_OBJ) $(C_OBJ) ocp.a ocp.so ocp.o
@@ -104,11 +104,13 @@ ocp.o : $(CXX_OBJ) $(C_OBJ)
 clean :
 \t@echo rm -f ocp.a $(CXX_OBJ) $(C_OBJ) ocp.so
 \t@rm -f ocp.a ocp.so ocp.o $(CXX_OBJ) $(C_OBJ)
-""" % {'CXX':cgOptions['CXX'], 'CC':cgOptions['CC'],
-       'CXXFLAGS':cgOptions['CXXFLAGS'], 'CFLAGS':cgOptions['CFLAGS'],
-       'c_visibility':c_visibility,
-       'cxx_visibility':cxx_visibility,
-       'qpo_src':qposrc}
+""" % {'CXX': cgOptions['CXX'],
+       'CC': cgOptions['CC'],
+       'CXXFLAGS': cgOptions['CXXFLAGS'],
+       'CFLAGS': cgOptions['CFLAGS'],
+       'c_visibility': c_visibility,
+       'cxx_visibility': cxx_visibility,
+       'qpo_src': qposrc}
     return makefile
 
 

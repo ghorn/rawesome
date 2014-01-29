@@ -64,11 +64,11 @@ int py_set_u(real_t * val, const int nr, const int nc){
 int py_get_u(real_t * val, const int nr, const int nc){
   return memcpyMat(val, acadoVariables.u, nr, nc, ACADO_N, ACADO_NU); }
 
-#if ACADO_NP
+#if ACADO_NOD
 int py_set_p(real_t * val, const int nr, const int nc){
-  return memcpyMat(acadoVariables.p, val, nr, nc, ACADO_NP, 1); }
+  return memcpyMat(acadoVariables.od, val, nr, nc, ACADO_NOD, 1); }
 int py_get_p(real_t * val, const int nr, const int nc){
-  return memcpyMat(val, acadoVariables.p, nr, nc, ACADO_NP, 1); }
+  return memcpyMat(val, acadoVariables.od, nr, nc, ACADO_NOD, 1); }
 #endif
 
 #if ACADO_NXA
@@ -99,22 +99,22 @@ int py_get_x0(real_t * val, const int nr, const int nc){
 
 #if ACADO_WEIGHTING_MATRICES_TYPE == 1
 int py_set_S(real_t * val, const int nr, const int nc){
-  return memcpyMat(acadoVariables.S, val, nr, nc, ACADO_NY, ACADO_NY); }
+  return memcpyMat(acadoVariables.W, val, nr, nc, ACADO_NY, ACADO_NY); }
 int py_get_S(real_t * val, const int nr, const int nc){
-  return memcpyMat(val, acadoVariables.S, nr, nc, ACADO_NY, ACADO_NY); }
+  return memcpyMat(val, acadoVariables.W, nr, nc, ACADO_NY, ACADO_NY); }
 int py_set_SN(real_t * val, const int nr, const int nc){
-  return memcpyMat(acadoVariables.SN, val, nr, nc, ACADO_NYN, ACADO_NYN); }
+  return memcpyMat(acadoVariables.WN, val, nr, nc, ACADO_NYN, ACADO_NYN); }
 int py_get_SN(real_t * val, const int nr, const int nc){
-  return memcpyMat(val, acadoVariables.SN, nr, nc, ACADO_NYN, ACADO_NYN); }
+  return memcpyMat(val, acadoVariables.WN, nr, nc, ACADO_NYN, ACADO_NYN); }
 #elif ACADO_WEIGHTING_MATRICES_TYPE == 2
 int py_set_S(real_t * val, const int nr, const int nc){
-  return memcpyMat(acadoVariables.S, val, nr, nc, ACADO_N * ACADO_NY, ACADO_NY); }
+  return memcpyMat(acadoVariables.W, val, nr, nc, ACADO_N * ACADO_NY, ACADO_NY); }
 int py_get_S(real_t * val, const int nr, const int nc){
-  return memcpyMat(val, acadoVariables.S, nr, nc, ACADO_N * ACADO_NY, ACADO_NY); }
+  return memcpyMat(val, acadoVariables.W, nr, nc, ACADO_N * ACADO_NY, ACADO_NY); }
 int py_set_SN(real_t * val, const int nr, const int nc){
-  return memcpyMat(acadoVariables.SN, val, nr, nc, ACADO_NYN, ACADO_NYN); }
+  return memcpyMat(acadoVariables.WN, val, nr, nc, ACADO_NYN, ACADO_NYN); }
 int py_get_SN(real_t * val, const int nr, const int nc){
-  return memcpyMat(val, acadoVariables.SN, nr, nc, ACADO_NYN, ACADO_NYN); }
+  return memcpyMat(val, acadoVariables.WN, nr, nc, ACADO_NYN, ACADO_NYN); }
 #endif /* ACADO_WEIGHTING_MATRICES_TYPE */
 
 #if ACADO_USE_ARRIVAL_COST == 1
@@ -143,7 +143,7 @@ int py_get_ACADO_NXA(void){ return ACADO_NXA; }
 /** Number of control variables. */
 int py_get_ACADO_NU(void){ return ACADO_NU; }
 /** Number of parameters (which are NOT optimization variables). */
-int py_get_ACADO_NP(void){ return ACADO_NP; }
+int py_get_ACADO_NP(void){ return ACADO_NOD; }
 /** Number of references/measurements per node on the first N nodes. */
 int py_get_ACADO_NY(void){ return ACADO_NY; }
 /** Number of references/measurements on the last (N + 1)st node. */

@@ -259,9 +259,9 @@ const int N = %(N)d;
 const double Ts = 1.0;
 OCP _ocp(0, N * Ts, N);
 _ocp.setModel( "model", "rhs", "rhsJacob" );
-_ocp.setDimensions( %(nx)d, %(nx)d, %(nz)d, %(nup)d );
+_ocp.setDimensions( %(nx)d, %(nx)d, %(nz)d, %(nu)d, 0, 0 );
 //_ocp.subjectTo( _differentialEquation );
-''' % {'nx':len(dae.xNames()), 'nz':len(dae.zNames()), 'nup':len(dae.uNames())+len(dae.pNames()),'N':ocp.N})
+''' % {'nx':len(dae.xNames()), 'nz':len(dae.zNames()), 'nu':len(dae.uNames()),'N':ocp.N})
 
     lines.append('/* complex constraints */')
     for (k, comparison, when) in constraintData:
@@ -329,15 +329,19 @@ _ocp.setDimensions( %(nx)d, %(nx)d, %(nz)d, %(nup)d );
 
     # objective
     lines.append('/* set objective */')
-    lines.append('ExportVariable  _S( "S", %(size)d, %(size)d);' % {'size': ocp._minLsq.size()})
-    lines.append('ExportVariable _SN("SN", %(size)d, %(size)d);' % {'size': ocp._minLsqEndTerm.size()})
+    lines.append('BMatrix  _W(%(size)d, %(size)d); _W.setAll( true );' % {'size': ocp._minLsq.size()})
+    lines.append('BMatrix _WN(%(size)d, %(size)d); _WN.setAll( true );' % {'size': ocp._minLsqEndTerm.size()})
 
-    lines.append('String _lsqExtern( "lsqExtern" );')
-    lines.append('String _lsqEndTermExtern( "lsqEndTermExtern" );')
-    lines.append('_ocp.minimizeLSQ(        _S,        _lsqExtern);')
-    lines.append('_ocp.minimizeLSQEndTerm(_SN, _lsqEndTermExtern);')
-    lines.append('//_ocp.minimizeLSQ(        _S,        _lsqAcadoSymbolics);')
-    lines.append('//_ocp.minimizeLSQEndTerm(_SN, _lsqEndTermAcadoSymbolics);')
+    lines.append('std::string _lsqExtern = "lsqExtern";')
+    lines.append('std::string _lsqEndTermExtern = "lsqEndTermExtern";')
+    
+    # Use CasADi symbolics
+    lines.append('_ocp.minimizeLSQ(        _W,        _lsqExtern);')
+    lines.append('_ocp.minimizeLSQEndTerm(_WN, _lsqEndTermExtern);')
+    
+    # ... or use ACADO symbolics as an alternative
+    lines.append('//_ocp.minimizeLSQ(        _W,        _lsqAcadoSymbolics);')
+    lines.append('//_ocp.minimizeLSQEndTerm(_WN, _lsqEndTermAcadoSymbolics);')
 
     lines.append('''
 /* setup OCPexport */
@@ -366,7 +370,6 @@ return 0;''' )
     lines = '\n'.join(['    '+l for l in ('\n'.join(lines)).split('\n')])
     lines = '''\
 #include <acado_toolkit.hpp>
-#include <ocp_export.hpp>
 
 extern "C" int exportOcp(const char * exportDir);
 
