@@ -94,7 +94,6 @@ def writeRtIntegrator(dae, options, measurements):
 def exportIntegrator(dae, timestep, options, measurements):
     # get the exported integrator files
     exportedFiles = writeRtIntegrator(dae, options, measurements)
-    print "Exported files: ", exportedFiles.keys()
 
     # model file
     rtModelGen = rtModelExport.generateCModel(dae,timestep, measurements)
