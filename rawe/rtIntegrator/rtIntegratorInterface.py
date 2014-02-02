@@ -47,12 +47,12 @@ int export_integrator( const char * genPath)
 
   // 0 == rhs()
   sim.setModel( "model", "rhs", "rhsJacob" );
-  sim.setDimensions( %(nx)d, %(nx)d, %(nz)d, %(nup)d );
+  sim.setDimensions( %(nx)d, %(nx)d, %(nz)d, %(nu)d, 0, 0 );
 ''' % {'INTEGRATOR_TYPE': options['INTEGRATOR_TYPE'],
        'NUM_INTEGRATOR_STEPS': options['NUM_INTEGRATOR_STEPS'],
-       'nx':len(dae.xNames()),
-       'nz':len(dae.zNames()),
-       'nup':len(dae.uNames())+len(dae.pNames())}
+       'nx': len(dae.xNames()),
+       'nz': len(dae.zNames()),
+       'nu': len(dae.uNames())}
 
     if measurements is not None:
         ret += '''

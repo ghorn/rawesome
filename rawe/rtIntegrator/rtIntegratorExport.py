@@ -144,8 +144,8 @@ ACADOvariables acadoVariables;
     if ret != 0:
         raise Exception("integrator compilation failed:\n"+msgs)
 
-    print 'loading '+exportpath+'/integrator.so'
+#    print 'loading '+exportpath+'/integrator.so'
     integratorLib = ctypes.cdll.LoadLibrary(exportpath+'/integrator.so')
-    print 'loading '+exportpath+'/model.so'
+#    print 'loading '+exportpath+'/model.so'
     modelLib = ctypes.cdll.LoadLibrary(exportpath+'/model.so')
     return (integratorLib, modelLib, rtModelGen)
