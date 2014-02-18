@@ -469,7 +469,7 @@ class OcpRT(object):
         self._setAll()
         return self._lib.getObjective()
 
-    def subplot(self,names,title=None,style='',when=0,showLegend=True,offset=None):
+    def subplot(self, names, title = None, style = '', when = None, showLegend = True, offset = None):
         assert isinstance(names,list)
 
         fig = plt.figure()
@@ -487,7 +487,12 @@ class OcpRT(object):
         plt.clf()
         n = len(names)
         if style is '':
-            style = ['']*n
+            style = [''] * n
+        elif isinstance(style, list) and len( style ) == 1:
+            style = style * n
+        else:
+            assert isinstance(style, list) and len( style ) == n
+        
         for k,name in enumerate(names):
             plt.subplot(n,1,k+1)
             if k==0:
@@ -495,7 +500,7 @@ class OcpRT(object):
             else:
                 self._plot(name,None,style[k],when=when,showLegend=showLegend,offset=offset)
 
-    def plot(self,names,title=None,style='',when=0,showLegend=True,offset=None):
+    def plot(self, names, title = None, style = '', when = None, showLegend = True, offset = None):
 
         fig = plt.figure()
         if title is None:
@@ -513,7 +518,7 @@ class OcpRT(object):
         self._plot(names,title,style,when=when,showLegend=showLegend,offset=offset)
 
 
-    def _plot(self,names,title,style,when=0,showLegend=True,offset=None):
+    def _plot(self, names, title, style, when = None, showLegend = True, offset = None):
         if offset is None:
             offset = 0
         elif offset == 'mhe':
@@ -523,19 +528,9 @@ class OcpRT(object):
         if isinstance(names,str):
             names = [names]
         assert isinstance(names,list)
-
-        def myStep(xs0,ys0,style):
-            #plt.plot(xs0,ys0,'o')
-            xs0 = numpy.append(xs0, xs0[-1] + xs0[1] - xs0[0])
-            ys0 = numpy.append(ys0, ys0[-1])
-            xs = []
-            ys = []
-            for k in range(xs0.size-1):
-                xs.append(xs0[k])
-                xs.append(xs0[k+1])
-                ys.append(ys0[k])
-                ys.append(ys0[k])
-            plt.plot(xs,ys,style)
+            
+        def step(x, y, style):
+            plt.plot(x, y, style, drawstyle = 'steps')
 
         legend = []
         for name in names:
@@ -551,6 +546,8 @@ class OcpRT(object):
                         ts = (offset + numpy.arange(len(ys)) + k)*self.ocp.ts
                         plt.plot(ts,ys,style)
                 else:
+                    if when == None:
+                        when = self.ocp.N
                     ys = numpy.array(self._log['x'])[:,when,index]
                     ts = numpy.arange(len(ys))*self.ocp.ts
                     plt.plot(ts,ys,style)
@@ -562,17 +559,13 @@ class OcpRT(object):
                     for k in range(numpy.array(self._log['u']).shape[0]):
                         ys = numpy.array(self._log['u'])[k,:,index]
                         ts = (offset + numpy.arange(len(ys)) + k)*self.ocp.ts
-                        if style == 'o':
-                            plt.plot(ts,ys,style)
-                        else:
-                            myStep(ts,ys,style)
+                        step(ts, ys, style)
                 else:
+                    if when == None:
+                        when = self.ocp.N - 1
                     ys = numpy.array(self._log['u'])[:,when,index]
                     ts = numpy.arange(len(ys))*self.ocp.ts
-                    if style == 'o':
-                        plt.plot(ts,ys,style)
-                    else:
-                        myStep(ts,ys,style)
+                    step(ts, ys, style)
 
             # if it's an output
             if name in self.outputNames():
@@ -580,11 +573,19 @@ class OcpRT(object):
                     for k in range(numpy.array(self._log['outputs'][name]).shape[0]):
                         ys = numpy.array(self._log['outputs'][name])[k,:]
                         ts = (offset + numpy.arange(len(ys)) + k)*self.ocp.ts
-                        plt.plot(ts,ys,style)
+                        if style == '':
+                            plt.plot(ts, ys, '--')
+                        else:
+                            plt.plot(ts, ys, style)
                 else:
+                    if when == None:
+                        when = self.ocp.N
                     ys = numpy.array(self._log['outputs'][name])[:,when]
                     ts = numpy.arange(len(ys))*self.ocp.ts
-                    plt.plot(ts,ys,style)
+                    if style == '':
+                        plt.plot(ts, ys, '--')
+                    else:
+                        plt.plot(ts, ys, style)
 
             # if it's something else
             if name in ['_kkt','_objective','_prep_time','_fb_time']:
