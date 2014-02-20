@@ -535,10 +535,10 @@ class OcpRT(object):
         legend = []
         for name in names:
             assert isinstance(name,str)
-            legend.append(name)
 
             # if it's a differential state
             if name in self.xNames():
+                legend.append(name)
                 index = self.xNames().index(name)
                 if when == 'all':
                     for k in range(numpy.array(self._log['x']).shape[0]):
@@ -554,6 +554,7 @@ class OcpRT(object):
 
             # if it's a control
             if name in self.uNames():
+                legend.append(name)
                 index = self.uNames().index(name)
                 if when == 'all':
                     for k in range(numpy.array(self._log['u']).shape[0]):
@@ -566,9 +567,67 @@ class OcpRT(object):
                     ys = numpy.array(self._log['u'])[:,when,index]
                     ts = numpy.arange(len(ys))*self.ocp.ts
                     step(ts, ys, style)
+                    
+            # If it is a measurement/reference dependent on x
+            if name in self.ocp.yxNames:
+                legend.append("y_" + name)
+                index = self.ocp.getYOfsset( name )
+                dim = self.ocp.dae[ name ].shape[ 0 ]
+                if when == 'all':
+                    print "This functionality is not fully tested"
+                    for k in range(numpy.array(self._log['y']).shape[0]):
+                        ys = numpy.array(self._log['y'])[k,:,index]
+                        ts = (offset + numpy.arange(len(ys)) + k)*self.ocp.ts
+                        if style == '':
+                            plt.plot(ts, ys, 'o')
+                        else:
+                            plt.plot(ts, ys, style)
+                else:
+                    if when == None:
+                        _when = self.ocp.N - 1
+                    else:
+                        _when = when
+                    #print name, index, when
+                    if when == self.ocp.N:
+                        ys = numpy.array(self._log['yN'])[:,index: index + dim]
+                    else:
+                        ys = numpy.array(self._log['y'])[:,_when, index: index + dim]
+                    ts = numpy.arange(len(ys))*self.ocp.ts
+                    if style == '':
+                        plt.plot(ts, ys, 'o')
+                    else:
+                        plt.plot(ts, ys, style)
+                        
+            # If it is a measurement/reference dependent on u
+            if name in self.ocp.yuNames:
+                legend.append("y_" + name)
+                index = self.ocp.getYOfsset( name )
+                dim = self.ocp.dae[ name ].shape[ 0 ]
+                if when == 'all':
+                    print "This functionality is not fully tested"
+                    for k in range(numpy.array(self._log['y']).shape[0]):
+                        ys = numpy.array(self._log['y'])[k,:,index]
+                        ts = (offset + numpy.arange(len(ys)) + k)*self.ocp.ts
+                        if style == '':
+                            plt.plot(ts, ys, 'd')
+                        else:
+                            plt.plot(ts, ys, style)
+                else:
+                    if when == None:
+                        _when = self.ocp.N - 1
+                    else:
+                        _when = when
+                    #print name, index, when    
+                    ys = numpy.array(self._log['y'])[:,_when, index: index + dim]
+                    ts = numpy.arange(len(ys))*self.ocp.ts
+                    if style == '':
+                        plt.plot(ts, ys, 'd')
+                    else:
+                        plt.plot(ts, ys, style)
 
             # if it's an output
             if name in self.outputNames():
+                legend.append(name)
                 if when == 'all':
                     for k in range(numpy.array(self._log['outputs'][name]).shape[0]):
                         ys = numpy.array(self._log['outputs'][name])[k,:]
@@ -589,6 +648,7 @@ class OcpRT(object):
 
             # if it's something else
             if name in ['_kkt','_objective','_prep_time','_fb_time']:
+            	legend.append(name)
                 ys = numpy.array(self._log[name])[:]
                 ts = (offset + numpy.arange(len(ys)))*self.ocp.ts
                 plt.plot(ts,ys,style)
