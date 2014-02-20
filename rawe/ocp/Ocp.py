@@ -38,12 +38,11 @@ class OcpExportOptions(Options):
         self.add(OptDouble('LEVENBERG_MARQUARDT',default=0.0))
         self.add(OptBool('CG_USE_ARRIVAL_COST',default=False))
         self.add(OptBool('CG_USE_VARIABLE_WEIGHTING_MATRIX',default=False))
-#        self.add(OptBool('CG_USE_C99',default=True))
 
 class Ocp(object):
-    def __init__(self, dae, N=None, ts=None):
+    def __init__(self, dae, N = None, ts = None, yxNames = None, yuNames = None, hashPrefix = 'ocp'):
         dae.assertNoFreeParams()
-        self.hashPrefix = 'ocp'
+        self.hashPrefix = hashPrefix
         self._dae = dae
         if N is None or ts is None:
             raise Exception('please initialize Ocp with Ocp(dae, N=.., ts=..)')
@@ -69,6 +68,37 @@ class Ocp(object):
         self._constraintsEnd = []
 
         self._dbgMessages = []
+        
+        if yxNames is None:
+            yxNames = dae.xNames()
+        else:
+            assert isinstance(yxNames, list), "yxNames must be a list of strings"
+        self._yxNames = yxNames
+        
+        if yuNames is None:
+            yuNames = dae.uNames()
+        else:
+            assert isinstance(yuNames, list), "yuNames must be a list of strings"
+        self._yuNames = yuNames
+
+        self._yx = C.veccat([self[n] for n in self._yxNames])
+        self._yu = C.veccat([self[n] for n in self._yuNames])
+
+        assert not C.dependsOn(self._yx, self.dae.uVec()), "error: x measurement depends on u"
+        assert not C.dependsOn(self._yu, self.dae.xVec()), "error: u measurement depends on x"
+
+        self.__minimizeLsq( C.veccat([self._yx, self._yu]) )
+        self.__minimizeLsqEndTerm( self._yx )
+        
+        # Calculate offsets of measurements
+        self._yOffsets = {}
+        _offset = 0
+        for name in self._yxNames:
+            self._yOffsets.update({name: _offset})
+            _offset += self.dae[ name ].shape[ 0 ]
+        for name in self._yuNames:
+            self._yOffsets.update({name: _offset})
+            _offset += self.dae[ name ].shape[ 0 ]
 
     @property
     def N(self):
@@ -79,6 +109,19 @@ class Ocp(object):
     @property
     def dae(self):
         return self._dae
+
+    @property
+    def yxNames(self):
+        return self._yxNames
+    @property
+    def yuNames(self):
+        return self._yuNames
+    @property
+    def yx(self):
+        return self._yx
+    @property
+    def yu(self):
+        return self._yu
 
     # stuff inherited from dae
     def __getitem__(self,name):
@@ -119,10 +162,10 @@ class Ocp(object):
                                 "['upper','lower','equality']")
 
         def insertWithErr(bndmap):
-           if name in bndmap:
-               raise Exception(upperOrLower+' bound for '+name+' is already set to '+ \
-                                   str(bndmap[name])+' but you tried to change it to '+str(bnd))
-           bndmap[name] = bnd
+            if name in bndmap:
+                raise Exception(upperLowerEq+' bound for '+name+' is already set to '+ \
+                                str(bndmap[name])+' but you tried to change it to '+str(bnd))
+            bndmap[name] = bnd
 
         if when is None:
             insertWithErr(maps['ALWAYS'])
@@ -230,102 +273,66 @@ class Ocp(object):
         else:
             raise Exception("\"when\" must be 'AT_START' or 'AT_END', leaving it blank means always, you put: "+str(when))
 
-    def minimizeLsq(self, obj):
+    def __minimizeLsq(self, obj):
         if isinstance(obj, list):
             obj = C.veccat(obj)
         C.makeDense(obj)
         shape = obj.shape
         assert shape[0] == 1 or shape[1] == 1, 'objective cannot be matrix, got shape: '+str(shape)
-        assert not hasattr(self, '_minLsq'), 'you can only call minimizeLsq once'
+        assert not hasattr(self, '_minLsq'), 'you can only call __minimizeLsq once'
         self._minLsq = obj
 
-    def minimizeLsqEndTerm(self, obj):
+    def __minimizeLsqEndTerm(self, obj):
         if isinstance(obj, list):
             obj = C.veccat(obj)
         C.makeDense(obj)
         shape = obj.shape
         assert shape[0] == 1 or shape[1] == 1, 'objective cannot be matrix, got shape: '+str(shape)
-        assert not hasattr(self, '_minLsqEndTerm'), 'you can only call minimizeLsqEndTerm once'
+        assert not hasattr(self, '_minLsqEndTerm'), 'you can only call __minimizeLsqEndTerm once'
         self._minLsqEndTerm = obj
 
     def exportCode(self, ocpOptions, integratorOptions, codegenOptions, phase1Options):
         assert isinstance(ocpOptions, OcpExportOptions)
         assert isinstance(integratorOptions, RtIntegratorOptions)
+        
+        # At the moment this is the only supported Hessian approximation
+        assert ocpOptions['HESSIAN_APPROXIMATION'] is 'GAUSS_NEWTON'
+        
         return exportOcp.exportOcp(self, ocpOptions, integratorOptions,
                                    codegenOptions, phase1Options)
+        
+    def getYOfsset(self, name):
+        return self._yOffsets[ name ]
 
 
-class Mpc(Ocp):
-    @property
-    def yxNames(self):
-        return self._yxNames
-    @property
-    def yuNames(self):
-        return self._yuNames
-    @property
-    def yx(self):
-        return self._yx
-    @property
-    def yu(self):
-        return self._yu
-    def __init__(self, dae, N=None, ts=None):
-        Ocp.__init__(self, dae, N=N, ts=ts)
-        self.hashPrefix = 'mpc'
+class Mpc( Ocp ):
+    def __init__(self, dae, N = None, ts = None, yxNames = None, yuNames = None):
+        Ocp.__init__(self, dae, N = N, ts = ts, yxNames = yxNames, yuNames = yuNames, hashPrefix = 'mpc')
 
-        self._yxNames = dae.xNames()
-        self._yuNames = dae.uNames()
+    def exportCode(self, ocpOptions, integratorOptions, codegenOptions, phase1Options):
+        assert isinstance(ocpOptions, OcpExportOptions)
+        
+        #
+        # Set some common options that should not be overridden
+        #
+        assert ocpOptions['FIX_INITIAL_STATE'] is True
+        
+        return Ocp.exportCode(self, ocpOptions, integratorOptions, codegenOptions, phase1Options)
+        
 
-        self._yx  = C.veccat( [self[n] for n in self.yxNames] )
-        self._yu  = C.veccat( [self[n] for n in self.yuNames] )
-        Ocp.minimizeLsq(self, C.veccat([self.yx,self.yu]))
-        Ocp.minimizeLsqEndTerm(self, self.yx)
-
-    def minimizeLsq(self, obj):
-        raise Exception("hey, you don't know this is Ocp, the LSQ to be minimized is [X,U]")
-    def minimizeLsqEndTerm(self, obj):
-        raise Exception("hey, you don't know this is Ocp, the terminal cost is LSQ of X")
-
-
-class Mhe(Ocp):
-    @property
-    def yxNames(self):
-        return self._yxNames
-    @property
-    def yuNames(self):
-        return self._yuNames
-    @property
-    def yx(self):
-        return self._yx
-    @property
-    def yu(self):
-        return self._yu
-    def __init__(self, dae, N=None, ts=None, yxNames=None, yuNames=None):
-        Ocp.__init__(self, dae, N=N, ts=ts)
-        self.hashPrefix = 'mhe'
-
-        if yxNames is None:
-            yxNames = dae.xNames()
-        if yuNames is None:
-            yuNames = dae.uNames()
-        if not isinstance(yxNames,list):
-            raise Exception("If you decide to provide measurements, "+\
-                            "you have to provide them as a list of strings")
-        if not isinstance(yuNames,list):
-            raise Exception("If you decide to provide end measurements, "+\
-                            "you have to provide them as a list of strings")
-        self._yxNames = yxNames
-        self._yuNames = yuNames
-
-        self._yx  = C.veccat( [self[n] for n in self.yxNames] )
-        self._yu  = C.veccat( [self[n] for n in self.yuNames] )
-
-        assert not C.dependsOn(self.yx, self.dae.uVec()), "error: x measurement depends on u"
-        assert not C.dependsOn(self.yu, self.dae.xVec()), "error: u measurement depends on x"
-
-        Ocp.minimizeLsq(self,C.veccat([self.yx, self.yu]))
-        Ocp.minimizeLsqEndTerm(self,self.yx)
-
-    def minimizeLsq(self, obj):
-        raise Exception("hey, you don't know this is Ocp")
-    def minimizeLsqEndTerm(self, obj):
-        raise Exception("hey, you don't know this is Ocp")
+class Mhe( Ocp ):
+    def __init__(self, dae, N = None, ts = None, yxNames = None, yuNames = None):
+        Ocp.__init__(self, dae, N = N, ts = ts, yxNames = yxNames, yuNames = yuNames, hashPrefix = 'mhe')
+        
+    def exportCode(self, ocpOptions, integratorOptions, codegenOptions, phase1Options):
+        assert isinstance(ocpOptions, OcpExportOptions)
+        
+        #
+        # Set some common options that should not be overridden
+        #
+        if ocpOptions['QP_SOLVER'] is 'QP_QPOASES':
+            assert ocpOptions['SPARSE_QP_SOLUTION'] is 'CONDENSING'
+            
+        assert ocpOptions['FIX_INITIAL_STATE'] is False
+        
+        return Ocp.exportCode(self, ocpOptions, integratorOptions, codegenOptions, phase1Options)
