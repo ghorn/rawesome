@@ -584,11 +584,11 @@ class OcpRT(object):
                             plt.plot(ts, ys, style)
                 else:
                     if when == None:
-                        _when = self.ocp.N - 1
+                        _when = self.ocp.N
                     else:
                         _when = when
                     #print name, index, when
-                    if when == self.ocp.N:
+                    if _when == self.ocp.N:
                         ys = numpy.array(self._log['yN'])[:,index: index + dim]
                     else:
                         ys = numpy.array(self._log['y'])[:,_when, index: index + dim]
