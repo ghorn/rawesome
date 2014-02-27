@@ -86,7 +86,7 @@ def makeConf():
          'cref': 0.128, #sqrt(sref/AR)
 
          'zt': 0.01,
-         'xt': 0.018, # quick fix
+         'xt': 0.01, # 0.018, # quick fix
 
          #INERTIA MATRIX (Kurt's direct measurements)
          'j1': 0.0163,
@@ -94,17 +94,14 @@ def makeConf():
          'j2': 0.0078,
          'j3': 0.0229,
 
-         #[carousel]
-         'rArm': 1.085, #(dixit Kurt)
-#          'rArm': 2,
+         # [carousel]
+         'rArm': 1.085,
 
-         #Carousel Friction & inertia
+         # Carousel Friction & inertia
          'jCarousel': 1e2,
          'cfric': 1e2,
-
-#         'wind_model':{'name':'wind_shear',
-#                       'z0':100,
-#                       'altitude0':-2,
-#                       'zt_roughness': 0.1}
-#         'wind_model':{'name':'constant'}
+         
+         # Physical limitations for the plane actuators
+         'aileron_bound': 0.468, # [rad] <> ~27 deg
+         'elevator_bound': 0.78, # [rad] <> ~45 deg
         }
