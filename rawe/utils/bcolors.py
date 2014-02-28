@@ -15,10 +15,24 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with rawesome.  If not, see <http://www.gnu.org/licenses/>.
 
-import codegen
-import pkgconfig
-import subprocess_tee
-import mkprotobufs
-import options
-import bcolors
+class bcolors:
+    """
+    ANSI colors
+    http://stackoverflow.com/questions/287871/print-in-terminal-with-colors-using-python
+    """
+    
+    HEADER = '\033[95m'
+    BOLD = "\033[1m"
+    OKBLUE = '\033[94m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
 
+    def disable(self):
+        self.HEADER = ''
+        self.OKBLUE = ''
+        self.OKGREEN = ''
+        self.WARNING = ''
+        self.FAIL = ''
+        self.ENDC = ''
