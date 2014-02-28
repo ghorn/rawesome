@@ -462,12 +462,25 @@ class OcpRT(object):
         self._getAll()
 
     def getKKT(self):
+        """
+        Get the KKT value; call this function after the feedback step.
+        """
         self._setAll()
         return self._lib.getKKT()
 
     def getObjective(self):
+        """
+        Get the objective value.
+        """
         self._setAll()
         return self._lib.getObjective()
+    
+    def getNWSR(self):
+        """
+        Get the number of working set recalculations; call this function after the feedback step.
+        """
+        self._setAll()
+        return self._lib.getNWSR()
 
     def subplot(self, names, title = None, style = '', when = None, showLegend = True, offset = None):
         assert isinstance(names,list)
@@ -648,7 +661,7 @@ class OcpRT(object):
 
             # if it's something else
             if name in ['_kkt','_objective','_prep_time','_fb_time']:
-            	legend.append(name)
+                legend.append(name)
                 ys = numpy.array(self._log[name])[:]
                 ts = (offset + numpy.arange(len(ys)))*self.ocp.ts
                 plt.plot(ts,ys,style)
@@ -664,7 +677,8 @@ class OcpRT(object):
 
 class MpcRT(OcpRT):
     @secretAccess
-    def __init__(self, ocp, lqrDae,
+    def __init__(self, ocp,
+                 lqrDae = None,
                  ocpOptions=None,
                  integratorOptions=None,
                  codegenOptions=None,
@@ -683,8 +697,11 @@ class MpcRT(OcpRT):
         self._yuFun = C.SXFunction([ocp.dae.uVec()], [C.densify(self.ocp.yu)])
         self._yxFun.init()
         self._yuFun.init()
-
-        self._lqrDae = lqrDae
+        
+        if lqrDae is None:
+            self._lqrDae = self.ocp.dae
+        else:
+            self._lqrDae = lqrDae
         self._integratorLQR  = rawe.RtIntegrator(self._lqrDae, ts=self.ocp.ts, options=integratorOptions)
 
     def computeLqr(self):
