@@ -23,12 +23,23 @@ from ..utils import codegen, subprocess_tee
 import rtModelExport
 import rtIntegratorInterface
 
-def makeMakefile(cfiles, cxxfiles):
+def makeMakefile(cfiles, cxxfiles, cgOptions = None):
+    if cgOptions is None:
+        cgOptions = dict()
+        cgOptions[ "CC" ] = "gcc"
+        cgOptions[ "CXX" ] = "g++"
+        cgOptions[ "CFLAGS" ] = "-O3 -fPIC -finline-functions -I."
+        cgOptions[ "CXXFLAGS" ] = "-O3 -fPIC -finline-functions -I."
+    else:
+        if cgOptions['hideSymbols'] is True:
+            cgOptions[ "CFLAGS" ] = cgOptions[ "CFLAGS" ] + ' -fvisibility=hidden'
+            cgOptions[ "CXXFLAGS" ] = cgOptions[ "CXXFLAGS" ] + ' -fvisibility=hidden -fvisibility-inlines-hidden'
+    
     return """\
-CC      = gcc
-CFLAGS  = -O3 -fPIC -finline-functions -I.
-CXX     = g++
-CXXFLAGS = -O3 -fPIC -finline-functions -I.
+CC      = %(cc)s
+CFLAGS  = %(cflags)s
+CXX     = %(cxx)s
+CXXFLAGS = %(cxxflags)s
 LDFLAGS = -lm
 
 C_SRC = %(cfiles)s
@@ -61,7 +72,10 @@ integrator.o : $(OBJ)
 
 clean :
 \trm -f *.o *.so
-""" % {'cfiles':' '.join(cfiles), 'cxxfiles':' '.join(cxxfiles)}
+""" % {'cfiles':' '.join(cfiles), 'cxxfiles':' '.join(cxxfiles),
+       'cc': cgOptions['CC'], 'cxx': cgOptions['CXX'],
+       'cflags': cgOptions['CFLAGS'], 'cxxflags': cgOptions['CXXFLAGS']
+       }
 
 
 def writeRtIntegrator(dae, options, measurements):
@@ -98,7 +112,7 @@ def writeRtIntegrator(dae, options, measurements):
         "error exporting integrator, see stdout/stderr above"
     return ret
 
-def exportIntegrator(dae, timestep, options, measurements):
+def exportIntegrator(dae, timestep, options, measurements, cgOptions = None):
     print "Exporting an RT integrator ..."
     # get the exported integrator files
     exportedFiles = writeRtIntegrator(dae, options, measurements)
@@ -121,7 +135,7 @@ def exportIntegrator(dae, timestep, options, measurements):
     if measurements is not None:
         symbolicsFiles += ['measurements.cpp', 'measurementsJacob.cpp']
     makefile = makeMakefile(['workspace.c', 'model.c', 'acado_integrator.c', 'acado_auxiliary_sim_functions.c'],
-                            symbolicsFiles)
+                            symbolicsFiles, cgOptions = cgOptions)
 
     # write the static workspace file (temporary)
     workspace = """\
@@ -156,4 +170,4 @@ ACADOvariables acadoVariables;
     integratorLib = ctypes.cdll.LoadLibrary(exportpath+'/integrator.so')
 #    print 'loading '+exportpath+'/model.so'
     modelLib = ctypes.cdll.LoadLibrary(exportpath+'/model.so')
-    return (integratorLib, modelLib, rtModelGen)
+    return (integratorLib, modelLib, rtModelGen, exportpath)

@@ -125,7 +125,7 @@ class RtIntegrator(object):
             self.dh_du = self._dh_dup[:,:nu]
             self.dh_dp = self._dh_dup[:,nu:]
 
-    def __init__(self, dae, ts, measurements=None, options=RtIntegratorOptions()):
+    def __init__(self, dae, ts, measurements=None, options=RtIntegratorOptions(), cgOptions = None):
         self._dae = dae
         self._ts = ts
         if measurements is None:
@@ -138,10 +138,13 @@ class RtIntegrator(object):
         # setup outputs function
         self._outputsFun = self._dae.outputsFunWithSolve()
 
-        (integratorLib, modelLib, rtModelGen) = exportIntegrator(self._dae, ts, options, self._measurements)
+        (integratorLib, modelLib, rtModelGen, exportPath) = \
+            exportIntegrator(self._dae, ts, options, self._measurements,
+                             cgOptions = cgOptions)
         self._integratorLib = integratorLib
         self._modelLib = modelLib
         self._rtModelGen = rtModelGen
+        self._exportPath = exportPath
 
         self._initIntegrator = 1
 
@@ -337,3 +340,6 @@ class RtIntegrator(object):
         for k,name in enumerate(self._dae.outputNames()):
             ret[name] = numpy.array(self._outputsFun.output(k))
         return ret
+    
+    def getExportPath( self ):
+        return self._exportPath
