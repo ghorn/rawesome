@@ -35,6 +35,15 @@ USING_NAMESPACE_ACADO
 
 int export_integrator( const char * genPath)
 {
+    string path( genPath );
+    string _stdout = path + "/_stdout.txt";
+    
+    std::ofstream out( _stdout.c_str() );
+    std::streambuf *coutbuf = std::cout.rdbuf(); //save old buf
+    std::cout.rdbuf(out.rdbuf()); // redirect std::cout to the text file
+
+    Logger::instance().setLogLevel( LVL_DEBUG );
+
   const double timestep = 1.0;
   const int numIntervals = 1;
   SIMexport sim(numIntervals, timestep);
@@ -66,8 +75,12 @@ int export_integrator( const char * genPath)
 ''' % {'outputDimension':C.densify(measurements).size()}
     ret +='''
   sim.set( GENERATE_MAKE_FILE, false );
+    
+    returnValue status = sim.exportCode(genPath);
+    
+    std::cout.rdbuf(coutbuf); //reset to standard output again
 
-  return sim.exportCode(genPath);
+    return status;
 }
 '''
     return ret

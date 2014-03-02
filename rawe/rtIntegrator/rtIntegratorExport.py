@@ -66,8 +66,6 @@ def writeRtIntegrator(dae, options, measurements):
     (ret, msgs) = subprocess_tee.call(['make',codegen.makeJobs()], cwd=interfaceDir)
     if ret != 0:
         raise Exception("integrator compilation failed:\n"+msgs)
-    
-    print ret
 
     # call makeRtIntegrator
     def call(path):
@@ -75,7 +73,8 @@ def writeRtIntegrator(dae, options, measurements):
         lib = ctypes.cdll.LoadLibrary(os.path.join(interfaceDir, 'export_integrator.so'))
         ret = lib.export_integrator(ctypes.c_char_p(path))
         if ret != 0:
-            raise Exception("Rt integrator creater failed")
+            print open(os.path.join(path, '_stdout.txt')).read()
+            raise Exception("Rt integrator creator failed")
     def callInProcess(q):
         try:
             q.put(codegen.withTempdir(call))
@@ -92,6 +91,7 @@ def writeRtIntegrator(dae, options, measurements):
     return ret
 
 def exportIntegrator(dae, timestep, options, measurements):
+    print "Exporting an RT integrator ..."
     # get the exported integrator files
     exportedFiles = writeRtIntegrator(dae, options, measurements)
 

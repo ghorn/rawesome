@@ -150,7 +150,7 @@ class RtIntegrator(object):
         nu = len( self._dae.uNames() )
         np = len( self._dae.pNames() )
 
-        print "creating outputs function"
+#         print "creating outputs function"
         (fAll, (f0,outputs0names)) = self._dae.outputsFun()
         self.outputsFunAll = fAll
         self.outputsFun0 = f0
