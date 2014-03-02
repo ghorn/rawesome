@@ -37,7 +37,7 @@ OBJ = $(C_SRC:%%.c=%%.o)
 OBJ += $(CXX_SRC:%%.cpp=%%.o)
 
 .PHONY: clean all
-all : $(OBJ) model.so integrator.so
+all : $(OBJ) model.so integrator.so integrator.o
 
 %%.o : %%.c acado.h
 \t@echo CC $@: $(CC) $(CFLAGS) -c $< -o $@
@@ -50,6 +50,14 @@ all : $(OBJ) model.so integrator.so
 %%.so : $(OBJ)
 \t@echo LD $@: $(CXX) -shared -o $@ $(OBJ) $(LDFLAGS)
 \t@$(CXX) -shared -o $@ $(OBJ) $(LDFLAGS)
+
+integrator.a : $(OBJ)
+\t@echo AR $@ : ar r $@ $?
+\t@ar r $@ $?
+
+integrator.o : $(OBJ)
+\t@echo ld $@ : ld -r $? -o $@
+\t@ld -r $? -o $@
 
 clean :
 \trm -f *.o *.so
