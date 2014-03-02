@@ -213,8 +213,18 @@ def generateAcadoOcp(ocp, integratorOptions, ocpOptions):
 
     lines = []
     lines.append('/* comment the following in to enable terminal barf: */')
-    lines.append('// Logger::instance().setLogLevel( LVL_DEBUG );')
-    lines.append('')
+    
+    lines.append("""\
+    string path( exportDir );
+    string _stdout = path + "/_stdout.txt";
+    
+    std::ofstream out( _stdout.c_str() );
+    std::streambuf *coutbuf = std::cout.rdbuf(); //save old buf
+    std::cout.rdbuf(out.rdbuf()); // redirect std::cout to the text file
+    
+    Logger::instance().setLogLevel( LVL_DEBUG );
+""")
+
     lines.append('/* differential states */')
     for name in dae.xNames():
         lines.append('DifferentialState '+name+';')
@@ -365,7 +375,11 @@ OCPexport _ocpe( _ocp );\
     lines.append('''
 /* export the code */
 _ocpe.exportCode( exportDir );
-return 0;''' )
+
+std::cout.rdbuf(coutbuf); //reset to standard output again
+
+return 0
+;''' )
 
     lines = '\n'.join(['    '+l for l in ('\n'.join(lines)).split('\n')])
     lines = '''\

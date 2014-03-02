@@ -16,11 +16,26 @@
 # along with rawesome.  If not, see <http://www.gnu.org/licenses/>.
 
 import ctypes
-import os
+import os, sys
 from multiprocessing import Process, Queue
 
 from rawe.utils import codegen,pkgconfig,subprocess_tee
 import writeAcadoOcpExport
+
+class RedirectStdStreams(object):
+    def __init__(self, stdout=None, stderr=None):
+        self._stdout = stdout or sys.stdout
+        self._stderr = stderr or sys.stderr
+
+    def __enter__(self):
+        self.old_stdout, self.old_stderr = sys.stdout, sys.stderr
+        self.old_stdout.flush(); self.old_stderr.flush()
+        sys.stdout, sys.stderr = self._stdout, self._stderr
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self._stdout.flush(); self._stderr.flush()
+        sys.stdout = self.old_stdout
+        sys.stderr = self.old_stderr
 
 def makeExportMakefile(phase1Options):
     rpathAcado = pkgconfig.getRpath('acado')
@@ -78,11 +93,13 @@ int main(void){
 
     # run the ocp exporter
     def runOcpExporter(path):
-        # load the ocp exporter
+        
         lib = ctypes.cdll.LoadLibrary(os.path.join(exportpath, 'export_ocp.so'))
 
         ret = lib.exportOcp(ctypes.c_char_p(path))
+        
         if ret != 0:
+            print open(os.path.join(path, '_stdout.txt')).read()
             raise Exception("call to export_ocp.so failed")
 
     def callExporterInProcess(q):
@@ -90,12 +107,15 @@ int main(void){
             q.put(codegen.withTempdir(runOcpExporter))
         finally:
             q.put(None)
-
+            
     q = Queue()
+    
     p = Process(target = callExporterInProcess, args=(q, ))
     p.start()
     ret = q.get()
     p.join()
+    
     assert (0 == p.exitcode) and (ret is not None), \
         "error exporting ocp, see stdout/stderr above"
+
     return ret

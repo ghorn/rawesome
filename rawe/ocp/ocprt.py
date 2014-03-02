@@ -126,7 +126,7 @@ class OcpRT(object):
         if self._lib.py_get_ACADO_INITIAL_STATE_FIXED():
             self.x0 = numpy.zeros(self._lib.py_get_ACADO_NX())
 
-        print 'initializing solver'
+#         print 'initializing solver'
         self._lib.py_initialize()
         self._getAll()
 
