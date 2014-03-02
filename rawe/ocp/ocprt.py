@@ -482,20 +482,23 @@ class OcpRT(object):
         self._setAll()
         return self._lib.getNWSR()
 
-    def subplot(self, names, title = None, style = '', when = None, showLegend = True, offset = None):
+    def subplot(self, names, title = None, style = '', when = None, showLegend = True, offset = None, fig = None):
         assert isinstance(names,list)
 
-        fig = plt.figure()
-        if title is None:
-            if isinstance(names,str):
-                title = names
-            else:
-                assert isinstance(names,list)
-                if len(names) == 1:
-                    title = names[0]
+        if fig is None:
+            fig = plt.figure()
+            if title is None:
+                if isinstance(names,str):
+                    title = names
                 else:
-                    title = str(names)
-        fig.canvas.set_window_title(str(title))
+                    assert isinstance(names,list)
+                    if len(names) == 1:
+                        title = names[0]
+                    else:
+                        title = str(names)
+            fig.canvas.set_window_title(str(title))
+        else:
+            plt.figure( fig.number )
 
         plt.clf()
         n = len(names)
@@ -512,23 +515,32 @@ class OcpRT(object):
                 self._plot(name,title,style[k],when=when,showLegend=showLegend,offset=offset)
             else:
                 self._plot(name,None,style[k],when=when,showLegend=showLegend,offset=offset)
+                
+        return fig
 
-    def plot(self, names, title = None, style = '', when = None, showLegend = True, offset = None):
+    def plot(self, names, title = None, style = '', when = None, showLegend = True, offset = None, fig = None):
 
-        fig = plt.figure()
-        if title is None:
-            if isinstance(names,str):
-                title = names
-            else:
-                assert isinstance(names,list)
-                if len(names) == 1:
-                    title = names[0]
+        if fig is None:
+            fig = plt.figure()
+            if title is None:
+                if isinstance(names,str):
+                    title = names
                 else:
-                    title = str(names)
-        fig.canvas.set_window_title(str(title))
+                    assert isinstance(names,list)
+                    if len(names) == 1:
+                        title = names[0]
+                    else:
+                        title = str(names)
+            fig.canvas.set_window_title(str(title))
+            plt.clf()
+            
+        else:
+            plt.figure( fig.number )
+            fig.clear()
 
-        plt.clf()
-        self._plot(names,title,style,when=when,showLegend=showLegend,offset=offset)
+        self._plot(names, title, style, when = when, showLegend = showLegend, offset = offset)
+        
+        return fig
 
 
     def _plot(self, names, title, style, when = None, showLegend = True, offset = None):
@@ -558,6 +570,9 @@ class OcpRT(object):
                         ys = numpy.array(self._log['x'])[k,:,index]
                         ts = (offset + numpy.arange(len(ys)) + k)*self.ocp.ts
                         plt.plot(ts,ys,style)
+                elif when == 'horizon':
+                    ys = numpy.array(self._log['x'])[-1, :, index]
+                    plt.plot(ys, style)
                 else:
                     if when == None:
                         when = self.ocp.N
@@ -574,6 +589,9 @@ class OcpRT(object):
                         ys = numpy.array(self._log['u'])[k,:,index]
                         ts = (offset + numpy.arange(len(ys)) + k)*self.ocp.ts
                         step(ts, ys, style)
+                elif when == 'horizon':
+                    ys = numpy.array(self._log['u'])[-1, :, index]
+                    plt.plot(ys, style)
                 else:
                     if when == None:
                         when = self.ocp.N - 1
@@ -595,6 +613,15 @@ class OcpRT(object):
                             plt.plot(ts, ys, 'o')
                         else:
                             plt.plot(ts, ys, style)
+                elif when == 'horizon':
+                    ys = numpy.append( numpy.array(self._log['y'])[-1, :, index: index + dim],
+                                       numpy.array(self._log['yN'])[-1,index: index + dim].reshape(1, dim),
+                                       axis = 0)
+                    
+                    if style == '':
+                        plt.plot(ys, 'o')
+                    else:
+                        plt.plot(ys, style)
                 else:
                     if when == None:
                         _when = self.ocp.N
@@ -625,6 +652,13 @@ class OcpRT(object):
                             plt.plot(ts, ys, 'd')
                         else:
                             plt.plot(ts, ys, style)
+                elif when == 'horizon':
+                    ys = numpy.array(self._log['y'])[-1, :, index: index + dim]
+                    
+                    if style == '':
+                        plt.plot(ys, 'o')
+                    else:
+                        plt.plot(ys, style)
                 else:
                     if when == None:
                         _when = self.ocp.N - 1
@@ -649,6 +683,8 @@ class OcpRT(object):
                             plt.plot(ts, ys, '--')
                         else:
                             plt.plot(ts, ys, style)
+                elif when == 'horizon':
+                    assert "not implemented yet"
                 else:
                     if when == None:
                         when = self.ocp.N
