@@ -20,6 +20,7 @@ import casadi as C
 import exportOcp
 from ..rtIntegrator import RtIntegratorOptions
 from ..utils.options import Options, OptStr, OptInt, OptBool, OptDouble
+from string import upper
 
 class OcpExportOptions(Options):
     def __init__(self):
@@ -292,6 +293,7 @@ class Ocp(object):
         self._minLsqEndTerm = obj
 
     def exportCode(self, ocpOptions, integratorOptions, codegenOptions, phase1Options):
+        print"Exporting an " + self.hashPrefix.upper() + " solver ..."
         assert isinstance(ocpOptions, OcpExportOptions)
         assert isinstance(integratorOptions, RtIntegratorOptions)
         
