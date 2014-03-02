@@ -104,7 +104,7 @@ def getSteadyState(dae, conf, omega0, r0, ref_dict = {}):
     if ref_dict is not None:
         for name in ref_dict: bounds[name] = ref_dict[name]
 
-    print bounds
+#     print bounds
 
     dotBounds = {'x':(-1, 1), 'y':(-1, 1), 'z':(-1, 1),
                  'dx':(0, 0), 'dy':(0, 0), 'dz':(0, 0),
