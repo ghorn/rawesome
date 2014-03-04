@@ -338,3 +338,84 @@ class Mhe( Ocp ):
         assert ocpOptions['FIX_INITIAL_STATE'] is False
         
         return Ocp.exportCode(self, ocpOptions, integratorOptions, codegenOptions, phase1Options)
+    
+def generateProto(ocp, msgName):
+    """
+    A function for generation of a protobuf for an OCP
+    """
+    
+    assert isinstance(ocp, Ocp)
+    assert isinstance(msgName, str)
+    
+    xNames = ""
+    for k, name in enumerate( ocp.dae.xNames() ):
+        xNames = xNames + "idx_" + str( name ) + " = " + str( k ) + "; "
+        
+    zNames = ""
+    for k, name in enumerate( ocp.dae.zNames() ):
+        zNames = zNames + "idx_" + str( name ) + " = " + str( k ) + "; "
+        
+    uNames = ""
+    for k, name in enumerate( ocp.dae.uNames() ):
+        uNames = uNames + "idx_" + str( name ) + " = " + str( k ) + "; "
+        
+    yNames = ""
+    for k, name in enumerate(ocp.yxNames + ocp.yuNames):
+        yNames = yNames + "y_" + str( name ) + " = " + str( ocp.getYOfsset( name ) ) + "; "
+    
+    proto = """\
+package %(name)sProto;
+
+message %(name)sMsg
+{
+    enum Configuration
+    {
+        N = %(N)d;
+    }
+    
+    enum xNames
+    {
+        %(xNames)s
+    }
+        
+    enum zNames
+    {
+        %(zNames)s
+    }
+        
+    enum uNames
+    {
+        %(uNames)s
+    }
+    
+    enum yNames
+    {
+        %(yNames)s
+    }
+    
+    message Horizon
+    {
+        repeated float h = 1;
+    }
+
+    repeated Horizon x = 1;
+    repeated Horizon z = 2;
+    repeated Horizon u = 3;
+    
+    repeated Horizon y  = 4;
+    repeated float   yN = 5;
+    
+    required int32 solver_status = 20;
+    required float kkt_value = 21;
+    required float obj_value = 22;
+    required float n_asc = 23;
+    required float exec_fdb  = 24;
+    required float exec_prep = 25;
+    
+    required double ts_trigger = 100;
+    required double ts_elapsed = 101;
+}
+""" % {"name": msgName,
+       "N": ocp.N, "xNames": xNames, "zNames": zNames, "uNames": uNames, "yNames": yNames}
+
+    return proto
