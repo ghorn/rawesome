@@ -53,6 +53,8 @@ int export_integrator( const char * genPath)
 
   // set NUM_INTEGRATOR_STEPS
   sim.set( NUM_INTEGRATOR_STEPS, %(NUM_INTEGRATOR_STEPS)s );
+  
+  sim.set( DYNAMIC_SENSITIVITY, %(dynamic_sensitivity)s );
 
   // 0 == rhs()
   sim.setModel( "model", "rhs", "rhsJacob" );
@@ -61,7 +63,8 @@ int export_integrator( const char * genPath)
        'NUM_INTEGRATOR_STEPS': options['NUM_INTEGRATOR_STEPS'],
        'nx': len(dae.xNames()),
        'nz': len(dae.zNames()),
-       'nu': len(dae.uNames())}
+       'nu': len(dae.uNames()),
+       'dynamic_sensitivity': options['DYNAMIC_SENSITIVITY']}
 
     if measurements is not None:
         ret += '''
