@@ -73,7 +73,9 @@ def getSteadyState(dae, conf, omega0, r0, ref_dict = {},
                  'daileron':0, 'delevator':0, 'drudder':0, 'dflaps':0,
                  'nu':100, 'motor_torque':0,
                  'dmotor_torque':0, 'ddr':0,
-                 'dddr':0.0, 'w0':0.0}
+                 'dddr':0.0, 'w0':0.0,
+                 'dt1_disturbance':0.0, 'dt2_disturbance':0.0, 'dt3_disturbance':0.0,
+                 't1_disturbance':0.0, 't2_disturbance':0.0, 't3_disturbance':0.0}
     if dotGuess is None:
         dotGuess = {'x':0, 'y':0, 'z':0, 'dx':0, 'dy':0, 'dz':0,
                     'r':0, 'dr':0,
@@ -84,7 +86,9 @@ def getSteadyState(dae, conf, omega0, r0, ref_dict = {},
                     'ddelta':0,
                     'cos_delta':0, 'sin_delta':omega0,
                     'aileron':0, 'elevator':0, 'rudder':0, 'flaps':0,
-                    'motor_torque':0, 'ddr':0}
+                    'motor_torque':0, 'ddr':0,
+                    'dt1_disturbance':0.0, 'dt2_disturbance':0.0, 'dt3_disturbance':0.0,
+                    't1_disturbance':0.0, 't2_disturbance':0.0, 't3_disturbance':0.0}
 
     guessVec = C.DMatrix([guess[n] for n in dae.xNames() + dae.zNames() + dae.uNames() + dae.pNames()] +
                          [dotGuess[n] for n in dae.xNames()])
@@ -103,7 +107,9 @@ def getSteadyState(dae, conf, omega0, r0, ref_dict = {},
                  'daileron':(0, 0), 'delevator':(0, 0), 'drudder':(0, 0), 'dflaps':(0, 0),
                  'nu':(0, 3000), 'motor_torque':(-1000, 1000),
                  'ddr':(0, 0),
-                 'dmotor_torque':(0, 0), 'dddr':(0, 0), 'w0':(0, 0)}
+                 'dmotor_torque':(0, 0), 'dddr':(0, 0), 'w0':(0, 0),
+                 'dt1_disturbance':(0, 0), 'dt2_disturbance':(0, 0), 'dt3_disturbance':(0, 0),
+                 't1_disturbance':(0, 0), 't2_disturbance':(0, 0), 't3_disturbance':(0, 0)}
 
     if ref_dict is not None:
         for name in ref_dict: bounds[name] = ref_dict[name]
@@ -121,7 +127,9 @@ def getSteadyState(dae, conf, omega0, r0, ref_dict = {},
                      'ddelta':(0, 0),
                      'cos_delta':(-1, 1), 'sin_delta':(omega0 - 1, omega0 + 1),
                      'aileron':(-1, 1), 'elevator':(-1, 1), 'rudder':(-1, 1), 'flaps':(-1, 1),
-                     'motor_torque':(-1000, 1000), 'ddr':(-100, 100)}
+                     'motor_torque':(-1000, 1000), 'ddr':(-100, 100),
+                     'dt1_disturbance':(0, 0), 'dt2_disturbance':(0, 0), 'dt3_disturbance':(0, 0),
+                     't1_disturbance':(0, 0), 't2_disturbance':(0, 0), 't3_disturbance':(0, 0)}
     boundsVec = [bounds[n] for n in dae.xNames() + dae.zNames() + dae.uNames() + dae.pNames()] + \
                 [dotBounds[n] for n in dae.xNames()]
 
