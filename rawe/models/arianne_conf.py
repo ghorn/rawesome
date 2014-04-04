@@ -71,7 +71,7 @@ def makeConf():
 
 
          #[kite]
-         'mass':  0.626,  #  mass of the kite   #  [ kg]
+         'mass':  0.685,  #  mass of the kite   #  [ kg]
          'tether_mass': 0.0,
 
          # use aerodynamic approximations instead of triginometry
@@ -85,8 +85,8 @@ def makeConf():
          'bref': 0.96, #sqrt(sref*AR)
          'cref': 0.128, #sqrt(sref/AR)
 
-         'zt': 0.01,
-         'xt': 0.01, # 0.018, # quick fix
+         'zt': 0.025, # Kurt's suggestion, April 4 2014
+         'xt': 0.00, # 0.018, # quick fix; 0.0 according to Kurt, April 4 2014
 
          #INERTIA MATRIX (Kurt's direct measurements)
          'j1': 0.0163,
