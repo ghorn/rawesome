@@ -556,6 +556,13 @@ class OcpRT(object):
             
         def step(x, y, style):
             plt.plot(x, y, style, drawstyle = 'steps')
+            
+#         ax = plt.gca()
+        
+        rainbow = ["b", "g", "r", "c", "m", "y", "k"]
+        def updateRainbow( colors ):
+            pass
+#             ax.set_color_cycle( colors )
 
         legend = []
         for name in names:
@@ -579,6 +586,8 @@ class OcpRT(object):
                     ys = numpy.array(self._log['x'])[:,when,index]
                     ts = numpy.arange(len(ys))*self.ocp.ts
                     plt.plot(ts,ys,style)
+                    
+                updateRainbow( rainbow )
 
             # if it's a control
             if name in self.uNames():
@@ -599,11 +608,16 @@ class OcpRT(object):
                     ts = numpy.arange(len(ys))*self.ocp.ts
                     step(ts, ys, style)
                     
+                updateRainbow( rainbow )
+                    
             # If it is a measurement/reference dependent on x
             if name in self.ocp.yxNames:
-                legend.append("y_" + name)
                 index = self.ocp.getYOfsset( name )
                 dim = self.ocp.dae[ name ].shape[ 0 ]
+                if dim > 1:
+                    [legend.append("y_" + name + "_" + repr(k)) for k in xrange( dim )]
+                else:
+                    legend.append( name )
                 if when == 'all':
                     print "This functionality is not fully tested"
                     for k in range(numpy.array(self._log['y']).shape[0]):
@@ -638,11 +652,16 @@ class OcpRT(object):
                     else:
                         plt.plot(ts, ys, style)
                         
+                updateRainbow( rainbow )
+                        
             # If it is a measurement/reference dependent on u
             if name in self.ocp.yuNames:
-                legend.append("y_" + name)
                 index = self.ocp.getYOfsset( name )
                 dim = self.ocp.dae[ name ].shape[ 0 ]
+                if dim > 1:
+                    [legend.append("y_" + name + "_" + repr(k)) for k in xrange( dim )]
+                else:
+                    legend.append( name )
                 if when == 'all':
                     print "This functionality is not fully tested"
                     for k in range(numpy.array(self._log['y']).shape[0]):
@@ -671,10 +690,17 @@ class OcpRT(object):
                         plt.plot(ts, ys, 'd')
                     else:
                         plt.plot(ts, ys, style)
+                        
+                updateRainbow( rainbow )
 
             # if it's an output
             if name in self.outputNames():
-                legend.append(name)
+                dim = self.ocp.dae[ name ].shape[ 0 ]
+                if dim > 1:
+                    [legend.append("o_" + name + "_" + repr(k)) for k in xrange( dim )]
+                else:
+                    legend.append("o_" + name)
+                
                 if when == 'all':
                     for k in range(numpy.array(self._log['outputs'][name]).shape[0]):
                         ys = numpy.array(self._log['outputs'][name])[k,:]
@@ -694,6 +720,8 @@ class OcpRT(object):
                         plt.plot(ts, ys, '--')
                     else:
                         plt.plot(ts, ys, style)
+                        
+                updateRainbow( rainbow )
 
             # if it's something else
             if name in ['_kkt','_objective','_prep_time','_fb_time']:
@@ -701,6 +729,10 @@ class OcpRT(object):
                 ys = numpy.array(self._log[name])[:]
                 ts = (offset + numpy.arange(len(ys)))*self.ocp.ts
                 plt.plot(ts,ys,style)
+                
+                updateRainbow( rainbow )
+            
+            rainbow = rainbow[1:] + rainbow[:1]
 
         if title is not None:
             assert isinstance(title,str), "title must be a string"
