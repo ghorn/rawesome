@@ -165,6 +165,20 @@ def setupModel(dae, conf):
         t1 = t1 * gamma_homotopy + dae.addZ('t1_homotopy') * (1 - gamma_homotopy)
         t2 = t2 * gamma_homotopy + dae.addZ('t2_homotopy') * (1 - gamma_homotopy)
         t3 = t3 * gamma_homotopy + dae.addZ('t3_homotopy') * (1 - gamma_homotopy)
+        
+    if 'useVirtualForces' in conf and conf[ 'useVirtualForces' ] is True:
+        f1 += dae.addU('f1_disturbance')
+        f2 += dae.addU('f2_disturbance')
+        f3 += dae.addU('f3_disturbance')
+        
+    if 'useVirtualTorques' in conf and conf[ 'useVirtualTorques' ] is True:
+        dae.addU('dt1_disturbance')
+        dae.addU('dt2_disturbance')
+        dae.addU('dt3_disturbance')
+        
+        t1 += dae.addX('t1_disturbance')
+        t2 += dae.addX('t2_disturbance')
+        t3 += dae.addX('t3_disturbance')
 
     # mass matrix
     mm = C.SXMatrix(8, 8)
@@ -448,6 +462,13 @@ def carouselModel(conf):
         ode = C.veccat([ode, dae.ddt('rudder') - dae['drudder']])
     if 'flaps' in dae:
         ode = C.veccat([ode, dae.ddt('flaps') - dae['dflaps']])
+        
+    if 'useVirtualTorques' in conf and conf[ 'useVirtualTorques' ] is True:
+        ode = C.veccat([ode,
+                        dae.ddt('t1_disturbance') - dae['dt1_disturbance'],
+                        dae.ddt('t2_disturbance') - dae['dt2_disturbance'],
+                        dae.ddt('t3_disturbance') - dae['dt3_disturbance']
+                        ])
 
     if 'stabilize_invariants' in conf and conf['stabilize_invariants'] == True:
         cPole = 0.5
