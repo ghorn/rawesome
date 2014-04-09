@@ -510,11 +510,16 @@ class OcpRT(object):
             assert isinstance(style, list) and len( style ) == n
         
         for k,name in enumerate(names):
-            plt.subplot(n,1,k+1)
+            plt.subplot(n, 1, k + 1)
+            
             if k==0:
                 self._plot(name,title,style[k],when=when,showLegend=showLegend,offset=offset)
             else:
                 self._plot(name,None,style[k],when=when,showLegend=showLegend,offset=offset)
+                
+            if showLegend is True:
+                box = plt.gca().get_position()
+                plt.gca().set_position([box.x0, box.y0, box.width * 0.8, box.height])
                 
         return fig
 
@@ -539,6 +544,9 @@ class OcpRT(object):
             fig.clear()
 
         self._plot(names, title, style, when = when, showLegend = showLegend, offset = offset)
+        if showLegend is True:
+            box = plt.gca().get_position()
+            plt.gca().set_position([box.x0, box.y0, box.width * 0.8, box.height])
         
         return fig
 
@@ -739,7 +747,7 @@ class OcpRT(object):
             plt.title(title)
         plt.xlabel('time [s]')
         if showLegend is True:
-            plt.legend(legend)
+            plt.legend(legend, bbox_to_anchor=(1.05, 1), loc = 2)
         plt.grid('on')
 
 
