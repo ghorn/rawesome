@@ -39,6 +39,7 @@ class OcpExportOptions(Options):
         self.add(OptDouble('LEVENBERG_MARQUARDT',default=0.0))
         self.add(OptBool('CG_USE_ARRIVAL_COST',default=False))
         self.add(OptBool('CG_USE_VARIABLE_WEIGHTING_MATRIX',default=False))
+        self.add(OptInt('MAX_NUM_QP_ITERATIONS',default=-1))
 
 class Ocp(object):
     def __init__(self, dae, N = None, ts = None, yxNames = None, yuNames = None, hashPrefix = 'ocp'):
