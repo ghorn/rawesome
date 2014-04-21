@@ -101,6 +101,86 @@ class Ocp(object):
         for name in self._yuNames:
             self._yOffsets.update({name: _offset})
             _offset += self.dae[ name ].shape[ 0 ]
+            
+    def __repr__(self):
+        from textwrap import fill
+        
+        txt = ""
+        
+        txt += self.hashPrefix.upper() + " object: \n\n"
+        txt += "Horizon length N = " + str(self._N) + " intervals\n"
+        txt += "Sampling time Ts = " + str(self._ts) + " seconds\n\n"
+        
+        txt += "Differential states:\n"
+        txt += fill(", ".join( self._dae.xNames() ), width = 80)  + "\n\n"
+        
+        txt += "Algebraic states:\n"
+        txt += fill(", ".join( self._dae.zNames() ), width = 80) + "\n\n"
+        
+        txt += "Controls:\n"
+        txt += fill(", ".join( self._dae.uNames() ), width = 80) + "\n\n"
+        
+        txt += "Measurements/references for the 1st N nodes:\n"
+        txt += fill(", ".join(self._yxNames + self._yuNames), width = 80) + "\n\n"
+        
+        txt += "Measurements/references for Nth node:\n"
+        txt += fill(", ".join( self._yxNames ), width = 80) + "\n\n"
+        
+        tmpLen = len(self._ebndmap) + len(self._ebndmapStart) + len(self._ebndmapEnd)
+        if tmpLen:
+            txt += "Equality bounds:\n"
+            txt += "*** On all nodes: \n"
+            txt += "\n".join( [str(k) + ": " + str(v) for k, v in self._ebndmap.items()] )
+            
+            txt += "\n*** On the first node: \n"
+            txt += "\n".join( [str(k) + ": " + str(v) for k, v in self._ebndmapStart.items()] )
+            
+            txt += "\n*** On the last node: \n"
+            txt += "\n".join( [str(k) + ": " + str(v) for k, v in self._ebndmapEnd.items()] )
+            
+            txt += "\n\n"
+        
+        tmpLen = len(self._lbndmap) + len(self._lbndmapStart) + len(self._lbndmapEnd)
+        if tmpLen:
+            txt += "Lower bounds:\n"
+            txt += "*** On all nodes: \n"
+            txt += "\n".join( [str(k) + ": " + str(v) for k, v in self._lbndmap.items()] )
+            
+            txt += "\n*** On the first node: \n"
+            txt += "\n".join( [str(k) + ": " + str(v) for k, v in self._lbndmapStart.items()] )
+            
+            txt += "\n*** On the last node: \n"
+            txt += "\n".join( [str(k) + ": " + str(v) for k, v in self._lbndmapEnd.items()] )
+            
+            txt += "\n\n"
+
+        tmpLen = len(self._ubndmap) + len(self._ubndmapStart) + len(self._ubndmapEnd)
+        if tmpLen:        
+            txt += "Upper bounds:\n"
+            txt += "*** On all nodes: \n"
+            txt += "\n".join( [str(k) + ": " + str(v) for k, v in self._ubndmap.items()] )
+            
+            txt += "\n*** On the first node: \n"
+            txt += "\n".join( [str(k) + ": " + str(v) for k, v in self._ubndmapStart.items()] )
+            
+            txt += "\n*** On the last node: \n"
+            txt += "\n".join( [str(k) + ": " + str(v) for k, v in self._ubndmapEnd.items()] )
+            
+            txt += "\n\n"
+        
+        tmpLen = len(self._constraints) + len(self._constraintsStart) + len(self._constraintsEnd)
+        if tmpLen:
+            txt += "Constraints:\n"
+            txt += "*** On all nodes: \n"
+            txt += "\n\n".join( [fill(str(k), width = 80) for k in self._constraints] )
+            
+            txt += "\n*** On the first node: \n"
+            txt += "\n\n".join( [fill(str(k), width = 80) for k in self._constraintsStart] )
+            
+            txt += "\n*** On the last node: \n"
+            txt += "\n\n".join( [fill(str(k), width = 80) for k in self._constraintsEnd] )
+        
+        return txt
 
     @property
     def N(self):
