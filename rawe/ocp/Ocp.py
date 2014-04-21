@@ -120,10 +120,10 @@ class Ocp(object):
         txt += "Controls:\n"
         txt += fill(", ".join( self._dae.uNames() ), width = 80) + "\n\n"
         
-        txt += "Measurements/references for the 1st N nodes:\n"
+        txt += "Measurements/references for the first N nodes:\n"
         txt += fill(", ".join(self._yxNames + self._yuNames), width = 80) + "\n\n"
         
-        txt += "Measurements/references for Nth node:\n"
+        txt += "Measurements/references for the last node:\n"
         txt += fill(", ".join( self._yxNames ), width = 80) + "\n\n"
         
         tmpLen = len(self._ebndmap) + len(self._ebndmapStart) + len(self._ebndmapEnd)
