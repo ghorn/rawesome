@@ -167,9 +167,13 @@ def setupModel(dae, conf):
         t3 = t3 * gamma_homotopy + dae.addZ('t3_homotopy') * (1 - gamma_homotopy)
         
     if 'useVirtualForces' in conf and conf[ 'useVirtualForces' ] is True:
-        f1 += dae.addU('f1_disturbance')
-        f2 += dae.addU('f2_disturbance')
-        f3 += dae.addU('f3_disturbance')
+        dae.addU('df1_disturbance')
+        dae.addU('df2_disturbance')
+        dae.addU('df3_disturbance')
+        
+        f1 += dae.addX('f1_disturbance')
+        f2 += dae.addX('f2_disturbance')
+        f3 += dae.addX('f3_disturbance')
         
     if 'useVirtualTorques' in conf and conf[ 'useVirtualTorques' ] is True:
         dae.addU('dt1_disturbance')
@@ -468,6 +472,13 @@ def carouselModel(conf):
                         dae.ddt('t1_disturbance') - dae['dt1_disturbance'],
                         dae.ddt('t2_disturbance') - dae['dt2_disturbance'],
                         dae.ddt('t3_disturbance') - dae['dt3_disturbance']
+                        ])
+        
+    if 'useVirtualForces' in conf and conf[ 'useVirtualForces' ] is True:
+        ode = C.veccat([ode,
+                        dae.ddt('f1_disturbance') - dae['df1_disturbance'],
+                        dae.ddt('f2_disturbance') - dae['df2_disturbance'],
+                        dae.ddt('f3_disturbance') - dae['df3_disturbance']
                         ])
 
     if 'stabilize_invariants' in conf and conf['stabilize_invariants'] == True:
