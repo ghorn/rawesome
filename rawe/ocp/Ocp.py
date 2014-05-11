@@ -40,6 +40,9 @@ class OcpExportOptions(Options):
         self.add(OptBool('CG_USE_ARRIVAL_COST',default=False))
         self.add(OptBool('CG_USE_VARIABLE_WEIGHTING_MATRIX',default=False))
         self.add(OptInt('MAX_NUM_QP_ITERATIONS',default=-1))
+        self.add(OptStr('CG_CONDENSED_HESSIAN_CHOLESKY',
+                        ['EXTERNAL','INTERNAL_N3','INTERNAL_N2'],
+                        default='EXTERNAL'))
 
 class Ocp(object):
     def __init__(self, dae, N = None, ts = None, yxNames = None, yuNames = None, hashPrefix = 'ocp'):
