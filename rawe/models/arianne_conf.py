@@ -62,6 +62,10 @@ def makeConf():
 
          'cn_B': 0.038296,
          'cn_AB':-0.052142,
+         
+         # Scaling for CL and CD (old hacks we have done before
+         'cL_scale': 0.3,
+         'cD_scale': 1.0,
 
          # control surface moments
          # these are average values across the vlm alpha/beta sweep

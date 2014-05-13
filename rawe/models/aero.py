@@ -95,6 +95,9 @@ def aeroForcesTorques(dae, conf, v_bw_f, v_bw_b, w_bn_b, (eTe_f_1, eTe_f_2, eTe_
     if 'rudder' in dae:
         cY += conf['cY_rudder']*dae['rudder']
         cD += conf['cD_rudder2']*dae['rudder']*dae['rudder'] + conf['cD_B_rudder']*beta*dae['rudder'] + conf['cD_rudder']*dae['rudder']
+        
+    cL = cL * conf['cL_scale']
+    cD = cD * conf['cD_scale']
 
     dae['cL'] = cL
     dae['cD'] = cD
