@@ -123,7 +123,8 @@ def setupModel(dae, conf):
     # wind model
     def getWind():
         if 'wind_model' not in conf:
-            return 0
+            return C.veccat([0, 0, 0])
+        
         if conf['wind_model']['name'] == 'wind_shear':
             # use a logarithmic wind shear model
             # wind(z) = w0 * log((altitude+zt)/zt) / log(z0/zt)
@@ -133,18 +134,36 @@ def setupModel(dae, conf):
             z0 = conf['wind_model']['z0']
             zt_roughness = conf['wind_model']['zt_roughness']
             altitude = -z - conf['wind_model']['altitude0']
-            return dae['w0']*C.log((altitude+zt_roughness)/zt_roughness)/C.log(z0/zt_roughness)
+            wind = dae['w0']*C.log((altitude+zt_roughness)/zt_roughness)/C.log(z0/zt_roughness)
+            return C.veccat([wind, 0, 0])
+            
         elif conf['wind_model']['name'] in ['constant','hardcoded']:
             # constant wind
-            return dae['w0']
-    wind_x = getWind()
-    dae['wind_at_altitude'] = wind_x
+            return C.veccat([dae['w0'], 0, 0])
+            
+        elif conf['wind_model']['name'] == 'random_walk':
+            dae.addU('delta_wind_x')
+            dae.addU('delta_wind_y')
+            dae.addU('delta_wind_z')
+            
+            wind_x = dae.addX('wind_x')
+            wind_y = dae.addX('wind_y')
+            wind_z = dae.addX('wind_z')
+            
+            return C.veccat([wind_x, wind_y, wind_z])
+            
+    wind = getWind()
+    dae['wind_at_altitude'] = wind[ 0 ]
+    
+    R_g2c = C.blockcat([[dae['cos_delta'], -dae['sin_delta'], 0.0],
+                        [dae['sin_delta'],  dae['cos_delta'], 0.0],
+                        [0.0,               0.0,              1.0]])
 
-    # Velocity of aircraft w.r.t wind carrying frame, expressed in carrousel frame
+    # Velocity of aircraft w.r.t wind carrying frame, expressed in carousel frame
     v_bw_c = C.veccat( [ dx - ddelta*y
                        , dy + ddelta*(rA + x)
                        , dz
-                       ]) - C.veccat([dae['cos_delta']*wind_x, dae['sin_delta']*wind_x, 0])
+                       ]) - C.mul([R_g2c, wind])
     # Velocity of aircraft w.r.t wind carrying frame, expressed in body frame
     # (needed to compute the aero forces and torques !)
     v_bw_b = C.mul( dae['R_c2b'], v_bw_c )
@@ -396,7 +415,7 @@ def carouselModel(conf):
     if 'wind_model' in conf:
         if conf['wind_model']['name'] == 'hardcoded':
             dae['w0'] = conf['wind_model']['hardcoded_value']
-        else:
+        elif conf['wind_model']['name'] != 'random_walk':
             dae.addP( ['w0'] )
 
     # set some state derivatives as outputs
@@ -432,6 +451,10 @@ def carouselModel(conf):
     dae['R_c2b'] = C.blockcat([[dae['e11'],dae['e12'],dae['e13']],
                                [dae['e21'],dae['e22'],dae['e23']],
                                [dae['e31'],dae['e32'],dae['e33']]])
+    
+    dae["yaw"] = C.arctan2(dae["e12"], dae["e11"]) * 180.0 / C.pi
+    dae["pitch"] = C.arcsin( -dae["e13"] ) * 180.0 / C.pi
+    dae["roll"] = C.arctan2(dae["e23"], dae["e33"]) * 180.0 / C.pi
 
     # line angle
     dae['cos_line_angle'] = \
@@ -479,6 +502,15 @@ def carouselModel(conf):
                         dae.ddt('f1_disturbance') - dae['df1_disturbance'],
                         dae.ddt('f2_disturbance') - dae['df2_disturbance'],
                         dae.ddt('f3_disturbance') - dae['df3_disturbance']
+                        ])
+        
+    if 'wind_model' in conf and conf['wind_model']['name'] == 'random_walk':
+        tau_wind = conf['wind_model']['tau_wind']
+        
+        ode = C.veccat([ode,
+                        dae.ddt('wind_x') - (-dae['wind_x'] / tau_wind + dae['delta_wind_x']),
+                        dae.ddt('wind_y') - (-dae['wind_y'] / tau_wind + dae['delta_wind_y']),
+                        dae.ddt('wind_z') - (-dae['wind_z'] / tau_wind + dae['delta_wind_z']),
                         ])
 
     if 'stabilize_invariants' in conf and conf['stabilize_invariants'] == True:
