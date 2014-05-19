@@ -22,7 +22,7 @@ def makeConf():
         {'g': 9.81,  #  gravitational constant #  [ m /s^2]
          'rho': 1.23,  #  density of the air #  [ kg/m^3]
 
-        'alpha0deg': 0,
+        'alpha0deg': -12.0,
 
          # forces
          # these are calculated by a matlab fitting script based on vlm alpha/beta sweeps
@@ -64,7 +64,7 @@ def makeConf():
          'cn_AB':-0.052142,
          
          # Scaling for CL and CD (old hacks we have done before
-         'cL_scale': 0.3,
+         'cL_scale': 1.0,
          'cD_scale': 1.0,
 
          # control surface moments
