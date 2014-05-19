@@ -79,7 +79,10 @@ def getSteadyState(dae, conf, omega0, r0, ref_dict = {},
                  't1_disturbance':0.0, 't2_disturbance':0.0, 't3_disturbance':0.0,
                  
                  'df1_disturbance':0.0, 'df2_disturbance':0.0, 'df3_disturbance':0.0,
-                 'f1_disturbance':0.0, 'f2_disturbance':0.0, 'f3_disturbance':0.0}
+                 'f1_disturbance':0.0, 'f2_disturbance':0.0, 'f3_disturbance':0.0,
+                 
+                 'wind_x':0.0, 'wind_y':0.0, 'wind_z':0.0,
+                 'delta_wind_x':0.0, 'delta_wind_y':0.0, 'delta_wind_z':0.0}
     if dotGuess is None:
         dotGuess = {'x':0, 'y':0, 'z':0, 'dx':0, 'dy':0, 'dz':0,
                     'r':0, 'dr':0,
@@ -96,7 +99,10 @@ def getSteadyState(dae, conf, omega0, r0, ref_dict = {},
                     't1_disturbance':0.0, 't2_disturbance':0.0, 't3_disturbance':0.0,
                     
                     'df1_disturbance':0.0, 'df2_disturbance':0.0, 'df3_disturbance':0.0,
-                    'f1_disturbance':0.0, 'f2_disturbance':0.0, 'f3_disturbance':0.0}
+                    'f1_disturbance':0.0, 'f2_disturbance':0.0, 'f3_disturbance':0.0,
+                    
+                    'wind_x':0.0, 'wind_y':0.0, 'wind_z':0.0,
+                    'delta_wind_x':0.0, 'delta_wind_y':0.0, 'delta_wind_z':0.0}
 
     guessVec = C.DMatrix([guess[n] for n in dae.xNames() + dae.zNames() + dae.uNames() + dae.pNames()] +
                          [dotGuess[n] for n in dae.xNames()])
@@ -120,7 +126,10 @@ def getSteadyState(dae, conf, omega0, r0, ref_dict = {},
                  't1_disturbance':(0, 0), 't2_disturbance':(0, 0), 't3_disturbance':(0, 0),
                  
                  'df1_disturbance':(0, 0), 'df2_disturbance':(0, 0), 'df3_disturbance':(0, 0),
-                 'f1_disturbance':(0, 0), 'f2_disturbance':(0, 0), 'f3_disturbance':(0, 0)}
+                 'f1_disturbance':(0, 0), 'f2_disturbance':(0, 0), 'f3_disturbance':(0, 0),
+                 
+                 'wind_x':(0, 0), 'wind_y':(0, 0), 'wind_z':(0, 0),
+                 'delta_wind_x':(0, 0), 'delta_wind_y':(0, 0), 'delta_wind_z':(0, 0)}
 
     if ref_dict is not None:
         for name in ref_dict: bounds[name] = ref_dict[name]
@@ -143,7 +152,10 @@ def getSteadyState(dae, conf, omega0, r0, ref_dict = {},
                      't1_disturbance':(0, 0), 't2_disturbance':(0, 0), 't3_disturbance':(0, 0),
                      
                      'df1_disturbance':(0, 0), 'df2_disturbance':(0, 0), 'df3_disturbance':(0, 0),
-                     'f1_disturbance':(0, 0), 'f2_disturbance':(0, 0), 'f3_disturbance':(0, 0)}
+                     'f1_disturbance':(0, 0), 'f2_disturbance':(0, 0), 'f3_disturbance':(0, 0),
+                     
+                     'wind_x':(0, 0), 'wind_y':(0, 0), 'wind_z':(0, 0),
+                     'delta_wind_x':(0, 0), 'delta_wind_y':(0, 0), 'delta_wind_z':(0, 0)}
                      
     boundsVec = [bounds[n] for n in dae.xNames() + dae.zNames() + dae.uNames() + dae.pNames()] + \
                 [dotBounds[n] for n in dae.xNames()]
