@@ -119,6 +119,10 @@ def setupModel(dae, conf):
         t_xt = dae['tether_tension'] * conf['xt']
     else:
         t_xt = 0.0
+        
+    R_g2c = C.blockcat([[dae['cos_delta'], -dae['sin_delta'], 0.0],
+                        [dae['sin_delta'],  dae['cos_delta'], 0.0],
+                        [0.0,               0.0,              1.0]])
 
     # wind model
     def getWind():
@@ -135,11 +139,16 @@ def setupModel(dae, conf):
             zt_roughness = conf['wind_model']['zt_roughness']
             altitude = -z - conf['wind_model']['altitude0']
             wind = dae['w0']*C.log((altitude+zt_roughness)/zt_roughness)/C.log(z0/zt_roughness)
-            return C.veccat([wind, 0, 0])
+            
+            dae['wind_at_altitude'] = wind
+            
+            return C.mul([R_g2c, C.veccat([wind, 0, 0])])
             
         elif conf['wind_model']['name'] in ['constant','hardcoded']:
             # constant wind
-            return C.veccat([dae['w0'], 0, 0])
+            dae['wind_at_altitude'] = dae['w0']
+            
+            return C.mul([R_g2c, C.veccat([dae['w0'], 0, 0])])
             
         elif conf['wind_model']['name'] == 'random_walk':
             dae.addU('delta_wind_x')
@@ -150,20 +159,17 @@ def setupModel(dae, conf):
             wind_y = dae.addX('wind_y')
             wind_z = dae.addX('wind_z')
             
+            dae['wind_at_altitude'] = wind_x
+            
             return C.veccat([wind_x, wind_y, wind_z])
             
     wind = getWind()
-    dae['wind_at_altitude'] = wind[ 0 ]
-    
-    R_g2c = C.blockcat([[dae['cos_delta'], -dae['sin_delta'], 0.0],
-                        [dae['sin_delta'],  dae['cos_delta'], 0.0],
-                        [0.0,               0.0,              1.0]])
 
     # Velocity of aircraft w.r.t wind carrying frame, expressed in carousel frame
     v_bw_c = C.veccat( [ dx - ddelta*y
                        , dy + ddelta*(rA + x)
                        , dz
-                       ]) - C.mul([R_g2c, wind])
+                       ]) - wind
     # Velocity of aircraft w.r.t wind carrying frame, expressed in body frame
     # (needed to compute the aero forces and torques !)
     v_bw_b = C.mul( dae['R_c2b'], v_bw_c )
@@ -508,9 +514,9 @@ def carouselModel(conf):
         tau_wind = conf['wind_model']['tau_wind']
         
         ode = C.veccat([ode,
-                        dae.ddt('wind_x') - (-dae['wind_x'] / tau_wind + dae['delta_wind_x']),
-                        dae.ddt('wind_y') - (-dae['wind_y'] / tau_wind + dae['delta_wind_y']),
-                        dae.ddt('wind_z') - (-dae['wind_z'] / tau_wind + dae['delta_wind_z']),
+                        dae.ddt('wind_x') - (-dae['wind_x'] / tau_wind + dae['delta_wind_x'])
+                        , dae.ddt('wind_y') - (-dae['wind_y'] / tau_wind + dae['delta_wind_y'])
+                        , dae.ddt('wind_z') - (-dae['wind_z'] / tau_wind + dae['delta_wind_z'])
                         ])
 
     if 'stabilize_invariants' in conf and conf['stabilize_invariants'] == True:
