@@ -149,6 +149,8 @@ def aeroForcesTorques(dae, conf, v_bw_f, v_bw_b, w_bn_b, (eTe_f_1, eTe_f_2, eTe_
     rho_sref    = 0.5*rho*sref
     rho_sref_v2 = rho_sref*vKite2
     rho_sref_v  = rho_sref*vKite
+    
+    dae['rho_sref_v2'] = rho_sref_v2
 
     # LIFT :
     dae['fL'] = rho_sref_v2*cL

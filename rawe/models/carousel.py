@@ -196,18 +196,18 @@ def setupModel(dae, conf):
         dae.addU('df2_disturbance')
         dae.addU('df3_disturbance')
         
-        f1 += dae.addX('f1_disturbance')
-        f2 += dae.addX('f2_disturbance')
-        f3 += dae.addX('f3_disturbance')
+        f1 += dae['rho_sref_v2'] * dae.addX('f1_disturbance')
+        f2 += dae['rho_sref_v2'] * dae.addX('f2_disturbance')
+        f3 += dae['rho_sref_v2'] * dae.addX('f3_disturbance')
         
     if 'useVirtualTorques' in conf and conf[ 'useVirtualTorques' ] is True:
         dae.addU('dt1_disturbance')
         dae.addU('dt2_disturbance')
         dae.addU('dt3_disturbance')
         
-        t1 += dae.addX('t1_disturbance')
-        t2 += dae.addX('t2_disturbance')
-        t3 += dae.addX('t3_disturbance')
+        t1 += dae['rho_sref_v2'] * conf['bref'] * dae.addX('t1_disturbance')
+        t2 += dae['rho_sref_v2'] * conf['cref'] * dae.addX('t2_disturbance')
+        t3 += dae['rho_sref_v2'] * conf['bref'] * dae.addX('t3_disturbance')
 
     # mass matrix
     mm = C.SXMatrix(8, 8)
