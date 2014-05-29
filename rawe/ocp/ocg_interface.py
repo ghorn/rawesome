@@ -117,6 +117,32 @@ int py_get_SN(real_t * val, const int nr, const int nc){
   return memcpyMat(val, acadoVariables.WN, nr, nc, ACADO_NYN, ACADO_NYN); }
 #endif /* ACADO_WEIGHTING_MATRICES_TYPE */
 
+#if ACADO_USE_LINEAR_TERMS == 1
+#if ACADO_WEIGHTING_MATRICES_TYPE == 2
+int py_set_Slx(real_t * val, const int nr, const int nc){
+  return memcpyMat(acadoVariables.Wlx, val, nr, nc, (ACADO_N + 1), ACADO_NX); }
+int py_get_Slx(real_t * val, const int nr, const int nc){
+  return memcpyMat(val, acadoVariables.Wlx, nr, nc, (ACADO_N + 1), ACADO_NX); }
+
+int py_set_Slu(real_t * val, const int nr, const int nc){
+  return memcpyMat(acadoVariables.Wlu, val, nr, nc, ACADO_N, ACADO_NU); }
+int py_get_Slu(real_t * val, const int nr, const int nc){
+  return memcpyMat(val, acadoVariables.Wlu, nr, nc, ACADO_N, ACADO_NU); }
+  
+#else
+int py_set_Slx(real_t * val, const int nr, const int nc){
+  return memcpyMat(acadoVariables.Wlx, val, nr, nc, ACADO_NX, 1); }
+int py_get_Slx(real_t * val, const int nr, const int nc){
+  return memcpyMat(val, acadoVariables.Wlx, nr, nc, ACADO_NX, 1); }
+
+int py_set_Slu(real_t * val, const int nr, const int nc){
+  return memcpyMat(acadoVariables.Wlu, val, nr, nc, ACADO_NU, 1); }
+int py_get_Slu(real_t * val, const int nr, const int nc){
+  return memcpyMat(val, acadoVariables.Wlu, nr, nc, ACADO_NU, 1); }
+
+#endif /* ACADO_WEIGHTING_MATRICES_TYPE */
+#endif /* ACADO_USE_LINEAR_TERMS */
+
 #if ACADO_USE_ARRIVAL_COST == 1
 int py_set_SAC(real_t * val, const int nr, const int nc){
   return memcpyMat(acadoVariables.SAC, val, nr, nc, ACADO_NX, ACADO_NX); }
@@ -165,4 +191,6 @@ int py_get_ACADO_WEIGHTING_MATRICES_TYPE(void){ return ACADO_WEIGHTING_MATRICES_
 int py_get_ACADO_HARDCODED_CONSTRAINT_VALUES(void){ return ACADO_HARDCODED_CONSTRAINT_VALUES; }
 /** Flag indicating whether arrival cost is being used. */
 int py_get_ACADO_USE_ARRIVAL_COST(void){ return ACADO_USE_ARRIVAL_COST; }
+/** Indicator for usage of non-hard-coded linear terms in the objective. */
+int py_get_ACADO_USE_LINEAR_TERMS(void){ return ACADO_USE_LINEAR_TERMS; }
 '''

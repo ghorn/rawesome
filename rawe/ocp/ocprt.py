@@ -52,7 +52,7 @@ def secretAccess(f):
     return blah
 
 class OcpRT(object):
-    _canonicalNames = ['x','u','z','y','yN','x0','S','SN','SAC','xAC','WL']
+    _canonicalNames = ['x','u','z','y','yN','x0','S','SN','SAC','xAC','WL', 'Slx', 'Slu']
 
     @property
     def ocp(self):
@@ -116,6 +116,18 @@ class OcpRT(object):
                                    self._lib.py_get_ACADO_NYN()))
         else:
             raise Exception('unrecognized ACADO_WEIGHING_MATRICES_TYPE '+str(wmt))
+        
+        linTerms = self._lib.py_get_ACADO_USE_LINEAR_TERMS()
+        if linTerms == 1:
+            if wmt == 2:
+                self.Slx  = numpy.zeros((self._lib.py_get_ACADO_N() + 1,
+                                         self._lib.py_get_ACADO_NX())) 
+                self.Slu  = numpy.zeros((self._lib.py_get_ACADO_N(),
+                                         self._lib.py_get_ACADO_NU()))
+            else:
+                self.Slx  = numpy.zeros(self._lib.py_get_ACADO_NX()) 
+                self.Slu  = numpy.zeros(self._lib.py_get_ACADO_NU())
+        
         if self._lib.py_get_ACADO_USE_ARRIVAL_COST() == 1:
             self.xAC = numpy.zeros(self._lib.py_get_ACADO_NX())
             self.SAC = numpy.zeros((self._lib.py_get_ACADO_NX(),
@@ -201,6 +213,9 @@ class OcpRT(object):
         self._callMat(self._lib.py_set_yN, self.yN)
         self._callMat(self._lib.py_set_S,  self.S)
         self._callMat(self._lib.py_set_SN, self.SN)
+        if self._lib.py_get_ACADO_USE_LINEAR_TERMS():
+            self._callMat(self._lib.py_set_Slx, self.Slx)
+            self._callMat(self._lib.py_set_Slu, self.Slu)
         if self._lib.py_get_ACADO_INITIAL_STATE_FIXED():
             self._callMat(self._lib.py_set_x0, self.x0)
         if self._lib.py_get_ACADO_USE_ARRIVAL_COST():
@@ -217,6 +232,9 @@ class OcpRT(object):
         self._callMat(self._lib.py_get_yN, self.yN)
         self._callMat(self._lib.py_get_S,  self.S)
         self._callMat(self._lib.py_get_SN, self.SN)
+        if self._lib.py_get_ACADO_USE_LINEAR_TERMS():
+            self._callMat(self._lib.py_get_Slx, self.Slx)
+            self._callMat(self._lib.py_get_Slu, self.Slu)
         if self._lib.py_get_ACADO_INITIAL_STATE_FIXED():
             self._callMat(self._lib.py_get_x0, self.x0)
         if self._lib.py_get_ACADO_USE_ARRIVAL_COST():

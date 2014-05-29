@@ -45,7 +45,7 @@ class OcpExportOptions(Options):
                         default='EXTERNAL'))
 
 class Ocp(object):
-    def __init__(self, dae, N = None, ts = None, yxNames = None, yuNames = None, hashPrefix = 'ocp'):
+    def __init__(self, dae, N = None, ts = None, yxNames = None, yuNames = None, useLinearObjTerms = False, hashPrefix = 'ocp'):
         dae.assertNoFreeParams()
         self.hashPrefix = hashPrefix
         self._dae = dae
@@ -104,6 +104,9 @@ class Ocp(object):
         for name in self._yuNames:
             self._yOffsets.update({name: _offset})
             _offset += self.dae[ name ].shape[ 0 ]
+            
+        # Usage of linear terms
+        self._useLinearObjTerms = useLinearObjTerms
             
     def __repr__(self):
         from textwrap import fill
@@ -207,6 +210,10 @@ class Ocp(object):
     @property
     def yu(self):
         return self._yu
+
+    @property
+    def useLinearObjTerms(self):
+        return self._useLinearObjTerms
 
     # stuff inherited from dae
     def __getitem__(self,name):
@@ -392,8 +399,8 @@ class Ocp(object):
 
 
 class Mpc( Ocp ):
-    def __init__(self, dae, N = None, ts = None, yxNames = None, yuNames = None):
-        Ocp.__init__(self, dae, N = N, ts = ts, yxNames = yxNames, yuNames = yuNames, hashPrefix = 'mpc')
+    def __init__(self, dae, N = None, ts = None, yxNames = None, yuNames = None, useLinearObjTerms = False):
+        Ocp.__init__(self, dae, N = N, ts = ts, yxNames = yxNames, yuNames = yuNames, hashPrefix = 'mpc', useLinearObjTerms = useLinearObjTerms)
 
     def exportCode(self, ocpOptions, integratorOptions, codegenOptions, phase1Options):
         assert isinstance(ocpOptions, OcpExportOptions)
@@ -407,8 +414,8 @@ class Mpc( Ocp ):
         
 
 class Mhe( Ocp ):
-    def __init__(self, dae, N = None, ts = None, yxNames = None, yuNames = None):
-        Ocp.__init__(self, dae, N = N, ts = ts, yxNames = yxNames, yuNames = yuNames, hashPrefix = 'mhe')
+    def __init__(self, dae, N = None, ts = None, yxNames = None, yuNames = None, useLinearObjTerms = False):
+        Ocp.__init__(self, dae, N = N, ts = ts, yxNames = yxNames, yuNames = yuNames, hashPrefix = 'mhe', useLinearObjTerms = useLinearObjTerms)
         
     def exportCode(self, ocpOptions, integratorOptions, codegenOptions, phase1Options):
         assert isinstance(ocpOptions, OcpExportOptions)

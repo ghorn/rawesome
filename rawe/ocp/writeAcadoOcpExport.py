@@ -352,6 +352,13 @@ _ocp.setDimensions( %(nx)d, %(nx)d, %(nz)d, %(nu)d, 0, 0 );
     # ... or use ACADO symbolics as an alternative
     lines.append('//_ocp.minimizeLSQ(        _W,        _lsqAcadoSymbolics);')
     lines.append('//_ocp.minimizeLSQEndTerm(_WN, _lsqEndTermAcadoSymbolics);')
+    
+    if ocp.useLinearObjTerms is True:
+        assert ocpOptions['SPARSE_QP_SOLUTION'] == 'FULL_CONDENSING_N2'
+        assert ocpOptions['FIX_INITIAL_STATE'] == True
+        lines.append('BVector Wlx = ones<bool>(%(nx)d, 1);'  % {'nx': ocp.dae.xVec().shape[ 0 ]})
+        lines.append('BVector Wlu = ones<bool>(%(nu)d, 1);'  % {'nu': ocp.dae.uVec().shape[ 0 ]})
+        lines.append('_ocp.minimizeLSQLinearTerms(Wlx, Wlu);')
 
     lines.append('''
 /* setup OCPexport */
