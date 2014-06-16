@@ -102,8 +102,8 @@ def makeConf():
          'rArm': 1.085,
 
          # Carousel Friction & inertia
-         'jCarousel': 1e2,
-         'cfric': 1e2,
+         'jCarousel': 1e1,
+         'cfric': 1e1,
          
          # Physical limitations for the plane actuators
          'aileron_bound': 0.468, # [rad] <> ~27 deg
