@@ -1,3 +1,5 @@
+#! /usr/bin/env ipython
+
 # Copyright 2012-2013 Greg Horn
 #
 # This file is part of rawesome.
@@ -33,7 +35,7 @@ if __name__=='__main__':
 
     # specify the Ocp
     N = 100
-    mpc = rawe.Ocp(dae, N=N, ts=0.2)
+    mpc = rawe.Ocp(dae, N=N, ts=0.2, yxNames=['pos', 'vel'], yuNames=['force'])
 
 #    mpc.constrain(mpc['pos'], '==', 0, when='AT_START')
 #    mpc.constrain(mpc['vel'], '==', 0, when='AT_START')
@@ -43,9 +45,6 @@ if __name__=='__main__':
 
     mpc.constrain(mpc['vel'], '<=', 0.2)
     mpc.constrain(-0.1, '<=', mpc['force'], '<=', 0.1)
-
-    mpc.minimizeLsq(C.veccat([mpc['pos'],mpc['vel'],mpc['force']]))
-    mpc.minimizeLsqEndTerm(C.veccat([mpc['pos'], mpc['vel']]))
 
 #    cgOpts = {'CXX':'clang++', 'CC':'clang'}
     cgOpts = {'CXX':'g++', 'CC':'gcc'}
