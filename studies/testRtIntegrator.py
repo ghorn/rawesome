@@ -23,7 +23,6 @@ if __name__=='__main__':
 
     [pos,vel] = dae.addX( ["pos","vel"] )
     force = dae.addU( "force" )
-    endTime = dae.addP( 'endTime' )
 
     # specify the dae residual
     dae.setResidual([dae.ddt('pos') - vel,
@@ -34,12 +33,12 @@ if __name__=='__main__':
     intOpts['INTEGRATOR_TYPE'] = 'INT_IRK_RIIA3'
     intOpts['NUM_INTEGRATOR_STEPS'] = 5
     intOpts['LINEAR_ALGEBRA_SOLVER'] = 'GAUSS_LU'
-    integrator = RtIntegrator(dae,ts=endTime, options=intOpts,
+    integrator = RtIntegrator(dae,ts=0.2, options=intOpts,
                               measurements=C.veccat([dae.ddt('pos'), vel, force]))
 
     x = {'pos':5.3, 'vel':0.6}
     u = {'force':-4.2}
-    p = {'endTime':0.2}
+    p = {}
 
     #xdot = {'pos':9.4,'vel':1.2}
     #print integrator.rhs(xdot,x,{},u,{}, compareWithSX=True)
