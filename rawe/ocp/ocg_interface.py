@@ -64,11 +64,11 @@ int py_set_u(real_t * val, const int nr, const int nc){
 int py_get_u(real_t * val, const int nr, const int nc){
   return memcpyMat(val, acadoVariables.u, nr, nc, ACADO_N, ACADO_NU); }
 
-#if ACADO_NOD
+#if ACADO_NOD > 0
 int py_set_p(real_t * val, const int nr, const int nc){
-  return memcpyMat(acadoVariables.od, val, nr, nc, ACADO_NOD, 1); }
+  return memcpyMat(acadoVariables.od, val, nr, nc, ACADO_N + 1, ACADO_NOD); }
 int py_get_p(real_t * val, const int nr, const int nc){
-  return memcpyMat(val, acadoVariables.od, nr, nc, ACADO_NOD, 1); }
+  return memcpyMat(val, acadoVariables.od, nr, nc, ACADO_N + 1, ACADO_NOD); }
 #endif
 
 #if ACADO_NXA
@@ -169,7 +169,7 @@ int py_get_ACADO_NXA(void){ return ACADO_NXA; }
 /** Number of control variables. */
 int py_get_ACADO_NU(void){ return ACADO_NU; }
 /** Number of parameters (which are NOT optimization variables). */
-int py_get_ACADO_NP(void){ return ACADO_NOD; }
+int py_get_ACADO_NOD(void){ return ACADO_NOD; }
 /** Number of references/measurements per node on the first N nodes. */
 int py_get_ACADO_NY(void){ return ACADO_NY; }
 /** Number of references/measurements on the last (N + 1)st node. */

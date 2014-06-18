@@ -27,17 +27,15 @@ def makeDae():
 
     [pos,vel] = dae.addX( ["pos","vel"] )
     force = dae.addU( "force" )
+    springK = dae.addP( "springK" )
 
     dae.setResidual([dae.ddt('pos') - vel,
-                     dae.ddt('vel') - (force - 0.14*pos - 0*0.2*vel)])
+                     dae.ddt('vel') - (force - springK*pos - 0*0.2*vel)])
     return dae
 
 def makeMpc(dae, N, ts):
-    mpc = rawe.Ocp(dae, N=N, ts=ts)
+    mpc = rawe.Ocp(dae, N=N, ts=ts, yxNames=['pos','vel'], yuNames=['force'])
     mpc.constrain(-2.5, '<=', mpc['force'], '<=', 2.5)
-
-    mpc.minimizeLsq([mpc['pos'],mpc['vel'],mpc['force']])
-    mpc.minimizeLsqEndTerm([mpc['pos'],mpc['vel']])
 
 #    cgOpts = {'CXX':'clang++', 'CC':'clang'}
     cgOpts = {'CXX':'g++', 'CC':'gcc'}
@@ -62,10 +60,7 @@ def makeMpc(dae, N, ts):
                        codegenOptions=cgOpts)
 
 def makeMhe(dae, N, ts):
-    mhe = rawe.ocp.Ocp(dae, N=N, ts=ts)
-
-    mhe.minimizeLsq([mhe['pos'],mhe['vel']])
-    mhe.minimizeLsqEndTerm([mhe['pos'],mhe['vel']])
+    mhe = rawe.ocp.Ocp(dae, N=N, ts=ts, yxNames=['pos','vel'], yuNames=[])
 
 #    cgOpts = {'CXX':'clang++', 'CC':'clang'}
     cgOpts = {'CXX':'g++', 'CC':'gcc'}
@@ -104,6 +99,7 @@ if __name__=='__main__':
         mpc.x[k,0] = A*C.sin(omega*tk)
         mpc.x[k,1] = A*C.cos(omega*tk)*omega
         tk += ts
+    mpc.p[:,0] = 0.14
 
     # set tracking trajectory
     t = 0
@@ -123,6 +119,7 @@ if __name__=='__main__':
     # run a sim
     x = {'pos':mpc.x[0,0],'vel':mpc.x[0,1]}
     u = {'force':0}
+    p = {'springK':0.14}
 
     ytraj = []
     xtraj = []
@@ -160,7 +157,7 @@ if __name__=='__main__':
         objs.append(mpc.getObjective() + 1e-100)
 
         # simulate
-        x = sim.step(x, u, {})
+        x = sim.step(x, u, p)
         t += ts
 
     # plot results

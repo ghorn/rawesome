@@ -29,9 +29,10 @@ if __name__=='__main__':
 
     [pos,vel] = dae.addX( ["pos","vel"] )
     force = dae.addU( "force" )
+    springK = dae.addP( "springK" )
 
     dae.setResidual([dae.ddt('pos') - vel,
-                     dae.ddt('vel') - (force - 0*3.0*pos - 0.2*vel)])
+                     dae.ddt('vel') - (force - springK*pos - 0.2*vel)])
 
     # specify the Ocp
     N = 100
@@ -84,6 +85,7 @@ if __name__=='__main__':
     ocpRt.x[0,1] = 0.0
     for k in range(N):
         ocpRt.u[k] = 0.0
+    ocpRt.p[:,0] = 3.0
     ocpRt.initializeNodesByForwardSimulation()
 
 #    import pickle

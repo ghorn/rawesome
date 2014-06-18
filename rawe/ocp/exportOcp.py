@@ -73,8 +73,6 @@ def writeObjective(ocp, out0, exportName):
     outputFun0.init()
     [out] = outputFun0.eval([xDot, dae.xVec(), z, dae.uVec(), dae.pVec()])
 
-    assert len(dae.pNames()) == 0, "parameters not supported right now in ocp export, sorry"
-
     # make sure each element in the output is only a function of x or u, not both
     testSeparation(dae,out,exportName)
 
@@ -86,7 +84,7 @@ def writeObjective(ocp, out0, exportName):
         outputFun.init()
         assert len(outputFun.getFree()) == 0, 'the "impossible" happened >_<'
     elif exportName == 'lsqEndTermExtern':
-        inputs = dae.xVec()
+        inputs = C.veccat([dae.xVec(), dae.pVec()])
         outs = C.veccat( [ out, C.jacobian(out,dae.xVec()).T ] )
         outputFun = C.SXFunction([inputs], [C.densify(outs)])
         outputFun.init()

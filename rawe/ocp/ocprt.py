@@ -52,7 +52,7 @@ def secretAccess(f):
     return blah
 
 class OcpRT(object):
-    _canonicalNames = ['x','u','z','y','yN','x0','S','SN','SAC','xAC','WL', 'Slx', 'Slu']
+    _canonicalNames = ['x','u','z','p','y','yN','x0','S','SN','SAC','xAC','WL', 'Slx', 'Slu']
 
     @property
     def ocp(self):
@@ -96,6 +96,9 @@ class OcpRT(object):
                                self._lib.py_get_ACADO_NX()))
         self.u  = numpy.zeros((self._lib.py_get_ACADO_N(),
                                self._lib.py_get_ACADO_NU()))
+        if self._lib.py_get_ACADO_NOD() > 0:
+            self.p  = numpy.zeros((self._lib.py_get_ACADO_N()+1,
+                                   self._lib.py_get_ACADO_NOD()))
         self.y  = numpy.zeros((self._lib.py_get_ACADO_N(),
                                self._lib.py_get_ACADO_NY()))
         if self._lib.py_get_ACADO_NXA() > 0:
@@ -170,12 +173,16 @@ class OcpRT(object):
         return self.ocp.dae.xNames()
     def uNames(self):
         return self.ocp.dae.uNames()
+    def pNames(self):
+        return self.ocp.dae.pNames()
     def outputNames(self):
         return self.ocp.dae.outputNames()
 
-    def computeOutputs(self, x, u):
+    def computeOutputs(self, x, u, p=None):
         self._outputsFun.setInput(x,0)
         self._outputsFun.setInput(u,1)
+        if p is not None:
+            self._outputsFun.setInput(p,2)
         self._outputsFun.evaluate()
         outs = [C.DMatrix(self._outputsFun.output(k))
                 for k in range(self._outputsFun.getNumOutputs())]
@@ -222,6 +229,8 @@ class OcpRT(object):
             self._callMat(self._lib.py_set_xAC, self.xAC)
             self._callMat(self._lib.py_set_SAC, self.SAC)
             self._callMat(self._lib.py_set_WL, self.WL)
+        if hasattr(self, 'p'):
+            self._callMat(self._lib.py_set_p,  self.p)
         if hasattr(self, 'z'):
             self._callMat(self._lib.py_set_z, self.z)
 
@@ -241,12 +250,14 @@ class OcpRT(object):
             self._callMat(self._lib.py_get_xAC, self.xAC)
             self._callMat(self._lib.py_get_SAC, self.SAC)
             self._callMat(self._lib.py_get_WL, self.WL)
+        if hasattr(self, 'p'):
+            self._callMat(self._lib.py_get_p,  self.p)
         if hasattr(self, 'z'):
             self._callMat(self._lib.py_get_z, self.z)
 
     def writeStateTxtFiles(self,prefix='',directory=None):
         '''
-        Loop through the canonical names ["x", "u", "y", etc...] and
+        Loop through the canonical names ["x", "u", "p", "y", etc...] and
         write them to text files.
         If directory is not given, files are written in the ocp export directory.
         '''
@@ -319,7 +330,7 @@ class OcpRT(object):
         self._integrator.x = self.x[-1,:]
         self._integrator.z = self.z[-1,:]
         self._integrator.u = self.u[-1,:]
-        self._integrator.p = {}
+        self._integrator.p = self.p[-1,:]
 
         self._integrator.step()
 
@@ -787,8 +798,8 @@ class MpcRT(OcpRT):
                        phase1Options=phase1Options)
 
         # set up measurement functions
-        self._yxFun = C.SXFunction([ocp.dae.xVec()], [C.densify(self.ocp.yx)])
-        self._yuFun = C.SXFunction([ocp.dae.uVec()], [C.densify(self.ocp.yu)])
+        self._yxFun = C.SXFunction([ocp.dae.xVec(),ocp.dae.pVec()], [C.densify(self.ocp.yx)])
+        self._yuFun = C.SXFunction([ocp.dae.uVec(),ocp.dae.pVec()], [C.densify(self.ocp.yu)])
         self._yxFun.init()
         self._yuFun.init()
         
@@ -799,6 +810,7 @@ class MpcRT(OcpRT):
         self._integratorLQR  = rawe.RtIntegrator(self._lqrDae, ts=self.ocp.ts, options=integratorOptions)
 
     def computeLqr(self):
+        # todo: should this handle online data?
         nx = self.x.shape[1]
 
         self._integratorLQR.x = self.y[-1,:nx]
@@ -831,18 +843,20 @@ class MheRT(OcpRT):
                        integratorMeasurements=C.veccat([ocp.yx,ocp.yu]))
 
         # set up measurement functions
-        self._yxFun = C.SXFunction([ocp.dae.xVec()], [C.densify(self.ocp.yx)])
-        self._yuFun = C.SXFunction([ocp.dae.uVec()], [C.densify(self.ocp.yu)])
+        self._yxFun = C.SXFunction([ocp.dae.xVec(),ocp.dae.pVec()], [C.densify(self.ocp.yx)])
+        self._yuFun = C.SXFunction([ocp.dae.uVec(),ocp.dae.pVec()], [C.densify(self.ocp.yu)])
         self._yxFun.init()
         self._yuFun.init()
 
-    def computeYX(self,x):
+    def computeYX(self,x,p):
         self._yxFun.setInput(x,0)
+        self._yxFun.setInput(p,1)
         self._yxFun.evaluate()
         return numpy.squeeze(numpy.array(self._yxFun.output(0)))
 
-    def computeYU(self,u):
+    def computeYU(self,u,p):
         self._yuFun.setInput(u,0)
+        self._yuFun.setInput(p,1)
         self._yuFun.evaluate()
         return numpy.squeeze(numpy.array(self._yuFun.output(0)))
 

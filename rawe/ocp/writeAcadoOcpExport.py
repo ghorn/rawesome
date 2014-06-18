@@ -208,8 +208,6 @@ def writeAcadoAlgorithm(ocp, dae):
 
 def generateAcadoOcp(ocp, integratorOptions, ocpOptions):
     dae = ocp.dae
-    #print "WARNING: RE-ENABLE PARAMETER UNSUPPORTED ASSERTION"
-    assert len(dae.pNames()) == 0, 'parameters not supported by acado codegen'
 
     lines = []
     lines.append('/* comment the following in to enable terminal barf: */')
@@ -237,9 +235,9 @@ def generateAcadoOcp(ocp, integratorOptions, ocpOptions):
     for name in dae.uNames():
         lines.append('Control '+name+';')
     lines.append('')
-    lines.append('/* parameters */')
+    lines.append('/* online data */')
     for name in dae.pNames():
-        lines.append('Parameter '+name+';')
+        lines.append('OnlineData '+name+';')
     lines.append('')
 
     (alg, constraintData) = writeAcadoAlgorithm(ocp, dae)
