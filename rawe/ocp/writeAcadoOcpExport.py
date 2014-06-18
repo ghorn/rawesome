@@ -269,9 +269,9 @@ const int N = %(N)d;
 const double Ts = 1.0;
 OCP _ocp(0, N * Ts, N);
 _ocp.setModel( "model", "rhs", "rhsJacob" );
-_ocp.setDimensions( %(nx)d, %(nx)d, %(nz)d, %(nu)d, 0, 0 );
+_ocp.setDimensions( %(nx)d, %(nx)d, %(nz)d, %(nu)d, %(nod)d, 0 );
 //_ocp.subjectTo( _differentialEquation );
-''' % {'nx':len(dae.xNames()), 'nz':len(dae.zNames()), 'nu':len(dae.uNames()),'N':ocp.N})
+''' % {'nx':len(dae.xNames()), 'nz':len(dae.zNames()), 'nu':len(dae.uNames()), 'nod':len(dae.pNames()), 'N':ocp.N})
 
     lines.append('/* complex constraints */')
     for (k, comparison, when) in constraintData:

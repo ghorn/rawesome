@@ -22,6 +22,7 @@ from ..utils import codegen
 def generateCModel(dae,timeScaling,measurements):
     xdot = C.veccat([dae.ddt(name) for name in dae.xNames()])
     inputs = C.veccat([dae.xVec(), dae.zVec(), dae.uVec(), dae.pVec(), xdot])
+    jacobian_inputs = C.veccat([dae.xVec(), dae.zVec(), dae.uVec(), xdot])
     f = dae.getResidual()
 
     # dae residual
@@ -34,7 +35,7 @@ def generateCModel(dae,timeScaling,measurements):
     rhsString = codegen.writeCCode(rhs, 'rhs')
 
     # dae residual jacobian
-    jf = C.veccat( [ C.jacobian(f,inputs).T ] )
+    jf = C.veccat( [ C.jacobian(f,jacobian_inputs).T ] )
     rhsJacob = C.SXFunction( [inputs], [C.densify(jf)] )
     rhsJacob.init()
     rhsJacobString = codegen.writeCCode(rhsJacob, 'rhsJacob')
@@ -56,7 +57,7 @@ def generateCModel(dae,timeScaling,measurements):
         ret['measurementsFile'] = measurementsString
 
         # measurements jacobian
-        jo = C.veccat( [ C.jacobian(measurements,inputs).T ] )
+        jo = C.veccat( [ C.jacobian(measurements,jacobian_inputs).T ] )
         measurementsJacobFun = C.SXFunction( [inputs], [C.densify(jo)] )
         measurementsJacobFun.init()
         measurementsJacobString = codegen.writeCCode(measurementsJacobFun, 'measurementsJacob')

@@ -23,10 +23,11 @@ if __name__=='__main__':
 
     [pos,vel] = dae.addX( ["pos","vel"] )
     force = dae.addU( "force" )
+    k = dae.addP( 'springK' )
 
     # specify the dae residual
     dae.setResidual([dae.ddt('pos') - vel,
-                     dae.ddt('vel') - (force - 3.0*pos - 0.2*vel)])
+                     dae.ddt('vel') - (force - k*pos - 0.2*vel)])
 
     from rawe import RtIntegrator, RtIntegratorOptions
     intOpts = RtIntegratorOptions()
@@ -38,7 +39,7 @@ if __name__=='__main__':
 
     x = {'pos':5.3, 'vel':0.6}
     u = {'force':-4.2}
-    p = {}
+    p = {'springK':3.0}
 
     #xdot = {'pos':9.4,'vel':1.2}
     #print integrator.rhs(xdot,x,{},u,{}, compareWithSX=True)

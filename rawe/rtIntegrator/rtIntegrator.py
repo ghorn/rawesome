@@ -48,10 +48,9 @@ class RtIntegratorOptions(Options):
 
 class RtIntegrator(object):
     _canonicalNames = ['x','z',
-                       'dx1_dx0','dz0_dx0','dx1_du','dx1_dp','dz0_du','dz0_dp',
+                       'dx1_dx0','dz0_dx0','dx1_du','dz0_du',
                        'u','p',
-                       '_dx1z0_dx0','_dx1z0_dup',
-                       'h','dh_dx0','dh_du','dh_dp','_dh_dup', '_measData',# measurements
+                       'h','dh_dx0','dh_du', '_measData',# measurements
                        '_data']
     def __setattr__(self, name, value):
         if name in self._canonicalNames:
@@ -78,53 +77,39 @@ class RtIntegrator(object):
             object.__setattr__(self, name, value)
 
     def _setData(self):
-        self._dx1z0_dx0 = numpy.vstack( (self.dx1_dx0,
-                                         self.dz0_dx0) )
-        self._dx1z0_dup = numpy.vstack((numpy.hstack( (self.dx1_du, self.dx1_dp) ),
-                                        numpy.hstack( (self.dz0_du, self.dz0_dp) )))
         self._data = numpy.concatenate((self.x,
                                         self.z,
-                                        self._dx1z0_dx0.flatten(),
-                                        self._dx1z0_dup.flatten(),
+                                        self.dx1_dx0.flatten(),
+                                        self.dz0_dx0.flatten(),
+                                        self.dx1_du.flatten(),
+                                        self.dz0_du.flatten(),
                                         self.u,
                                         self.p))
         if self._measurements is not None:
-            self._dh_dup = numpy.hstack( (self.dh_du, self.dh_dp) )
             self._measData = numpy.concatenate((self.h,
                                                 self.dh_dx0.flatten(),
-                                                self._dh_dup.flatten()))
+                                                self.dh_du.flatten()))
 
     def _getData(self):
         i0 = 0
         i1 = 0
-        for field in ['x','z','_dx1z0_dx0','_dx1z0_dup','u','p']:
+        for field in ['x','z','dx1_dx0','dz0_dx0','dx1_du','dz0_du','u','p']:
             i0  = i1
             i1 += getattr(self,field).size
             shape = getattr(self,field).shape
             self.__setattr__(field, self._data[i0:i1].reshape(shape))
         assert i1 == self._data.size
-        # unpack dx1z0_dx0, dx1z0_dup
-        nx = self.x.size
-        nu = self.u.size
-        self.dx1_dx0 = self._dx1z0_dx0[:nx,:]
-        self.dz0_dx0 = self._dx1z0_dx0[nx:,:]
-        self.dx1_du  = self._dx1z0_dup[:nx,:nu]
-        self.dx1_dp  = self._dx1z0_dup[:nx,nu:]
-        self.dz0_du  = self._dx1z0_dup[nx:,:nu]
-        self.dz0_dp  = self._dx1z0_dup[nx:,nu:]
 
         if self._measurements is not None:
             i0 = 0
             i1 = 0
-            for field in ['h','dh_dx0','_dh_dup']:
+            for field in ['h','dh_dx0','dh_du']:
                 i0  = i1
                 i1 += getattr(self,field).size
                 shape = getattr(self,field).shape
                 self.__setattr__(field, self._measData[i0:i1].reshape(shape))
             assert i1 == self._measData.size
             # unpack dh_dup
-            self.dh_du = self._dh_dup[:,:nu]
-            self.dh_dp = self._dh_dup[:,nu:]
 
     def __init__(self, dae, ts, measurements=None, options=RtIntegratorOptions(), cgOptions = None):
         self._dae = dae
@@ -168,7 +153,7 @@ class RtIntegrator(object):
         for n in self.outputNames: listOut.append([])
         self._log = {'x':[],'u':[],'y':[],'yN':[],'outputs':dict(zip(self.outputNames,listOut))}
 
-#        [ x z d(x,z)/dx d(x,z)/d(u,p) u p]
+#        [ x z d(x,z)/dx d(x,z)/du u p]
         self.x = numpy.zeros( nx )
         self.z = numpy.zeros( nz )
         self.u = numpy.zeros( nu )
@@ -176,19 +161,13 @@ class RtIntegrator(object):
         self.dx1_dx0  = numpy.zeros( (nx, nx) )
         self.dz0_dx0  = numpy.zeros( (nz, nx) )
         self.dx1_du = numpy.zeros( (nx, nu) )
-        self.dx1_dp = numpy.zeros( (nx, np) )
         self.dz0_du = numpy.zeros( (nz, nu) )
-        self.dz0_dp = numpy.zeros( (nz, np) )
-
-        self._dx1z0_dx0 = numpy.zeros( (nx+nz, nx) )
-        self._dx1z0_dup = numpy.zeros( (nx+nz, nu+np) )
 
         if self._measurements is not None:
             nh = self._measurements.size()
             self.h = numpy.zeros( nh )
             self.dh_dx0 = numpy.zeros( (nh, nx) )
             self.dh_du = numpy.zeros( (nh, nu) )
-            self.dh_dp = numpy.zeros( (nh, np) )
 
     def log(self,new_x=None,new_u=None,new_y=None,new_yN=None,new_out=None):
         if new_x != None:
@@ -269,11 +248,11 @@ class RtIntegrator(object):
         u    = numpy.array([u[n]    for n in self._dae.uNames()],dtype=numpy.double)
         p    = numpy.array([p[n]    for n in self._dae.pNames()],dtype=numpy.double)
         dataIn = numpy.concatenate((x,z,u,p,xdot))
-        dataOut = numpy.zeros((x.size + z.size)*(2*x.size+z.size+u.size+p.size), dtype=numpy.double)
+        dataOut = numpy.zeros((x.size + z.size)*(2*x.size+z.size+u.size), dtype=numpy.double)
 
-        self._modelLib.rhs_jac(ctypes.c_void_p(dataIn.ctypes.data),
-                               ctypes.c_void_p(dataOut.ctypes.data),
-                               )
+        self._modelLib.rhsJacob(ctypes.c_void_p(dataIn.ctypes.data),
+                                ctypes.c_void_p(dataOut.ctypes.data),
+                                )
         if compareWithSX:
             f = self._rtModelGen['rhsJacob']
             f.setInput(dataIn)
