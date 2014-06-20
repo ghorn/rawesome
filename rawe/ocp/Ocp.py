@@ -440,19 +440,26 @@ def generateProto(ocp, msgName):
     
     xNames = ""
     for k, name in enumerate( ocp.dae.xNames() ):
+        assert ocp[ name ].shape[ 0 ] == 1
         xNames = xNames + "idx_" + str( name ) + " = " + str( k ) + "; "
         
     zNames = ""
     for k, name in enumerate( ocp.dae.zNames() ):
+        assert ocp[ name ].shape[ 0 ] == 1
         zNames = zNames + "idx_" + str( name ) + " = " + str( k ) + "; "
         
     uNames = ""
     for k, name in enumerate( ocp.dae.uNames() ):
+        assert ocp[ name ].shape[ 0 ] == 1
         uNames = uNames + "idx_" + str( name ) + " = " + str( k ) + "; "
         
     yNames = ""
     for k, name in enumerate(ocp.yxNames + ocp.yuNames):
-        yNames = yNames + "y_" + str( name ) + " = " + str( ocp.getYOfsset( name ) ) + "; "
+        if ocp[ name ].shape[ 0 ] == 1:
+            yNames = yNames + "y_" + str( name ) + " = " + str( ocp.getYOfsset( name ) ) + "; "
+        else:
+            for l in xrange( ocp[ name ].shape[ 0 ] ):
+                yNames = yNames + "y_" + str( name ) + "_" + str( l ) + " = " + str(ocp.getYOfsset( name ) + l) + "; "
     
     proto = """\
 package %(name)sProto;
@@ -495,6 +502,9 @@ message %(name)sMsg
     
     repeated Horizon y  = 4;
     repeated float   yN = 5;
+    
+    repeated Horizon h  = 6;
+    repeated float   hN = 7;
     
     required int32 solver_status = 20;
     required float kkt_value = 21;
