@@ -24,7 +24,7 @@ def phase1src(dae,options,measurements):
 #include <string>
 #include <iostream>
 
-#include <acado_toolkit.hpp>
+#include <acado_code_generation.hpp>
 
 extern "C"{
   int export_integrator( const char * genPath);

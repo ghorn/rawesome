@@ -388,7 +388,7 @@ return 0
 
     lines = '\n'.join(['    '+l for l in ('\n'.join(lines)).split('\n')])
     lines = '''\
-#include <acado_toolkit.hpp>
+#include <acado_code_generation.hpp>
 
 extern "C" int exportOcp(const char * exportDir);
 
