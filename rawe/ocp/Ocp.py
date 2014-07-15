@@ -27,7 +27,7 @@ class OcpExportOptions(Options):
         Options.__init__(self, 'OCP')
         self.add(OptStr('SPARSE_QP_SOLUTION',
                         ['CONDENSING','FULL_CONDENSING','FULL_CONDENSING_N2','SPARSE_SOLVER']))
-        self.add(OptStr('QP_SOLVER',['QP_QPOASES','QP_QPDUNES','QP_FORCES']))
+        self.add(OptStr('QP_SOLVER',['QP_QPOASES','QP_QPDUNES','QP_FORCES', 'QP_HPMPC']))
         self.add(OptStr('HESSIAN_APPROXIMATION',['GAUSS_NEWTON'],default='GAUSS_NEWTON'))
         # TODO Hide this and set it as default, MS
         self.add(OptStr('DISCRETIZATION_TYPE',['MULTIPLE_SHOOTING'],default='MULTIPLE_SHOOTING'))
@@ -42,7 +42,7 @@ class OcpExportOptions(Options):
         self.add(OptInt('MAX_NUM_QP_ITERATIONS',default=-1))
         self.add(OptStr('CG_CONDENSED_HESSIAN_CHOLESKY',
                         ['EXTERNAL','INTERNAL_N3','INTERNAL_N2'],
-                        default='EXTERNAL'))
+                        default='EXTERNAL'))    
 
 class Ocp(object):
     def __init__(self, dae, N = None, ts = None, yxNames = None, yuNames = None, useLinearObjTerms = False, hashPrefix = 'ocp'):

@@ -18,7 +18,6 @@
 import casadi as C
 
 import phase1
-import qpoases
 import ocg_interface
 from ..rtIntegrator import rtModelExport
 from ..utils import codegen
@@ -157,12 +156,16 @@ ACADOworkspace acadoWorkspace;
 ACADOvariables acadoVariables;
 
 '''
-
+    
     # add python_interface.c
     files['python_interface.c'] = ocg_interface.ocg_interface
 
     if ocpOptions['QP_SOLVER'] == 'QP_QPOASES':
+        import qpoases
         exportPath = qpoases.exportPhase2(cgOptions, files)
+    elif ocpOptions['QP_SOLVER'] == 'QP_HPMPC':
+        import hpmpc
+        exportPath = hpmpc.exportPhase2(cgOptions, files)
     else:
         raise Exception('the impossible happened, unsupported qp solver: "'+str(ocpOptions['QP_SOLVER'])+'"')
 
