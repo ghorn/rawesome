@@ -191,23 +191,39 @@ def setupModel(dae, conf):
         t2 = t2 * gamma_homotopy + dae.addZ('t2_homotopy') * (1 - gamma_homotopy)
         t3 = t3 * gamma_homotopy + dae.addZ('t3_homotopy') * (1 - gamma_homotopy)
         
-    if 'useVirtualForces' in conf and conf[ 'useVirtualForces' ] is True:
-        dae.addU('df1_disturbance')
-        dae.addU('df2_disturbance')
-        dae.addU('df3_disturbance')
+    if 'useVirtualForces' in conf:
+        _v = conf[ 'useVirtualForces' ]
         
-        f1 += dae['rho_sref_v2'] * dae.addX('f1_disturbance')
-        f2 += dae['rho_sref_v2'] * dae.addX('f2_disturbance')
-        f3 += dae['rho_sref_v2'] * dae.addX('f3_disturbance')
+        if isinstance(_v, bool) and _v is True:
+            dae.addU('df1_disturbance')
+            dae.addU('df2_disturbance')
+            dae.addU('df3_disturbance')
         
-    if 'useVirtualTorques' in conf and conf[ 'useVirtualTorques' ] is True:
-        dae.addU('dt1_disturbance')
-        dae.addU('dt2_disturbance')
-        dae.addU('dt3_disturbance')
+            f1 += dae['rho_sref_v2'] * dae.addX('f1_disturbance')
+            f2 += dae['rho_sref_v2'] * dae.addX('f2_disturbance')
+            f3 += dae['rho_sref_v2'] * dae.addX('f3_disturbance')
+            
+        elif isinstance(_v, str) and _v == 'parameter':
+            f1 += dae['rho_sref_v2'] * dae.addX('f1_disturbance')
+            f2 += dae['rho_sref_v2'] * dae.addX('f2_disturbance')
+            f3 += dae['rho_sref_v2'] * dae.addX('f3_disturbance')
         
-        t1 += dae['rho_sref_v2'] * conf['bref'] * dae.addX('t1_disturbance')
-        t2 += dae['rho_sref_v2'] * conf['cref'] * dae.addX('t2_disturbance')
-        t3 += dae['rho_sref_v2'] * conf['bref'] * dae.addX('t3_disturbance')
+    if 'useVirtualTorques' in conf:
+        _v = conf[ 'useVirtualTorques' ]
+        
+        if isinstance(_v, bool) and _v is True:
+            dae.addU('dt1_disturbance')
+            dae.addU('dt2_disturbance')
+            dae.addU('dt3_disturbance')
+            
+            t1 += dae['rho_sref_v2'] * conf['bref'] * dae.addX('t1_disturbance')
+            t2 += dae['rho_sref_v2'] * conf['cref'] * dae.addX('t2_disturbance')
+            t3 += dae['rho_sref_v2'] * conf['bref'] * dae.addX('t3_disturbance')
+            
+        elif isinstance(_v, str) and _v == 'parameter':
+            t1 += dae['rho_sref_v2'] * conf['bref'] * dae.addX('t1_disturbance')
+            t2 += dae['rho_sref_v2'] * conf['cref'] * dae.addX('t2_disturbance')
+            t3 += dae['rho_sref_v2'] * conf['bref'] * dae.addX('t3_disturbance')
 
     # mass matrix
     mm = C.SXMatrix(8, 8)
@@ -401,7 +417,7 @@ def carouselModel(conf):
         norm = dae['cos_delta']**2 + dae['sin_delta']**2
 
         if 'stabilize_invariants' in conf and conf['stabilize_invariants'] == True:
-            pole_delta = 0.5
+            pole_delta = 0.5    
         else:
             pole_delta = 0.0
 
@@ -496,19 +512,39 @@ def carouselModel(conf):
     if 'flaps' in dae:
         ode = C.veccat([ode, dae.ddt('flaps') - dae['dflaps']])
         
-    if 'useVirtualTorques' in conf and conf[ 'useVirtualTorques' ] is True:
-        ode = C.veccat([ode,
-                        dae.ddt('t1_disturbance') - dae['dt1_disturbance'],
-                        dae.ddt('t2_disturbance') - dae['dt2_disturbance'],
-                        dae.ddt('t3_disturbance') - dae['dt3_disturbance']
-                        ])
+    if 'useVirtualTorques' in conf:
+        _v = conf[ 'useVirtualTorques' ]
         
-    if 'useVirtualForces' in conf and conf[ 'useVirtualForces' ] is True:
-        ode = C.veccat([ode,
-                        dae.ddt('f1_disturbance') - dae['df1_disturbance'],
-                        dae.ddt('f2_disturbance') - dae['df2_disturbance'],
-                        dae.ddt('f3_disturbance') - dae['df3_disturbance']
-                        ])
+        if isinstance(_v, bool) and _v is True:
+            ode = C.veccat([ode,
+                            dae.ddt('t1_disturbance') - dae['dt1_disturbance'],
+                            dae.ddt('t2_disturbance') - dae['dt2_disturbance'],
+                            dae.ddt('t3_disturbance') - dae['dt3_disturbance']
+                            ])
+            
+        elif isinstance(_v, str) and _v == 'parameter':
+            ode = C.veccat([ode,
+                            dae.ddt('t1_disturbance'),
+                            dae.ddt('t2_disturbance'),
+                            dae.ddt('t3_disturbance')
+                            ])
+        
+    if 'useVirtualForces' in conf:
+        _v = conf[ 'useVirtualForces' ]
+        
+        if isinstance(_v, bool) and _v is True:
+            ode = C.veccat([ode,
+                            dae.ddt('f1_disturbance') - dae['df1_disturbance'],
+                            dae.ddt('f2_disturbance') - dae['df2_disturbance'],
+                            dae.ddt('f3_disturbance') - dae['df3_disturbance']
+                            ])
+        
+        elif isinstance(_v, str) and _v == 'parameter':
+            ode = C.veccat([ode,
+                            dae.ddt('f1_disturbance'),
+                            dae.ddt('f2_disturbance'),
+                            dae.ddt('f3_disturbance')
+                            ]) 
         
     if 'wind_model' in conf and conf['wind_model']['name'] == 'random_walk':
         tau_wind = conf['wind_model']['tau_wind']
