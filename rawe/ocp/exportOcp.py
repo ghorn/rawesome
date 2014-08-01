@@ -139,6 +139,11 @@ def exportOcp(ocp, ocpOptions, integratorOptions, cgOptions, phase1Options):
     # #include objective/jacobian in acado_solver.c
     files['acado_solver.c'] = '#include "acado_external_functions.h"\n'+\
                               files['acado_solver.c']
+                              
+    if ocpOptions['QP_SOLVER'] == 'QP_QPDUNES':
+        # Patch the source if we are using qpDUNES
+        files['acado_solver.c'] = files['acado_solver.c'].replace("#include <qpDUNES.h>",
+                                                                  "#include <qpdunes/qpDUNES.h>")
 
     # make c++ file with everything included
     files['everything.cpp'] = '''\
@@ -166,6 +171,9 @@ ACADOvariables acadoVariables;
     elif ocpOptions['QP_SOLVER'] == 'QP_HPMPC':
         import hpmpc
         exportPath = hpmpc.exportPhase2(cgOptions, files)
+    elif ocpOptions['QP_SOLVER'] == 'QP_QPDUNES':
+        import qpdunes
+        exportPath = qpdunes.exportPhase2(cgOptions, files)
     else:
         raise Exception('the impossible happened, unsupported qp solver: "'+str(ocpOptions['QP_SOLVER'])+'"')
 
