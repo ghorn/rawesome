@@ -42,7 +42,10 @@ class OcpExportOptions(Options):
         self.add(OptInt('MAX_NUM_QP_ITERATIONS',default=-1))
         self.add(OptStr('CG_CONDENSED_HESSIAN_CHOLESKY',
                         ['EXTERNAL','INTERNAL_N3','INTERNAL_N2'],
-                        default='EXTERNAL'))    
+                        default='EXTERNAL'))
+        self.add(OptStr('PRINTLEVEL',
+                        ['NONE','MEDIUM','HIGH', 'DEBUG'],
+                        default='NONE'))
 
 class Ocp(object):
     def __init__(self, dae, N = None, ts = None, yxNames = None, yuNames = None, useLinearObjTerms = False, hashPrefix = 'ocp'):
