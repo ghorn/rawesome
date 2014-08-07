@@ -87,7 +87,7 @@ ocp.a : $(CXX_OBJ) $(C_OBJ)
 
 ocp.o : $(CXX_OBJ) $(C_OBJ)
 \t@echo ld $@ : ld -r $? -o $@
-\t@ld -r -lhpmpc $? -o $@
+\t@ld -r $? -o $@
 
 clean :
 \t@echo rm -f ocp.a $(CXX_OBJ) $(C_OBJ) ocp.so
