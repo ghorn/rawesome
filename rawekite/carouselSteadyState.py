@@ -28,9 +28,8 @@ def makeOrthonormal(g, R):
     g.add(rhon[0], '==', 0, tag = ('R1[0]: ( e1^T X e2 - e3 )[0] == 0', None))
     g.add(rhon[2], '==', 0, tag = ('R1[0]: ( e1^T X e2 - e3 )[1] == 0', None))
     g.add(rhon[1], '==', 0, tag = ('R1[0]: ( e1^T X e2 - e3 )[2] == 0', None))
-
-def getSteadyState(dae, conf, omega0, r0, ref_dict = {},
-                   bounds = None, dotBounds = None, guess = None, dotGuess = None, verbose = True):
+    
+def getSteadyStateNlpFunctions(dae, ref_dict = {}):
     # make steady state model
     g = Constraints()
     g.add(dae.getResidual(), '==', 0, tag = ('dae residual', None))
@@ -42,7 +41,8 @@ def getSteadyState(dae, conf, omega0, r0, ref_dict = {},
     constrainInvariantErrs()
 
     # Rotational velocity time derivative
-    g.add(C.mul(dae['R_c2b'].T, dae['w_bn_b']) - C.veccat([0, 0, omega0]) , '==', 0, tag =
+    # NOTE: In the following constraint omega0 was hard-coded.
+    g.add(C.mul(dae['R_c2b'].T, dae['w_bn_b']) - C.veccat([0, 0, dae['ddelta']]) , '==', 0, tag =
                        ("Rotational velocities", None))
 
     for name in ['alpha_deg', 'beta_deg', 'cL']:
@@ -53,11 +53,14 @@ def getSteadyState(dae, conf, omega0, r0, ref_dict = {},
     obj = 0
     for name in ['aileron', 'elevator', 'rudder', 'flaps']:
         if name in dae:
-            obj += dae[name] ** 2
-    ffcn = C.SXFunction([dvs], [obj])
-    gfcn = C.SXFunction([dvs], [g.getG()])
-    ffcn.init()
-    gfcn.init()
+            obj += dae[name] ** 2 
+    
+    return dvs, obj, g.getG(), g.getLb(), g.getUb()
+
+def getSteadyState(dae, conf, omega0, r0, ref_dict = {},
+                   bounds = None, dotBounds = None, guess = None, dotGuess = None, verbose = True):
+    
+    dvs, ffcn, gfcn, lbg, ubg = getSteadyStateNlpFunctions(dae, ref_dict)
 
     if guess is None:
         guess = {'x':r0, 'y':0, 'z':0,
@@ -196,9 +199,10 @@ def getSteadyState(dae, conf, omega0, r0, ref_dict = {},
 #            mc.messages.append("iter: "+str(self.iter))
 #            self.iter += 1
 #            publisher.send_multipart(["multi-carousel", mc.SerializeToString()])
+        
+    nlp = C.SXFunction(C.nlpIn(x = dvs), C.nlpOut(f = ffcn, g = gfcn))
 
-
-    solver = C.IpoptSolver(ffcn, gfcn)
+    solver = C.IpoptSolver( nlp )
 #    def addCallback():
 #        nd = len(boundsVec)
 #        nc = g.getLb().size()
@@ -213,8 +217,8 @@ def getSteadyState(dae, conf, omega0, r0, ref_dict = {},
         solver.setOption('print_time',False)
     solver.init()
 
-    solver.setInput(g.getLb(), 'lbg')
-    solver.setInput(g.getUb(), 'ubg')
+    solver.setInput(lbg, 'lbg')
+    solver.setInput(ubg, 'ubg')
     solver.setInput(guessVec, 'x0')
     lb, ub = zip(*boundsVec)
     solver.setInput(C.DMatrix(lb), 'lbx')
