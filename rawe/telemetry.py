@@ -29,7 +29,7 @@ def startTelemetry(ocp, callbacks=[],
 
     class MyCallback:
         def __call__(self,f,*args):
-            xOpt = numpy.array(f.input('x'))
+            xOpt = numpy.array(f.getOutput('x'))
 
             if not hasattr(self, 'print_counter'):
                 self.print_counter = 0

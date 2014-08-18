@@ -69,7 +69,7 @@ class Constraints():
 
         assert isinstance(glb,np.ndarray)
         assert isinstance(gub,np.ndarray)
-        assert isinstance(g,C.SXMatrix) or isinstance(g,C.MX)
+        assert isinstance(g,C.SX) or isinstance(g,C.MX)
         assert g.size()==glb.size and g.size()==gub.size
         self._g.append(g)
         self._glb.append(glb)

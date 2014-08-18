@@ -399,7 +399,7 @@ class OutputMap(object):
     def __init__(self,outputMapGenerator,dvs):
         if type(dvs) == C.MX:
             allOutputs = outputMapGenerator.fEveryOutput.call([dvs])
-        elif type(dvs) == C.SXMatrix:
+        elif type(dvs) == C.SX:
             allOutputs = outputMapGenerator.fEveryOutput.eval([dvs])
         elif type(dvs) in [np.ndarray,C.DMatrix]:
             def scalarToFloat(val):

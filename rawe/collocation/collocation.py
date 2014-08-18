@@ -16,6 +16,7 @@
 # along with rawesome.  If not, see <http://www.gnu.org/licenses/>.
 
 import casadi as CS
+from casadi import pycallback
 import numpy as np
 import numbers
 import sys
@@ -39,7 +40,7 @@ class LagrangePoly(object):
 
     def _mkLagrangePolynomials(self):
         # Collocation point
-        tau = CS.ssym("_tau")
+        tau = CS.SX.sym("_tau")
 
         # lagrange polynomials
         self.lfcns = []
@@ -59,24 +60,25 @@ class LagrangePoly(object):
                     L *= (tau-self.tau_root[k])/(self.tau_root[j]-self.tau_root[k])
             lfcn = CS.SXFunction([tau],[L])
             lfcn.init()
+            lfcn = lfcn.jacobian()
+            lfcn.init()
             self.lfcns.append(lfcn)
             # Evaluate the polynomial at the final time to get the coefficients of the continuity equation
             lfcn.setInput(1.0)
             lfcn.evaluate()
-            self.lAtOne[j] = lfcn.output()
+            self.lAtOne[j] = lfcn.getOutput(1)
             # Evaluate the time derivative of the polynomial at all collocation points to get the coefficients of the collocation equation
             for k in range(self.deg+1):
                 lfcn.setInput(self.tau_root[k])
-                lfcn.setFwdSeed(1.0)
-                lfcn.evaluate(1,0)
-                self.lDotAtTauRoot[k,j] = lfcn.fwdSens()
+                lfcn.evaluate()
+                self.lDotAtTauRoot[k,j] = lfcn.getOutput(0)
 
     def interp(self,tau,zs):
         ret = 0.0
         for j in range(deg+1):
             self.lfcns[j].setInput(tau)
             self.lfcns[j].evaluate()
-            ret += self.lfcn.output()*zs[j]
+            ret += self.lfcn.getOutput(1)*zs[j]
 
         return ret
 
@@ -169,7 +171,7 @@ class Coll():
         self._constraints = Constraints()
 
         # setup NLP variables
-        self._dvMap = collmaps.VectorizedReadOnlyCollMap(self,"design var map",CS.msym("V",self.getNV()))
+        self._dvMap = collmaps.VectorizedReadOnlyCollMap(self,"design var map",CS.MX.sym("V",self.getNV()))
 
         # quadratures
         self._quadratureManager = collmaps.QuadratureManager(self)
@@ -454,22 +456,13 @@ class Coll():
 
         # solver callback (optional)
         if callback is not None:
-            nd = self._dvMap.vectorize().size()
-            nc = self._constraints.getG().size()
-
-            c = CS.PyFunction( callback,
-                               CS.nlpSolverOut(x = CS.sp_dense(nd,1),
-                                               f = CS.sp_dense(1,1),
-                                               lam_x = CS.sp_dense(nd,1),
-                                               lam_g = CS.sp_dense(nc,1),
-                                               lam_p = CS.sp_dense(0,1),
-                                               g = CS.sp_dense(nc,1) ),
-                               [CS.sp_dense(1,1)] )
-            c.init()
+            @pycallback
+            def c(f):
+                return callback(f)
             solverOpts.append( ("iteration_callback", c) )
 
         # Allocate an NLP solver
-        self.solver = CS.IpoptSolver(nlp)
+        self.solver = CS.NlpSolver("ipopt",nlp)
 #        self.solver = CS.WorhpSolver(nlp)
 #        self.solver = CS.SQPMethod(nlp)
 
@@ -532,7 +525,7 @@ class Coll():
         self.solver.setInput(vars_ub,'ubx')
 
         # Solve the problem
-        self.solver.solve()
+        self.solver.evaluate()
         traj = trajectory.TrajectoryPlotter(self,np.array(self.solver.output('x')))
 
         # print active bounds/constraints

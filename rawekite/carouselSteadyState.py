@@ -25,9 +25,9 @@ def makeOrthonormal(g, R):
     g.add(C.mul(R[1, :], R[0, :].T), '==', 0, tag = ('R1[0]: e2^T * e1 == 0', None))
     g.add(C.mul(R[1, :], R[1, :].T), '==', 1, tag = ('R1[0]: e2^T * e2 == 1', None))
     rhon = C.cross(R[0, :], R[1, :]) - R[2, :]
-    g.add(rhon[0], '==', 0, tag = ('R1[0]: ( e1^T X e2 - e3 )[0] == 0', None))
-    g.add(rhon[2], '==', 0, tag = ('R1[0]: ( e1^T X e2 - e3 )[1] == 0', None))
-    g.add(rhon[1], '==', 0, tag = ('R1[0]: ( e1^T X e2 - e3 )[2] == 0', None))
+    g.add(rhon[0,0], '==', 0, tag = ('R1[0]: ( e1^T X e2 - e3 )[0] == 0', None))
+    g.add(rhon[0,2], '==', 0, tag = ('R1[0]: ( e1^T X e2 - e3 )[1] == 0', None))
+    g.add(rhon[0,1], '==', 0, tag = ('R1[0]: ( e1^T X e2 - e3 )[2] == 0', None))
     
 def getSteadyStateNlpFunctions(dae, ref_dict = {}):
     # make steady state model
@@ -202,7 +202,7 @@ def getSteadyState(dae, conf, omega0, r0, ref_dict = {},
         
     nlp = C.SXFunction(C.nlpIn(x = dvs), C.nlpOut(f = ffcn, g = gfcn))
 
-    solver = C.IpoptSolver( nlp )
+    solver = C.NlpSolver("ipopt", nlp )
 #    def addCallback():
 #        nd = len(boundsVec)
 #        nc = g.getLb().size()
@@ -224,7 +224,7 @@ def getSteadyState(dae, conf, omega0, r0, ref_dict = {},
     solver.setInput(C.DMatrix(lb), 'lbx')
     solver.setInput(C.DMatrix(ub), 'ubx')
 
-    solver.solve()
+    solver.evaluate()
     ret = solver.getStat('return_status')
     assert ret in ['Solve_Succeeded', 'Solved_To_Acceptable_Level'], 'Solver failed: ' + ret
 

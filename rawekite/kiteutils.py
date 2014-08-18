@@ -69,9 +69,9 @@ def get_orthonormal_constraints(R):
     ret.append( (C.mul(R[1,:],R[0,:].T),      'R1[0]: e2^T * e1     == 0') )
     ret.append( (C.mul(R[1,:],R[1,:].T) - 1,  'R1[0]: e2^T * e2 - 1 == 0') )
     rhon = C.cross(R[0,:],R[1,:]) - R[2,:]
-    ret.append( (rhon[0], 'R1[0]: ( e1^T X e2 - e3 )[0] == 0') )
-    ret.append( (rhon[2], 'R1[0]: ( e1^T X e2 - e3 )[1] == 0') )
-    ret.append( (rhon[1], 'R1[0]: ( e1^T X e2 - e3 )[2] == 0') )
+    ret.append( (rhon[0,0], 'R1[0]: ( e1^T X e2 - e3 )[0] == 0') )
+    ret.append( (rhon[0,2], 'R1[0]: ( e1^T X e2 - e3 )[1] == 0') )
+    ret.append( (rhon[0,1], 'R1[0]: ( e1^T X e2 - e3 )[2] == 0') )
     return ret
 
 def makeOrthonormal(ocp_,R):

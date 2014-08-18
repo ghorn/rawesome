@@ -130,7 +130,7 @@ def aeroForcesTorques(dae, conf, v_bw_f, v_bw_b, w_bn_b, (eTe_f_1, eTe_f_2, eTe_
     dae['momentCoeffs_AB'] = momentCoeffs_AB
 
     # with control surfaces
-    momentCoeffs_surf = C.SXMatrix(3, 1, 0)
+    momentCoeffs_surf = C.SX.zeros(3,1)
     momentCoeffs_surf[0] += conf['cl_ail']*dae['aileron']
     momentCoeffs_surf[1] += conf['cm_elev']*dae['elevator']
     if 'flaps' in dae:
