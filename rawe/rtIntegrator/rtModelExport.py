@@ -29,14 +29,14 @@ def generateCModel(dae,timeScaling,measurements):
     rhs = C.SXFunction( [inputs], [f] )
     rhs.init()
     # handle time scaling
-    [f] = rhs.eval([C.veccat([dae.xVec(), dae.zVec(), dae.uVec(), dae.pVec(), xdot/timeScaling])])
-    rhs = C.SXFunction( [inputs], [C.densify(f)] )
+    [f] = rhs([C.veccat([dae.xVec(), dae.zVec(), dae.uVec(), dae.pVec(), xdot/timeScaling])])
+    rhs = C.SXFunction( [inputs], [C.dense(f)] )
     rhs.init()
     rhsString = codegen.writeCCode(rhs, 'rhs')
 
     # dae residual jacobian
     jf = C.veccat( [ C.jacobian(f,jacobian_inputs).T ] )
-    rhsJacob = C.SXFunction( [inputs], [C.densify(jf)] )
+    rhsJacob = C.SXFunction( [inputs], [C.dense(jf)] )
     rhsJacob.init()
     rhsJacobString = codegen.writeCCode(rhsJacob, 'rhsJacob')
 
@@ -49,8 +49,8 @@ def generateCModel(dae,timeScaling,measurements):
         # measurements
         measurementsFun = C.SXFunction( [inputs], [measurements] )
         measurementsFun.init()
-        [measurements] = measurementsFun.eval([C.veccat([dae.xVec(), dae.zVec(), dae.uVec(), dae.pVec(), xdot/timeScaling])])
-        measurementsFun = C.SXFunction( [inputs], [C.densify(measurements)] )
+        [measurements] = measurementsFun([C.veccat([dae.xVec(), dae.zVec(), dae.uVec(), dae.pVec(), xdot/timeScaling])])
+        measurementsFun = C.SXFunction( [inputs], [C.dense(measurements)] )
         measurementsFun.init()
         measurementsString = codegen.writeCCode(measurementsFun, 'measurements')
         ret['measurements'] = measurementsFun
@@ -58,7 +58,7 @@ def generateCModel(dae,timeScaling,measurements):
 
         # measurements jacobian
         jo = C.veccat( [ C.jacobian(measurements,jacobian_inputs).T ] )
-        measurementsJacobFun = C.SXFunction( [inputs], [C.densify(jo)] )
+        measurementsJacobFun = C.SXFunction( [inputs], [C.dense(jo)] )
         measurementsJacobFun.init()
         measurementsJacobString = codegen.writeCCode(measurementsJacobFun, 'measurementsJacob')
         ret['measurementsJacob'] = measurementsJacobFun

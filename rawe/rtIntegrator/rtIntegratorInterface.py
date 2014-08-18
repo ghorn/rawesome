@@ -76,7 +76,7 @@ int export_integrator( const char * genPath)
   DVector Meas( 1 );
   Meas( 0 ) = 1;
   sim.addOutput("measurements", "measurementsJacob", %(outputDimension)d, Meas);
-''' % {'outputDimension':C.densify(measurements).size()}
+''' % {'outputDimension':C.dense(measurements).size()}
     ret +='''
   sim.set( GENERATE_MAKE_FILE, false );
     

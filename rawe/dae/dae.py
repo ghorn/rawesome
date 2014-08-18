@@ -92,7 +92,7 @@ class Dae(object):
         self.assertUniqueName(name)
         namelist.append(name)
 
-        ret = C.ssym(name)
+        ret = C.SX.sym(name)
         self._syms[name] = ret
         return ret
 
@@ -105,7 +105,7 @@ class Dae(object):
         try:
             return self._dummyDdtMap[name]
         except KeyError:
-            self._dummyDdtMap[name] = C.ssym('_DotDummy_'+name)
+            self._dummyDdtMap[name] = C.SX.sym('_DotDummy_'+name)
             return self.ddt(name)
 
     def setResidual(self,res):
@@ -298,7 +298,7 @@ class Dae(object):
         z    = C.veccat([zDict[name] for name in self.zNames()])
         # plug in xdot, z solution to outputs fun
         fAll.init()
-        outputs = fAll.eval([xDot, self.xVec(), z, self.uVec(), self.pVec()])
+        outputs = fAll([xDot, self.xVec(), z, self.uVec(), self.pVec()])
         # make new SXFunction that is only fcn of [x, u, p]
         f = C.SXFunction([self.xVec(), self.uVec(), self.pVec()], outputs)
 
@@ -356,7 +356,7 @@ class Dae(object):
         # get the constant term
         fg_fun = C.SXFunction([self.xVec(),self.zVec(),self.uVec(),self.pVec(),self.xDotVec()], [fg])
         fg_fun.init()
-        [fg_zero] = fg_fun.eval([self.xVec(),0*self.zVec(),self.uVec(),self.pVec(),0*self.xDotVec()])
+        [fg_zero] = fg_fun([self.xVec(),0*self.zVec(),self.uVec(),self.pVec(),0*self.xDotVec()])
         testFun = C.SXFunction([self.xVec(),self.uVec(),self.pVec()], [fg_zero])
         testFun.init()
         assert len(testFun.getFree()) == 0, \
@@ -390,7 +390,7 @@ class Dae(object):
         oldFunctions.init()
 
         # construct outputs and residual as a function of x/u/p only
-        newOutputs = oldFunctions.eval([self.xVec(), z, self.uVec(), self.pVec(), xDot])
+        newOutputs = oldFunctions([self.xVec(), z, self.uVec(), self.pVec(), xDot])
         newFunctions = C.SXFunction([self.xVec(),self.uVec(),self.pVec()], newOutputs)
         newFunctions.init()
 
@@ -399,7 +399,7 @@ class Dae(object):
         xs = C.veccat([dae.addX(name) for name in self.xNames()])
         us = C.veccat([dae.addU(name) for name in self.uNames()])
         ps = C.veccat([dae.addP(name) for name in self.pNames()])
-        outs = newFunctions.eval([xs,us,ps])
+        outs = newFunctions([xs,us,ps])
         newXdot = outs[0]
         newZ = outs[1]
         res = []

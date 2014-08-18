@@ -71,7 +71,7 @@ def writeObjective(ocp, out0, exportName):
 
     # plug in xdot, z solution to outputs fun
     outputFun0.init()
-    [out] = outputFun0.eval([xDot, dae.xVec(), z, dae.uVec(), dae.pVec()])
+    [out] = outputFun0([xDot, dae.xVec(), z, dae.uVec(), dae.pVec()])
 
     # make sure each element in the output is only a function of x or u, not both
     testSeparation(dae,out,exportName)
@@ -80,13 +80,13 @@ def writeObjective(ocp, out0, exportName):
     if exportName == 'lsqExtern':
         inputs = C.veccat([dae.xVec(), dae.uVec(), dae.pVec()])
         outs = C.veccat( [ out, C.jacobian(out,dae.xVec()).T, C.jacobian(out,dae.uVec()).T ] )
-        outputFun = C.SXFunction([inputs], [C.densify(outs)])
+        outputFun = C.SXFunction([inputs], [C.dense(outs)])
         outputFun.init()
         assert len(outputFun.getFree()) == 0, 'the "impossible" happened >_<'
     elif exportName == 'lsqEndTermExtern':
         inputs = C.veccat([dae.xVec(), dae.pVec()])
         outs = C.veccat( [ out, C.jacobian(out,dae.xVec()).T ] )
-        outputFun = C.SXFunction([inputs], [C.densify(outs)])
+        outputFun = C.SXFunction([inputs], [C.dense(outs)])
         outputFun.init()
         assert len(outputFun.getFree()) == 0, 'lsqEndTermExtern cannot be a function of controls u, saw: '+str(outputFun.getFree())
     else:

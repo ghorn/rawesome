@@ -117,8 +117,8 @@ def writeAcadoAlgorithm(ocp, dae):
             elif op==C.OP_OUTPUT:
 #                assert i1==0, "oh noes, OUTPUT IS MULTIDIMENSIONAL!!!"
 #                write( '%(spaces)sf << 0 == %(work)s_%(i2)d;' % replace )
-                rowidx = f.output(i1).sparsity().getRow()[i3]
-                colidx = f.output(i1).sparsity().col()[i3]
+                rowidx = f.output(i1).sparsity().row()[i3]
+                colidx = f.output(i1).sparsity().getCol()[i3]
                 assert colidx==0 and rowidx==0 and i3==0, 'non-scalars not supported in ocp constraints, colIdx: '+str(colidx)+', rowidx: '+str(rowidx)+', i3: '+str(i3)
 
                 # different names and indexes for {constraints, dae residual, lsq, lsqEnd}

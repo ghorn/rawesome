@@ -282,11 +282,11 @@ class Ocp(object):
             raise Exception(usage)
 
     def _constrainOne(self, lhs, comparison, rhs, when=None):
-        if type(lhs) == C.SXMatrix:
+        if type(lhs) == C.SX:
             assert lhs.shape == (1,1), "lhs must be scalar, got matrix with shape: "+str(lhs.shape)
         else:
             assert type(lhs) in [int,float], "lhs type unrecognized: "+str(type(lhs))
-        if type(rhs) == C.SXMatrix:
+        if type(rhs) == C.SX:
             assert rhs.shape == (1,1), "rhs must be scalar, got matrix with shape: "+str(rhs.shape)
         else:
             assert type(rhs) in [int,float], "rhs type unrecognized: "+str(type(rhs))
@@ -323,7 +323,7 @@ class Ocp(object):
             j = coeffs.keys()[0]
             coeff = coeffs[j]
             name = (self.dae.xNames()+self.dae.uNames())[j]
-            [f0] = f.eval([0*inputs])
+            [f0] = f([0*inputs])
             # if we just divided by a negative number (coeff), flip the comparison
             if not coeff.toScalar().isNonNegative():
                 # lhs       `cmp`       rhs
@@ -368,7 +368,7 @@ class Ocp(object):
     def __minimizeLsq(self, obj):
         if isinstance(obj, list):
             obj = C.veccat(obj)
-        C.makeDense(obj)
+        obj.densify()
         shape = obj.shape
         assert shape[0] == 1 or shape[1] == 1, 'objective cannot be matrix, got shape: '+str(shape)
         assert not hasattr(self, '_minLsq'), 'you can only call __minimizeLsq once'
@@ -377,7 +377,7 @@ class Ocp(object):
     def __minimizeLsqEndTerm(self, obj):
         if isinstance(obj, list):
             obj = C.veccat(obj)
-        C.makeDense(obj)
+        obj.densify()
         shape = obj.shape
         assert shape[0] == 1 or shape[1] == 1, 'objective cannot be matrix, got shape: '+str(shape)
         assert not hasattr(self, '_minLsqEndTerm'), 'you can only call __minimizeLsqEndTerm once'
