@@ -36,7 +36,7 @@ toNice dae = NiceKite { nk_xyz = xyz
                       , nk_r'n0't0 = r'n0't0
                       , nk_lineAlpha = 0.2 -- realToFrac $ fromMaybe 1 (CS.lineTransparency cs)
                       , nk_kiteAlpha = 1 -- realToFrac $ fromMaybe 1 (CS.kiteTransparency cs)
-                      , nk_visSpan = 3 -- fromMaybe 1 (CS.visSpan cs)
+                      , nk_visSpan = 0.6 -- fromMaybe 1 (CS.visSpan cs)
                       }
   where
     daeX = PD.differentialStates dae
