@@ -439,7 +439,7 @@ class Coll():
             msg += ", all fields found"
         print msg
 
-    def setupSolver(self,solverOpts=[],constraintFunOpts=[],callback=None):
+    def setupSolver(self,solverOpts=[],constraintFunOpts=[],callback=None,solver='ipopt'):
         if not self.collocationIsSetup:
             raise ValueError("you forgot to call setupCollocation")
 
@@ -462,9 +462,7 @@ class Coll():
             solverOpts.append( ("iteration_callback", c) )
 
         # Allocate an NLP solver
-        self.solver = CS.NlpSolver("ipopt",nlp)
-#        self.solver = CS.WorhpSolver(nlp)
-#        self.solver = CS.SQPMethod(nlp)
+        self.solver = CS.NlpSolver(solver,nlp)
 
         # Set options
         setFXOptions(self.solver, solverOpts)
@@ -548,7 +546,7 @@ class Coll():
         printConstraintViolation()
 
         ret = self.solver.getStat('return_status')
-        assert ret in ['Solve_Succeeded','Solved_To_Acceptable_Level'], 'Solver failed: '+ret
+        assert ret in ['Solve_Succeeded','Solved_To_Acceptable_Level',1], 'Solver failed: '+ret
 
         # Print the optimal cost
         print "optimal cost: ", float(self.solver.output('f'))

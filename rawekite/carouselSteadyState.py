@@ -210,7 +210,7 @@ def getSteadyState(dae, conf, omega0, r0, ref_dict = {},
 #        c.init()
 #        solver.setOption("iteration_callback", c)
 #    addCallback()
-    solver.setOption('max_iter', 10000)
+#    solver.setOption('max_iter', 10000)
 #    solver.setOption('tol',1e-14)
     if verbose is False:
         solver.setOption('suppress_all_output','yes')
@@ -226,7 +226,7 @@ def getSteadyState(dae, conf, omega0, r0, ref_dict = {},
 
     solver.evaluate()
     ret = solver.getStat('return_status')
-    assert ret in ['Solve_Succeeded', 'Solved_To_Acceptable_Level'], 'Solver failed: ' + ret
+    assert ret in ['Solve_Succeeded', 'Solved_To_Acceptable_Level',1], 'Solver failed: '+str(ret)
 
 #    publisher.close()
 #    context.destroy()

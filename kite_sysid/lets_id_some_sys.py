@@ -265,14 +265,21 @@ if __name__=='__main__':
             ], printBoundViolation=False, printConstraintViolation=False)
 
     # solver
-    solverOptions = [("linear_solver","ma86"),
+    solverOptions = [("expand",True),
+                     ("linear_solver","ma86"),
                      ("max_iter",1000),
-                     ("expand",True),
-                     ("tol",1e-10)]
+                     ("tol",1e-10)
+                     #("_optimality_tolerance",1e-10),
+                     #("_feasibility_tolerance",1e-13),
+                     #("_detect_linear",False),
+                     ]
 
     print "setting up solver..."
     ocp.setupSolver( solverOpts=solverOptions,
-                     callback=callback )
+                     callback=callback,
+                     solver='ipopt'
+                     #solver='snopt'
+                   )
 
     xInit = None
 #    ocp.bound('gamma_homotopy',(1e-4,1e-4),force=True)
