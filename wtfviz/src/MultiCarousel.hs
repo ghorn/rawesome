@@ -24,45 +24,45 @@ module MultiCarousel ( NiceKite(..)
                      , runMultiCarousel
                      ) where
 
-#if OSX
-import qualified System.ZMQ3 as ZMQ
-#else
-import qualified System.ZMQ as ZMQ
-#endif
+import qualified System.ZMQ4 as ZMQ
 import qualified Control.Concurrent as CC
-import Control.Monad ( forever, when )
+import Control.Monad ( forever, when, unless )
+import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
+import qualified Data.ByteString.Char8 as BS8
 import Text.ProtocolBuffers ( messageGet )
 import Text.ProtocolBuffers ( ReflectDescriptor, Wire )
 
-import SpatialMath
-import qualified Xyz
+import Linear hiding ( norm )
 import Vis
 import DrawAC
 import ParseArgs ( getip )
 
 data State = State [NiceKite] [String]
 
-data NiceKite = NiceKite { nk_xyz :: Xyz Double
-                         , nk_q'n'b :: Quat Double
-                         , nk_r'n0'a0 :: Xyz Double
-                         , nk_r'n0't0 :: Xyz Double
+data NiceKite = NiceKite { nk_xyz :: V3 Double
+                         , nk_q'n'b :: Quaternion Double
+                         , nk_r'n0'a0 :: V3 Double
+                         , nk_r'n0't0 :: V3 Double
                          , nk_lineAlpha :: Float
                          , nk_kiteAlpha :: Float
                          , nk_visSpan :: Double
                          }
+
+norm :: Floating a => V3 a -> a
+norm (V3 x y z) = sqrt $ x*x + y*y + z*z
 
 drawOneKite :: Double -> NiceKite -> (VisObject Double, Double)
 drawOneKite minLineLength niceKite
   | nk_lineAlpha niceKite > 0 = (VisObjects [ac, arm, line], z)
   | otherwise = (ac, z)
   where
-    pos@(Xyz _ _ z) = nk_xyz niceKite
+    pos@(V3 _ _ z) = nk_xyz niceKite
     quat = nk_q'n'b niceKite
     r'n0'a0 = nk_r'n0'a0 niceKite
     r'n0't0 = nk_r'n0't0 niceKite
 
-    arm  = Line [Xyz 0 0 0, r'n0'a0] $ makeColor 1 1 0 (nk_lineAlpha niceKite)
+    arm  = Line [V3 0 0 0, r'n0'a0] $ makeColor 1 1 0 (nk_lineAlpha niceKite)
     line = VisObjects [ line1 $ makeColor 1 0.2 0 (nk_lineAlpha niceKite)
                       , line2 $ makeColor 0 1 1 (nk_lineAlpha niceKite)
                       ]
@@ -72,12 +72,12 @@ drawOneKite minLineLength niceKite
 
         rMid = r'n0'a0 + fmap (* (1 - minLineLength/normDr)) dr
         dr = r'n0't0 - r'n0'a0
-        normDr = Xyz.norm dr
+        normDr = norm dr
 
 
     s = nk_visSpan niceKite
     ac = Trans pos $ Scale (s,s,s) ac'
-    (ac',_) = drawAc (nk_kiteAlpha niceKite) (Xyz 0 0 0) quat
+    (ac',_) = drawAc (nk_kiteAlpha niceKite) (V3 0 0 0) quat
 
 drawFun :: State -> VisObject Double
 drawFun (State [] _) = VisObjects []
@@ -85,16 +85,16 @@ drawFun (State niceKites messages) = VisObjects $ [axes,txt] ++ [plane] ++ kites
   where
     minLineLength = minimum $ map lineLength niceKites
       where
-        lineLength nk = Xyz.norm (nk_r'n0't0 nk - nk_r'n0'a0 nk)
+        lineLength nk = norm (nk_r'n0't0 nk - nk_r'n0'a0 nk)
 
     (kites,zs) = unzip $ map (drawOneKite minLineLength) niceKites
     z = maximum zs
 --    points = Points (sParticles state) (Just 2) $ makeColor 1 1 1 0.5
 
     axes = Axes (0.5, 15)
---    arm  = Line [Xyz 0 0 0, r'n0'a0] $ makeColor 1 1 0 1
+--    arm  = Line [V3 0 0 0, r'n0'a0] $ makeColor 1 1 0 1
 --    line = Line [r'n0'a0, r'n0't0]   $ makeColor 0 1 1 1
-    plane = Trans (Xyz 0 0 planeZ') $ Plane (Xyz 0 0 1) (makeColor 1 1 1 1) (makeColor 0.2 0.3 0.32 planeAlpha)
+    plane = Trans (V3 0 0 planeZ') $ Plane (V3 0 0 1) (makeColor 1 1 1 1) (makeColor 0.2 0.3 0.32 planeAlpha)
 
     planeZ' = 2
     planeAlpha = 1*planeAlphaFade + (1 - planeAlphaFade)*0.2
@@ -105,38 +105,24 @@ drawFun (State niceKites messages) = VisObjects $ [axes,txt] ++ [plane] ++ kites
 --    text k = 2dText "KITEVIS 4EVER" (100,500 - k*100*x) TimesRoman24 (makeColor 0 (0.5 + x'/2) (0.5 - x'/2) 1)
 --      where
 --        x' = realToFrac $ (x + 1)/0.4*k/5
---    boxText = 3dText "I'm a plane" (Xyz 0 0 (x-0.2)) TimesRoman24 (makeColor 1 0 0 1)
+--    boxText = 3dText "I'm a plane" (V3 0 0 (x-0.2)) TimesRoman24 (makeColor 1 0 0 1)
 --    ddelta = CS.ddelta cs
 
 --    (u1,u2,tc,wind_x) = (CS.u1 cs, CS.u2 cs, CS.tc cs, CS.wind_x cs)
     txt = VisObjects $
           zipWith (\s k -> Text2d s (30,fromIntegral $ 30*k) TimesRoman24 (makeColor 1 1 1 1)) messages (reverse [1..length messages])
 
-withContext :: (ZMQ.Context -> IO a) -> IO a
-#if OSX
-withContext = ZMQ.withContext
-#else
-withContext = ZMQ.withContext 1
-#endif
-
 sub :: (ReflectDescriptor a, Wire a) => String -> (a -> State) -> String -> CC.MVar State -> IO ()
-sub channel toState ip m = withContext $ \context -> do
-#if OSX
-  let receive = ZMQ.receive
-#else
-  let receive = flip ZMQ.receive []
-#endif
+sub channel toState ip m = ZMQ.withContext $ \context -> do
   ZMQ.withSocket context ZMQ.Sub $ \subscriber -> do
     ZMQ.connect subscriber ip
-    ZMQ.subscribe subscriber channel
+    ZMQ.subscribe subscriber (BS8.pack channel)
     forever $ do
-      _ <- receive subscriber
-      mre <- ZMQ.moreToReceive subscriber
-      when mre $ do
-        msg <- receive subscriber
-        case messageGet (BL.fromChunks [msg]) of
-              Left err -> return ()
-              Right (cs,_) -> CC.swapMVar m (toState cs) >> return ()
+      channel':msg <- ZMQ.receiveMulti subscriber  :: IO [BS.ByteString]
+      unless ((BS8.unpack channel') == channel) $ error $ "bad channel: " ++ BS8.unpack channel'
+      case messageGet (BL.fromChunks msg) of
+            Left err -> error "error unpacking message"
+            Right (cs,_) -> CC.swapMVar m (toState cs) >> return ()
 
 ts :: Double
 ts = 0.02

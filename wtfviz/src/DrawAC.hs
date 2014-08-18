@@ -25,7 +25,7 @@ module DrawAC ( drawAc
 import SpatialMath
 import Vis
 
-drawAc :: Float -> Xyz Double -> Quat Double -> (VisObject Double, [Xyz Double])
+drawAc :: Float -> V3 Double -> Quaternion Double -> (VisObject Double, [V3 Double])
 drawAc alpha pos quat = (VisObjects $ wing ++ [htail,vtail,body], vtip:wingtips)
   where
 --    axes = Trans pos $ RotQuat quat $ Axes (0.5, 15)
@@ -52,20 +52,20 @@ drawAc alpha pos quat = (VisObjects $ wing ++ [htail,vtail,body], vtip:wingtips)
 
     spanV = spanW*spanVRatio
 
-    wingtips = map rotateTranslate [Xyz 0 (-spanW/2) 0, Xyz 0 (spanW/2) 0]
-    vtip = rotateTranslate $ Xyz (-deltaWingTail) 0 (-spanV)
+    wingtips = map rotateTranslate [V3 0 (-spanW/2) 0, V3 0 (spanW/2) 0]
+    vtip = rotateTranslate $ V3 (-deltaWingTail) 0 (-spanV)
 
     wing = [ Quad
-             (rotateTranslate $ Xyz ( chordW/2) ( spanW/2) 0)
-             (rotateTranslate $ Xyz ( chordW/2) (-spanW/2) 0)
-             (rotateTranslate $ Xyz (-chordW/2) (-spanW/2) 0)
-             (rotateTranslate $ Xyz (-chordW/2) ( spanW/2) 0)
+             (rotateTranslate $ V3 ( chordW/2) ( spanW/2) 0)
+             (rotateTranslate $ V3 ( chordW/2) (-spanW/2) 0)
+             (rotateTranslate $ V3 (-chordW/2) (-spanW/2) 0)
+             (rotateTranslate $ V3 (-chordW/2) ( spanW/2) 0)
              $ makeColor 0 0 1 alpha
            , Quad
-             (rotateTranslate $ Xyz (-chordW/2) ( spanW/2) (-0.01))
-             (rotateTranslate $ Xyz (-chordW/2) (-spanW/2) (-0.01))
-             (rotateTranslate $ Xyz ( chordW/2) (-spanW/2) (-0.01))
-             (rotateTranslate $ Xyz ( chordW/2) ( spanW/2) (-0.01))
+             (rotateTranslate $ V3 (-chordW/2) ( spanW/2) (-0.01))
+             (rotateTranslate $ V3 (-chordW/2) (-spanW/2) (-0.01))
+             (rotateTranslate $ V3 ( chordW/2) (-spanW/2) (-0.01))
+             (rotateTranslate $ V3 ( chordW/2) ( spanW/2) (-0.01))
              $ makeColor 1 1 0 alpha
            ]
       where
@@ -73,31 +73,31 @@ drawAc alpha pos quat = (VisObjects $ wing ++ [htail,vtail,body], vtip:wingtips)
 
 
     htail = Quad
-            (rotateTranslate $ Xyz (-deltaWingTail + chordH/2) ( spanH/2) 0)
-            (rotateTranslate $ Xyz (-deltaWingTail + chordH/2) (-spanH/2) 0)
-            (rotateTranslate $ Xyz (-deltaWingTail - chordH/2) (-spanH/2) 0)
-            (rotateTranslate $ Xyz (-deltaWingTail - chordH/2) ( spanH/2) 0)
+            (rotateTranslate $ V3 (-deltaWingTail + chordH/2) ( spanH/2) 0)
+            (rotateTranslate $ V3 (-deltaWingTail + chordH/2) (-spanH/2) 0)
+            (rotateTranslate $ V3 (-deltaWingTail - chordH/2) (-spanH/2) 0)
+            (rotateTranslate $ V3 (-deltaWingTail - chordH/2) ( spanH/2) 0)
             $ makeColor 0 0 1 alpha
       where
         spanH = spanW*spanHRatio
         chordH = spanH/arH
 
     vtail = Quad
-            (rotateTranslate $ Xyz (-deltaWingTail + chordV/2) 0 (-spanV))
-            (rotateTranslate $ Xyz (-deltaWingTail + chordV/2) 0 (     0))
-            (rotateTranslate $ Xyz (-deltaWingTail - chordV/2) 0 (     0))
-            (rotateTranslate $ Xyz (-deltaWingTail - chordV/2) 0 (-spanV))
+            (rotateTranslate $ V3 (-deltaWingTail + chordV/2) 0 (-spanV))
+            (rotateTranslate $ V3 (-deltaWingTail + chordV/2) 0 (     0))
+            (rotateTranslate $ V3 (-deltaWingTail - chordV/2) 0 (     0))
+            (rotateTranslate $ V3 (-deltaWingTail - chordV/2) 0 (-spanV))
             $ makeColor 1 1 0 alpha
       where
         chordV = spanV/arV
 
-    body = Trans (rotateTranslate (Xyz (len/2-deltaWingTail) 0 0)) $ RotQuat quat $
+    body = Trans (rotateTranslate (V3 (len/2-deltaWingTail) 0 0)) $ RotQuat quat $
            Ellipsoid (len/2, width/2, width/2) Solid (makeColor 0 0 1 alpha)
 
-drawTrails :: [[Xyz a]] -> VisObject a
+drawTrails :: [[V3 a]] -> VisObject a
 drawTrails xyzs = VisObjects $ zipWith drawTrail xyzs $ cycle [makeColor 0 0 1, makeColor 1 0 0, makeColor 0 1 0]
 
-drawTrail :: [Xyz a] -> (Float -> Color) -> VisObject a
+drawTrail :: [V3 a] -> (Float -> Color) -> VisObject a
 drawTrail trail mkCol = Line' $ zip trail (map mkCol (linspace 1 0 (length trail)))
   where
     linspace :: Fractional a => a -> a -> Int -> [a]
