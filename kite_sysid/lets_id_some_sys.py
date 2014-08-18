@@ -150,7 +150,7 @@ def setupOcp(dae,conf,nk,nicp=1,deg=4):
 
 
 if __name__=='__main__':
-    datFolder = 'smc_20140430_232938_dmhe_testing'
+    datFolder = 'data/smc_20140430_232938_dmhe_testing'
     data = {}
     for name in ['cable_length','control_surfaces','encoder',
                  'imu','led_tracker','line_angle_sensor']:
