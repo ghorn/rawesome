@@ -1,0 +1,41 @@
+-- Copyright 2012-2013 Greg Horn
+--
+-- This file is part of rawesome.
+--
+-- rawesome is free software: you can redistribute it and/or modify
+-- it under the terms of the GNU Lesser General Public License as published by
+-- the Free Software Foundation, either version 3 of the License, or
+-- (at your option) any later version.
+--
+-- rawesome is distributed in the hope that it will be useful,
+-- but WITHOUT ANY WARRANTY; without even the implied warranty of
+-- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-- GNU Lesser General Public License for more details.
+--
+-- You should have received a copy of the GNU Lesser General Public License
+-- along with rawesome.  If not, see <http://www.gnu.org/licenses/>.
+
+name:                viz
+synopsis:            Wind Turbine Flight Visualizer
+version:             0.1.0.0
+license:             LGPL-3
+license-file:        LICENSE
+build-type:          Simple
+cabal-version:       >=1.8
+
+executable multicarousel
+  hs-source-dirs:    . ../autogen ../../wtfviz/src
+  main-is:           Multi.hs
+  build-depends:     base >= 4.5.0 && < 5,
+                     cmdargs >= 0.10,
+                     random,
+                     not-gloss >= 0.5.0,
+                     spatial-math,
+                     protocol-buffers,
+                     protocol-buffers-descriptor,
+                     bytestring,
+                     linear
+
+  build-depends:   zeromq4-haskell
+
+  ghc-options:       -O2 -threaded -with-rtsopts=-T
