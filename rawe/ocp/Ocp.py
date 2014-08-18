@@ -27,7 +27,7 @@ class OcpExportOptions(Options):
         Options.__init__(self, 'OCP')
         self.add(OptStr('SPARSE_QP_SOLUTION',
                         ['CONDENSING','FULL_CONDENSING','FULL_CONDENSING_N2','SPARSE_SOLVER']))
-        self.add(OptStr('QP_SOLVER',['QP_QPOASES','QP_QPDUNES','QP_FORCES']))
+        self.add(OptStr('QP_SOLVER',['QP_QPOASES','QP_QPDUNES','QP_FORCES', 'QP_HPMPC']))
         self.add(OptStr('HESSIAN_APPROXIMATION',['GAUSS_NEWTON'],default='GAUSS_NEWTON'))
         # TODO Hide this and set it as default, MS
         self.add(OptStr('DISCRETIZATION_TYPE',['MULTIPLE_SHOOTING'],default='MULTIPLE_SHOOTING'))
@@ -43,6 +43,9 @@ class OcpExportOptions(Options):
         self.add(OptStr('CG_CONDENSED_HESSIAN_CHOLESKY',
                         ['EXTERNAL','INTERNAL_N3','INTERNAL_N2'],
                         default='EXTERNAL'))
+        self.add(OptStr('PRINTLEVEL',
+                        ['NONE','MEDIUM','HIGH', 'DEBUG'],
+                        default='NONE'))
 
 class Ocp(object):
     def __init__(self, dae, N = None, ts = None, yxNames = None, yuNames = None, useLinearObjTerms = False, hashPrefix = 'ocp'):
@@ -440,19 +443,26 @@ def generateProto(ocp, msgName):
     
     xNames = ""
     for k, name in enumerate( ocp.dae.xNames() ):
+        assert ocp[ name ].shape[ 0 ] == 1
         xNames = xNames + "idx_" + str( name ) + " = " + str( k ) + "; "
         
     zNames = ""
     for k, name in enumerate( ocp.dae.zNames() ):
+        assert ocp[ name ].shape[ 0 ] == 1
         zNames = zNames + "idx_" + str( name ) + " = " + str( k ) + "; "
         
     uNames = ""
     for k, name in enumerate( ocp.dae.uNames() ):
+        assert ocp[ name ].shape[ 0 ] == 1
         uNames = uNames + "idx_" + str( name ) + " = " + str( k ) + "; "
         
     yNames = ""
     for k, name in enumerate(ocp.yxNames + ocp.yuNames):
-        yNames = yNames + "y_" + str( name ) + " = " + str( ocp.getYOfsset( name ) ) + "; "
+        if ocp[ name ].shape[ 0 ] == 1:
+            yNames = yNames + "y_" + str( name ) + " = " + str( ocp.getYOfsset( name ) ) + "; "
+        else:
+            for l in xrange( ocp[ name ].shape[ 0 ] ):
+                yNames = yNames + "y_" + str( name ) + "_" + str( l ) + " = " + str(ocp.getYOfsset( name ) + l) + "; "
     
     proto = """\
 package %(name)sProto;
@@ -495,6 +505,9 @@ message %(name)sMsg
     
     repeated Horizon y  = 4;
     repeated float   yN = 5;
+    
+    repeated Horizon h  = 6;
+    repeated float   hN = 7;
     
     required int32 solver_status = 20;
     required float kkt_value = 21;
