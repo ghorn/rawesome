@@ -36,16 +36,16 @@ def startTelemetry(ocp, callbacks=[],
 
             if self.print_counter % 10 == 0:
                 if printBoundViolation:
-                    lbx = numpy.array(ocp.solver.input('lbx'))
-                    ubx = numpy.array(ocp.solver.input('ubx'))
+                    lbx = numpy.array(ocp.solver.getInput('lbx'))
+                    ubx = numpy.array(ocp.solver.getInput('ubx'))
                     ocp._bounds.printBoundsFeedback(xOpt,lbx,ubx,reportThreshold=-1e-6)
 
                 if printConstraintViolation:
-                    lbg = numpy.array(ocp.solver.input('lbg'))
-                    ubg = numpy.array(ocp.solver.input('ubg'))
+                    lbg = numpy.array(ocp.solver.getInput('lbg'))
+                    ubg = numpy.array(ocp.solver.getInput('ubg'))
                     ocp._gfcn.setInput(xOpt,0)
                     ocp._gfcn.evaluate()
-                    g = ocp._gfcn.output()
+                    g = ocp._gfcn.getOutput()
                     ocp._constraints.printViolations(g,lbg,ubg,reportThreshold=-1e-6)
             self.print_counter += 1
 
