@@ -58,12 +58,16 @@ if __name__=='__main__':
     (data, interval, rawData) = load(tStart, tEnd, Ts)
 
     plt.figure()
-    plt.subplot(2, 1, 1)
+    plt.subplot(3, 1, 1)
     plt.step(rawData['imu']['time'], rawData['imu']['gyro_x'], 'r')
     plt.step(interval, data['imu']['gyro_x'], 'b')
     plt.ylabel('gyro_x')
-    plt.subplot(2, 1, 2)
+    plt.subplot(3, 1, 2)
     plt.step(interval, data['encoder']['speed_rpm'], 'b')
     plt.ylabel('speed_rpm')
+
+    plt.subplot(3, 1, 3)
+    plt.step(interval, data['encoder']['delta'], 'b')
+    plt.ylabel('delta')
 
     plt.show()

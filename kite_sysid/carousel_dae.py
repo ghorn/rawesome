@@ -28,6 +28,7 @@ def makeDae( conf = None ):
 
     # Make model
     dae = rawe.models.carousel(conf)
+
     (xDotSol, zSol) = dae.solveForXDotAndZ()
 
     # Get variables and outputs from the model
@@ -66,6 +67,7 @@ def makeDae( conf = None ):
     # Load IMU position and orientation w.r.t. body frame
 #    pIMU = C.mul(R_nwu2ned, C.DMatrix(np.loadtxt(os.path.join(propertiesDir,'IMU/pIMU.dat'))))
 
+    pIMU = C.DMatrix([0,0,0])
 #0
 #0
 #0
@@ -75,6 +77,10 @@ def makeDae( conf = None ):
 #9.937680e-01   6.949103e-02    8.715574e-02
 #-6.975647e-02  9.975641e-01    0
 #-8.694344e-02  -6.079677e-03   9.961947e-01
+    pIMU = C.DMatrix([0,0,0])
+    RIMU = C.DMatrix([[9.937680e-01,   6.949103e-02, 8.715574e-02],
+                      [-6.975647e-02,  9.975641e-01,            0],
+                      [-8.694344e-02, -6.079677e-03, 9.961947e-01]])
 
         # Define IMU measurement functions
         # TODO here is omitted the term: w x w pIMU
@@ -111,3 +117,5 @@ def makeDae( conf = None ):
     z_tether = (z + zt*e33)
 
     dae['lineAngles'] = C.vertcat([C.arctan(y_tether/x_tether),C.arctan(z_tether/x_tether)])
+
+    return dae

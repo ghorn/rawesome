@@ -27,7 +27,7 @@ vis = viz/dist/build/multicarousel/multicarousel
 all :: $(vis) $(autogenTargets) $(ag)/$(topname)_pb2.py $(ag)/$(hstopname).hs $(plotter)
 
 $(vis) : $(ag)/$(hstopname).hs viz/*.hs
-	cd viz && cabal configure -v0 && cabal build -v0
+	cd viz && cabal configure -v0 && cabal build
 
 autogenTargets = \
 	$(ag)/$(topname).proto \

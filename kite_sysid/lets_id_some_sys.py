@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env ipython
 
 # Copyright 2012-2014 Greg Horn
 #
@@ -31,6 +31,7 @@ from autogen.tocarousel_sysidProto import toProto
 from autogen.carousel_sysid_pb2 import Trajectory
 import carousel_dae
 import load_data
+from rawe.models.arianne_conf import makeConf
 
 #def constrainTetherForce(ocp):
 #    for k in range(ocp.nk):
@@ -50,11 +51,11 @@ import load_data
 #        ocp.constrain( ocp.lookup('rpm',timestep=k),       '<=', 1500*safety_factor, tag=('rpm',k))
 #        ocp.constrain( -1500*safety_factor, '<=', ocp.lookup('rpm',timestep=k),       tag=('rpm',k))
 
-def setupOcp(dae,conf,nk,nicp=1,deg=4):
+def setupOcp(dae,conf,endTime,nk,nicp=1,deg=4):
     ocp = rawe.collocation.Coll(dae, nk=nk,nicp=nicp,deg=deg)
 
     print "setting up collocation..."
-    ocp.setupCollocation(ocp.lookup('endTime'))
+    ocp.setupCollocation(endTime)
 
 #    for k in range(ocp.nk):
 #        for j in range(1,ocp.deg+1): #[1]:
@@ -71,59 +72,49 @@ def setupOcp(dae,conf,nk,nicp=1,deg=4):
                       '==', 1, tag=('sin**2 + cos**2 == 1',None))
     constrainInvariantErrs()
 
-#    # constrain line angle
-#    for k in range(0,nk):
-#        ocp.constrain(ocp.lookup('cos_line_angle',timestep=k),'>=',C.cos(45*pi/180), tag=('line angle',k))
+    # constrain line angle
+    for k in range(0,nk):
+        ocp.constrain(ocp.lookup('cos_line_angle',timestep=k),'>=',C.cos(45*pi/180), tag=('line angle',k))
 
     # constrain airspeed
-    def constrainAirspeedAlphaBeta():
+    def constrainAirspeedCL():
         for k in range(0,nk):
             for j in range(1,deg+1):
                 ocp.constrainBnds(ocp.lookup('airspeed',timestep=k,degIdx=j),
                                   (5,35), tag=('airspeed',(k,j)))
-                #ocp.constrainBnds(ocp.lookup('alpha_deg',timestep=k,degIdx=j), (-4.5,7.5), tag=('alpha(deg)',nk))
-                #ocp.constrainBnds(ocp.lookup('beta_deg', timestep=k,degIdx=j), (-6,6), tag=('beta(deg)',nk))
                 ocp.constrain(ocp.lookup('cL',timestep=k,degIdx=j), '>=', 0, tag=('CL positive',nk))
-    constrainAirspeedAlphaBeta()
+#    constrainAirspeedCL()
+    def constrainAlphaBeta():
+        for k in range(0,nk):
+            for j in range(1,deg+1):
+                ocp.constrainBnds(ocp.lookup('alpha_deg',timestep=k,degIdx=j), (-4.5,15), tag=('alpha(deg)',nk))
+                ocp.constrainBnds(ocp.lookup('beta_deg', timestep=k,degIdx=j), (-15,15), tag=('beta(deg)',nk))
+                ocp.constrain(ocp.lookup('cL',timestep=k,degIdx=j), '>=', 0, tag=('CL positive',nk))
+#    constrainAirspeedAlphaBeta()
+    constrainAlphaBeta()
 
     # constrain tether force
 #    constrainTetherForce(ocp)
 #    realMotorConstraints(ocp)
 
-    # make it periodic
-    for name in [ "y","z",
-                  "dy","dz",
-                  "w_bn_b_x","w_bn_b_y","w_bn_b_z",
-                  "r","dr",'ddr',
-                  'ddelta',
-                  'aileron','elevator',
-                  'sin_delta','motor_torque'
-                  ]:
-        ocp.constrain(ocp.lookup(name,timestep=0),'==',ocp.lookup(name,timestep=-1), tag=('periodic '+name,None))
-
-    # periodic attitude
-    rawekite.kiteutils.periodicDcm(ocp)
-
     # bounds
-    ocp.bound('aileron', (numpy.radians(-10),numpy.radians(10)))
-    ocp.bound('elevator',(numpy.radians(-10),numpy.radians(10)))
-    ocp.bound('daileron',  (numpy.radians(-20), numpy.radians(20)))
-    ocp.bound('delevator', (numpy.radians(-20), numpy.radians(20)))
+    #ocp.bound('aileron', (numpy.radians(-10),numpy.radians(10)))
+    #ocp.bound('elevator',(numpy.radians(-10),numpy.radians(10)))
+    ocp.bound('daileron',  (numpy.radians(-200), numpy.radians(200)))
+    ocp.bound('delevator', (numpy.radians(-200), numpy.radians(200)))
     #ocp.bound('ddelta',(-0.98*2*pi, 0.98*2*pi))
     ocp.bound('ddelta',(-4*pi, 4*pi))
 
     ocp.bound('x',(0.5,2000))
     ocp.bound('y',(-2000,2000))
     ocp.bound('z',(0, 2))
-    ocp.bound('r',(1.6,1.8))
-    # can't bound r AND have periodic r at the same time
-    ocp.bound('r',(0,100),timestep=-1)
+    ocp.bound('r',(1.7,1.7))
     ocp.bound('dr',(-1,1))
     ocp.bound('ddr',(-15,15))
     ocp.bound('dddr',(-15,15))
 
     ocp.bound('motor_torque',(-500,500))
-    ocp.bound('dmotor_torque',(-1,1))
+    ocp.bound('dmotor_torque',(-100,100))
 
     ocp.bound('cos_delta',(-1.5,1.5))
     ocp.bound('sin_delta',(-1.5,1.5))
@@ -139,45 +130,66 @@ def setupOcp(dae,conf,nk,nicp=1,deg=4):
               'w_bn_b_z']:
         ocp.bound(w,(-4*pi,4*pi))
 
-    ocp.bound('endTime',(1.2, 1.2))
-    ocp.guess('endTime',1.2)
-
-    # boundary conditions
-    ocp.bound('sin_delta', (0,0), timestep=0, quiet=True)
-    ocp.bound('cos_delta', (0.5,1.5), timestep=0, quiet=True)
-    ocp.bound('cos_delta', (0.5,1.5), timestep=-1, quiet=True)
-
     return ocp
 
 
 if __name__=='__main__':
-    data = load_data.load()
+    nk = 50
+    tStart = 20.0 # [sec]
+    tEnd   = 25.0 # [sec]
+    T = tEnd - tStart
+    ts = T / float(nk)
 
-    from rawe.models.arianne_conf import makeConf
+    (data,interval,_) = load_data.load(tStart, tEnd, ts)
+
     conf = makeConf()
-    conf['runHomotopy'] = True
-    nk = 35
-    #nk = 70
+    conf['useVirtualForces'] = 'random_walk'
+    conf['useVirtualTorques'] = 'random_walk'
     dae = carousel_dae.makeDae(conf)
-    dae.addP('endTime')
 
     print "setting up ocp..."
-    ocp = setupOcp(dae,conf,nk)
+    ocp = setupOcp(dae,conf,T,nk)
 
     lineRadiusGuess = 1.7
-    nTurns = 1
 
     # trajectory for homotopy
+    ddelta0 = -data['encoder']['speed_rpm'][0]*2*pi/60
     def get_steady_state_guess():
-        ddelta = -nTurns*2*pi/(ocp._guess.lookup('endTime'))
         from rawekite.carouselSteadyState import getSteadyState
         conf_ss = makeConf()
-        steadyState,_ = getSteadyState(carousel_dae.makeDae(conf_ss), None, ddelta, lineRadiusGuess, {})
+        steadyState,_ = getSteadyState(carousel_dae.makeDae(conf_ss), None, ddelta0, lineRadiusGuess, {})
         return steadyState
     ss = get_steady_state_guess()
     print ss
+    ss['f1_disturbance'] = 0
+    ss['f2_disturbance'] = 0
+    ss['f3_disturbance'] = 0
+    ss['t1_disturbance'] = 0
+    ss['t2_disturbance'] = 0
+    ss['t3_disturbance'] = 0
 
-    homotopyTraj = {'sin_delta':[],'cos_delta':[]}
+    ss['df1_disturbance'] = 0
+    ss['df2_disturbance'] = 0
+    ss['df3_disturbance'] = 0
+    ss['dt1_disturbance'] = 0
+    ss['dt2_disturbance'] = 0
+    ss['dt3_disturbance'] = 0
+
+    ocp.bound('f1_disturbance', (-100,100))
+    ocp.bound('f2_disturbance', (-100,100))
+    ocp.bound('f3_disturbance', (-100,100))
+    ocp.bound('t1_disturbance', (-100,100))
+    ocp.bound('t2_disturbance', (-100,100))
+    ocp.bound('t3_disturbance', (-100,100))
+
+    ocp.bound('df1_disturbance',(-100,100))
+    ocp.bound('df2_disturbance',(-100,100))
+    ocp.bound('df3_disturbance',(-100,100))
+    ocp.bound('dt1_disturbance',(-100,100))
+    ocp.bound('dt2_disturbance',(-100,100))
+    ocp.bound('dt3_disturbance',(-100,100))
+
+    # initial guess
     k = 0
     for nkIdx in range(ocp.nk+1):
         for nicpIdx in range(ocp.nicp):
@@ -188,11 +200,8 @@ if __name__=='__main__':
                     break
 
                 # path following
-                delta = -2*pi*(k+ocp.lagrangePoly.tau_root[degIdx])/float(ocp.nk*ocp.nicp)
-
-                if nicpIdx == 0 and degIdx == 0:
-                    homotopyTraj['sin_delta'].append(numpy.sin(delta))
-                    homotopyTraj['cos_delta'].append(numpy.cos(delta))
+                delta0 = data['encoder']['delta'][0]
+                delta = delta0 + ddelta0*T*(k+ocp.lagrangePoly.tau_root[degIdx])/float(ocp.nk*ocp.nicp)
 
                 ocp.guess('sin_delta',numpy.sin(delta),timestep=nkIdx,nicpIdx=nicpIdx,degIdx=degIdx)
                 ocp.guess('cos_delta',numpy.cos(delta),timestep=nkIdx,nicpIdx=nicpIdx,degIdx=degIdx)
@@ -210,11 +219,38 @@ if __name__=='__main__':
             ocp.guess(name,ss[name],timestep=nkIdx)
 
     # objective function
-    obj = -1e6*ocp.lookup('gamma_homotopy')
+    obj = 0
 
-    for k in range(ocp.nk+1):
-        obj += (homotopyTraj['sin_delta'][k] - ocp.lookup('sin_delta',timestep=k))**2
-        obj += (homotopyTraj['cos_delta'][k] - ocp.lookup('cos_delta',timestep=k))**2
+    sigmaLas = 0.1
+    sigmaDeltaError = 0.1
+    sigmaF = 10.
+    sigmaT = 10.
+    sigmaDF = 10.
+    sigmaDT = 10.
+    for k,t in enumerate(interval):
+        # line angle sensor
+        las = ocp.lookup('lineAngles',timestep=k)
+        obj += (data['line_angle_sensor']['angle_hor'][k] - las[0])**2/sigmaLas**2
+        obj += (data['line_angle_sensor']['angle_ver'][k] - las[1])**2/sigmaLas**2
+
+        # encoder
+        s0 = ocp.lookup('sin_delta',timestep=k)
+        c0 = ocp.lookup('cos_delta',timestep=k)
+        s1 = data['encoder']['sin_delta'][k]
+        c1 = data['encoder']['cos_delta'][k]
+        sin_error = c0*s1 - c1*s0
+        obj += sin_error**2/sigmaDeltaError
+
+        # disturbances
+        for name in ['f1_disturbance', 'f2_disturbance', 'f3_disturbance']:
+            obj += ocp.lookup(name,timestep=k)**2/sigmaF**2
+        for name in ['t1_disturbance', 't2_disturbance', 't3_disturbance']:
+            obj += ocp.lookup(name,timestep=k)**2/sigmaT**2
+        for name in ['df1_disturbance', 'df2_disturbance', 'df3_disturbance']:
+            obj += ocp.lookup(name,timestep=k)**2/sigmaDF**2
+        for name in ['dt1_disturbance', 'dt2_disturbance', 'dt3_disturbance']:
+            obj += ocp.lookup(name,timestep=k)**2/sigmaDT**2
+
     ocp.setQuadratureDdt('mechanical_energy', 'mechanical_winch_power')
     ocp.setQuadratureDdt('electrical_energy', 'electrical_winch_power')
 
@@ -235,25 +271,20 @@ if __name__=='__main__':
         winchObj = ddr*ddr / (ddrSigma*ddrSigma)
         motorTorqueObj = dmotorTorque*dmotorTorque / (dmotorTorqueSigma*dmotorTorqueSigma)
 
-        obj += 1e-2*(ailObj + eleObj + winchObj + motorTorqueObj)/float(ocp.nk)
+        obj += 1e-2*(ailObj + eleObj + winchObj + motorTorqueObj)
 
-    # homotopy forces/torques regularization
-    homoReg = 0
+    # control bounds
     for k in range(ocp.nk):
-        for nicpIdx in range(ocp.nicp):
-            for degIdx in range(1,ocp.deg+1):
-                homoReg += ocp.lookup('f1_homotopy',timestep=k,nicpIdx=nicpIdx,degIdx=degIdx)**2
-                homoReg += ocp.lookup('f2_homotopy',timestep=k,nicpIdx=nicpIdx,degIdx=degIdx)**2
-                homoReg += ocp.lookup('f3_homotopy',timestep=k,nicpIdx=nicpIdx,degIdx=degIdx)**2
-                homoReg += ocp.lookup('t1_homotopy',timestep=k,nicpIdx=nicpIdx,degIdx=degIdx)**2
-                homoReg += ocp.lookup('t2_homotopy',timestep=k,nicpIdx=nicpIdx,degIdx=degIdx)**2
-                homoReg += ocp.lookup('t3_homotopy',timestep=k,nicpIdx=nicpIdx,degIdx=degIdx)**2
-    obj += 1e-2*homoReg/float(ocp.nk*ocp.nicp*ocp.deg)
+        ail = data['control_surfaces']['aileron'][k]
+        ocp.bound('aileron',(ail,ail),timestep=k)
 
+        elev = data['control_surfaces']['elevator'][k]
+        ocp.bound('elevator',(elev,elev),timestep=k)
+    ocp.bound('aileron',(ail,ail),timestep=ocp.nk)
+    ocp.bound('elevator',(elev,elev),timestep=ocp.nk)
+
+    obj /= float(ocp.nk)
     ocp.setObjective( obj )
-
-    # initial guesses
-    ocp.guess('gamma_homotopy',0)
 
     # spawn telemetry thread
     callback = rawe.telemetry.startTelemetry(
@@ -262,46 +293,46 @@ if __name__=='__main__':
             ], printBoundViolation=False, printConstraintViolation=False)
 
     # solver
-    solverOptions = [("expand",True),
-                     ("linear_solver","ma86"),
-                     ("max_iter",1000),
-                     ("tol",1e-10)
-                     #("_optimality_tolerance",1e-10),
-                     #("_feasibility_tolerance",1e-13),
-                     #("_detect_linear",False),
-                     ]
+    solver = 'ipopt'
+    #solver = 'snopt'
+    if solver == 'ipopt':
+        solverOptions = [("expand",True),
+                         ("linear_solver","ma86"),
+                         ("max_iter",1000),
+                         ("tol",1e-9)]
+    elif solver == 'snopt':
+        solverOptions = [("expand",True)
+#                        ,("_optimality_tolerance",1e-10)
+#                        ,("_feasibility_tolerance",1e-10)
+#                        ,("detect_linear",False)
+                        ]
+    else:
+        raise Exception('unrecognized solver "'+solver+'"')
 
     print "setting up solver..."
     ocp.setupSolver( solverOpts=solverOptions,
                      callback=callback,
-                     solver='ipopt'
-                     #solver='snopt'
+                     solver=solver
                    )
 
     xInit = None
-#    ocp.bound('gamma_homotopy',(1e-4,1e-4),force=True)
-    ocp.bound('gamma_homotopy',(1,1),force=True)
     traj = ocp.solve(xInit=xInit)
-
-#    ocp.bound('gamma_homotopy',(0,1),force=True)
-#    traj = ocp.solve(xInit=traj.getDvs())
-
-#    ocp.bound('gamma_homotopy',(1,1),force=True)
-##    ocp.bound('endTime',(3.5,6.0),force=True)
-#    traj = ocp.solve(xInit=traj.getDvs())
-
     traj.save("data/carousel_homotopy.dat")
 
     # Plot the results
     def plotResults():
-        #traj.subplot(['f1_homotopy','f2_homotopy','f3_homotopy'])
-        #traj.subplot(['t1_homotopy','t2_homotopy','t3_homotopy'])
+        interval0 = interval - interval[0]
+        traj.subplot(['f1_disturbance','f2_disturbance','f3_disturbance'])
+        traj.subplot(['t1_disturbance','t2_disturbance','t3_disturbance'])
+        traj.subplot(['df1_disturbance','df2_disturbance','df3_disturbance'])
+        traj.subplot(['dt1_disturbance','dt2_disturbance','dt3_disturbance'])
         #traj.subplot(['x','y','z'])
         #traj.subplot(['dx','dy','dz'])
         #traj.subplot([['aileron','elevator'],['daileron','delevator']],title='control surfaces')
         #traj.subplot(['r','dr','ddr'])
         #traj.subplot(['c','cdot','cddot'],title="invariants")
         traj.plot('airspeed')
+
         traj.subplot([['alpha_deg'],['beta_deg']])
         traj.subplot(['cL','cD','L_over_D'])
         #traj.subplot(['mechanical_winch_power', 'tether_tension'])
@@ -310,4 +341,4 @@ if __name__=='__main__':
         #traj.subplot(['e11','e12','e13','e21','e22','e23','e31','e32','e33'])
         #traj.plot(['nu'])
         plt.show()
-#    plotResults()
+    plotResults()
