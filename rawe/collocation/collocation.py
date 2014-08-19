@@ -546,7 +546,7 @@ class Coll():
         printConstraintViolation()
 
         ret = self.solver.getStat('return_status')
-        assert ret in ['Solve_Succeeded','Solved_To_Acceptable_Level',1], 'Solver failed: '+ret
+        assert ret in ['Solve_Succeeded','Solved_To_Acceptable_Level',1], 'Solver failed: '+str(ret)
 
         # Print the optimal cost
         print "optimal cost: ", float(self.solver.output('f'))
