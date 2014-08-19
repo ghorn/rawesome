@@ -30,6 +30,7 @@ import rawekite
 from autogen.tocarousel_sysidProto import toProto
 from autogen.carousel_sysid_pb2 import Trajectory
 import carousel_dae
+import load_data
 
 #def constrainTetherForce(ocp):
 #    for k in range(ocp.nk):
@@ -150,11 +151,7 @@ def setupOcp(dae,conf,nk,nicp=1,deg=4):
 
 
 if __name__=='__main__':
-    datFolder = 'data/smc_20140430_232938_dmhe_testing'
-    data = {}
-    for name in ['cable_length','control_surfaces','encoder',
-                 'imu','led_tracker','line_angle_sensor']:
-        mat = scipy.io.loadmat(datFolder + '/' + name + '.mat')
+    data = load_data.load()
 
     from rawe.models.arianne_conf import makeConf
     conf = makeConf()
