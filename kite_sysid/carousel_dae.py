@@ -66,8 +66,8 @@ def makeDae( conf = None ):
 
     # Load IMU position and orientation w.r.t. body frame
 #    pIMU = C.mul(R_nwu2ned, C.DMatrix(np.loadtxt(os.path.join(propertiesDir,'IMU/pIMU.dat'))))
-
     pIMU = C.DMatrix([0,0,0])
+    pIMU = C.mul(R_nwu2ned, pIMU)
 #0
 #0
 #0
@@ -77,10 +77,10 @@ def makeDae( conf = None ):
 #9.937680e-01   6.949103e-02    8.715574e-02
 #-6.975647e-02  9.975641e-01    0
 #-8.694344e-02  -6.079677e-03   9.961947e-01
-    pIMU = C.DMatrix([0,0,0])
     RIMU = C.DMatrix([[9.937680e-01,   6.949103e-02, 8.715574e-02],
                       [-6.975647e-02,  9.975641e-01,            0],
                       [-8.694344e-02, -6.079677e-03, 9.961947e-01]])
+    RIMU = C.mul(R_nwu2ned, RIMU)
 
         # Define IMU measurement functions
         # TODO here is omitted the term: w x w pIMU
@@ -98,8 +98,15 @@ def makeDae( conf = None ):
 
     # For the accelerometers
     dae['IMU_acceleration'] = ddpIMU
+    dae['IMU_acceleration_x'] = dae['IMU_acceleration'][0]
+    dae['IMU_acceleration_y'] = dae['IMU_acceleration'][1]
+    dae['IMU_acceleration_z'] = dae['IMU_acceleration'][2]
+
     # ... and for the gyroscopes
     dae['IMU_angular_velocity'] = C.mul(RIMU, dae['w_bn_b'])
+    dae['IMU_angular_velocity_x'] = dae['IMU_angular_velocity'][0]
+    dae['IMU_angular_velocity_y'] = dae['IMU_angular_velocity'][1]
+    dae['IMU_angular_velocity_z'] = dae['IMU_angular_velocity'][2]
 
     if 'kinematicIMUAccelerationModel' in conf and conf['kinematicIMUAccelerationModel']:
         dae['vel_error_x'] = dae['dx']-dae['dx_IMU']
@@ -117,5 +124,7 @@ def makeDae( conf = None ):
     z_tether = (z + zt*e33)
 
     dae['lineAngles'] = C.vertcat([C.arctan(y_tether/x_tether),C.arctan(z_tether/x_tether)])
+    dae['lineAngle_hor'] = dae['lineAngles'][0]
+    dae['lineAngle_ver'] = dae['lineAngles'][1]
 
     return dae

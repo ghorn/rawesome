@@ -57,11 +57,6 @@ def setupOcp(dae,conf,endTime,nk,nicp=1,deg=4):
     print "setting up collocation..."
     ocp.setupCollocation(endTime)
 
-#    for k in range(ocp.nk):
-#        for j in range(1,ocp.deg+1): #[1]:
-#            ocp.constrain( ocp('x',timestep=k,degIdx=j), '>=', ocp('y',timestep=k,degIdx=j), tag=('x>y',k))
-#            ocp.constrain( ocp('x',timestep=k,degIdx=j), '>=', -ocp('y',timestep=k,degIdx=j), tag=('x>-y',k))
-
     # constrain invariants
     def constrainInvariantErrs():
         R_c2b = ocp.lookup('R_c2b',timestep=0)
@@ -73,25 +68,26 @@ def setupOcp(dae,conf,endTime,nk,nicp=1,deg=4):
     constrainInvariantErrs()
 
     # constrain line angle
-    for k in range(0,nk):
-        ocp.constrain(ocp.lookup('cos_line_angle',timestep=k),'>=',C.cos(45*pi/180), tag=('line angle',k))
+#    for k in range(0,nk):
+#        ocp.constrain(ocp.lookup('cos_line_angle',timestep=k),'>=',C.cos(45*pi/180), tag=('line angle',k))
 
     # constrain airspeed
-    def constrainAirspeedCL():
+    constrainCL = False
+    constrainAirspeed = True
+    constrainAlphaBeta = True
+    def constrainAirspeed():
         for k in range(0,nk):
             for j in range(1,deg+1):
-                ocp.constrainBnds(ocp.lookup('airspeed',timestep=k,degIdx=j),
-                                  (5,35), tag=('airspeed',(k,j)))
-                ocp.constrain(ocp.lookup('cL',timestep=k,degIdx=j), '>=', 0, tag=('CL positive',nk))
-#    constrainAirspeedCL()
-    def constrainAlphaBeta():
-        for k in range(0,nk):
-            for j in range(1,deg+1):
-                ocp.constrainBnds(ocp.lookup('alpha_deg',timestep=k,degIdx=j), (-4.5,15), tag=('alpha(deg)',nk))
-                ocp.constrainBnds(ocp.lookup('beta_deg', timestep=k,degIdx=j), (-15,15), tag=('beta(deg)',nk))
-                ocp.constrain(ocp.lookup('cL',timestep=k,degIdx=j), '>=', 0, tag=('CL positive',nk))
-#    constrainAirspeedAlphaBeta()
-    constrainAlphaBeta()
+                if constrainAirspeed:
+                    ocp.constrainBnds(ocp.lookup('airspeed',timestep=k,degIdx=j),
+                                      (5,35), tag=('airspeed',(k,j)))
+                if constrainCL:
+                    ocp.constrain(ocp.lookup('cL',timestep=k,degIdx=j), '>=', 0, tag=('CL positive',nk))
+                if constrainAlphaBeta:
+                    ocp.constrainBnds(ocp.lookup('alpha_deg',timestep=k,degIdx=j),
+                                      (-4.5,15), tag=('alpha(deg)',nk))
+                    ocp.constrainBnds(ocp.lookup('beta_deg', timestep=k,degIdx=j),
+                                      (-15,15), tag=('beta(deg)',nk))
 
     # constrain tether force
 #    constrainTetherForce(ocp)
@@ -134,13 +130,17 @@ def setupOcp(dae,conf,endTime,nk,nicp=1,deg=4):
 
 
 if __name__=='__main__':
-    nk = 50
+    nk = 100
     tStart = 20.0 # [sec]
-    tEnd   = 25.0 # [sec]
+    tEnd   = 21.0 # [sec]
     T = tEnd - tStart
     ts = T / float(nk)
 
+    # load the data
     (data,interval,_) = load_data.load(tStart, tEnd, ts)
+
+    # fix some signs in the data
+    data['encoder']['sin_delta'] = -data['encoder']['sin_delta']
 
     conf = makeConf()
     conf['useVirtualForces'] = 'random_walk'
@@ -148,12 +148,14 @@ if __name__=='__main__':
     dae = carousel_dae.makeDae(conf)
 
     print "setting up ocp..."
-    ocp = setupOcp(dae,conf,T,nk)
+    ocp = setupOcp(dae,conf,T,nk,deg=3)
 
     lineRadiusGuess = 1.7
 
-    # trajectory for homotopy
+    # trajectory for initial guess
+    delta0 = numpy.arctan2(data['encoder']['sin_delta'][0], data['encoder']['cos_delta'][0])
     ddelta0 = -data['encoder']['speed_rpm'][0]*2*pi/60
+
     def get_steady_state_guess():
         from rawekite.carouselSteadyState import getSteadyState
         conf_ss = makeConf()
@@ -200,7 +202,6 @@ if __name__=='__main__':
                     break
 
                 # path following
-                delta0 = data['encoder']['delta'][0]
                 delta = delta0 + ddelta0*T*(k+ocp.lagrangePoly.tau_root[degIdx])/float(ocp.nk*ocp.nicp)
 
                 ocp.guess('sin_delta',numpy.sin(delta),timestep=nkIdx,nicpIdx=nicpIdx,degIdx=degIdx)
@@ -221,17 +222,21 @@ if __name__=='__main__':
     # objective function
     obj = 0
 
-    sigmaLas = 0.1
-    sigmaDeltaError = 0.1
-    sigmaF = 10.
-    sigmaT = 10.
+    sigmaLasElev = 0.002
+    sigmaLasHoriz = 0.005
+    sigmaDeltaError = 2.0*pi/180.0
+    sigmaF = 100.
+    sigmaT = 100.
     sigmaDF = 10.
     sigmaDT = 10.
+    sigmaGyro = 3.0*pi/180.0
+    sigmaAccel = 0.5
     for k,t in enumerate(interval):
         # line angle sensor
-        las = ocp.lookup('lineAngles',timestep=k)
-        obj += (data['line_angle_sensor']['angle_hor'][k] - las[0])**2/sigmaLas**2
-        obj += (data['line_angle_sensor']['angle_ver'][k] - las[1])**2/sigmaLas**2
+        las_h = ocp.lookup('lineAngle_hor',timestep=k)
+        las_v = ocp.lookup('lineAngle_ver',timestep=k)
+        obj += (data['line_angle_sensor']['angle_hor'][k] - las_h)**2/sigmaLasHoriz**2
+        obj += (data['line_angle_sensor']['angle_ver'][k] - las_v)**2/sigmaLasElev**2
 
         # encoder
         s0 = ocp.lookup('sin_delta',timestep=k)
@@ -239,7 +244,7 @@ if __name__=='__main__':
         s1 = data['encoder']['sin_delta'][k]
         c1 = data['encoder']['cos_delta'][k]
         sin_error = c0*s1 - c1*s0
-        obj += sin_error**2/sigmaDeltaError
+        obj += sin_error**2/sigmaDeltaError**2
 
         # disturbances
         for name in ['f1_disturbance', 'f2_disturbance', 'f3_disturbance']:
@@ -250,6 +255,18 @@ if __name__=='__main__':
             obj += ocp.lookup(name,timestep=k)**2/sigmaDF**2
         for name in ['dt1_disturbance', 'dt2_disturbance', 'dt3_disturbance']:
             obj += ocp.lookup(name,timestep=k)**2/sigmaDT**2
+
+        # gyros
+        for name in ['x','y','z']:
+            gyroData = data['imu']['gyro_'+name][k]
+            gyro = ocp.lookup('IMU_angular_velocity_'+name,timestep=k)
+            obj += (gyro - gyroData)**2/sigmaGyro**2
+
+        # accels
+        for name in ['x','y','z']:
+            accelData = data['imu']['accl_'+name][k]
+            accel = ocp.lookup('IMU_acceleration_'+name,timestep=k)
+            obj += (accel - accelData)**2/sigmaAccel**2
 
     ocp.setQuadratureDdt('mechanical_energy', 'mechanical_winch_power')
     ocp.setQuadratureDdt('electrical_energy', 'electrical_winch_power')
@@ -266,22 +283,27 @@ if __name__=='__main__':
         ddrSigma = 0.1
         dmotorTorqueSigma = 1.0
 
-        ailObj = daileron*daileron / (daileronSigma*daileronSigma)
-        eleObj = delevator*delevator / (delevatorSigma*delevatorSigma)
-        winchObj = ddr*ddr / (ddrSigma*ddrSigma)
-        motorTorqueObj = dmotorTorque*dmotorTorque / (dmotorTorqueSigma*dmotorTorqueSigma)
+        #obj += daileron*daileron / (daileronSigma*daileronSigma)
+        #obj += delevator*delevator / (delevatorSigma*delevatorSigma)
+        #obj += ddr*ddr / (ddrSigma*ddrSigma)
+        obj += dmotorTorque**2 / dmotorTorqueSigma**2
 
-        obj += 1e-2*(ailObj + eleObj + winchObj + motorTorqueObj)
-
-    # control bounds
+    # control measurements bounds
     for k in range(ocp.nk):
+        # bound within 0.2 degrees
+        d = 0.2*pi/180;
         ail = data['control_surfaces']['aileron'][k]
-        ocp.bound('aileron',(ail,ail),timestep=k)
-
         elev = data['control_surfaces']['elevator'][k]
-        ocp.bound('elevator',(elev,elev),timestep=k)
-    ocp.bound('aileron',(ail,ail),timestep=ocp.nk)
-    ocp.bound('elevator',(elev,elev),timestep=ocp.nk)
+
+        ocp.bound('aileron',(ail-d,ail+d),timestep=k)
+        ocp.bound('elevator',(elev-d,elev+d),timestep=k)
+
+        # also penalize
+        obj += (ocp.lookup( 'aileron',timestep=k)- ail)**2/d**2
+        obj += (ocp.lookup('elevator',timestep=k)-elev)**2/d**2
+
+    ocp.bound('aileron',(ail-d,ail+d),timestep=ocp.nk)
+    ocp.bound('elevator',(-elev-d,elev+d),timestep=ocp.nk)
 
     obj /= float(ocp.nk)
     ocp.setObjective( obj )
@@ -298,6 +320,8 @@ if __name__=='__main__':
     if solver == 'ipopt':
         solverOptions = [("expand",True),
                          ("linear_solver","ma86"),
+#                         ("linear_solver","ma57"),
+#                         ("linear_solver","ma97"),
                          ("max_iter",1000),
                          ("tol",1e-9)]
     elif solver == 'snopt':
@@ -322,22 +346,57 @@ if __name__=='__main__':
     # Plot the results
     def plotResults():
         interval0 = interval - interval[0]
-        traj.subplot(['f1_disturbance','f2_disturbance','f3_disturbance'])
-        traj.subplot(['t1_disturbance','t2_disturbance','t3_disturbance'])
-        traj.subplot(['df1_disturbance','df2_disturbance','df3_disturbance'])
-        traj.subplot(['dt1_disturbance','dt2_disturbance','dt3_disturbance'])
+        traj.subplot([['f1_disturbance','f2_disturbance','f3_disturbance'],
+                      ['t1_disturbance','t2_disturbance','t3_disturbance']])
+        traj.subplot([['df1_disturbance','df2_disturbance','df3_disturbance'],
+                      ['dt1_disturbance','dt2_disturbance','dt3_disturbance']])
         #traj.subplot(['x','y','z'])
         #traj.subplot(['dx','dy','dz'])
-        #traj.subplot([['aileron','elevator'],['daileron','delevator']],title='control surfaces')
         #traj.subplot(['r','dr','ddr'])
         #traj.subplot(['c','cdot','cddot'],title="invariants")
-        traj.plot('airspeed')
+        #traj.subplot(['ddelta','motor_torque','dmotor_torque'],title="rotational stuff")
 
-        traj.subplot([['alpha_deg'],['beta_deg']])
+        # measurement errors
+        traj.subplot(['sin_delta','cos_delta'])
+        plt.subplot(211)
+        plt.plot(interval0, data['encoder']['sin_delta'],'o')
+        plt.subplot(212)
+        plt.plot(interval0, data['encoder']['cos_delta'],'o')
+
+        traj.subplot(['lineAngle_hor','lineAngle_ver'])
+        plt.subplot(211)
+        plt.plot(interval0, data['line_angle_sensor']['angle_hor'],'o')
+        plt.subplot(212)
+        plt.plot(interval0, data['line_angle_sensor']['angle_ver'],'o')
+
+        traj.subplot(['IMU_angular_velocity_'+xyz for xyz in ['x','y','z']])
+        plt.subplot(311)
+        plt.plot(interval0, data['imu']['gyro_x'],'o')
+        plt.subplot(312)
+        plt.plot(interval0, data['imu']['gyro_y'],'o')
+        plt.subplot(313)
+        plt.plot(interval0, data['imu']['gyro_z'],'o')
+
+        traj.subplot(['IMU_acceleration_'+xyz for xyz in ['x','y','z']])
+        plt.subplot(311)
+        plt.plot(interval0, data['imu']['accl_x'],'o')
+        plt.subplot(312)
+        plt.plot(interval0, data['imu']['accl_y'],'o')
+        plt.subplot(313)
+        plt.plot(interval0, data['imu']['accl_z'],'o')
+
+        traj.subplot(['aileron','elevator'])
+        plt.subplot(211)
+        plt.plot(interval0, data['control_surfaces']['aileron'],'o')
+        plt.subplot(212)
+        plt.plot(interval0, data['control_surfaces']['elevator'],'o')
+
+        #traj.subplot(['daileron','delevator'])
+
+        traj.subplot([['airspeed'],['alpha_deg'],['beta_deg']])
         traj.subplot(['cL','cD','L_over_D'])
         #traj.subplot(['mechanical_winch_power', 'tether_tension'])
         #traj.subplot([['motor_torque'],['dmotor_torque']])
-        #traj.subplot(['w_bn_b_x','w_bn_b_y','w_bn_b_z'])
         #traj.subplot(['e11','e12','e13','e21','e22','e23','e31','e32','e33'])
         #traj.plot(['nu'])
         plt.show()
