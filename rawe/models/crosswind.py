@@ -64,7 +64,7 @@ def compute_mass_matrix(dae, conf, f1, f2, f3, t1, t2, t3):
     r_n2bridle_n = r_n2b_n + C.mul(R_b2n, r_b2bridle_b)
 
     mm00 = C.diag([1,1,1]) * (conf['mass'] + conf['tether_mass']/3.0)
-    mm01 = C.SXMatrix(3,3)
+    mm01 = C.SX.zeros(3,3)
     mm10 = mm01.T
     mm02 = r_n2bridle_n
     mm20 = mm02.T
@@ -74,7 +74,7 @@ def compute_mass_matrix(dae, conf, f1, f2, f3, t1, t2, t3):
     mm11 = J
     mm12 = C.cross(r_b2bridle_b, C.mul(dae['R_n2b'], r_n2b_n))
     mm21 = mm12.T
-    mm22 = C.SXMatrix(1,1)
+    mm22 = C.SX.zeros(1,1)
 
     mm = C.blockcat([[mm00,mm01,mm02],
                      [mm10,mm11,mm12],

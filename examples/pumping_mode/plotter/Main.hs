@@ -21,11 +21,7 @@
 
 module Main ( main ) where
 
-#if OSX
-import qualified System.ZMQ3 as ZMQ
-#else
-import qualified System.ZMQ as ZMQ
-#endif
+import qualified System.ZMQ4 as ZMQ
 import qualified Control.Concurrent as CC
 import Control.Monad ( when, forever )
 import qualified Data.ByteString.Lazy as BL

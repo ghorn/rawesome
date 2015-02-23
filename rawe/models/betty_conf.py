@@ -63,6 +63,10 @@ def makeConf():
          'cm_flaps':0.0026*180/pi,
          'cn_rudder':0.001176*180/pi,
 
+         # Scaling for CL and CD (old hacks we have done before
+         'cL_scale': 1.0,
+         'cD_scale': 1.0,
+
          #[kite]
          'mass':  7.5,
          'tether_mass': 0.0,

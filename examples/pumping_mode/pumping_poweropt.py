@@ -233,8 +233,8 @@ if __name__=='__main__':
     ocp.setupSolver( solverOpts=solverOptions,
                      callback=callback )
 
-#    ocp.interpolateInitialGuess("data/crosswind_homotopy.dat",force=True,quiet=True,numLoops=numLoops)
-    ocp.interpolateInitialGuess("data/crosswind_opt_mechanical_6_loops-backup.dat",force=True,quiet=True)
+    ocp.interpolateInitialGuess("data/crosswind_homotopy.dat",force=True,quiet=True,numLoops=numLoops)
+#    ocp.interpolateInitialGuess("data/crosswind_opt_mechanical_6_loops-backup.dat",force=True,quiet=True)
 #    ocp.interpolateInitialGuess("data/crosswind_opt_electrical_1_loops.dat",force=True,quiet=True,numLoops=numLoops)
 #    ocp.interpolateInitialGuess('data/crosswind_opt_'+powerType+'_1_loops.dat',
 #                                force=True,quiet=True,numLoops=numLoops)

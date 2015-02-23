@@ -257,7 +257,7 @@ class Dae(object):
                              [self[name]]
                              )
             f.init()
-            if len(f.getFree()) == 0:
+            if f.getFree().numel() == 0:
                 # only add if there are no algebraic or ddt(x) variables
                 outputs0.append(name)
 

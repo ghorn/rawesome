@@ -10,7 +10,7 @@ executable kitesim
   hs-source-dirs:    src
   main-is:           KiteSim.hs
   other-modules:     DrawAC
-  build-depends:     base >= 4.5.0 && < 4.7,
+  build-depends:     base >= 4.5.0 && < 5,
                      random,
                      not-gloss >= 0.5.0,
                      spatial-math,
@@ -19,11 +19,7 @@ executable kitesim
                      protocol-buffers-descriptor,
                      bytestring
 --                     ekg
-  if os(OSX)
-    cpp-options:     -DOSX
-    build-depends:   zeromq3-haskell
-  else
-    build-depends:   zeromq-haskell
+  build-depends:   zeromq4-haskell
 
   ghc-options:       -O2 -threaded -with-rtsopts=-T
 
@@ -31,7 +27,7 @@ executable multicarousel
   hs-source-dirs:    src
   main-is:           MultiCarousel.hs
   other-modules:     DrawAC, ParseArgs
-  build-depends:     base >= 4.5.0 && < 4.7,
+  build-depends:     base >= 4.5.0 && < 5,
                      cmdargs >= 0.10,
                      random,
                      not-gloss >= 0.5.0,
@@ -41,11 +37,7 @@ executable multicarousel
                      protocol-buffers-descriptor,
                      bytestring
 --                     ekg
-  if os(OSX)
-    cpp-options:     -DOSX
-    build-depends:   zeromq3-haskell
-  else
-    build-depends:   zeromq-haskell
+  build-depends:   zeromq4-haskell
 
   ghc-options:       -O2 -threaded -with-rtsopts=-T
 
@@ -53,7 +45,7 @@ executable mhe-mpc
   hs-source-dirs:    src
   main-is:           MheMpcViz.hs
   other-modules:     DrawAC, ParseArgs
-  build-depends:     base >= 4.5.0 && < 4.7,
+  build-depends:     base >= 4.5.0 && < 5,
                      cmdargs >= 0.10,
                      random,
                      not-gloss >= 0.5.0,
@@ -62,11 +54,7 @@ executable mhe-mpc
                      protocol-buffers,
                      protocol-buffers-descriptor,
                      bytestring
-  if os(OSX)
-    cpp-options:     -DOSX
-    build-depends:   zeromq3-haskell
-  else
-    build-depends:   zeromq-haskell
+  build-depends:   zeromq4-haskell
 
   ghc-options:       -O2 -threaded -with-rtsopts=-T
 
@@ -74,17 +62,13 @@ executable pendopt
   hs-source-dirs:    src
   main-is:           PendulumOpt.hs
   other-modules:     DrawAC
-  build-depends:     base >= 4.5.0 && < 4.7,
+  build-depends:     base >= 4.5.0 && < 5,
                      not-gloss >= 0.5.0,
                      spatial-math,
                      protocol-buffers,
                      protocol-buffers-descriptor,
                      bytestring
 --                     ekg
-  if os(OSX)
-    cpp-options:     -DOSX
-    build-depends:   zeromq3-haskell
-  else
-    build-depends:   zeromq-haskell
+  build-depends:   zeromq4-haskell
 
   ghc-options:       -O2 -threaded -with-rtsopts=-T
